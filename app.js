@@ -1,7 +1,7 @@
 // ── App Shell ──
 // Router, state management, event bus
 
-const APP_VERSION = 'v1.90 · 2026-06-25 · Warmup view sectioned cards + ver más en normalización'
+const APP_VERSION = 'v1.91 · 2026-07-14 · Feature flag: SvelteKit migration scaffolding'
 
 // ── Push Notification Config ──
 // PUSH_SERVER_URL and VAPID_PUBLIC_KEY are loaded from push-config.js
@@ -178,7 +178,7 @@ async function renderScreen() {
     },
     accent,
   })
-  _appEl.appendChild(_tabBarEl)
+  _rootEl.appendChild(_tabBarEl)
 
   _screenContainer.innerHTML = ''
 

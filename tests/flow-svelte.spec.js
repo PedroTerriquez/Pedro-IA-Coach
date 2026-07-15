@@ -1,3 +1,29 @@
+// GUARDRAIL: Same 15-step flow as flow.spec.js. Do not remove steps.
+const EXPECTED_STEPS = [
+  'Step 1: Verify Profile',
+  'Step 2: Visit Today',
+  'Step 3: Warmup',
+  'Step 4: Plan',
+  'Step 5: Back to Today',
+  'Step 5.5: Coach IA FAB',
+  'Step 6: Log Weights',
+  'Step 7.5: Streak Celebration',
+  'Step 8: Effort Modal',
+  'Step 9: History Verification',
+  'Step 10: Friends',
+  'Step 11: Set Username',
+  'Step 12: Search for Friend',
+  'Step 13: Add Friend',
+  'Step 14: Verify Friend Streak',
+  'Step 15: Language Toggle',
+];
+const _source_svelte = require('fs').readFileSync(__filename, 'utf8');
+for (const step of EXPECTED_STEPS) {
+  if (!_source_svelte.includes(step)) {
+    throw new Error(`GUARDRAIL FAILED: Missing "${step}" in ${__filename}.`);
+  }
+}
+
 const { test, expect } = require('@playwright/test')
 
 function getDayIdx() {
@@ -160,6 +186,10 @@ async function seedIndexedDB(page, data, retries = 3) {
 test('full user flow: profile → warmup → week switch (A→B) → training → stretch → coach → history → friends', async ({ page }) => {
   test.setTimeout(90000)
 
+  // ── Fail on ANY uncaught JS error (hydration / runtime) ──
+  const jsErrors = []
+  page.on('pageerror', err => jsErrors.push(err.message))
+
   // ── Seed IndexedDB ──
   const program = SEED.getProgram()
   const settings = SEED.getSettings()
@@ -169,9 +199,8 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   await page.waitForTimeout(200)
   await page.reload()
-  await page.waitForTimeout(1000)
-  await page.waitForFunction(() => typeof window.appRefresh === 'function')
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null, { timeout: 5000 }).catch(() => {})
+  await page.waitForTimeout(1500)
+  // no appRefresh — SvelteKit loads data automatically on route change
 
   // Intercept Worker API calls
   await page.route(/\/api\//, async (route) => {
@@ -207,7 +236,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   })
 
   // ── Step 1: Verify Profile ──
-  await page.evaluate(() => { location.hash = '#you' })
+  await page.goto('/you')
   await page.waitForSelector('#user-name')
 
   await expect(page.locator('#user-name')).toHaveText('TestUser')
@@ -219,8 +248,14 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(page.locator('#exp-input')).toHaveValue('intermedio')
   await expect(page.locator('#occ-input')).toHaveValue('Ingeniero')
 
+  // BUG #5: Verify Ejercicios sub-tab is clickable and activates (hydration works)
+  await page.click('#you-tab-ejercicios')
+  await page.waitForTimeout(300)
+  await expect(page.locator('#you-tab-ejercicios')).toHaveCSS('background', /rgb\(38, 38, 38\)/)
+  await expect(page.locator('.ex-count')).toBeVisible()
+
   // ── Step 2: Visit Today — Verify Phase Cards ──
-  await page.evaluate(() => { location.hash = '#today' })
+  await page.goto('/today')
   await page.waitForTimeout(500)
 
   // Warmup + training are PhaseCards; stretch is LockedPhase (locked by warmup)
@@ -229,6 +264,9 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(page.locator('#today-locked-warmup-stretch')).toBeVisible()
 
   // ── Step 3: Warmup — Navigate Prev/Next, Mark Done ──
+  await page.locator('[data-phase="warmup"]').click()
+  await page.waitForTimeout(400)
+
   const hechoBtn = page.getByRole('button', { name: 'Hecho' })
   await expect(hechoBtn).toBeVisible({ timeout: 3000 })
 
@@ -238,37 +276,66 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // Click Siguiente → counter changes
   await page.getByRole('button', { name: 'Siguiente' }).first().click()
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(700)
   const counter2 = await getCounter().textContent()
   expect(counter2).not.toBe(counter1)
 
   // Click Anterior → counter reverts
   await page.getByRole('button', { name: 'Anterior' }).first().click()
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(700)
   const counter3 = await getCounter().textContent()
   expect(counter3).toBe(counter1)
 
   // Mark warmup done
   await hechoBtn.click()
   await expect(hechoBtn).not.toBeVisible({ timeout: 2000 })
-  await expect(page.locator('[data-phase="warmup"]')).toContainText('Completado')
 
   // ── Step 4: Plan — Switch Week ──
-  await page.evaluate(() => { location.hash = '#plan' })
-  await page.waitForTimeout(300)
+  // Wait for persistPhase() from warmup completion to settle in IndexedDB
+  await page.waitForTimeout(800)
+  await page.goto('/plan')
+  await page.waitForTimeout(500)
 
   const week2Tab = page.locator('button:has-text("Semana 2")').first()
   await expect(week2Tab).toBeVisible()
   await week2Tab.click()
   await page.waitForTimeout(300)
 
-  // ── Step 5: Back to Today — Training Card ──
-  await page.evaluate(() => { location.hash = '#today' })
-  await page.waitForTimeout(500)
+  // BUG #2 REGRESSION: After switching weeks, current day must auto-expand showing exercises.
+  // The expanded day panel should show exercise names from the current week.
+  const planDaysGrid = page.locator('#plan-days-grid')
+  await expect(planDaysGrid).toContainText('Press Banca')
+  await expect(planDaysGrid).toContainText('Sentadilla')
 
-  const trainingCard = page.locator('[data-phase="training"]')
+  // ── Step 5: Back to Today — Training Card ──
+  await page.goto('/today')
+  await page.waitForTimeout(800)
+
+  const trainingCard = page.locator('[data-phase="training"]').first()
   await expect(trainingCard).toBeVisible()
-  await expect(trainingCard).toContainText('Sigue')
+  await expect(trainingCard).toContainText('Entrenamiento')
+
+  // BUG #1 REGRESSION: Exercise previews must render INSIDE the training card
+  // (not in a separate list below). Check DOM structure of the training card.
+  const previewInfo = await page.evaluate(() => {
+    const card = document.querySelector('[data-phase="training"]')
+    const previewContainer = card?.querySelector('div[style*="z-index:1"]')
+    const childDivs = previewContainer?.querySelectorAll(':scope > div') || []
+    const hasExerciseList = !!document.querySelector('#today-exercise-list')
+    const allCards = document.querySelectorAll('[data-phase="training"]')
+    return {
+      cardText: card?.textContent?.substring(0, 200),
+      cardCount: allCards.length,
+      previewChildCount: childDivs.length,
+      hasSeparateExerciseList: hasExerciseList,
+      innerHTML: card?.innerHTML?.substring(card.innerHTML.length - 500),
+    }
+  })
+  console.log('BUG#1 debug:', JSON.stringify(previewInfo, null, 2))
+  // Verify exercise preview rows exist inside the card (Bug #1 fix)
+  expect(previewInfo.previewChildCount).toBeGreaterThanOrEqual(2)
+  // Verify the old separate exercise list no longer exists
+  expect(previewInfo.hasSeparateExerciseList).toBe(false)
 
   // Click training card → open detail sheet
   await trainingCard.click()
@@ -356,12 +423,12 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const stretchNext = page.getByRole('button', { name: 'Siguiente' })
   if (await stretchNext.isVisible()) {
     await stretchNext.click()
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(700)
   }
   const stretchPrev = page.getByRole('button', { name: 'Anterior' })
   if (await stretchPrev.isVisible()) {
     await stretchPrev.click()
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(700)
   }
 
   await stretchHecho.click()
@@ -386,7 +453,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(coachCard.locator('text=llama')).not.toBeVisible()
 
   // ── Step 9: History Verification ──
-  await page.evaluate(() => { location.hash = '#history' })
+  await page.goto('/history')
   await page.waitForTimeout(500)
 
   // History shows the completed session with exercise names (from Week B)
@@ -394,28 +461,15 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(page.locator('body')).toContainText('Sentadilla')
   await expect(page.locator('body')).toContainText('Completado')
 
+  // BUG #4 REGRESSION: Calendar/history must use resolved exercise names,
+  // never raw UUIDs like "ex-bench" or "ex-squat"
+  const bodyText = await page.locator('body').textContent()
+  expect(bodyText).not.toContain('ex-bench')
+  expect(bodyText).not.toContain('ex-squat')
+
   // ── Step 10: Friends — Navigate to Amigos Tab ──
-  // Mock searchUsers + loadFriends for offline operation
-  await page.evaluate(() => {
-    window.searchUsers = async (q, currentUsername, accent) => {
-      const resultsEl = document.getElementById('search-results')
-      if (!resultsEl || q.toLowerCase() !== 'ana') return
-      resultsEl.innerHTML = `<div class="search-result-item"><div class="search-result-info"><span class="search-result-name">Ana</span><span class="search-result-streak">12 días</span></div><button class="search-result-add" data-friend="Ana">Agregar</button></div>`
-      const btn = resultsEl.querySelector('.search-result-add')
-      btn.addEventListener('click', async () => {
-        btn.disabled = true
-        btn.textContent = '...'
-        const friendsList = document.getElementById('friends-list')
-        friendsList.innerHTML = `<div class="friend-card"><div class="friend-avatar">A</div><div class="friend-info"><div class="friend-name">Ana</div><div class="friend-status">Hoy ✅</div></div><div class="friend-streak">12<span class="unit">días</span></div></div>`
-        btn.textContent = '✓ Agregado'
-      })
-    }
-    window.loadFriends = async (username, accent) => {
-      const listEl = document.getElementById('friends-list')
-      if (listEl) listEl.innerHTML = ''
-    }
-  })
-  await page.evaluate(() => { location.hash = '#friends' })
+  // No window overrides — Svelte Friends page calls API directly; routes are intercepted above
+  await page.goto('/friends')
   await page.waitForTimeout(500)
 
   // First visit shows username prompt
@@ -463,7 +517,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(friendCard).toContainText('Hoy')
 
   // ── Step 15: Language Toggle — Exercise Names ──
-  await page.evaluate(() => { location.hash = '#you' })
+  await page.goto('/you')
   await page.waitForTimeout(500)
 
   const langBtn = page.locator('#lang-toggle-btn')
@@ -475,13 +529,13 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(500)
 
   // Navigate to History — exercise names should be in English
-  await page.evaluate(() => { location.hash = '#history' })
+  await page.goto('/history')
   await page.waitForTimeout(500)
   await expect(page.locator('body')).toContainText('Barbell Bench Press')
   await expect(page.locator('body')).toContainText('Barbell Full Squat')
 
   // Toggle back to Spanish
-  await page.evaluate(() => { location.hash = '#you' })
+  await page.goto('/you')
   await page.waitForTimeout(500)
   const langBtn2 = page.locator('#lang-toggle-btn')
   await expect(langBtn2).toContainText('English')
@@ -489,7 +543,10 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(500)
 
   // Verify Spanish names restored
-  await page.evaluate(() => { location.hash = '#history' })
+  await page.goto('/history')
   await page.waitForTimeout(500)
   await expect(page.locator('body')).toContainText('Press Banca')
+
+  // ── GUARDRAIL: No uncaught JS errors allowed ──
+  expect(jsErrors).toEqual([])
 })

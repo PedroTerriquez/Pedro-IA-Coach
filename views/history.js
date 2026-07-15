@@ -8,6 +8,7 @@ function mountHistory(container, opts) {
   container.innerHTML = ''
   const page = document.createElement('div')
   page.className = 'page'
+  page.style.cssText = 'height:100%;box-sizing:border-box;overflow-y:auto;padding-bottom:120px'
   container.appendChild(page)
 
   const header = document.createElement('div')
