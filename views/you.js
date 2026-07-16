@@ -9,12 +9,13 @@ function mountYou(container, { accent, units, settings, onRefresh }) {
   page.className = 'page'
   container.appendChild(page)
 
-  const header = document.createElement('div')
-  header.style.padding = '56px 20px 16px'
-  header.innerHTML = `
-    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.45);text-transform:uppercase">Perfil</div>
-    <div style="font-family:'Space Grotesk',sans-serif;font-size:38px;font-weight:700;color:#fafafa;letter-spacing:-1.5px;line-height:1;margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span id="user-name" contenteditable style="outline:none;border:0;caret-color:${accent};display:inline-block;min-width:50px">${settings.userName || 'Pedro'}</span><svg id="user-edit-btn" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;cursor:pointer;margin-top:6px"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></div>`
-  page.appendChild(header)
+  const editSvg = `<svg id="user-edit-btn" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;cursor:pointer;margin-top:6px"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`
+  page.appendChild(PageHeader({
+    label: 'Perfil',
+    title: `<span id="user-name" contenteditable style="outline:none;border:0;caret-color:${accent};display:inline-block;min-width:50px">${settings.userName || 'Pedro'}</span>`,
+    accent,
+    right: editSvg
+  }))
   const userNameEl = document.getElementById('user-name')
   const userEditBtn = document.getElementById('user-edit-btn')
   if (userNameEl && userEditBtn) {
@@ -72,36 +73,28 @@ function renderStats(container, { accent, units, settings, onRefresh }) {
     return card
   }
 
-  const row = (id, label, control) => {
-    const isLast = !id
-    const r = document.createElement('div')
-    r.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:12px 14px${isLast ? '' : ';border-bottom:0.5px solid rgba(255,255,255,0.04)'}`
-    r.innerHTML = `<div style="font-family:'Space Grotesk',sans-serif;font-size:13.5px;color:#fafafa;font-weight:500">${label}</div>${control}`
-    return r
-  }
-
   // ── Mis datos ──
   secLabel('Mis datos')
   const profileCard = cardWrap('you-profile-card')
-  profileCard.appendChild(row('height', 'Estatura', `<div style="display:flex;align-items:center;gap:4px"><input id="height-input" type="number" value="${settings.height || ''}" style="width:72px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'JetBrains Mono',monospace"><span style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'JetBrains Mono',monospace">cm</span></div>`))
-  profileCard.appendChild(row('weight', 'Peso', `<div style="display:flex;align-items:center;gap:4px"><input id="weight-input" type="number" value="${settings.weight || ''}" style="width:72px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'JetBrains Mono',monospace"><span style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'JetBrains Mono',monospace">kg</span></div>`))
-  profileCard.appendChild(row('sex', 'Sexo', `<select id="sex-input" style="padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif;cursor:pointer"><option value="" ${!settings.sex ? 'selected' : ''}>Seleccionar</option><option value="Masculino" ${settings.sex === 'Masculino' ? 'selected' : ''}>Masculino</option><option value="Femenino" ${settings.sex === 'Femenino' ? 'selected' : ''}>Femenino</option><option value="Otro" ${settings.sex === 'Otro' ? 'selected' : ''}>Otro</option></select>`))
-  profileCard.appendChild(row('age', 'Edad', `<input id="age-input" type="number" value="${settings.age || ''}" style="width:72px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'JetBrains Mono',monospace">`))
-  profileCard.appendChild(row('goal', 'Objetivo', `<select id="goal-input" style="padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif;cursor:pointer"><option value="" ${!settings.goal ? 'selected' : ''}>Seleccionar</option><option value="hipertrofia" ${settings.goal === 'hipertrofia' ? 'selected' : ''}>Hipertrofia</option><option value="fuerza" ${settings.goal === 'fuerza' ? 'selected' : ''}>Fuerza</option><option value="perdida de grasa" ${settings.goal === 'perdida de grasa' ? 'selected' : ''}>Pérdida de grasa</option><option value="recomposicion" ${settings.goal === 'recomposicion' ? 'selected' : ''}>Recomposición</option><option value="rendimiento" ${settings.goal === 'rendimiento' ? 'selected' : ''}>Rendimiento</option></select>`))
-  profileCard.appendChild(row('experience', 'Experiencia', `<select id="exp-input" style="padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif;cursor:pointer"><option value="" ${!settings.experience ? 'selected' : ''}>Seleccionar</option><option value="principiante" ${settings.experience === 'principiante' ? 'selected' : ''}>Principiante</option><option value="intermedio" ${settings.experience === 'intermedio' ? 'selected' : ''}>Intermedio</option><option value="avanzado" ${settings.experience === 'avanzado' ? 'selected' : ''}>Avanzado</option></select>`))
-  profileCard.appendChild(row(null, 'Profesión', `<input id="occ-input" type="text" value="${settings.occupation || ''}" placeholder="Ej: Ingeniero, oficinista, repartidor…" style="width:160px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif">`))
+  profileCard.appendChild(SettingsRow({ id: 'height', label: 'Estatura', control: `<div style="display:flex;align-items:center;gap:4px"><input id="height-input" type="number" value="${settings.height || ''}" style="width:72px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'JetBrains Mono',monospace"><span style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'JetBrains Mono',monospace">cm</span></div>` }))
+  profileCard.appendChild(SettingsRow({ id: 'weight', label: 'Peso', control: `<div style="display:flex;align-items:center;gap:4px"><input id="weight-input" type="number" value="${settings.weight || ''}" style="width:72px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'JetBrains Mono',monospace"><span style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'JetBrains Mono',monospace">kg</span></div>` }))
+  profileCard.appendChild(SettingsRow({ id: 'sex', label: 'Sexo', control: `<select id="sex-input" style="padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif;cursor:pointer"><option value="" ${!settings.sex ? 'selected' : ''}>Seleccionar</option><option value="Masculino" ${settings.sex === 'Masculino' ? 'selected' : ''}>Masculino</option><option value="Femenino" ${settings.sex === 'Femenino' ? 'selected' : ''}>Femenino</option><option value="Otro" ${settings.sex === 'Otro' ? 'selected' : ''}>Otro</option></select>` }))
+  profileCard.appendChild(SettingsRow({ id: 'age', label: 'Edad', control: `<input id="age-input" type="number" value="${settings.age || ''}" style="width:72px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'JetBrains Mono',monospace">` }))
+  profileCard.appendChild(SettingsRow({ id: 'goal', label: 'Objetivo', control: `<select id="goal-input" style="padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif;cursor:pointer"><option value="" ${!settings.goal ? 'selected' : ''}>Seleccionar</option><option value="hipertrofia" ${settings.goal === 'hipertrofia' ? 'selected' : ''}>Hipertrofia</option><option value="fuerza" ${settings.goal === 'fuerza' ? 'selected' : ''}>Fuerza</option><option value="perdida de grasa" ${settings.goal === 'perdida de grasa' ? 'selected' : ''}>Pérdida de grasa</option><option value="recomposicion" ${settings.goal === 'recomposicion' ? 'selected' : ''}>Recomposición</option><option value="rendimiento" ${settings.goal === 'rendimiento' ? 'selected' : ''}>Rendimiento</option></select>` }))
+  profileCard.appendChild(SettingsRow({ id: 'experience', label: 'Experiencia', control: `<select id="exp-input" style="padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif;cursor:pointer"><option value="" ${!settings.experience ? 'selected' : ''}>Seleccionar</option><option value="principiante" ${settings.experience === 'principiante' ? 'selected' : ''}>Principiante</option><option value="intermedio" ${settings.experience === 'intermedio' ? 'selected' : ''}>Intermedio</option><option value="avanzado" ${settings.experience === 'avanzado' ? 'selected' : ''}>Avanzado</option></select>` }))
+  profileCard.appendChild(SettingsRow({ id: null, label: 'Profesión', control: `<input id="occ-input" type="text" value="${settings.occupation || ''}" placeholder="Ej: Ingeniero, oficinista, repartidor…" style="width:160px;padding:6px 8px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#0a0a0a;color:#fafafa;font-size:13px;text-align:right;outline:none;box-sizing:border-box;font-family:'Space Grotesk',sans-serif">`, last: true }))
   container.appendChild(profileCard)
 
   // ── Ajustes rápidos ──
   secLabel('Ajustes rápidos')
   const quickCard = cardWrap('you-quick-card')
-  quickCard.appendChild(row('units', 'Unidades', `<button id="units-btn" style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'JetBrains Mono',monospace;background:none;border:0;cursor:pointer">${units === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}</button>`))
-  quickCard.appendChild(row('accent', 'Color de acento', `<div style="display:flex;gap:6px;align-items:center"><input type="color" id="accent-input" value="${accent}" style="width:40px;height:28px;border:0.5px solid rgba(255,255,255,0.1);border-radius:6px;padding:0;background:transparent;cursor:pointer"></div>`))
-  quickCard.appendChild(row('watch', 'Smartwatch', `<button id="watch-toggle-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:${settings.hasWatch ? `${accent}22` : 'transparent'};color:${settings.hasWatch ? accent : 'rgba(255,255,255,0.55)'};font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">${settings.hasWatch ? 'Sí' : 'No'}</button>`))
+  quickCard.appendChild(SettingsRow({ id: 'units', label: 'Unidades', control: `<button id="units-btn" style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'JetBrains Mono',monospace;background:none;border:0;cursor:pointer">${units === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}</button>` }))
+  quickCard.appendChild(SettingsRow({ id: 'accent', label: 'Color de acento', control: `<div style="display:flex;gap:6px;align-items:center"><input type="color" id="accent-input" value="${accent}" style="width:40px;height:28px;border:0.5px solid rgba(255,255,255,0.1);border-radius:6px;padding:0;background:transparent;cursor:pointer"></div>` }))
+  quickCard.appendChild(SettingsRow({ id: 'watch', label: 'Smartwatch', control: `<button id="watch-toggle-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:${settings.hasWatch ? `${accent}22` : 'transparent'};color:${settings.hasWatch ? accent : 'rgba(255,255,255,0.55)'};font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">${settings.hasWatch ? 'Sí' : 'No'}</button>` }))
   const permLabel = Notification.permission === 'granted' ? 'Activadas' : Notification.permission === 'denied' ? 'Denegadas' : 'Preguntar'
-  quickCard.appendChild(row(null, 'Notificaciones', `<button id="notif-perm-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:${Notification.permission === 'granted' ? `${accent}22` : 'transparent'};color:${Notification.permission === 'granted' ? accent : 'rgba(255,255,255,0.55)'};font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">${permLabel}</button>`))
-  quickCard.appendChild(row(null, 'Ejercicios', `<button id="lang-toggle-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:${settings.language === 'en' ? `${accent}22` : 'transparent'};color:${settings.language === 'en' ? accent : 'rgba(255,255,255,0.55)'};font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">${settings.language === 'en' ? 'English' : 'Español'}</button>`))
-  quickCard.appendChild(row(null, 'Instalar app', `<button id="install-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:transparent;color:rgba(255,255,255,0.55);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">Añadir</button>`))
+  quickCard.appendChild(SettingsRow({ id: null, label: 'Notificaciones', control: `<button id="notif-perm-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:${Notification.permission === 'granted' ? `${accent}22` : 'transparent'};color:${Notification.permission === 'granted' ? accent : 'rgba(255,255,255,0.55)'};font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">${permLabel}</button>`, last: true }))
+  quickCard.appendChild(SettingsRow({ id: null, label: 'Ejercicios', control: `<button id="lang-toggle-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:${settings.language === 'en' ? `${accent}22` : 'transparent'};color:${settings.language === 'en' ? accent : 'rgba(255,255,255,0.55)'};font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">${settings.language === 'en' ? 'English' : 'Español'}</button>`, last: true }))
+  quickCard.appendChild(SettingsRow({ id: null, label: 'Instalar app', control: `<button id="install-btn" style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:transparent;color:rgba(255,255,255,0.55);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;touch-action:manipulation">Añadir</button>`, last: true }))
   container.appendChild(quickCard)
 
   // ── Data Management ──
@@ -761,26 +754,18 @@ function createAltRowHtml(idx, name, reason) {
 }
 
 function deleteExercise(exercise, accent, onRefresh) {
-  const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px'
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
-
-  const modal = document.createElement('div')
-  modal.style.cssText = `background:#141414;border-radius:20px;padding:24px;max-width:360px;width:100%;border:0.5px solid rgba(255,255,255,0.08)`
-  modal.innerHTML = `
+  const { card, close } = Modal({ onClose: () => {} })
+  card.innerHTML = `
     <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#fafafa">¿Eliminar "${exercise.name}"?</div>
     <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-top:8px">Esto eliminará todos los registros y lo desvinculará de los programas.</div>
     <div style="display:flex;gap:10px;margin-top:18px">
       <button id="del-confirm" style="flex:1;padding:12px;border-radius:10px;border:0;cursor:pointer;background:#ff6b6b;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700">Eliminar</button>
       <button id="del-cancel" style="flex:1;padding:12px;border-radius:10px;border:0;cursor:pointer;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600">Cancelar</button>
     </div>`
-  overlay.appendChild(modal)
-  document.body.appendChild(overlay)
-
-  document.getElementById('del-cancel').addEventListener('click', () => overlay.remove())
+  document.getElementById('del-cancel').addEventListener('click', close)
   document.getElementById('del-confirm').addEventListener('click', async () => {
     await Storage.deleteExercise(exercise.id)
-    overlay.remove()
+    close()
     if (onRefresh) onRefresh()
   })
 }
