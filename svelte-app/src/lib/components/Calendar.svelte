@@ -58,9 +58,7 @@ export function makeDayStatusFn(
       if (e.name) return e
       const resolved = exercisesMap?.[e.exerciseId]
       if (resolved?.name) return { ...e, name: resolved.name, muscle: resolved.muscle || e.muscle }
-      const display = typeof getExerciseDisplayName === 'function'
-        ? getExerciseDisplayName(resolved || e)
-        : ''
+      const display = getExerciseDisplayName(resolved || e)
       return { ...e, name: display || e.name || 'Ejercicio', muscle: (resolved as any)?.muscle || e.muscle }
     })
 
@@ -140,11 +138,12 @@ export function computeBestWeekStreak(startDate: Date, today: Date, logsByDate: 
   return best
 }
 
-declare function getExerciseDisplayName(exercise: any): string
+import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 </script>
 
 <script lang="ts">
   import * as storage from '$lib/storage'
+  import ExerciseRow from './ExerciseRow.svelte'
 
   let {
     accent,
@@ -307,7 +306,7 @@ declare function getExerciseDisplayName(exercise: any): string
           <div class="cal-count">{monthDone} entrenamientos</div>
         </div>
         <button aria-label="Mes siguiente" class="cal-nav-btn" disabled={!canNext} onclick={nextMonth}>
-          <svg width="9" height="14" viewBox="0 0 9 14" fill="none" style="transform:scaleX(-1)"><path d="M7.5 1L1.5 7l6 6" stroke="#fafafa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <svg class="flip-x" width="9" height="14" viewBox="0 0 9 14" fill="none"><path d="M7.5 1L1.5 7l6 6" stroke="#fafafa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       </div>
       <div class="cal-dow-row">
@@ -346,8 +345,8 @@ declare function getExerciseDisplayName(exercise: any): string
       </div>
       <div class="cal-legend">
         <span class="legend-item"><span class="legend-swatch" style="background:{accent}"></span>Entrenado</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:rgba(255,255,255,0.18)"></span>Descanso</span>
-        <span class="legend-item"><span class="legend-ring" style="border-color:#ff6b6b"></span>Faltaste</span>
+        <span class="legend-item"><span class="legend-swatch legend-swatch--rest"></span>Descanso</span>
+        <span class="legend-item"><span class="legend-ring legend-ring--missed"></span>Faltaste</span>
         <span class="legend-item"><span class="legend-ring" style="border-color:{accent}"></span>Hoy</span>
       </div>
     </div>
@@ -397,20 +396,15 @@ declare function getExerciseDisplayName(exercise: any): string
           <div class="detail-ex-list">
             {#each selRec.exercises as e, j}
               {@const log = selRec.logs ? selRec.logs.find((l: any) => l.exerciseId !== '__day__' && l.exerciseId === e.exerciseId) : null}
-              <div class="detail-ex-row">
-                <div class="detail-ex-idx" style="color:{accent}">{String(j + 1).padStart(2, '0')}</div>
-                <div class="detail-ex-info">
-                  <div class="detail-ex-name">{getExerciseDisplayName(e, language)}</div>
-                  <div class="detail-ex-muscle">{e.muscle || ''}</div>
-                </div>
-                <div class="detail-ex-meta">
-                  {#if log && log.weight > 0}
-                    <span class="detail-ex-weight">{log.weight}<span class="detail-ex-unit">{log.units || units}</span></span>
-                    <span class="detail-ex-sep"></span>
-                  {/if}
-                  <span class="detail-ex-setsreps">{e.sets}<span class="detail-ex-x">×</span>{e.reps}</span>
-                </div>
-              </div>
+              <ExerciseRow
+                name={getExerciseDisplayName(e, language)}
+                muscle={e.muscle || ''}
+                weight={log?.weight}
+                units={log?.units || units}
+                sets={e.sets}
+                reps={e.reps}
+                {accent}
+              />
             {/each}
           </div>
         </div>
@@ -442,8 +436,8 @@ declare function getExerciseDisplayName(exercise: any): string
     pointer-events: none;
   }
   .streak-inner {
-    background: linear-gradient(160deg, #181818 0%, #111 100%);
-    border-radius: 20px;
+    background: linear-gradient(160deg, var(--surface) 0%, #111 100%);
+    border-radius: var(--radius-xl);
     padding: 18px;
     border: 0.5px solid;
     position: relative;
@@ -458,7 +452,7 @@ declare function getExerciseDisplayName(exercise: any): string
   .flame-box {
     width: 52px;
     height: 52px;
-    border-radius: 15px;
+    border-radius: var(--radius-lg);
     flex-shrink: 0;
     border: 0.5px solid;
     display: flex;
@@ -470,7 +464,7 @@ declare function getExerciseDisplayName(exercise: any): string
     min-width: 0;
   }
   .streak-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 1.6px;
     text-transform: uppercase;
@@ -483,26 +477,26 @@ declare function getExerciseDisplayName(exercise: any): string
     margin-top: 3px;
   }
   .streak-count {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 40px;
     font-weight: 700;
-    color: #fafafa;
+    color: var(--text);
     letter-spacing: -1.8px;
     line-height: 0.9;
   }
   .streak-unit {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 15px;
     font-weight: 600;
-    color: rgba(255,255,255,0.6);
+    color: var(--text-secondary);
   }
   .streak-best {
     font-size: 11.5px;
-    color: rgba(255,255,255,0.5);
+    color: var(--text-secondary);
     margin-top: 4px;
   }
   .streak-best strong {
-    color: rgba(255,255,255,0.8);
+    color: var(--text);
     font-weight: 600;
   }
   .chain-row {
@@ -525,25 +519,25 @@ declare function getExerciseDisplayName(exercise: any): string
     transition: height 0.2s;
   }
   .chain-day {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 8px;
   }
   .streak-message {
     margin-top: 11px;
     font-size: 11.5px;
     line-height: 1.4;
-    color: rgba(255,255,255,0.6);
-    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
   }
 
   .cal-section {
     padding: 12px 20px 0;
   }
   .cal-card {
-    background: #141414;
-    border-radius: 20px;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
     padding: 16px;
-    border: 0.5px solid rgba(255,255,255,0.06);
+    border: 0.5px solid var(--border);
   }
   .cal-header {
     display: flex;
@@ -551,19 +545,22 @@ declare function getExerciseDisplayName(exercise: any): string
     justify-content: space-between;
     margin-bottom: 14px;
   }
+  .flip-x {
+    transform: scaleX(-1);
+  }
   .cal-nav-btn {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     flex-shrink: 0;
     padding: 0;
-    background: rgba(255,255,255,0.06);
-    border: 0.5px solid rgba(255,255,255,0.08);
+    background: var(--border-medium);
+    border: 0.5px solid var(--border-medium);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #fafafa;
+    color: var(--text);
     transition: opacity 0.2s;
   }
   .cal-nav-btn:disabled {
@@ -575,17 +572,17 @@ declare function getExerciseDisplayName(exercise: any): string
     text-align: center;
   }
   .cal-month-year {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 17px;
     font-weight: 700;
-    color: #fafafa;
+    color: var(--text);
     letter-spacing: -0.4px;
   }
   .cal-count {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9.5px;
     letter-spacing: 0.6px;
-    color: rgba(255,255,255,0.45);
+    color: var(--text-muted);
     margin-top: 2px;
   }
   .cal-dow-row {
@@ -596,10 +593,10 @@ declare function getExerciseDisplayName(exercise: any): string
   }
   .cal-dow-label {
     text-align: center;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9.5px;
     letter-spacing: 0.5px;
-    color: rgba(255,255,255,0.35);
+    color: var(--text-muted);
   }
   .cal-grid {
     display: grid;
@@ -610,7 +607,7 @@ declare function getExerciseDisplayName(exercise: any): string
     position: relative;
     aspect-ratio: 1 / 1;
     min-height: 38px;
-    border-radius: 11px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     padding: 0;
     display: flex;
@@ -622,7 +619,7 @@ declare function getExerciseDisplayName(exercise: any): string
     transition: background 0.15s, border-color 0.15s;
   }
   .cal-cell-day {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 13px;
     font-weight: 500;
     line-height: 1;
@@ -647,21 +644,24 @@ declare function getExerciseDisplayName(exercise: any): string
     flex-wrap: wrap;
     margin-top: 14px;
     padding-top: 13px;
-    border-top: 0.5px solid rgba(255,255,255,0.06);
+    border-top: 0.5px solid var(--border);
   }
   .legend-item {
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: 10.5px;
-    color: rgba(255,255,255,0.55);
-    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
   }
   .legend-swatch {
     width: 11px;
     height: 11px;
     border-radius: 4px;
     flex-shrink: 0;
+  }
+  .legend-swatch--rest {
+    background: rgba(255,255,255,0.18);
   }
   .legend-ring {
     width: 11px;
@@ -670,13 +670,16 @@ declare function getExerciseDisplayName(exercise: any): string
     border: 1.5px solid;
     flex-shrink: 0;
   }
+  .legend-ring--missed {
+    border-color: #ff6b6b;
+  }
 
   .cal-detail {
     padding: 12px 20px 100px;
   }
   .detail-card {
-    background: #141414;
-    border-radius: 20px;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
     padding: 18px;
     border: 0.5px solid;
   }
@@ -690,31 +693,31 @@ declare function getExerciseDisplayName(exercise: any): string
     min-width: 0;
   }
   .detail-date-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.45);
+    color: var(--text-muted);
   }
   .detail-title {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 22px;
     font-weight: 700;
-    color: #fafafa;
+    color: var(--text);
     letter-spacing: -0.6px;
     margin-top: 4px;
     line-height: 1.05;
   }
   .detail-subtitle {
     font-size: 12px;
-    color: rgba(255,255,255,0.5);
+    color: var(--text-secondary);
     margin-top: 3px;
   }
   .detail-pill {
     flex-shrink: 0;
     padding: 5px 11px;
-    border-radius: 9999px;
-    font-family: 'JetBrains Mono', monospace;
+    border-radius: var(--radius-full);
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.6px;
     text-transform: uppercase;
@@ -724,30 +727,30 @@ declare function getExerciseDisplayName(exercise: any): string
   .detail-rest-note {
     margin-top: 14px;
     padding: 14px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: rgba(155,209,255,0.06);
     border: 0.5px solid rgba(155,209,255,0.18);
     font-size: 12.5px;
-    color: rgba(255,255,255,0.7);
+    color: var(--text);
     line-height: 1.5;
   }
   .detail-missed-note {
     margin-top: 14px;
     padding: 14px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: rgba(255,107,107,0.06);
     border: 0.5px solid rgba(255,107,107,0.2);
     font-size: 12.5px;
-    color: rgba(255,255,255,0.7);
+    color: var(--text);
     line-height: 1.5;
   }
   .detail-mark-btn {
     margin-top: 12px;
     width: 100%;
     padding: 12px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     border: 0.5px solid;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -760,11 +763,11 @@ declare function getExerciseDisplayName(exercise: any): string
     opacity: 0.5;
   }
   .detail-ex-section-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9.5px;
     letter-spacing: 1.4px;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.4);
+    color: var(--text-muted);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -773,74 +776,11 @@ declare function getExerciseDisplayName(exercise: any): string
   .detail-ex-divider {
     flex: 1;
     height: 0.5px;
-    background: rgba(255,255,255,0.08);
+    background: var(--border-medium);
   }
   .detail-ex-list {
     display: flex;
     flex-direction: column;
     gap: 2px;
-  }
-  .detail-ex-row {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 9px 0;
-  }
-  .detail-ex-idx {
-    width: 22px;
-    flex-shrink: 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    opacity: 0.7;
-  }
-  .detail-ex-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .detail-ex-name {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 13.5px;
-    font-weight: 500;
-    color: #fafafa;
-    letter-spacing: -0.1px;
-    line-height: 1.25;
-  }
-  .detail-ex-muscle {
-    font-size: 10.5px;
-    color: rgba(255,255,255,0.45);
-    margin-top: 1px;
-  }
-  .detail-ex-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .detail-ex-weight {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    font-weight: 500;
-    color: #fafafa;
-  }
-  .detail-ex-unit {
-    font-size: 9px;
-    color: rgba(255,255,255,0.4);
-    margin-left: 1px;
-  }
-  .detail-ex-sep {
-    width: 1px;
-    height: 14px;
-    background: rgba(255,255,255,0.08);
-    flex-shrink: 0;
-  }
-  .detail-ex-setsreps {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12.5px;
-    color: rgba(255,255,255,0.8);
-    white-space: nowrap;
-  }
-  .detail-ex-x {
-    color: rgba(255,255,255,0.35);
-    margin: 0 2px;
   }
 </style>

@@ -1,11 +1,6 @@
-<script context="module" lang="ts">
-  declare function getUniqueWarmupMuscles(muscles: string[]): string[]
-  declare const WARMUP_DATA: Record<string, any>
-  declare const IMG_MAP: Record<string, string>
-  declare const MUSCLE_DISPLAY: Record<string, string>
-</script>
-
 <script lang="ts">
+  import Sheet from './Sheet.svelte'
+
   const WARMUP_GIF_MAP: Record<string, string> = {
     "Flexiones Dinámicas Excéntricas contra Pared": "pectorals/push-up-wall",
     "Dislocaciones de Pecho y Hombro con Banda": "pectorals/dynamic-chest-stretch-male",
@@ -58,6 +53,7 @@
     onComplete?: () => void
   } = $props()
 
+  let isOpen = $state(true)
   let idx = $state(0)
   let swiping = $state(false)
   let showGif = $state(true)
@@ -113,6 +109,7 @@
   }
 
   function close() {
+    isOpen = false
     if (onComplete) onComplete()
   }
 
@@ -180,115 +177,411 @@
 </script>
 
 {#if items && items.length > 0}
-  <div style="position:fixed;inset:0;z-index:100;pointer-events:auto">
-    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);transition:background 0.25s" onclick={() => {}}></div>
-    <button style="position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:200;padding:0;color:rgba(255,255,255,0.85)" onclick={close}>
-      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l10 10M12 2L2 12"/></svg>
-    </button>
-    <div style="position:absolute;left:0;right:0;bottom:0;background:#0e0e0e;border-radius:16px 16px 0 0;max-height:92%;overflow:hidden;box-shadow:0 -20px 40px rgba(0,0,0,0.5);border:0.5px solid rgba(255,255,255,0.08);display:flex;flex-direction:column">
-      <div style="width:36px;height:5px;border-radius:3px;background:rgba(255,255,255,0.18);margin:10px auto 0;flex-shrink:0"></div>
+  <Sheet bind:open={isOpen}>
+    <div
+      class="warmup-scroll"
+      ontouchstart={onTouchStart}
+      ontouchmove={onTouchMove}
+      ontouchend={onTouchEnd}
+    >
+      <div class="nav-row">
+        <button class="nav-btn nav-prev" disabled={idx === 0} onclick={prev}>
+          <div class="nav-icon">
+            <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M10 5H1m0 0l4-4M1 5l4 4" stroke={idx === 0 ? 'var(--text-muted)' : 'var(--text-secondary)'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="nav-label-col">
+            <div class="nav-sub">Anterior</div>
+            <div class="nav-name">{items[idx - 1]?.name || 'Primero'}</div>
+          </div>
+        </button>
+        <button class="done-btn" style="background:{accent}" onclick={close}>
+          <svg width="14" height="11" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4L13 1.5" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Hecho
+        </button>
+        <button class="nav-btn nav-next" disabled={idx >= total - 1} onclick={next}>
+          <div class="nav-icon">
+            <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M1 5h9m0 0L6 1m4 4L6 9" stroke={idx >= total - 1 ? 'var(--text-muted)' : 'var(--text-secondary)'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="nav-label-col">
+            <div class="nav-sub">Siguiente</div>
+            <div class="nav-name">{items[idx + 1]?.name || 'Último'}</div>
+          </div>
+        </button>
+      </div>
+
+      <div class="progress-row">
+        <div class="step-label">{idx + 1} / {total}</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="background:{accent};width:{((idx + 1) / total) * 100}%"></div>
+        </div>
+      </div>
+
       <div
-        style="overflow:auto;flex:1"
-        ontouchstart={onTouchStart}
-        ontouchmove={onTouchMove}
-        ontouchend={onTouchEnd}
+        data-sw=""
+        class="slide-container"
+        style="transition:{slideFrom ? 'transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease' : (slideOut ? 'transform 0.15s ease, opacity 0.15s ease' : 'none')};transform:{slideFrom ? 'translateX(0)' : slideOut ? (slideDirection === 'right' ? 'translateX(-30%)' : 'translateX(30%)') : 'translateX(0)'};opacity:{slideFrom ? 1 : slideOut ? 0 : 1}"
       >
-        <div style="padding:10px 14px 0;display:flex;gap:8px">
-          <button style="flex:1;min-width:0;background:{idx === 0 ? 'rgba(255,255,255,0.02)' : '#141414'};border:0.5px solid rgba(255,255,255,0.06);border-radius:12px;padding:8px 12px;cursor:{idx === 0 ? 'default' : 'pointer'};color:inherit;text-align:left;display:flex;align-items:center;gap:9px;flex-direction:row;opacity:{idx === 0 ? 0.45 : 1}" disabled={idx === 0} onclick={prev}>
-            <div style="width:26px;height:26px;border-radius:8px;background:{idx === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)'};border:0.5px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="11" height="10" viewBox="0 0 11 10" fill="none" style="flex-shrink:0"><path d="M10 5H1m0 0l4-4M1 5l4 4" stroke="{idx === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.85)'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:{idx === 0 ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.45)'};font-weight:600;line-height:1">Anterior</div>
-              <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:#fafafa;letter-spacing:-0.1px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;width:100%">{items[idx - 1]?.name || 'Primero'}</div>
-            </div>
-          </button>
-          <button
-            style="flex-shrink:0;border:0;cursor:pointer;color:#0a0a0a;background:{accent};border-radius:12px;padding:8px 16px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;letter-spacing:-0.1px;display:flex;align-items:center;gap:7px;touch-action:manipulation;box-shadow:0 4px 16px {accent}44"
-            onclick={close}
-          >
-            <svg width="14" height="11" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4L13 1.5" stroke="#0a0a0a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Hecho
-          </button>
-          <button style="flex:1;min-width:0;background:{idx >= total - 1 ? 'rgba(255,255,255,0.02)' : '#141414'};border:0.5px solid rgba(255,255,255,0.06);border-radius:12px;padding:8px 12px;cursor:{idx >= total - 1 ? 'default' : 'pointer'};color:inherit;text-align:right;display:flex;align-items:center;gap:9px;flex-direction:row-reverse;opacity:{idx >= total - 1 ? 0.45 : 1}" disabled={idx >= total - 1} onclick={next}>
-            <div style="width:26px;height:26px;border-radius:8px;background:{idx >= total - 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)'};border:0.5px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="11" height="10" viewBox="0 0 11 10" fill="none" style="flex-shrink:0"><path d="M1 5h9m0 0L6 1m4 4L6 9" stroke="{idx >= total - 1 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.85)'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-end;gap:1px">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:{idx >= total - 1 ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.45)'};font-weight:600;line-height:1">Siguiente</div>
-              <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:#fafafa;letter-spacing:-0.1px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;width:100%">{items[idx + 1]?.name || 'Último'}</div>
-            </div>
-          </button>
-        </div>
-
-        <div style="padding:8px 14px 0;display:flex;align-items:center;gap:8px">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.4px;color:rgba(255,255,255,0.45);font-weight:500">{idx + 1} / {total}</div>
-          <div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden">
-            <div style="height:100%;border-radius:2px;background:{accent};width:{((idx + 1) / total) * 100}%"></div>
-          </div>
-        </div>
-
-        <div
-          data-sw=""
-          style="transition:{slideFrom ? 'transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease' : (slideOut ? 'transform 0.15s ease, opacity 0.15s ease' : 'none')};transform:{slideFrom ? 'translateX(0)' : slideOut ? (slideDirection === 'right' ? 'translateX(-30%)' : 'translateX(30%)') : 'translateX(0)'};opacity:{slideFrom ? 1 : slideOut ? 0 : 1}"
-        >
-          <div style="padding:12px 14px 0">
-            <div style="height:400px;border-radius:18px;overflow:hidden;position:relative;background:#161616;border:0.5px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;justify-content:space-between">
-              <div style="position:absolute;inset:0">
-                {#if item?.imgUrl}
-                  <div style="position:absolute;inset:0;transition:opacity .35s;pointer-events:none;opacity:{showGif && gifUrl ? 0 : 1};background:#161616 url({item.imgUrl}) center/cover no-repeat"></div>
-                {/if}
-                {#if gifUrl}
-                  <div style="position:absolute;inset:0;transition:opacity .35s;pointer-events:none;opacity:{showGif ? 1 : 0}">
-                    <img src={gifUrl} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none">
-                  </div>
-                {/if}
-              </div>
-              {#if gifUrl}
-                <button
-                  style="position:absolute;top:10px;right:10px;z-index:5;width:32px;height:32px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;color:rgba(255,255,255,0.75)"
-                  onclick={toggleGif}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a9 9 0 0 1 15.5-5L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a9 9 0 0 1-15.5 5L2.5 16"/></svg>
-                </button>
+        <div class="hero-card-wrap">
+          <div class="hero-card">
+            <div class="hero-media-layer">
+              {#if item?.imgUrl}
+                <div class="hero-static" style="opacity:{showGif && gifUrl ? 0 : 1};background:url({item.imgUrl}) center/cover no-repeat"></div>
               {/if}
-              <div style="display:flex;align-items:flex-start;position:relative;z-index:1;padding:12px;gap:6px">
-                <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:9999px;background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:0.5px solid rgba(255,255,255,0.1);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.2px;font-weight:500;color:rgba(255,255,255,0.85);text-transform:uppercase">{item?.tag || ''}</span>
-                {#if item?.stallbar}
-                  <span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:4px;background:#f59e0b;font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:#0a0a0a;font-weight:600">STALLBAR</span>
-                {/if}
-              </div>
-              <div style="padding:12px;position:relative;z-index:1">
-                <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:#fafafa;letter-spacing:-0.5px;line-height:1.1;text-shadow:0 2px 8px rgba(0,0,0,0.5)">{item?.name}</div>
-              </div>
+              {#if gifUrl}
+                <div class="hero-gif" style="opacity:{showGif ? 1 : 0}">
+                  <img src={gifUrl} alt="" class="hero-gif-img">
+                </div>
+              {/if}
+            </div>
+            {#if gifUrl}
+              <button class="hero-toggle" onclick={toggleGif}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a9 9 0 0 1 15.5-5L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a9 9 0 0 1-15.5 5L2.5 16"/></svg>
+              </button>
+            {/if}
+            <div class="hero-tags">
+              <span class="tag-pill">{item?.tag || ''}</span>
+              {#if item?.stallbar}
+                <span class="stallbar-badge">STALLBAR</span>
+              {/if}
+            </div>
+            <div class="hero-title-wrap">
+              <div class="hero-title">{item?.name}</div>
             </div>
           </div>
+        </div>
 
-          <div style="padding:14px 18px 0">
-            {#if hasSections}
-              {#each sections as s}
-                {#if s.value}
-                  <div style="background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 14px;margin-bottom:6px">
-                    <div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:8px">
-                      <div style="width:4px;height:4px;border-radius:50%;background:{accent}"></div>
-                      {s.label}
-                    </div>
-                    <div style="font-size:14px;line-height:1.7;color:rgba(255,255,255,0.82);font-family:'Space Grotesk',sans-serif;letter-spacing:-0.05px">{s.value}</div>
+        <div class="sections-wrap">
+          {#if hasSections}
+            {#each sections as s}
+              {#if s.value}
+                <div class="section-card">
+                  <div class="section-label">
+                    <div class="section-dot" style="background:{accent}"></div>
+                    {s.label}
                   </div>
-                {/if}
-              {/each}
-            {:else if item?.desc}
-              <div style="background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 14px;margin-bottom:6px">
-                <div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:8px">
-                  <div style="width:4px;height:4px;border-radius:50%;background:{accent}"></div>
-                  Cómo hacerlo
+                  <div class="section-text">{s.value}</div>
                 </div>
-                <div style="font-size:14px;line-height:1.7;color:rgba(255,255,255,0.82);font-family:'Space Grotesk',sans-serif;letter-spacing:-0.05px">{item.desc}</div>
+              {/if}
+            {/each}
+          {:else if item?.desc}
+            <div class="section-card">
+              <div class="section-label">
+                <div class="section-dot" style="background:{accent}"></div>
+                Cómo hacerlo
               </div>
-            {/if}
-          </div>
+              <div class="section-text">{item.desc}</div>
+            </div>
+          {/if}
         </div>
       </div>
     </div>
-  </div>
+  </Sheet>
 {/if}
+
+<style>
+  .warmup-scroll {
+    overflow: auto;
+    flex: 1;
+  }
+
+  .nav-row {
+    padding: 10px 14px 0;
+    display: flex;
+    gap: 8px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    color: inherit;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    opacity: 1;
+  }
+
+  .nav-btn:disabled {
+    background: rgba(255, 255, 255, 0.02);
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  .nav-next {
+    text-align: right;
+    flex-direction: row-reverse;
+  }
+
+  .nav-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .nav-btn:disabled .nav-icon {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .nav-label-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .nav-next .nav-label-col {
+    align-items: flex-end;
+  }
+
+  .nav-sub {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .nav-btn:disabled .nav-sub {
+    color: var(--text-muted);
+  }
+
+  .nav-name {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.1px;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  .nav-next .nav-name {
+    text-align: right;
+  }
+
+  .done-btn {
+    flex-shrink: 0;
+    border: 0;
+    cursor: pointer;
+    color: var(--bg);
+    border-radius: 12px;
+    padding: 8px 16px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    touch-action: manipulation;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .progress-row {
+    padding: 8px 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .slide-container {
+    will-change: transform, opacity;
+  }
+
+  .hero-card-wrap {
+    padding: 12px 14px 0;
+  }
+
+  .hero-card {
+    height: 400px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .hero-media-layer {
+    position: absolute;
+    inset: 0;
+  }
+
+  .hero-static {
+    position: absolute;
+    inset: 0;
+    transition: opacity 0.35s;
+    pointer-events: none;
+  }
+
+  .hero-gif {
+    position: absolute;
+    inset: 0;
+    transition: opacity 0.35s;
+    pointer-events: none;
+  }
+
+  .hero-gif-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+  }
+
+  .hero-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 5;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 0.5px solid var(--border-medium);
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .hero-tags {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    z-index: 1;
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 0.5px solid var(--border-medium);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  .stallbar-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #f59e0b;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .hero-title-wrap {
+    padding: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-title {
+    font-family: var(--font-sans);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .sections-wrap {
+    padding: 14px 18px 0;
+  }
+
+  .section-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+  }
+
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .section-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+  }
+
+  .section-text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.82);
+    font-family: var(--font-sans);
+    letter-spacing: -0.05px;
+  }
+</style>

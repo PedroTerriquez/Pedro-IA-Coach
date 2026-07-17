@@ -99,7 +99,7 @@
   <div class="coach-backdrop" onclick={onclose}></div>
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="coach-panel" onclick={(e) => e.stopPropagation()}>
-    <div class="coach-header-bar" style="border-color:var(--border)">
+    <div class="coach-header-bar">
       <div class="coach-avatar" style="background:{accent}1c;border-color:{accent}3a">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" fill="none"/><circle cx="9" cy="8.2" r="0.95" fill="{accent}"/><circle cx="6" cy="8.2" r="0.95" fill="{accent}"/><circle cx="12" cy="8.2" r="0.95" fill="{accent}"/></svg>
       </div>
@@ -112,7 +112,7 @@
       </button>
     </div>
 
-    <div class="coach-msgs" style="scroll-behavior:smooth" bind:this={chatEl}>
+    <div class="coach-msgs" bind:this={chatEl}>
       <div class="coach-bubbles">
         {#each messages as msg}
           {#if msg.role === 'user'}
@@ -127,7 +127,7 @@
                 <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" fill="none"/><circle cx="9" cy="8.2" r="0.95" fill="{accent}"/><circle cx="6" cy="8.2" r="0.95" fill="{accent}"/><circle cx="12" cy="8.2" r="0.95" fill="{accent}"/></svg>
               </div>
               <div>
-                <div class="bubble ai-bubble" style="background:var(--surface-2);border-color:var(--border);border-radius:4px 16px 16px 16px">
+                <div class="bubble ai-bubble">
                   {msg.content}
                 </div>
                 {#if msg._provider}
@@ -142,7 +142,7 @@
             <div class="ai-avatar-sm" style="background:{accent}1c;border-color:{accent}3a">
               <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" fill="none"/><circle cx="9" cy="8.2" r="0.95" fill="{accent}"/><circle cx="6" cy="8.2" r="0.95" fill="{accent}"/><circle cx="12" cy="8.2" r="0.95" fill="{accent}"/></svg>
             </div>
-            <div class="typing-indicator" style="background:var(--surface-2);border-color:var(--border)">
+            <div class="typing-indicator">
               <span class="typing-dot" style="background:{accent}"></span>
               <span class="typing-dot" style="background:{accent};animation-delay:0.18s"></span>
               <span class="typing-dot" style="background:{accent};animation-delay:0.36s"></span>
@@ -168,16 +168,16 @@
       </div>
     {:else}
       <div class="coach-chips">
-        <button class="chip-btn" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1)" onclick={() => handleQuickChip('¿Cómo mejoro mi técnica en este ejercicio?')}>
+        <button class="chip-btn" onclick={() => handleQuickChip('¿Cómo mejoro mi técnica en este ejercicio?')}>
           Mejorar técnica
         </button>
         <button class="chip-btn" style="background:{accent}16;border-color:{accent}3a;color:{accent}" onclick={() => showBodyParts = true}>
           ⚠️ Me duele algo
         </button>
-        <button class="chip-btn" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1)" onclick={() => handleQuickChip('¿Cómo sé si estoy usando demasiado peso?')}>
+        <button class="chip-btn" onclick={() => handleQuickChip('¿Cómo sé si estoy usando demasiado peso?')}>
           ¿Voy muy pesado?
         </button>
-        <button class="chip-btn" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1)" onclick={() => handleQuickChip('Dame una variante más fácil de este ejercicio.')}>
+        <button class="chip-btn" onclick={() => handleQuickChip('Dame una variante más fácil de este ejercicio.')}>
           Variante fácil
         </button>
       </div>
@@ -225,7 +225,7 @@
   .coach-header-bar {
     flex-shrink: 0;
     padding: 52px 16px 12px;
-    border-bottom: 0.5px solid;
+    border-bottom: 0.5px solid var(--border);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -276,6 +276,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 18px 16px 8px;
+    scroll-behavior: smooth;
   }
   .coach-bubbles {
     display: flex;
@@ -309,7 +310,9 @@
     font-weight: 600;
   }
   .ai-bubble {
-    border: 0.5px solid;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 4px 16px 16px 16px;
     font-weight: 400;
   }
   .ai-avatar-sm {
@@ -331,8 +334,9 @@
     text-transform: uppercase;
   }
   .typing-indicator {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
     border-radius: 4px 16px 16px 16px;
-    border: 0.5px solid;
     padding: 12px 14px;
     display: flex;
     gap: 4px;
@@ -409,7 +413,7 @@
     border-radius: var(--radius-full);
     cursor: pointer;
     background: rgba(255, 255, 255, 0.05);
-    border: 0.5px solid var(--border-medium);
+    border: 0.5px solid rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.8);
     font-family: var(--font-sans);
     font-size: 12.5px;
