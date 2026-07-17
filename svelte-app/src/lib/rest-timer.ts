@@ -1,4 +1,5 @@
-declare const PUSH_SERVER_URL: string
+import { PUSH_SERVER_URL } from '$lib/config'
+import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
 const REST_PENDING_CACHE = 'rest-pending'
 const REST_TIMER_CACHE = 'rest-timer'
@@ -115,9 +116,7 @@ function _showRestTimerBanner(data: RestTimerData, remainingMs: number) {
   _restTimerEndTime = data.endTime
   _restTimerDuration = data.restSec * 1000
   const meta = data.sets && data.reps ? `${data.sets} × ${data.reps}` : ''
-  const name = typeof getExerciseDisplayName !== 'undefined'
-    ? getExerciseDisplayName({ name: data.name }) || data.name
-    : data.name
+  const name = getExerciseDisplayName({ name: data.name }) || data.name
 
   const bar = document.createElement('div')
   bar.id = 'rest-timer-banner'

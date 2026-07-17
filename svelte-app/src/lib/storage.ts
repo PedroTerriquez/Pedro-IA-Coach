@@ -1,9 +1,7 @@
 import { getAll, get, put, del, getByIndex, generateId } from './db'
 import type { Exercise, ExerciseLog, Program, Settings } from './types'
 
-declare function findExerciseEntry(name: string): any
-declare function findExerciseEntryFuzzy(name: string, threshold?: number): any
-declare function getExerciseDisplayName(exerciseOrName: any, lang?: string): string
+import { findExerciseEntry, findExerciseEntryFuzzy } from '$lib/data/exercise-dictionary'
 
 function toLocalDateStr(date: Date): string {
   const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)

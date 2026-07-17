@@ -1,5 +1,4 @@
-declare const PUSH_SERVER_URL: string
-declare const VAPID_PUBLIC_KEY: string
+import { PUSH_SERVER_URL, VAPID_PUBLIC_KEY } from '$lib/config'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -30,7 +29,7 @@ export async function subscribePush(): Promise<boolean> {
 
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource
     })
 
     const res = await fetch(`${PUSH_SERVER_URL}/api/push/subscribe`, {

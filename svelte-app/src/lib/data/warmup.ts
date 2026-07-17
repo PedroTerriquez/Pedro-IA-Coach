@@ -1,12 +1,8 @@
-const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
-const img = (p) => IMG_BASE + p
+import { IMG_BASE } from './exercise-dictionary'
 
-// Secondary image source: ExerciseGymGifsDB (jsDelivr CDN)
-// 1323 exercises, bilingual (EN/ES), free, no API key
-const EX_GIF_BASE = 'https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/'
-const _GIF = (path) => EX_GIF_BASE + path + '.gif'
+export const img = (p: string): string => IMG_BASE + p
 
-const WARMUP_DATA = {
+export const WARMUP_DATA: Record<string, any> = {
   "chest": {
       "warmup": [
         {
@@ -681,7 +677,7 @@ const WARMUP_DATA = {
       }
   }
 
-  const IMG_MAP = {
+export const IMG_MAP: Record<string, string> = {
     'Abrazos del Oso Dinámicos': 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hug_A_Ball/0.jpg',
     'Flexiones Dinámicas Excéntricas contra Pared': 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pushups/0.jpg',
     'Dislocaciones de Pecho y Hombro con Banda': 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Behind_Head_Chest_Stretch/0.jpg',
@@ -796,7 +792,7 @@ const WARMUP_DATA = {
     'Estiramiento Angular Ojo-Axila Estático': 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Side_Neck_Stretch/0.jpg',
   }
 
-  const MUSCLE_ALIASES = {
+export const MUSCLE_ALIASES: Record<string, string> = {
     'upper chest': 'chest',
     'lower chest': 'chest',
     'mid-back': 'midback',
@@ -849,7 +845,7 @@ const WARMUP_DATA = {
     'romboides': 'midback',
   }
 
-  function resolveMuscles(muscleStr) {
+export function resolveMuscles(muscleStr: string): string[] {
     if (!muscleStr) return []
     const s = muscleStr.toLowerCase().trim()
 
@@ -869,7 +865,7 @@ const WARMUP_DATA = {
     return r ? [r] : []
   }
 
-  function resolveOne(name) {
+  function resolveOne(name: string) {
     const base = name.replace(/\s*\([^)]*\)/g, '').trim()
 
     if (MUSCLE_ALIASES[name]) return MUSCLE_ALIASES[name]
@@ -890,23 +886,23 @@ const WARMUP_DATA = {
     return null
   }
 
-  function resolveSingle(s) {
+  function resolveSingle(s: string) {
     const clean = s.replace(/[-\s]+/g, '').toLowerCase()
     if (WARMUP_DATA[clean]) return clean
     if (WARMUP_DATA[s]) return s
     return null
   }
 
-  function getUniqueWarmupMuscles(muscleNames) {
-    const set = new Set()
+export function getUniqueWarmupMuscles(muscleNames: string[]) {
+    const set = new Set<string>()
     for (const name of muscleNames) {
       const resolved = resolveMuscles(name)
-      resolved.forEach(r => set.add(r))
+      resolved.forEach((r: string) => set.add(r))
     }
     return [...set]
   }
 
-  const MUSCLE_DISPLAY = {
+export const MUSCLE_DISPLAY: Record<string, string> = {
     chest: 'Pecho',
     shoulders: 'Hombros',
     triceps: 'Tríceps',
@@ -925,9 +921,3 @@ const WARMUP_DATA = {
     neck: 'Cuello',
   }
 
-  window.WARMUP_DATA = WARMUP_DATA
-  window.IMG_MAP = IMG_MAP
-  window.MUSCLE_DISPLAY = MUSCLE_DISPLAY
-  window.getUniqueWarmupMuscles = getUniqueWarmupMuscles
-  window.resolveMuscles = resolveMuscles
-  window.img = img

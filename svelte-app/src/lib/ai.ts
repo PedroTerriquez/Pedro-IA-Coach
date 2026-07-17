@@ -2,14 +2,13 @@ import * as Storage from '$lib/storage'
 import { generateId } from '$lib/db'
 import type { Program } from '$lib/types'
 
-declare const PUSH_SERVER_URL: string
-declare function buildAIDictionary(): any[]
-declare const AI_SYSTEM_PROMPT: string
-declare const AI_PROGRAM_COACH_PROMPT: string
-declare function getExerciseDisplayName(exerciseOrName: any, lang?: string): string
+import { PUSH_SERVER_URL } from '$lib/config'
+import { buildAIDictionary } from '$lib/brain/dictionary'
+import { AI_SYSTEM_PROMPT, AI_PROGRAM_COACH_PROMPT } from '$lib/brain/prompts'
+import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
 export async function importWithAI(text: string, onProgress?: (current: number, total: number, name: string) => void): Promise<void> {
-  const dictionary = typeof buildAIDictionary === 'function' ? buildAIDictionary() : []
+  const dictionary = buildAIDictionary()
 
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/import`, {
     method: 'POST',
@@ -84,7 +83,7 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
 }
 
 export async function programCoach(text: string, program: Program): Promise<{ program?: Program; message?: string }> {
-  const dictionary = typeof buildAIDictionary === 'function' ? buildAIDictionary() : []
+  const dictionary = buildAIDictionary()
 
   const exercises = await Storage.getExercises()
   const exerciseMap = new Map(exercises.map(e => [e.id, e]))
@@ -116,9 +115,9 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
   }
 
   const exerciseNames = program.weeks.flatMap(w =>
-    w.days.flatMap(d => d.exercises.map(ex => exerciseMap.get(ex.exerciseId)?.name).filter(Boolean))
+    w.days.flatMap(d => d.exercises.map(ex => exerciseMap.get(ex.exerciseId)?.name).filter(Boolean) as string[])
   )
-  const filteredDictionary = typeof buildAIDictionary === 'function' ? buildAIDictionary(exerciseNames) : dictionary
+  const filteredDictionary = buildAIDictionary(exerciseNames)
 
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/program-coach`, {
     method: 'POST',

@@ -18,7 +18,6 @@ function readLangFromBackup(): string {
 
 function createSettingsStore() {
   const initialLang = readLangFromBackup()
-  if (typeof window !== 'undefined') window.exerciseLang = initialLang
 
   const store = writable<Settings>({
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
@@ -32,7 +31,6 @@ function createSettingsStore() {
       const s = await storage.getSettings()
       if (s) {
         store.set(s)
-        window.exerciseLang = s.language || 'es'
       }
     },
     update: async (partial: Partial<Settings>) => {
@@ -41,7 +39,6 @@ function createSettingsStore() {
       await storage.saveSettings(merged)
       store.set(merged)
       if (merged.language) {
-        window.exerciseLang = merged.language
         try { localStorage.setItem('exerciseLang', merged.language) } catch {}
       }
     }

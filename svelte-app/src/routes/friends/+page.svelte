@@ -1,6 +1,5 @@
 <script lang="ts">
-  declare const PUSH_SERVER_URL: string
-
+  import { PUSH_SERVER_URL } from '$lib/config'
   import { onMount } from 'svelte'
   import { toast } from '$lib/stores/ui'
   import { getAllLogs, getSettings, saveSettings } from '$lib/storage'

@@ -349,10 +349,6 @@
     opacity: 0.25;
     animation: coachBlink 1.2s 0s infinite ease-in-out;
   }
-  @keyframes coachBlink {
-    0%, 100% { opacity: 0.25; }
-    50% { opacity: 1; }
-  }
   .pain-picker {
     flex-shrink: 0;
     padding: 12px 16px;

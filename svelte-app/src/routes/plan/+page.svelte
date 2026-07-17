@@ -23,6 +23,7 @@
 
   let todayIdx = $derived((new Date().getDay() + 6) % 7)
   let accent = $derived($settings.accentColor || '#d4ff3a')
+  let units = $derived($settings.units || 'kg')
   let program = $derived(programs.find(p => p.id === $settings.activeProgramId) || null)
   let weeks = $derived(program?.weeks || [])
   let week = $derived(weeks[planWeekIdx] || weeks[0])
@@ -311,9 +312,9 @@
                     muscle={resolved.muscle || ''}
                     {imgUrl}
                     sets={ex.sets}
-                    reps={String(ex.reps)}
+                    reps={ex.reps}
                     weight={exerciseWeights[exId]}
-                    units={settings.units}
+                    {units}
                     {accent}
                     onclick={() => handleOpenExercise(ex)}
                   />
@@ -331,35 +332,35 @@
   .no-program-msg { padding: 56px 20px; text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; }
   .page-header-row { padding: 56px 20px 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
   .min-0 { min-width: 0; }
-  .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1.6px; color: rgba(255,255,255,0.45); text-transform: uppercase; }
-  .page-title { font-family: 'Space Grotesk', sans-serif; font-size: 38px; font-weight: 700; color: #fafafa; letter-spacing: -1.5px; line-height: 1; margin-top: 4px; }
-  .btn-reprogram { flex-shrink: 0; padding: 9px 15px; border-radius: 9999px; cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: -0.1px; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.6px; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+  .page-title { font-family: var(--font-sans); font-size: 38px; font-weight: 700; color: var(--text); letter-spacing: -1.5px; line-height: 1; margin-top: 4px; }
+  .btn-reprogram { flex-shrink: 0; padding: 9px 15px; border-radius: 9999px; cursor: pointer; font-family: var(--font-sans); font-size: 13px; font-weight: 700; letter-spacing: -0.1px; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
   .section-pad-sm { padding: 0 20px; margin-bottom: 14px; }
   .section-pad-md { padding: 0 20px; margin-bottom: 16px; }
   .section-pad-xs { padding: 0 20px; margin-bottom: 10px; }
   .edit-banner { border: 0.5px solid; border-radius: 16px; padding: 13px 14px; display: flex; align-items: center; gap: 12px; }
   .icon-box { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .flex-1 { flex: 1; min-width: 0; }
-  .banner-title { font-family: 'Space Grotesk', sans-serif; font-size: 13.5px; font-weight: 600; color: #fafafa; letter-spacing: -0.2px; }
+  .banner-title { font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
   .banner-subtitle { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; line-height: 1.35; }
-  .btn-reset-sm { flex-shrink: 0; padding: 7px 11px; border-radius: 9999px; border: 0; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; }
-  .shift-btn { width: 100%; text-align: left; cursor: pointer; background: #141414; border: 0.5px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 13px 14px; display: flex; align-items: center; gap: 13px; color: inherit; }
-  .shift-icon { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 18px; }
-  .shift-title { font-family: 'Space Grotesk', sans-serif; font-size: 14.5px; font-weight: 600; color: #fafafa; letter-spacing: -0.2px; }
+  .btn-reset-sm { flex-shrink: 0; padding: 7px 11px; border-radius: 9999px; border: 0; font-family: var(--font-sans); font-size: 12px; font-weight: 600; }
+  .shift-btn { width: 100%; text-align: left; cursor: pointer; background: var(--surface); border: 0.5px solid var(--border-medium); border-radius: 16px; padding: 13px 14px; display: flex; align-items: center; gap: 13px; color: inherit; }
+  .shift-icon { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 18px; }
+  .shift-title { font-family: var(--font-sans); font-size: 14.5px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
   .shift-desc { font-size: 11.5px; color: rgba(255,255,255,0.5); margin-top: 2px; line-height: 1.35; }
-  .shift-cta { flex-shrink: 0; padding: 8px 12px; border-radius: 10px; font-family: 'Space Grotesk', sans-serif; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
-  .hint-row { padding: 0 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.42); font-weight: 600; }
+  .shift-cta { flex-shrink: 0; padding: 8px 12px; border-radius: 10px; font-family: var(--font-sans); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .hint-row { padding: 0 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.42); font-weight: 600; }
   .hint-dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
   .day-list { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
   .changes-banner { width: 100%; text-align: left; cursor: pointer; border: 0.5px solid; border-radius: 14px; padding: 11px 14px; display: flex; align-items: center; gap: 10px; color: inherit; }
   .active-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .changes-title { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: #fafafa; letter-spacing: -0.2px; }
+  .changes-title { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
   .changes-subtitle { font-size: 10.5px; color: rgba(255,255,255,0.5); margin-top: 1px; }
-  .changes-edit { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .changes-edit { font-family: var(--font-sans); font-size: 12px; font-weight: 700; flex-shrink: 0; }
   .week-tabs { padding: 0 20px; display: flex; gap: 8px; margin-bottom: 18px; }
   .week-tab { flex: 1; padding: 12px 8px; border: 0; cursor: pointer; border-radius: 14px; text-align: left; position: relative; }
-  .week-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase; }
-  .week-name { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; margin-top: 2px; letter-spacing: -0.3px; }
+  .week-tag { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase; }
+  .week-name { font-family: var(--font-sans); font-size: 15px; font-weight: 700; margin-top: 2px; letter-spacing: -0.3px; }
   .week-subtitle { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
   .day-grid { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
 </style>

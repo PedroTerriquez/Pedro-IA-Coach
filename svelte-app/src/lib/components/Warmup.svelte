@@ -321,7 +321,7 @@
     width: 26px;
     height: 26px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--border);
     border: 0.5px solid var(--border);
     display: flex;
     align-items: center;

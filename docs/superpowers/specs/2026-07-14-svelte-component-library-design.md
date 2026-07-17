@@ -118,6 +118,9 @@ Tighten API:
 - Use `Chip` for badges
 - Add `.input-field` utility class to replace 15× repeated inline input style
 
+#### `friends/+page.svelte`
+- Fix `declare` statements: move from `<script lang="ts">` to `<script module lang="ts">` (Svelte 5 requirement)
+
 ### Component Disposition
 
 - `ExercisePlaceholder.svelte` — **kept** (visual card with image, different from data-focused ExerciseRow)
@@ -164,6 +167,16 @@ All components reference these tokens:
 | `history/+page.svelte` | `SegmentedControl`, `Chip` | Inline tabs, custom `.chip` class |
 | `you/+page.svelte` | `SectionLabel`, `Chip`, `ExerciseRow`, `.input-field` | `.section-label` class, inline exercise rows, 15× input style |
 | `Calendar.svelte` | `ExerciseRow` | Inline exercise detail rows |
+| `friends/+page.svelte` | (bugfix only) | `declare` → `<script module>` |
+
+## Deviations from Plan
+
+During implementation, the following pre-existing issues were fixed as part of this refactor:
+
+- **`friends/+page.svelte`**: `declare` statements moved to `<script module>` (Svelte 5 requirement for ambient type declarations)
+- **`plan/+page.svelte`**: `declare` statements moved to `<script module>`
+- **`history/+page.svelte`**: Fixed `getExerciseDisplayName` call signature (was passing 2 args, function expects 1)
+- **`today/+page.svelte`**: Added `openExerciseDetail()` helper for per-exercise row clicks
 
 ## Included (approved scope expansion)
 

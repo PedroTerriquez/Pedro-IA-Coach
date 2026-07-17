@@ -150,6 +150,44 @@ function Sheet({ open, onClose, children }) {
   return overlay
 }
 
+// ── Modal (centered overlay) ──
+function Modal({ onClose }) {
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px'
+  const backdrop = document.createElement('div')
+  backdrop.style.cssText = 'position:absolute;inset:0'
+  backdrop.addEventListener('click', () => { close(); if (onClose) onClose() })
+  overlay.appendChild(backdrop)
+  const card = document.createElement('div')
+  card.style.cssText = 'background:#141414;border-radius:20px;padding:24px;max-width:360px;width:100%;border:0.5px solid rgba(255,255,255,0.08);box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:fadeUp 0.25s ease-out;position:relative'
+  overlay.appendChild(card)
+  document.body.appendChild(overlay)
+  document.body.style.overflow = 'hidden'
+  function close() {
+    document.body.style.overflow = ''
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+  }
+  return { overlay, card, close }
+}
+
+// ── Page Header ──
+function PageHeader({ label, title, accent, right, style }) {
+  const el = document.createElement('div')
+  el.style.cssText = style || 'padding:56px 20px 16px'
+  el.innerHTML = `
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.6px;color:rgba(255,255,255,0.45);text-transform:uppercase">${label}</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:38px;font-weight:700;color:#fafafa;letter-spacing:-1.5px;line-height:1;margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">${title}${right ? `<span>${right}</span>` : ''}</div>`
+  return el
+}
+
+// ── Settings Row ──
+function SettingsRow({ id, label, control, last }) {
+  const el = document.createElement('div')
+  el.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:12px 14px${last ? '' : ';border-bottom:0.5px solid rgba(255,255,255,0.04)'}`
+  el.innerHTML = `<div style="font-family:'Space Grotesk',sans-serif;font-size:13.5px;color:#fafafa;font-weight:500">${label}</div>${control}`
+  return el
+}
+
 // ── Center Toast ──
 const TOAST_SVG_WATCH = `<svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect x="14" y="6" width="44" height="60" rx="13" stroke="currentColor" stroke-width="2.5" fill="none"/><rect x="20" y="16" width="32" height="30" rx="6" fill="currentColor" fill-opacity="0.06"/><circle cx="36" cy="30" r="5" fill="currentColor" fill-opacity="0.2"/><path d="M30 28h12v2H30z" fill="currentColor"/><path d="M30 32h8v2H30z" fill="currentColor" fill-opacity="0.5"/><circle cx="36" cy="54" r="3" fill="currentColor" fill-opacity="0.15"/><rect x="28" y="3" width="16" height="4" rx="2" fill="currentColor" fill-opacity="0.12"/></svg>`
 

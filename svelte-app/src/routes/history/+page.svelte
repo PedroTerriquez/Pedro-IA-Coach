@@ -1,13 +1,12 @@
-<script module lang="ts">
-  declare function getExerciseDisplayName(exercise: any): string
-</script>
-
 <script lang="ts">
+  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { onMount } from 'svelte'
   import { settings } from '$lib/stores/settings'
   import * as storage from '$lib/storage'
   import Calendar from '$lib/components/Calendar.svelte'
   import Sparkline from '$lib/components/Sparkline.svelte'
+  import SegmentedControl from '$lib/components/SegmentedControl.svelte'
+  import Chip from '$lib/components/Chip.svelte'
   import type { Exercise, ExerciseLog } from '$lib/types'
 
   let historyFilter = $state('Todos')
@@ -49,10 +48,6 @@
 
   function setFilter(m: string) {
     historyFilter = m
-  }
-
-  function setTab(t: 'constancia' | 'ejercicios') {
-    historyTab = t
   }
 
   async function load() {
@@ -104,22 +99,19 @@
 </script>
 
 <div class="page">
-  <div class="header">
-    <div class="header-breadcrumb">Historial</div>
-    <div class="header-title">Progreso.</div>
+  <div class="page-header">
+    <div class="page-header-eyebrow">Historial</div>
+    <div class="page-header-title">Progreso.</div>
   </div>
 
-  <div class="tabs">
-    <button
-      class="tab-btn"
-      class:tab-active={historyTab === 'constancia'}
-      onclick={() => setTab('constancia')}
-    >Constancia</button>
-    <button
-      class="tab-btn"
-      class:tab-active={historyTab === 'ejercicios'}
-      onclick={() => setTab('ejercicios')}
-    >Ejercicios</button>
+  <div style="margin:0 20px 16px">
+    <SegmentedControl
+      options={[
+        { label: 'Constancia', value: 'constancia' },
+        { label: 'Ejercicios', value: 'ejercicios' }
+      ]}
+      bind:value={historyTab}
+    />
   </div>
 
   {#if !loaded}
@@ -144,12 +136,12 @@
   {:else}
     <div class="chips-row">
       {#each muscles as m}
-        <button
-          class="chip"
-          class:chip-active={historyFilter === m}
-          style={historyFilter === m ? `background:${accent};color:#0a0a0a` : ''}
-          onclick={() => setFilter(m)}
-        >{m}</button>
+        <button onclick={() => setFilter(m)}>
+          <Chip
+            color={historyFilter === m ? accent : undefined}
+            textColor={historyFilter === m ? 'var(--bg)' : undefined}
+          >{m}</Chip>
+        </button>
       {/each}
     </div>
 
@@ -189,53 +181,6 @@
     flex-direction: column;
   }
 
-  .header {
-    padding: 56px 20px 16px;
-  }
-  .header-breadcrumb {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 1.6px;
-    color: rgba(255,255,255,0.45);
-    text-transform: uppercase;
-  }
-  .header-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 38px;
-    font-weight: 700;
-    color: #fafafa;
-    letter-spacing: -1.5px;
-    line-height: 1;
-    margin-top: 4px;
-  }
-
-  .tabs {
-    display: flex;
-    gap: 0;
-    margin: 0 20px 16px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 12px;
-    padding: 3px;
-  }
-  .tab-btn {
-    flex: 1;
-    padding: 9px 0;
-    border: 0;
-    border-radius: 9px;
-    cursor: pointer;
-    background: transparent;
-    color: rgba(255,255,255,0.5);
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: -0.1px;
-    transition: background 0.2s, color 0.2s;
-  }
-  .tab-btn.tab-active {
-    background: #1f1f1f;
-    color: #fafafa;
-  }
-
   .loading {
     padding: 60px 20px;
     text-align: center;
@@ -260,25 +205,6 @@
   }
   .chips-row::-webkit-scrollbar {
     display: none;
-  }
-  .chip {
-    flex-shrink: 0;
-    padding: 8px 14px;
-    border-radius: 9999px;
-    border: 0;
-    cursor: pointer;
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.7);
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: -0.1px;
-    touch-action: manipulation;
-    transition: background 0.2s;
-    white-space: nowrap;
-  }
-  .chip.chip-active {
-    background: #0a0a0a;
   }
 
   .ex-list {

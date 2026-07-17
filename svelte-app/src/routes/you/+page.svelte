@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import { buildAIDictionary } from '$lib/brain/dictionary'
   import { AI_SYSTEM_PROMPT } from '$lib/brain/prompts'
   import { PUSH_SERVER_URL } from '$lib/config'
-  import { APP_VERSION, installPWA } from '$lib/pwa'
+  import { APP_VERSION } from '$lib/pwa'
   import { subscribePush } from '$lib/push'
   import { onMount } from 'svelte'
   import { settings } from '$lib/stores/settings'
@@ -11,13 +10,18 @@
   import * as Storage from '$lib/storage'
   import { generateId, getAll, put } from '$lib/db'
   import SectionLabel from '$lib/components/SectionLabel.svelte'
-  import Chip from '$lib/components/Chip.svelte'
-  import ExerciseRow from '$lib/components/ExerciseRow.svelte'
+
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
   import ActionRow from '$lib/components/ActionRow.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
   import StatBlock from '$lib/components/StatBlock.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
+  import ProfileCard from '$lib/components/ProfileCard.svelte'
+  import QuickSettingsCard from '$lib/components/QuickSettingsCard.svelte'
+  import ProgramCard from '$lib/components/ProgramCard.svelte'
+  import CoachIACard from '$lib/components/CoachIACard.svelte'
+  import ExerciseListItem from '$lib/components/ExerciseListItem.svelte'
+  import MaintenanceCard from '$lib/components/MaintenanceCard.svelte'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -154,8 +158,7 @@
     await settings.update({ units: newUnits })
   }
 
-  async function onAccentChange(e: Event) {
-    const val = (e.target as HTMLInputElement).value
+  async function onAccentChange(val: string) {
     await settings.update({ accentColor: val })
     document.documentElement.style.setProperty('--accent', val)
   }
@@ -511,16 +514,6 @@
     return `${last.weight}${last.units || units}`
   }
 
-  function permLabel(): string {
-    if (typeof Notification === 'undefined') return 'No disponible'
-    return Notification.permission === 'granted' ? 'Activadas'
-      : Notification.permission === 'denied' ? 'Denegadas' : 'Preguntar'
-  }
-
-  function permActive(): boolean {
-    return typeof Notification !== 'undefined' && Notification.permission === 'granted'
-  }
-
   const APP_VERSION_STR = typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'v1.70'
 </script>
 
@@ -554,25 +547,24 @@
   <div class="tab-content">
     {#if activeTab === 'perfil'}
       <div class="section-label-wrap"><SectionLabel {accent}>Mis datos</SectionLabel></div>
-      <div id="you-profile-card" class="card section-card">
-        <div class="card-row"><div class="card-label">Estatura</div><div class="card-row-right"><input id="height-input" class="input-field-mono" type="number" bind:value={height} onblur={() => saveProfileField('height', height)} style="width:72px;text-align:right"><span class="unit-label">cm</span></div></div>
-        <div class="card-row"><div class="card-label">Peso</div><div class="card-row-right"><input id="weight-input" class="input-field-mono" type="number" bind:value={weight} onblur={() => saveProfileField('weight', weight)} style="width:72px;text-align:right"><span class="unit-label">kg</span></div></div>
-        <div class="card-row"><div class="card-label">Sexo</div><select id="sex-input" class="input-field" bind:value={sex} onchange={() => saveProfileField('sex', sex)}><option value="">Seleccionar</option><option value="Masculino">Masculino</option><option value="Femenino">Femenino</option><option value="Otro">Otro</option></select></div>
-        <div class="card-row"><div class="card-label">Edad</div><input id="age-input" class="input-field-mono" type="number" bind:value={age} onblur={() => saveProfileField('age', age)} style="width:72px;text-align:right"></div>
-        <div class="card-row"><div class="card-label">Objetivo</div><select id="goal-input" class="input-field" bind:value={goal} onchange={() => saveProfileField('goal', goal)}><option value="">Seleccionar</option><option value="hipertrofia">Hipertrofia</option><option value="fuerza">Fuerza</option><option value="perdida de grasa">Pérdida de grasa</option><option value="recomposicion">Recomposición</option><option value="rendimiento">Rendimiento</option></select></div>
-        <div class="card-row"><div class="card-label">Experiencia</div><select id="exp-input" class="input-field" bind:value={experience} onchange={() => saveProfileField('experience', experience)}><option value="">Seleccionar</option><option value="principiante">Principiante</option><option value="intermedio">Intermedio</option><option value="avanzado">Avanzado</option></select></div>
-        <div class="card-row card-row-last"><div class="card-label">Profesión</div><input id="occ-input" class="input-field" type="text" bind:value={occupation} onblur={() => saveProfileField('occupation', occupation)} placeholder="Ej: Ingeniero, oficinista, repartidor…" style="width:160px;text-align:right"></div>
-      </div>
+      <ProfileCard
+        {height} {weight} {sex} {age} {goal} {experience} {occupation}
+        {accent}
+        onsave={saveProfileField}
+      />
 
       <div class="section-label-wrap"><SectionLabel {accent}>Ajustes rápidos</SectionLabel></div>
-      <div id="you-quick-card" class="card section-card">
-        <div class="card-row"><div class="card-label">Unidades</div><button id="units-btn" class="btn-toggle" onclick={toggleUnits}>{units === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}</button></div>
-        <div class="card-row"><div class="card-label">Color de acento</div><div class="card-row-right"><input type="color" id="accent-input" value={accent} oninput={onAccentChange} class="accent-picker"></div></div>
-        <div class="card-row"><div class="card-label">Smartwatch</div><button id="watch-toggle-btn" class="btn-toggle" style="background:{$settings.hasWatch ? accent+'22' : 'transparent'};color:{$settings.hasWatch ? accent : 'rgba(255,255,255,0.55)'}">{$settings.hasWatch ? 'Sí' : 'No'}</button></div>
-        <div class="card-row"><div class="card-label">Notificaciones</div><button id="notif-perm-btn" class="btn-toggle" style="background:{permActive() ? accent+'22' : 'transparent'};color:{permActive() ? accent : 'rgba(255,255,255,0.55)'}">{permLabel()}</button></div>
-        <div class="card-row"><div class="card-label">Idioma</div><button id="lang-toggle-btn" class="btn-toggle">{$settings.language === 'en' ? 'English' : 'Español'}</button></div>
-        <div class="card-row card-row-last"><div class="card-label">Instalar app</div><button id="install-btn" class="btn-toggle" onclick={() => installPWA()}>Añadir</button></div>
-      </div>
+      <QuickSettingsCard
+        {units} {accent}
+        hasWatch={$settings.hasWatch}
+        notifPermission={typeof Notification !== 'undefined' ? Notification.permission : 'default'}
+        language={$settings.language}
+        ontoggleunits={toggleUnits}
+        onaccentchange={onAccentChange}
+        ontogglewatch={toggleWatch}
+        onnotifclick={onNotifClick}
+        togglelang={toggleLang}
+      />
 
       {#if loaded}
         <div class="section-label-wrap"><SectionLabel {accent}>Estadísticas</SectionLabel></div>
@@ -604,56 +596,29 @@
       {:else}
         <div class="program-list">
           {#each programs as p (p.id)}
-            {@const isActive = $settings.activeProgramId === p.id}
-            <div class="card program-item" data-program-id={p.id}>
-              <div class="flex-1">
-                <div class="row">
-                  <div class="program-name">{p.name}</div>
-                  {#if isActive}
-                    <span class="pill" style="background:{accent}22;color:{accent}">ACTIVO</span>
-                  {/if}
-                </div>
-                <div class="program-meta">{p.weeks.length} semana(s) · {getTotalExercises(p)} ejercicios totales</div>
-              </div>
-              {#if !isActive}
-                <button class="btn-action" style="background:{accent}22;color:{accent}" onclick={() => activateProgram(p.id)}>Activar</button>
-              {/if}
-              <button class="btn-action btn-dup" onclick={() => duplicateProgram(p)}>Duplicar</button>
-              <button class="btn-action btn-del" onclick={() => deleteProgram(p)}>Eliminar</button>
-            </div>
+            <ProgramCard
+              program={p}
+              isActive={$settings.activeProgramId === p.id}
+              {accent}
+              totalExercises={getTotalExercises(p)}
+              onactivate={activateProgram}
+              onduplicate={duplicateProgram}
+              ondelete={deleteProgram}
+            />
           {/each}
         </div>
       {/if}
 
-      <div class="section-pad-bot">
-        <div id="you-prog-coach-card" class="card coach-card">
-          <div class="card-content">
-            <div class="row">
-              <span class="coach-icon" style="background:{accent}1f">
-                <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" fill="none"/><circle cx="9" cy="8.2" r="0.95" fill="{accent}"/><circle cx="6" cy="8.2" r="0.95" fill="{accent}"/><circle cx="12" cy="8.2" r="0.95" fill="{accent}"/></svg>
-              </span>
-              <div>
-                <div class="card-title">Coach IA de programas</div>
-                <div class="card-subtitle">Pregunta o pide cambios en tu rutina.</div>
-              </div>
-            </div>
-            <textarea id="prog-coach-input" bind:value={coachInput} rows="4" placeholder='Ej: "Cambia press banca por press inclinado", "¿Está balanceada mi rutina?"' class="textarea-field"></textarea>
-            <div id="prog-coach-status" class="status-text">{coachStatus}</div>
-          </div>
-          <button id="prog-coach-btn" class="btn-accent-full" onclick={submitCoach}>Enviar al coach</button>
-          {#if coachResponseVisible}
-            <div id="prog-coach-response" class="coach-response-wrap">
-              <div class="coach-response-box" style="border-left-color:{accent}">
-                <div class="coach-response-label" style="color:{accent}">Coach IA</div>
-                <div id="prog-coach-response-text" class="coach-response-text">{coachResponseText}</div>
-                <div class="coach-response-provider-wrap">
-                  <span id="prog-coach-provider" class="coach-response-provider">{coachProvider}</span>
-                </div>
-              </div>
-            </div>
-          {/if}
-        </div>
-      </div>
+      <CoachIACard
+        {accent}
+        {coachInput}
+        {coachStatus}
+        {coachResponseVisible}
+        {coachResponseText}
+        {coachProvider}
+        oninput={(val) => coachInput = val}
+        onsubmit={submitCoach}
+      />
 
     {:else if activeTab === 'ejercicios'}
       <div class="ex-header">
@@ -684,72 +649,24 @@
       {:else}
         <div class="exercise-list-wrap">
           {#each filteredExercises as ex (ex.id)}
-            <div class="card exercise-item" data-exercise-id={ex.id}>
-              <button class="exercise-toggle" onclick={() => toggleExpanded(ex.id)}>
-                {#if resolveExerciseMedia(ex).imgUrl}
-                  <img src={resolveExerciseMedia(ex).imgUrl} alt="" class="exercise-img">
-                {:else}
-                  <div class="exercise-img-placeholder"></div>
-                {/if}
-                <div class="exercise-info">
-                  <div class="exercise-name">{ex.name}</div>
-                  <div class="exercise-muscle">{ex.muscle}</div>
-                </div>
-                <span class="exercise-chevron">{expandedExerciseId === ex.id ? '▲' : '▼'}</span>
-              </button>
-
-              {#if expandedExerciseId === ex.id}
-                <div class="exercise-expanded">
-                  {#if editingExerciseId === ex.id}
-                    <div class="stack edit-stack">
-                      <input class="input-field" bind:value={editName} placeholder="Nombre">
-                      <input class="input-field" bind:value={editMuscle} placeholder="Músculo">
-                      <input class="input-field" bind:value={editImgUrl} placeholder="URL de imagen">
-                      <textarea bind:value={editTips} rows="3" placeholder="Consejos (uno por línea)" class="input-field textarea-field-sm"></textarea>
-                      <div>
-                        <div class="alt-label">Alternativas</div>
-                        {#each editAlts as alt, i}
-                          <div class="alt-row">
-                            <input bind:value={editAlts[i].name} placeholder="Nombre" class="input-sm">
-                            <input bind:value={editAlts[i].reason} placeholder="Razón" class="input-sm input-sm-alt">
-                            <button onclick={() => removeAlt(i)} class="alt-remove">✕</button>
-                          </div>
-                        {/each}
-                        <button onclick={addAlt} class="btn-add-alt">+ Añadir alternativa</button>
-                      </div>
-                      <div class="row">
-                        <button onclick={() => saveEdit(ex)} class="btn-primary-cta">Guardar</button>
-                        <button onclick={cancelEdit} class="btn-secondary">Cancelar</button>
-                      </div>
-                    </div>
-                  {:else}
-                    <div class="row edit-actions">
-                      <button onclick={() => beginEdit(ex)} class="btn-secondary">Editar</button>
-                      <button onclick={() => deleteExerciseConfirm(ex)} class="btn-danger">Eliminar</button>
-                    </div>
-                    {#if ex.tips && ex.tips.length > 0}
-                      <div class="tips-section">
-                        <div class="section-sublabel">Consejos</div>
-                        {#each ex.tips as tip}
-                          <div class="tip-item">• {tip}</div>
-                        {/each}
-                      </div>
-                    {/if}
-                    {#if ex.alternatives && ex.alternatives.length > 0}
-                      <div class="alts-section">
-                        <div class="section-sublabel">Alternativas</div>
-                        {#each ex.alternatives as alt}
-                          <div class="alt-item">
-                            <div class="alt-item-name">{alt.name}</div>
-                            {#if alt.reason}<div class="alt-item-reason">{alt.reason}</div>{/if}
-                          </div>
-                        {/each}
-                      </div>
-                    {/if}
-                  {/if}
-                </div>
-              {/if}
-            </div>
+            <ExerciseListItem
+              exercise={ex}
+              expanded={expandedExerciseId === ex.id}
+              editing={editingExerciseId === ex.id}
+              {editName} {editMuscle} {editImgUrl} {editTips} {editAlts}
+              ontoggle={toggleExpanded}
+              onbeginedit={() => beginEdit(ex)}
+              oncanceledit={cancelEdit}
+              onsaveedit={() => saveEdit(ex)}
+              ondelete={deleteExerciseConfirm}
+              onaddalt={addAlt}
+              onremovealt={removeAlt}
+              oneditnameinput={(val) => editName = val}
+              oneditmuscleinput={(val) => editMuscle = val}
+              oneditimgurlinput={(val) => editImgUrl = val}
+              onedittipsinput={(val) => editTips = val}
+              oneditaltschange={(alts) => editAlts = alts}
+            />
           {/each}
         </div>
       {/if}
@@ -797,23 +714,14 @@
       </div>
 
       <div class="section-label-wrap"><SectionLabel {accent}>Mantenimiento</SectionLabel></div>
-      <div class="card section-card">
-        <div class="maint-row">
-          <div class="flex-1">
-            <div class="card-title">Normalizar ejercicios con diccionario</div>
-            <div class="card-subtitle">Renombra al canónico en español, rellena imágenes y músculo desde el diccionario</div>
-            <div id="dict-migrate-status" class="status-text">{dictMigrateStatus}
-              {#if dictSkippedNames.length > 0}
-                <button id="ver-mas-link" class="ver-mas" style="color:{accent}" onclick={() => showSkippedOverlay = true}>ver más</button>
-              {/if}
-            </div>
-          </div>
-          <div class="maint-actions">
-            <button id="dict-migrate-btn" class="btn-maint" style="border-color:{accent}55;color:{accent}" onclick={() => runDictMigration(false)}>Aplicar</button>
-            <button id="dict-force-btn" class="btn-maint btn-maint-alt" onclick={() => runDictMigration(true)}>Forzar</button>
-          </div>
-        </div>
-      </div>
+      <MaintenanceCard
+        {accent}
+        migrateStatus={dictMigrateStatus}
+        skippedNames={dictSkippedNames}
+        onmigrate={() => runDictMigration(false)}
+        onforce={() => runDictMigration(true)}
+        onshowskipped={() => showSkippedOverlay = true}
+      />
 
       <div class="footer-bar footer-bar-bot">
         <div class="version-text">{APP_VERSION_STR}</div>
@@ -845,88 +753,30 @@
   .edit-btn { background: none; border: 0; cursor: pointer; flex-shrink: 0; margin-top: 6px; padding: 0; }
   .section-pad { margin: 0 20px; }
   .section-pad-sm { padding: 0 20px; margin-bottom: 12px; }
-  .section-pad-bot { margin: 20px 20px 0; }
-  .card-label { font-family: 'Space Grotesk', sans-serif; font-size: 13.5px; color: #fafafa; font-weight: 500; }
-  .card-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 0.5px solid rgba(255,255,255,0.06); }
-  .card-row:last-child, .card-row-last { border-bottom: 0; }
-  .card-row-right { display: flex; align-items: center; gap: 4px; }
-  .unit-label { font-size: 12px; color: rgba(255,255,255,0.55); font-family: 'JetBrains Mono', monospace; }
-  .btn-toggle { padding: 6px 12px; border-radius: 8px; border: 0.5px solid rgba(255,255,255,0.1); cursor: pointer; background: transparent; color: rgba(255,255,255,0.55); font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; }
-  .accent-picker { width: 40px; height: 28px; border: 0.5px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0; background: transparent; cursor: pointer; }
   .stats-card { margin: 0 20px; padding: 16px 14px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
   .footer-bar { display: flex; align-items: center; justify-content: space-between; margin: 16px 20px 0; }
   .footer-bar-bot { margin: 16px 20px 40px; }
-  .version-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'JetBrains Mono', monospace; }
-  .refresh-btn { padding: 5px 10px; border-radius: 6px; border: 0.5px solid rgba(255,255,255,0.08); cursor: pointer; background: transparent; color: rgba(255,255,255,0.4); font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 500; }
+  .version-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
+  .refresh-btn { padding: 5px 10px; border-radius: 6px; border: 0.5px solid var(--border-medium); cursor: pointer; background: transparent; color: rgba(255,255,255,0.4); font-family: var(--font-sans); font-size: 11px; font-weight: 500; }
   .row { display: flex; gap: 10px; align-items: center; }
-  .flex-1 { flex: 1; min-width: 0; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
-  .text-input { padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a; color: #fafafa; font-size: 14px; outline: none; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; }
-  .btn-accent { flex-shrink: 0; padding: 10px 18px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: #0a0a0a; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; }
+  .text-input { padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
+  .btn-accent { flex-shrink: 0; padding: 10px 18px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
   .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
-  .program-item { margin: 0 20px; padding: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .program-name { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: #fafafa; letter-spacing: -0.3px; }
-  .program-meta { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
-  .btn-action { padding: 8px 14px; border-radius: 8px; border: 0; cursor: pointer; font-size: 13px; font-family: 'Space Grotesk', sans-serif; }
-  .btn-dup { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); }
-  .btn-del { background: rgba(255,107,107,0.12); color: #ff6b6b; }
   .program-create-card { margin: 0 20px; padding: 14px 16px; }
-  .coach-card { margin: 0 20px; overflow: hidden; }
-  .coach-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .card-title { font-size: 12px; color: #fafafa; font-weight: 600; font-family: 'Space Grotesk', sans-serif; }
-  .card-subtitle { font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 2px; line-height: 1.4; }
-  .textarea-field { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a; color: #fafafa; font-size: 13px; font-family: 'Space Grotesk', sans-serif; outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5; }
+  .textarea-field { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5; }
   .textarea-lg { padding: 12px; line-height: 1.6; }
-  .textarea-field-sm { resize: vertical; font-family: inherit; }
-  .status-text { margin-top: 4px; font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.35); letter-spacing: 0.2px; min-height: 14px; }
-  .btn-accent-full { margin: 0 16px 14px; width: calc(100% - 32px); padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: #0a0a0a; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; }
-  .coach-response-wrap { padding: 0 16px 14px; }
-  .coach-response-box { padding: 12px 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border-left: 3px solid; }
-  .coach-response-label { font-size: 10px; font-family: 'JetBrains Mono', monospace; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; margin-bottom: 6px; }
-  .coach-response-text { font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.5; font-family: 'Space Grotesk', sans-serif; white-space: pre-wrap; }
-  .coach-response-provider-wrap { margin-top: 6px; }
-  .coach-response-provider { font-size: 9px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.6px; color: rgba(255,255,255,0.3); text-transform: uppercase; }
+  .btn-accent-full { margin: 0 16px 14px; width: calc(100% - 32px); padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
   .ex-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 12px; }
-  .ex-count { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
+  .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
   .new-ex-card { margin: 0 20px 12px; padding: 14px 16px; }
-  .search-input { margin: 0 20px 10px; padding: 10px 14px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #fafafa; font-family: 'Space Grotesk', sans-serif; font-size: 14px; outline: none; width: calc(100% - 40px); box-sizing: border-box; }
+  .search-input { margin: 0 20px 10px; padding: 10px 14px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--font-sans); font-size: 14px; outline: none; width: calc(100% - 40px); box-sizing: border-box; }
   .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 20px; }
-  .exercise-item { margin: 0 20px; padding: 0; overflow: hidden; }
-  .exercise-toggle { width: 100%; background: transparent; border: 0; cursor: pointer; padding: 14px; display: flex; align-items: center; gap: 12px; color: inherit; text-align: left; font-family: inherit; }
-  .exercise-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #0a0a0a; }
-  .exercise-img-placeholder { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: #0a0a0a; }
-  .exercise-info { flex: 1; min-width: 0; text-align: left; }
-  .exercise-name { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: #fafafa; letter-spacing: -0.3px; }
-  .exercise-muscle { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
-  .exercise-chevron { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'JetBrains Mono', monospace; }
-  .exercise-expanded { padding: 0 14px 14px; border-top: 0.5px solid rgba(255,255,255,0.04); }
-  .edit-stack { margin-top: 12px; }
-  .edit-actions { margin-top: 12px; }
-  .btn-primary-cta { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: #0a0a0a; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; }
-  .btn-secondary { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
-  .btn-danger { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: rgba(255,107,107,0.12); color: #ff6b6b; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
-  .section-sublabel { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; }
-  .tips-section { margin-top: 10px; }
-  .tip-item { font-size: 12px; color: rgba(255,255,255,0.7); padding: 4px 0; border-bottom: 0.5px solid rgba(255,255,255,0.03); }
-  .alts-section { margin-top: 10px; }
-  .alt-item { padding: 6px 0; border-bottom: 0.5px solid rgba(255,255,255,0.03); }
-  .alt-item-name { font-size: 13px; color: #fafafa; font-weight: 600; }
-  .alt-item-reason { font-size: 11px; color: rgba(255,255,255,0.5); }
-  .alt-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
-  .alt-row { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
-  .input-sm { flex: 1; padding: 8px 10px; border-radius: 8px; border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a; color: #fafafa; font-size: 13px; outline: none; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; }
-  .input-sm-alt { border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); font-size: 12px; }
-  .alt-remove { background: none; border: 0; color: #ff6b6b; cursor: pointer; font-size: 16px; padding: 4px; }
-  .btn-add-alt { width: 100%; padding: 8px; border-radius: 8px; border: 0.5px dashed rgba(255,255,255,0.15); cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); font-size: 12px; }
-  .section-card { background: #141414; border-radius: 16px; border: 0.5px solid rgba(255,255,255,0.06); overflow: hidden; }
-  .btn-accent-sm { padding: 7px 14px; border-radius: 8px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: #0a0a0a; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
-  .maint-row { padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
-  .maint-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-  .btn-maint { padding: 7px 14px; border-radius: 8px; border: 0.5px solid; cursor: pointer; background: transparent; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; white-space: nowrap; }
-  .btn-maint-alt { border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
-  .ver-mas { background: none; border: none; cursor: pointer; font-size: 10px; font-family: 'JetBrains Mono', monospace; text-decoration: underline; padding: 0; margin-left: 4px; }
+  .btn-accent-sm { padding: 7px 14px; border-radius: 8px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .btn-primary-cta { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
+  .btn-secondary { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--border); color: rgba(255,255,255,0.6); font-family: var(--font-sans); font-size: 13px; font-weight: 600; }
   .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .dialog-title { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 600; color: #fafafa; }
+  .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }
   .dialog-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px; padding: 4px; }
-  .skipped-item { padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; font-size: 13px; color: #fafafa; font-family: 'Space Grotesk', sans-serif; }
+  .skipped-item { padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; font-size: 13px; color: var(--text); font-family: var(--font-sans); }
 </style>

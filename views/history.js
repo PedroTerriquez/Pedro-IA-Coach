@@ -11,12 +11,7 @@ function mountHistory(container, opts) {
   page.style.cssText = 'height:100%;box-sizing:border-box;overflow-y:auto;padding-bottom:120px'
   container.appendChild(page)
 
-  const header = document.createElement('div')
-  header.style.padding = '56px 20px 16px'
-  header.innerHTML = `
-    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.6px;color:rgba(255,255,255,0.45);text-transform:uppercase">Historial</div>
-    <div style="font-family:'Space Grotesk',sans-serif;font-size:38px;font-weight:700;color:#fafafa;letter-spacing:-1.5px;line-height:1;margin-top:4px">Progreso.</div>`
-  page.appendChild(header)
+  page.appendChild(PageHeader({ label: 'Historial', title: 'Progreso.' }))
 
   const tabs = document.createElement('div')
   tabs.style.cssText = 'display:flex;gap:0;margin:0 20px 16px;background:rgba(255,255,255,0.04);border-radius:12px;padding:3px'
