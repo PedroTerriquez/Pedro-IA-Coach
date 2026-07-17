@@ -35,14 +35,79 @@
 </div>
 
 <style>
-  .effort-selector { display: flex; flex-direction: column; }
-  .dialog-center { text-align: center; margin-bottom: 20px; }
-  .dialog-emoji { font-size: 32px; margin-bottom: 8px; }
-  .dialog-title { font-family: var(--font-sans); font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
-  .dialog-desc { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 6px; }
-  .stack { display: flex; flex-direction: column; gap: 8px; }
-  .effort-btn { padding: 14px; border-radius: 14px; border: 0.5px solid var(--border); background: rgba(255,255,255,0.04); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 12px; color: inherit; transition: all 0.15s; width: 100%; }
-  .effort-emoji { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 0.5px solid; flex-shrink: 0; }
-  .effort-label { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text); }
-  .effort-desc { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+  .effort-selector {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dialog-center {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .dialog-emoji {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  .dialog-title {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .dialog-desc {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 6px;
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .effort-btn {
+    padding: 14px;
+    border-radius: 14px;
+    border: 0.5px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: inherit;
+    transition: all 0.15s;
+    width: 100%;
+  }
+
+  .effort-emoji {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 0.5px solid;
+    flex-shrink: 0;
+  }
+
+  .effort-label {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .effort-desc {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 2px;
+  }
 </style>
