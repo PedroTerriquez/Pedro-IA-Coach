@@ -5,13 +5,17 @@
   let {
     day,
     accent = 'var(--accent)',
+    phaseLabel = 'Fase 02',
+    title = 'Entrenamiento',
     todayExDone = 0,
     exercisesTotal = 0,
     exercisesById = {},
     onclick = () => {}
   }: {
-    day: any
+    day: { name?: string; exercises?: Array<{ exerciseId: string; sets?: number; reps?: string }> }
     accent?: string
+    phaseLabel?: string
+    title?: string
     todayExDone?: number
     exercisesTotal?: number
     exercisesById?: Record<string, any>
@@ -29,13 +33,13 @@
   onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onclick() } }}
 >
   <div class="between-row">
-    <div class="phase-label">Fase 02</div>
+    <div class="phase-label">{phaseLabel}</div>
     <span class="status-pill" style="background:{accent}1a;border-color:{accent}40;color:{accent}">
       <span class="live-dot-sm" style="background:{accent};box-shadow:0 0 6px {accent}"></span>Sigue
     </span>
   </div>
   <div class="training-card-body">
-    <div class="training-title">Entrenamiento</div>
+    <div class="training-title">{title}</div>
     <div class="training-subtitle">{exercisesTotal} ejercicios</div>
   </div>
   <div class="progress-row">
@@ -44,7 +48,7 @@
     </div>
     <span class="progress-count" style="color:{todayExDone > 0 ? accent : 'rgba(255,255,255,0.45)'}">{todayExDone}/{exercisesTotal}</span>
   </div>
-  {#if day?.exercises?.length > 0}
+  {#if day?.exercises && day.exercises.length > 0}
     <div class="exercise-list">
       {#each day.exercises as ex (ex.exerciseId)}
         {@const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any}
@@ -56,7 +60,6 @@
           sets={ex.sets}
           reps={ex.reps}
           {accent}
-          onclick={() => {}}
         />
       {/each}
     </div>
