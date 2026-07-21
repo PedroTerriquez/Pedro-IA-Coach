@@ -14,8 +14,7 @@ export const restBannerState = writable<{
   tag: string
 }>({ visible: false, endTime: 0, restSec: 0, name: '', sets: 0, reps: '', tag: '' })
 
-let _restTimerEndTime = 0
-let _restTimerTickId: ReturnType<typeof setInterval> | null = null
+let _restTimerTickId: ReturnType<typeof setTimeout> | null = null
 
 export interface RestPendingData {
   name: string
@@ -111,7 +110,6 @@ export async function checkPendingRest(): Promise<void> {
 
 function _showRestTimerBanner(data: RestTimerData) {
   _hideRestTimerBanner()
-  _restTimerEndTime = data.endTime
 
   restBannerState.set({
     visible: true,
@@ -122,15 +120,6 @@ function _showRestTimerBanner(data: RestTimerData) {
     reps: data.reps,
     tag: data.tag
   })
-
-  if (_restTimerTickId) clearInterval(_restTimerTickId)
-  _restTimerTickId = setInterval(() => {
-    const rem = _restTimerEndTime - Date.now()
-    if (rem <= 0) {
-      if (_restTimerTickId) { clearInterval(_restTimerTickId); _restTimerTickId = null }
-      _checkRestTimer()
-    }
-  }, 1000)
 }
 
 function _hideRestTimerBanner() {
