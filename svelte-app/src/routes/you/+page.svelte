@@ -12,7 +12,6 @@
   import SectionLabel from '$lib/components/SectionLabel.svelte'
 
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
-  import ActionRow from '$lib/components/ActionRow.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
   import StatBlock from '$lib/components/StatBlock.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
@@ -25,6 +24,8 @@
   import NewExerciseForm from '$lib/components/NewExerciseForm.svelte'
   import ProgramCreateForm from '$lib/components/ProgramCreateForm.svelte'
   import Button from '$lib/components/Button.svelte'
+  import DataImportSection from '$lib/components/DataImportSection.svelte'
+  import DataExportSection from '$lib/components/DataExportSection.svelte'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -684,32 +685,24 @@
 
       <div class="section-label-wrap"><SectionLabel {accent}>Importar</SectionLabel></div>
       <div class="card section-card">
-        <ActionRow title="Ejercicios (JSON)" description="Importa solo ejercicios desde un archivo JSON" status={exercisesImportStatus} {accent}>
-          {#snippet button()}
-            <input type="file" id="exercises-import-input" accept=".json" style="display:none" onchange={onExercisesImport} />
-            <button onclick={() => document.getElementById('exercises-import-input')?.click()} class="btn-accent-sm">Importar</button>
-          {/snippet}
-        </ActionRow>
-        <ActionRow title="Logs+ajustes JSON" description="Restaura toda la base de datos desde un JSON" status={jsonImportStatus} {accent}>
-          {#snippet button()}
-            <input type="file" id="json-import-input" accept=".json" style="display:none" onchange={onLogsImport} />
-            <button id="json-import-btn" onclick={() => document.getElementById('json-import-input')?.click()} class="btn-accent-sm">Importar JSON</button>
-          {/snippet}
-        </ActionRow>
+        <DataImportSection
+          {accent}
+          {exercisesImportStatus}
+          {jsonImportStatus}
+          onexercisesimport={onExercisesImport}
+          onlogsimport={onLogsImport}
+        />
       </div>
 
       <div class="section-label-wrap"><SectionLabel {accent}>Exportar</SectionLabel></div>
       <div class="card section-card">
-        <ActionRow title="Ejercicios JSON" description="Descarga solo los ejercicios como JSON" status={exercisesExportStatus} {accent}>
-          {#snippet button()}
-            <button onclick={onExercisesExport} class="btn-accent-sm">Exportar JSON</button>
-          {/snippet}
-        </ActionRow>
-        <ActionRow title="Logs+ajustes JSON" description="Descarga toda la base de datos como JSON" status={jsonExportStatus} {accent}>
-          {#snippet button()}
-            <button id="json-export-btn" onclick={onLogsExport} class="btn-accent-sm">Exportar JSON</button>
-          {/snippet}
-        </ActionRow>
+        <DataExportSection
+          {accent}
+          {exercisesExportStatus}
+          {jsonExportStatus}
+          onexercisesexport={onExercisesExport}
+          onlogsexport={onLogsExport}
+        />
       </div>
 
       <div class="section-label-wrap"><SectionLabel {accent}>Mantenimiento</SectionLabel></div>
@@ -767,7 +760,6 @@
   .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
   .search-input { margin: 0 20px 10px; padding: 10px 14px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--font-sans); font-size: 14px; outline: none; width: calc(100% - 40px); box-sizing: border-box; }
   .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 20px; }
-  .btn-accent-sm { padding: 7px 14px; border-radius: 8px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
   .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }
   .dialog-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px; padding: 4px; }
