@@ -5,6 +5,7 @@
   import { getAllLogs, getSettings, saveSettings } from '$lib/storage'
   import FriendCard from '$lib/components/FriendCard.svelte'
   import SearchResults from '$lib/components/SearchResults.svelte'
+  import SearchInput from '$lib/components/SearchInput.svelte'
 
   let username = $state('')
   let inputUsername = $state('')
@@ -201,13 +202,7 @@
       {/if}
     </div>
     <div class="friend-search">
-      <input
-        type="text"
-        id="friend-search-input"
-        placeholder="🔍 Buscar usuario..."
-        autocomplete="off"
-        bind:value={searchQuery}
-      >
+      <SearchInput value={searchQuery} placeholder="🔍 Buscar usuario..." oninput={(val) => searchQuery = val} />
     </div>
     <SearchResults
       query={searchQuery}

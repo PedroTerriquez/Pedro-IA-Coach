@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from './Button.svelte'
   let {
     accent = '#d4ff3a',
     migrateStatus = '',
@@ -28,8 +29,8 @@
       </div>
     </div>
     <div class="maint-actions">
-      <button id="dict-migrate-btn" class="btn-maint" style="border-color:{accent}55;color:{accent}" onclick={onmigrate}>Aplicar</button>
-      <button id="dict-force-btn" class="btn-maint btn-maint-alt" onclick={onforce}>Forzar</button>
+      <Button size="sm" style="border-color:{accent}55;color:{accent}" onclick={onmigrate}>Aplicar</Button>
+      <Button variant="secondary" size="sm" onclick={onforce}>Forzar</Button>
     </div>
   </div>
 </div>
@@ -37,7 +38,5 @@
 <style>
   .maint-row { padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
   .maint-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-  .btn-maint { padding: 7px 14px; border-radius: 8px; border: 0.5px solid; cursor: pointer; background: transparent; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; white-space: nowrap; }
-  .btn-maint-alt { border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
   .ver-mas { background: none; border: none; cursor: pointer; font-size: 10px; font-family: 'JetBrains Mono', monospace; text-decoration: underline; padding: 0; margin-left: 4px; }
 </style>

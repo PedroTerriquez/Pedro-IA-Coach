@@ -7,6 +7,7 @@
   import * as Storage from '$lib/storage'
   import ExerciseRow from '$lib/components/ExerciseRow.svelte'
   import DayCard from '$lib/components/DayCard.svelte'
+  import Icon from '$lib/components/Icon.svelte'
 
   const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
   const DEFAULT_ORDER = [0, 1, 2, 3, 4, 5, 6]
@@ -193,7 +194,7 @@
         {#if planEditing}
           Listo
         {:else}
-          <svg width="15" height="15" viewBox="0 0 17 17" fill="none"><path d="M11.5 2.5l3 3-3 3M14 5.5H5.5a3 3 0 00-3 3M5.5 14.5l-3-3 3-3M3 11.5h8.5a3 3 0 003-3" stroke={accent} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <Icon name="swap" size={15} color={accent} />
           Reprogramar
         {/if}
       </button>
@@ -203,7 +204,7 @@
       <div class="section-pad-sm">
         <div class="edit-banner" style="background:{accent}0d;border-color:{accent}33">
           <div class="icon-box" style="background:{accent}1c;color:{accent}">
-            <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M11.5 2.5l3 3-3 3M14 5.5H5.5a3 3 0 00-3 3M5.5 14.5l-3-3 3-3M3 11.5h8.5a3 3 0 003-3" stroke={accent} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <Icon name="swap" size={17} color={accent} />
           </div>
           <div class="flex-1">
             <div class="banner-title">Reprogramando esta semana</div>

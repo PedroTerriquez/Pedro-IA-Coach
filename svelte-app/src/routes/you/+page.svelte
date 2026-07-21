@@ -10,9 +10,11 @@
   import * as Storage from '$lib/storage'
   import { generateId, getAll, put } from '$lib/db'
   import SectionLabel from '$lib/components/SectionLabel.svelte'
+  import Icon from '$lib/components/Icon.svelte'
 
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
+  import SearchInput from '$lib/components/SearchInput.svelte'
   import StatBlock from '$lib/components/StatBlock.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
   import ProfileCard from '$lib/components/ProfileCard.svelte'
@@ -531,7 +533,7 @@
       >{userName}</span>
       <button id="user-edit-btn" class="edit-btn" aria-label="Editar nombre"
         onclick={() => { const el = document.getElementById('user-name'); if (el) { el.focus(); const sel = window.getSelection(); const range = document.createRange(); range.selectNodeContents(el); range.collapse(false); sel?.removeAllRanges(); sel?.addRange(range) } }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        <Icon name="pencil" size={22} color="rgba(255,255,255,0.3)" />
       </button>
     </div>
   </div>
@@ -640,7 +642,7 @@
         />
       {/if}
 
-      <input type="text" bind:value={exerciseSearch} placeholder="Buscar ejercicio…" class="search-input">
+      <div style="margin: 0 20px 10px;"><SearchInput value={exerciseSearch} placeholder="Buscar ejercicio…" oninput={(val) => exerciseSearch = val} /></div>
 
       {#if loaded && exercises.length === 0}
         <EmptyState message="No hay ejercicios todavía. Crea tu primero." />
@@ -758,7 +760,6 @@
   .textarea-lg { padding: 12px; line-height: 1.6; }
   .ex-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 12px; }
   .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
-  .search-input { margin: 0 20px 10px; padding: 10px 14px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--font-sans); font-size: 14px; outline: none; width: calc(100% - 40px); box-sizing: border-box; }
   .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 20px; }
   .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }

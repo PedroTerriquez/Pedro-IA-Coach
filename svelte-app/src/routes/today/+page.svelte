@@ -13,6 +13,7 @@
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import PhaseCard from '$lib/components/PhaseCard.svelte'
   import LockedCard from '$lib/components/LockedCard.svelte'
+  import Icon from '$lib/components/Icon.svelte'
   import GlowCard from '$lib/components/GlowCard.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
@@ -574,7 +575,7 @@
     {#if showCoach || coachCardMode}
       <CoachResultCard analysis={coachResult} {accent} loading={coachLoading} exerciseCount={day?.exercises?.length || 0} onclick={resetDay} />
       <Button variant="ghost" fullWidth onclick={resetDay}>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13 8a5 5 0 11-1.5-3.6M13 2v3h-3" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <Icon name="restart" size={14} color="rgba(255,255,255,0.6)" />
         Reiniciar día
       </Button>
     {/if}

@@ -7,6 +7,7 @@
   import Sparkline from '$lib/components/Sparkline.svelte'
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
   import Chip from '$lib/components/Chip.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
   import type { Exercise, ExerciseLog } from '$lib/types'
 
   let historyFilter = $state('Todos')
@@ -115,10 +116,10 @@
   </div>
 
   {#if !loaded}
-    <div class="loading">Cargando...</div>
+    <EmptyState message="Cargando..." />
   {:else if historyTab === 'constancia'}
     {#if !activeProgram || !activeProgram.weeks || activeProgram.weeks.length === 0}
-      <div class="empty-state">Selecciona un programa en Tú → Programas para ver tu constancia.</div>
+      <EmptyState message="Selecciona un programa en Tú → Programas para ver tu constancia." />
     {:else}
       <Calendar
         {accent}
@@ -146,7 +147,7 @@
     </div>
 
     {#if filtered.length === 0}
-      <div class="empty-state">No se encontraron ejercicios.</div>
+      <EmptyState message="No se encontraron ejercicios." />
     {:else}
       <div class="ex-list">
         {#each filtered as e}
@@ -181,19 +182,7 @@
     flex-direction: column;
   }
 
-  .loading {
-    padding: 60px 20px;
-    text-align: center;
-    font-size: 13px;
-    color: rgba(255,255,255,0.4);
-  }
 
-  .empty-state {
-    padding: 60px 20px;
-    text-align: center;
-    font-size: 13px;
-    color: rgba(255,255,255,0.4);
-  }
 
   .chips-row {
     display: flex;

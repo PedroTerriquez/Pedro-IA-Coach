@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Button from './Button.svelte'
+
   let {
     value = '',
     oninput = () => {},
@@ -19,7 +21,7 @@
       class="text-input"
       style="flex:1"
     >
-    <button onclick={oncreate} class="btn-accent">+ Nuevo</button>
+    <Button variant="primary" onclick={oncreate}>+ Nuevo</Button>
   </div>
 </div>
 
@@ -46,16 +48,5 @@
     font-family: var(--font-sans);
   }
 
-  .btn-accent {
-    flex-shrink: 0;
-    padding: 10px 18px;
-    border-radius: 10px;
-    border: 0;
-    cursor: pointer;
-    background: var(--accent, #d4ff3a);
-    color: var(--bg);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 700;
-  }
+
 </style>

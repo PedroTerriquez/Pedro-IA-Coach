@@ -2,6 +2,7 @@
   import { installPWA } from '$lib/pwa'
   import CardRow from './CardRow.svelte'
   import AccentToggle from './AccentToggle.svelte'
+  import Button from './Button.svelte'
 
   let {
     units = 'kg',
@@ -40,7 +41,7 @@
 
 <div class="card">
   <CardRow label="Unidades">
-    <button class="btn-toggle" onclick={ontoggleunits}>{units === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}</button>
+    <Button variant="ghost" onclick={ontoggleunits}>{units === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}</Button>
   </CardRow>
   <CardRow label="Color de acento">
     <input type="color" value={accent} oninput={(e) => onaccentchange((e.target as HTMLInputElement).value)} class="accent-picker">
@@ -56,14 +57,13 @@
     </AccentToggle>
   </CardRow>
   <CardRow label="Idioma">
-    <button class="btn-toggle" onclick={togglelang}>{language === 'en' ? 'English' : 'Español'}</button>
+    <Button variant="ghost" onclick={togglelang}>{language === 'en' ? 'English' : 'Español'}</Button>
   </CardRow>
   <CardRow label="Instalar app" last={true}>
-    <button class="btn-toggle" onclick={() => installPWA()}>Añadir</button>
+    <Button variant="ghost" onclick={() => installPWA()}>Añadir</Button>
   </CardRow>
 </div>
 
 <style>
-  .btn-toggle { padding: 6px 12px; border-radius: 8px; border: 0.5px solid rgba(255,255,255,0.1); cursor: pointer; background: transparent; color: rgba(255,255,255,0.55); font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; }
   .accent-picker { width: 40px; height: 28px; border: 0.5px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0; background: transparent; cursor: pointer; }
 </style>

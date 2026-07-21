@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import type { Exercise } from '$lib/types'
+  import Button from './Button.svelte'
 
   let {
     exercise,
@@ -103,14 +104,14 @@
             <button onclick={onaddalt} class="btn-add-alt">+ Añadir alternativa</button>
           </div>
           <div class="row">
-            <button onclick={onsaveedit} class="btn-primary-cta">Guardar</button>
-            <button onclick={oncanceledit} class="btn-secondary">Cancelar</button>
+            <Button variant="primary" fullWidth onclick={onsaveedit}>Guardar</Button>
+            <Button variant="secondary" fullWidth onclick={oncanceledit}>Cancelar</Button>
           </div>
         </div>
       {:else}
         <div class="row edit-actions">
-          <button onclick={onbeginedit} class="btn-secondary">Editar</button>
-          <button onclick={() => ondelete(exercise)} class="btn-danger">Eliminar</button>
+          <Button variant="secondary" fullWidth onclick={onbeginedit}>Editar</Button>
+          <Button variant="danger" fullWidth onclick={() => ondelete(exercise)}>Eliminar</Button>
         </div>
         {#if exercise.tips && exercise.tips.length > 0}
           <div class="tips-section">
@@ -150,9 +151,6 @@
   .edit-actions { margin-top: 12px; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
   .row { display: flex; gap: 10px; align-items: center; }
-  .btn-primary-cta { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: #0a0a0a; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; }
-  .btn-secondary { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
-  .btn-danger { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: rgba(255,107,107,0.12); color: #ff6b6b; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
   .section-sublabel { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; }
   .tips-section { margin-top: 10px; }
   .tip-item { font-size: 12px; color: rgba(255,255,255,0.7); padding: 4px 0; border-bottom: 0.5px solid rgba(255,255,255,0.03); }

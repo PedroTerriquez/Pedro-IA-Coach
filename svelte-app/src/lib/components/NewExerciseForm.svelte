@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Button from './Button.svelte'
+
   let {
     name = '',
     muscle = '',
@@ -22,8 +24,8 @@
     <input class="input-field" value={name} oninput={(e) => onnameinput((e.target as HTMLInputElement).value)} placeholder="Nombre del ejercicio">
     <input class="input-field" value={muscle} oninput={(e) => onmuscleinput((e.target as HTMLInputElement).value)} placeholder="Músculo (ej: Pecho, Espalda)">
     <div class="row">
-      <button onclick={onsave} class="btn-primary-cta">Guardar</button>
-      <button onclick={oncancel} class="btn-secondary">Cancelar</button>
+      <Button variant="primary" fullWidth onclick={onsave}>Guardar</Button>
+      <Button variant="secondary" fullWidth onclick={oncancel}>Cancelar</Button>
     </div>
   </div>
 </div>
@@ -65,31 +67,5 @@
     font-family: var(--font-sans);
     outline: none;
     box-sizing: border-box;
-  }
-
-  .btn-primary-cta {
-    flex: 1;
-    padding: 10px;
-    border-radius: 10px;
-    border: 0;
-    cursor: pointer;
-    background: var(--accent, #d4ff3a);
-    color: var(--bg);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .btn-secondary {
-    flex: 1;
-    padding: 10px;
-    border-radius: 10px;
-    border: 0;
-    cursor: pointer;
-    background: var(--border);
-    color: rgba(255,255,255,0.6);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 600;
   }
 </style>

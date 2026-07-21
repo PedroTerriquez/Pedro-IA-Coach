@@ -6,6 +6,7 @@
     accent = 'var(--accent)',
     disabled = false,
     fullWidth = false,
+    size = 'md',
     onclick = undefined,
     children,
     style = ''
@@ -14,7 +15,8 @@
     accent?: string
     disabled?: boolean
     fullWidth?: boolean
-    onclick?: () => void
+    size?: 'md' | 'sm'
+    onclick?: (e: MouseEvent) => void
     children?: Snippet
     style?: string
   } = $props()
@@ -27,6 +29,7 @@
   class:btn-danger={variant === 'danger'}
   class:btn-ghost={variant === 'ghost'}
   class:full-width={fullWidth}
+  class:btn-sm={size === 'sm'}
   {disabled}
   {onclick}
   style="{variant === 'primary' ? `background:${accent};color:#0a0a0a` : ''};{style}"
@@ -84,5 +87,10 @@
   }
   .full-width {
     width: 100%;
+  }
+  .btn-sm {
+    padding: 7px 14px;
+    font-size: 12px;
+    border-radius: 8px;
   }
 </style>
