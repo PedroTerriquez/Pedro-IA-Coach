@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import { resolvePanelItems } from '$lib/data/warmup-components'
 
   import { onMount } from 'svelte'
@@ -12,7 +11,6 @@
   import { runCoachAnalysis } from '$lib/coach-analysis'
   import Warmup from '$lib/components/Warmup.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
-  import ExerciseRow from '$lib/components/ExerciseRow.svelte'
   import SectionLabel from '$lib/components/SectionLabel.svelte'
   import Chip from '$lib/components/Chip.svelte'
   import PhaseCard from '$lib/components/PhaseCard.svelte'
@@ -23,6 +21,10 @@
   import CoachResultCard from '$lib/components/CoachResultCard.svelte'
   import RestDayView from '$lib/components/RestDayView.svelte'
   import OnboardingView from '$lib/components/OnboardingView.svelte'
+  import TimerRing from '$lib/components/TimerRing.svelte'
+  import EffortSelector from '$lib/components/EffortSelector.svelte'
+  import StreakOverlay from '$lib/components/StreakOverlay.svelte'
+  import TrainingCard from '$lib/components/TrainingCard.svelte'
   import type { Exercise, ExerciseLog, Program, ProgramDay, ProgramExercise, Settings } from '$lib/types'
 
   let phase = $state<'loading' | 'warmup' | 'training' | 'stretch' | 'complete'>('loading')
@@ -563,16 +565,7 @@
               <Chip color="{accent}1c" textColor={accent}>{weekObj.name}{weekObj.tag ? ' · ' + weekObj.tag : ''}</Chip>
             {/if}
             {#if startedAt && !endedAt}
-              <div class="timer-wrapper">
-                <svg width="64" height="64" class="timer-ring" style="transform:rotate(-90deg)">
-                  <circle cx="32" cy="32" r="27" stroke="rgba(255,255,255,0.08)" stroke-width="5" fill="none"/>
-                  <circle cx="32" cy="32" r="27" stroke="{accent}cc" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="{timerSweepPct * 169.65} 169.65" style="transition:stroke-dasharray 0.6s linear"/>
-                </svg>
-                <div class="timer-inner">
-                  <div class="timer-value">{timerDisplay || '—'}</div>
-                  <div class="timer-label">Tiempo</div>
-                </div>
-              </div>
+              <TimerRing sweepPct={timerSweepPct} display={timerDisplay || '—'} {accent} />
             {/if}
           </div>
         </div>
@@ -580,39 +573,14 @@
       </div>
 
       {#if todayExercises.length > 0}
-        <div data-phase="training" role="button" tabindex="0" class="training-card" style="border-color:{accent}66;box-shadow:0 8px 28px {accent}12" onclick={openTrainingDetail} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTrainingDetail() } }}>
-          <div class="between-row">
-            <div class="phase-label">Fase 02</div>
-            <span class="status-pill" style="background:{accent}1a;border-color:{accent}40;color:{accent}"><span class="live-dot-sm" style="background:{accent};box-shadow:0 0 6px {accent}"></span>Sigue</span>
-          </div>
-          <div class="training-card-body">
-            <div class="training-title">Entrenamiento</div>
-            <div class="training-subtitle">{exercisesTotal} ejercicios</div>
-          </div>
-          <div class="progress-row">
-            <div class="progress-track">
-              <div class="progress-fill" style="background:{accent};width:{exercisesTotal > 0 ? (todayExDone / exercisesTotal) * 100 : 0}%"></div>
-            </div>
-            <span class="progress-count" style="color:{todayExDone > 0 ? accent : 'rgba(255,255,255,0.45)'}">{todayExDone}/{exercisesTotal}</span>
-          </div>
-          {#if todayExercises.length > 0}
-            <div class="exercise-list">
-              {#each day.exercises as ex (ex.exerciseId)}
-                {@const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any}
-                {@const imgUrl = resolveExerciseMedia(resolved).imgUrl}
-                <ExerciseRow
-                  name={getExerciseDisplayName(resolved) || resolved.name}
-                  muscle={resolved.muscle || ''}
-                  {imgUrl}
-                  sets={ex.sets}
-                  reps={ex.reps}
-                  {accent}
-                  onclick={() => openExerciseDetail(resolved)}
-                />
-              {/each}
-            </div>
-          {/if}
-        </div>
+        <TrainingCard
+          {day}
+          {accent}
+          {todayExDone}
+          {exercisesTotal}
+          {exercisesById}
+          onclick={openTrainingDetail}
+        />
       {/if}
     {/if}
 
@@ -639,33 +607,11 @@
 {/if}
 
 <CenterDialog open={effortModalShow} onclose={() => effortModalShow = false}>
-  <div class="dialog-center">
-    <div class="dialog-emoji">🧑‍🏫</div>
-    <div class="dialog-title">¿Cómo sentiste la sesión?</div>
-    <div class="dialog-desc">Esto ayuda a Pedro a darte mejor feedback</div>
-  </div>
-  <div class="stack">
-    {#each [['easy', '💪', 'Fácil', 'Podía más, para subir peso'], ['good', '👍', 'Justo', 'Peso correcto, lo planeado'], ['heavy', '😮‍💨', 'Pesado', 'Me costó trabajo'], ['failure', '🛑', 'Al fallo', 'Llegué al fallo muscular, no daba más']] as [eff, emoji, label, desc]}
-      <button class="effort-btn" data-effort={eff} onclick={() => onEffort(eff)}>
-        <div class="effort-emoji" style="background:{accent}1a;border-color:{accent}33">{emoji}</div>
-        <div>
-          <div class="effort-label">{label}</div>
-          <div class="effort-desc">{desc}</div>
-        </div>
-      </button>
-    {/each}
-  </div>
+  <EffortSelector {accent} onselect={onEffort} />
 </CenterDialog>
 
 {#if streakModalShow}
-  <div class="streak-overlay">
-    <div class="stack-center">
-      <div class="streak-flame">🔥</div>
-      <div class="streak-count">{streakCount}</div>
-      <div class="streak-subtitle">Días consecutivos</div>
-      <div class="streak-encourage" style="color:{accent}">¡Sigue así!</div>
-    </div>
-  </div>
+  <StreakOverlay count={streakCount} {accent} />
 {/if}
 
 <style>
@@ -676,43 +622,7 @@
   .hero-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .eyebrow-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; font-weight: 600; }
   .live-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-  .live-dot-sm { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
   .phase-header { flex-shrink: 0; padding: 0 4px 2px; }
   .phase-list { flex: 1; min-height: 0; margin-top: 16px; display: flex; flex-direction: column; gap: 11px; }
-  .training-card { flex-shrink: 0; margin-top: 16px; display: flex; flex-direction: column; border-radius: 22px; cursor: pointer; padding: 18px 18px 16px; background: var(--surface); border: 0.5px solid; }
-  .between-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .phase-label { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.42); font-weight: 600; }
-  .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 9999px; border: 0.5px solid; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; }
-  .training-card-body { margin-top: 8px; }
-  .training-title { font-family: var(--font-sans); font-size: 27px; font-weight: 700; color: var(--text); letter-spacing: -0.8px; line-height: 1; }
-  .training-subtitle { margin-top: 4px; font-size: 12.5px; color: rgba(255,255,255,0.5); }
-  .progress-row { margin-top: 12px; display: flex; align-items: center; gap: 7px; }
-  .progress-track { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); overflow: hidden; }
-  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
-  .progress-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.4px; }
-  .exercise-list { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; position: relative; z-index: 1; }
   .btn-reset { margin-top: 16px; width: 100%; padding: 13px; border-radius: 12px; cursor: pointer; background: transparent; border: 0.5px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); font-family: var(--font-sans); font-size: 13px; font-weight: 600; letter-spacing: -0.1px; display: flex; align-items: center; justify-content: center; gap: 7px; }
-  .timer-wrapper { width: 64px; height: 64px; position: relative; flex-shrink: 0; background: transparent; border: 0; padding: 0; }
-  .timer-ring { position: absolute; inset: 0; }
-  .timer-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .timer-value { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--text); letter-spacing: -0.4px; line-height: 1; font-variant-numeric: tabular-nums; }
-  .timer-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-top: 3px; }
-  .dialog-center { text-align: center; margin-bottom: 20px; }
-  .dialog-emoji { font-size: 32px; margin-bottom: 8px; }
-  .dialog-title { font-family: var(--font-sans); font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
-  .dialog-desc { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 6px; }
-  .stack { display: flex; flex-direction: column; gap: 8px; }
-  .effort-btn { padding: 14px; border-radius: 14px; border: 0.5px solid var(--border); background: rgba(255,255,255,0.04); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 12px; color: inherit; transition: all 0.15s; width: 100%; }
-  .effort-emoji { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 0.5px solid; flex-shrink: 0; }
-  .effort-label { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text); }
-  .effort-desc { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
-  .streak-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; padding: 24px; animation: fadeIn 0.3s ease; }
-  .stack-center { display: flex; flex-direction: column; align-items: center; }
-  .streak-flame { font-size: 80px; line-height: 1; animation: flameBounce 0.6s ease infinite alternate; }
-  .streak-count { font-family: var(--font-sans); font-size: 96px; font-weight: 700; color: var(--text); letter-spacing: -4px; line-height: 1; margin-top: 4px; }
-  .streak-subtitle { font-family: var(--font-mono); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-top: 6px; }
-  .streak-encourage { font-family: var(--font-sans); font-size: 17px; font-weight: 600; margin-top: 14px; opacity: 1; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes flameBounce { from { transform: translateY(0); } to { transform: translateY(-8px); } }
 </style>
