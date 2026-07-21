@@ -1,7 +1,7 @@
 // ── App Shell ──
 // Router, state management, event bus
 
-const APP_VERSION = 'v1.92 · 2026-07-15 · Feature flag: SvelteKit migration scaffolding'
+const APP_VERSION = 'v1.93 · 2026-07-20 · Feature flag: SvelteKit migration scaffolding'
 
 // ── Push Notification Config ──
 // PUSH_SERVER_URL and VAPID_PUBLIC_KEY are loaded from push-config.js

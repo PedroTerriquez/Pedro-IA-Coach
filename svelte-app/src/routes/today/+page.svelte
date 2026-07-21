@@ -11,8 +11,6 @@
   import { runCoachAnalysis } from '$lib/coach-analysis'
   import Warmup from '$lib/components/Warmup.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
-  import SectionLabel from '$lib/components/SectionLabel.svelte'
-  import Chip from '$lib/components/Chip.svelte'
   import PhaseCard from '$lib/components/PhaseCard.svelte'
   import LockedCard from '$lib/components/LockedCard.svelte'
   import GlowCard from '$lib/components/GlowCard.svelte'
@@ -21,7 +19,7 @@
   import CoachResultCard from '$lib/components/CoachResultCard.svelte'
   import RestDayView from '$lib/components/RestDayView.svelte'
   import OnboardingView from '$lib/components/OnboardingView.svelte'
-  import TimerRing from '$lib/components/TimerRing.svelte'
+  import PhaseHeader from '$lib/components/PhaseHeader.svelte'
   import EffortSelector from '$lib/components/EffortSelector.svelte'
   import Button from '$lib/components/Button.svelte'
   import StreakOverlay from '$lib/components/StreakOverlay.svelte'
@@ -474,18 +472,13 @@
     <RestDayView {weekObj} {weekIdx} />
   {:else}
     {#if phase === 'warmup' && !showWarmup}
-      <div class="phase-header">
-        <SectionLabel {accent}>Hoy en el gimnasio</SectionLabel>
-        <div class="hero-row">
-          <div class="hero-title">{day?.name || ''}</div>
-          <div class="hero-actions">
-            {#if weekObj}
-              <Chip color="{accent}1c" textColor={accent}>{weekObj.name}{weekObj.tag ? ' · ' + weekObj.tag : ''}</Chip>
-            {/if}
-          </div>
-        </div>
-        <div class="hero-subtitle">{day?.subtitle || ''}</div>
-      </div>
+      <PhaseHeader
+        {accent}
+        dayName={day?.name || ''}
+        daySubtitle={day?.subtitle || ''}
+        weekName={weekObj?.name || ''}
+        weekTag={weekObj?.tag || ''}
+      />
 
       <div class="phase-list">
         {#if hasWarmup}
@@ -554,24 +547,17 @@
     {/if}
 
     {#if phase === 'training' && warmupDone && day && !showWarmup && !showStretch && !showCoach && !coachCardMode}
-      <div class="phase-header">
-        <div class="eyebrow-row">
-          <span class="live-dot" style="background:{accent};box-shadow:0 0 8px {accent}"></span>
-          Hoy en el gimnasio
-        </div>
-        <div class="hero-row">
-          <div class="hero-title">{day?.name || ''}</div>
-          <div class="hero-actions">
-            {#if weekObj}
-              <Chip color="{accent}1c" textColor={accent}>{weekObj.name}{weekObj.tag ? ' · ' + weekObj.tag : ''}</Chip>
-            {/if}
-            {#if startedAt && !endedAt}
-              <TimerRing sweepPct={timerSweepPct} display={timerDisplay || '—'} {accent} />
-            {/if}
-          </div>
-        </div>
-        <div class="hero-subtitle">{day?.subtitle || ''}</div>
-      </div>
+      <PhaseHeader
+        {accent}
+        dayName={day?.name || ''}
+        daySubtitle={day?.subtitle || ''}
+        weekName={weekObj?.name || ''}
+        weekTag={weekObj?.tag || ''}
+        showLiveDot
+        showTimer={!!startedAt && !endedAt}
+        {timerDisplay}
+        {timerSweepPct}
+      />
 
       {#if todayExercises.length > 0}
         <TrainingCard
@@ -617,12 +603,5 @@
 
 <style>
   .today-page { height: 100%; box-sizing: border-box; padding: 58px 16px 104px; display: flex; flex-direction: column; }
-  .hero-title { font-family: var(--font-sans); font-size: 42px; font-weight: 700; color: var(--text); letter-spacing: -1.8px; line-height: 1; margin-top: 6px; }
-  .hero-subtitle { margin-top: 5px; font-size: 13px; color: rgba(255,255,255,0.5); }
-  .hero-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 7px; }
-  .hero-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-  .eyebrow-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; font-weight: 600; }
-  .live-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-  .phase-header { flex-shrink: 0; padding: 0 4px 2px; }
   .phase-list { flex: 1; min-height: 0; margin-top: 16px; display: flex; flex-direction: column; gap: 11px; }
 </style>
