@@ -4,6 +4,7 @@
   import { toast } from '$lib/stores/ui'
   import { getAllLogs, getSettings, saveSettings } from '$lib/storage'
   import FriendCard from '$lib/components/FriendCard.svelte'
+  import SearchResults from '$lib/components/SearchResults.svelte'
 
   let username = $state('')
   let inputUsername = $state('')
@@ -208,30 +209,12 @@
         bind:value={searchQuery}
       >
     </div>
-    {#if searchQuery.length >= 1 || searching || searchResults.length > 0}
-      <div class="search-results" id="search-results">
-        {#if searching}
-          <div class="friends-empty">Buscando...</div>
-        {:else if searchResults.length === 0}
-          <div class="friends-empty">No se encontraron usuarios</div>
-        {:else}
-          {#each searchResults as r (r.username)}
-            <div class="search-result-item">
-              <div class="search-result-info">
-                <span class="search-result-name">{r.username}</span>
-                <span class="search-result-streak">{r.streak} {r.streak === 1 ? 'día' : 'días'}</span>
-              </div>
-              <button
-                class="search-result-add"
-                onclick={() => addFriend(r.username)}
-                disabled={addingFriend === r.username}
-              >
-                {addingFriend === r.username ? '...' : 'Agregar'}
-              </button>
-            </div>
-          {/each}
-        {/if}
-      </div>
-    {/if}
+    <SearchResults
+      query={searchQuery}
+      {searching}
+      results={searchResults}
+      {addingFriend}
+      onadd={addFriend}
+    />
   </div>
 {/if}
