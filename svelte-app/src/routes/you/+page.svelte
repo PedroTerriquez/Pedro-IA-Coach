@@ -22,6 +22,8 @@
   import CoachIACard from '$lib/components/CoachIACard.svelte'
   import ExerciseListItem from '$lib/components/ExerciseListItem.svelte'
   import MaintenanceCard from '$lib/components/MaintenanceCard.svelte'
+  import NewExerciseForm from '$lib/components/NewExerciseForm.svelte'
+  import ProgramCreateForm from '$lib/components/ProgramCreateForm.svelte'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -583,12 +585,11 @@
 
     {:else if activeTab === 'programas'}
       <div class="section-pad-sm">
-        <div class="card program-create-card">
-          <div class="row">
-            <input bind:value={newProgramName} placeholder="Nombre del nuevo programa" class="text-input" style="flex:1">
-            <button onclick={createNewProgram} class="btn-accent">+ Nuevo</button>
-          </div>
-        </div>
+        <ProgramCreateForm
+          value={newProgramName}
+          oninput={(val) => newProgramName = val}
+          oncreate={createNewProgram}
+        />
       </div>
 
       {#if programs.length === 0}
@@ -627,17 +628,14 @@
       </div>
 
       {#if showNewExercise}
-        <div class="card new-ex-card">
-          <div class="card-title">Nuevo ejercicio</div>
-          <div class="stack">
-            <input class="input-field" bind:value={newExerciseName} placeholder="Nombre del ejercicio">
-            <input class="input-field" bind:value={newExerciseMuscle} placeholder="Músculo (ej: Pecho, Espalda)">
-            <div class="row">
-              <button onclick={saveNewExercise} class="btn-primary-cta">Guardar</button>
-              <button onclick={resetNewExercise} class="btn-secondary">Cancelar</button>
-            </div>
-          </div>
-        </div>
+        <NewExerciseForm
+          name={newExerciseName}
+          muscle={newExerciseMuscle}
+          onnameinput={(val) => newExerciseName = val}
+          onmuscleinput={(val) => newExerciseMuscle = val}
+          onsave={saveNewExercise}
+          oncancel={resetNewExercise}
+        />
       {/if}
 
       <input type="text" bind:value={exerciseSearch} placeholder="Buscar ejercicio…" class="search-input">
@@ -763,13 +761,11 @@
   .text-input { padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
   .btn-accent { flex-shrink: 0; padding: 10px 18px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
   .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
-  .program-create-card { margin: 0 20px; padding: 14px 16px; }
   .textarea-field { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5; }
   .textarea-lg { padding: 12px; line-height: 1.6; }
   .btn-accent-full { margin: 0 16px 14px; width: calc(100% - 32px); padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
   .ex-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 12px; }
   .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
-  .new-ex-card { margin: 0 20px 12px; padding: 14px 16px; }
   .search-input { margin: 0 20px 10px; padding: 10px 14px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--font-sans); font-size: 14px; outline: none; width: calc(100% - 40px); box-sizing: border-box; }
   .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 20px; }
   .btn-accent-sm { padding: 7px 14px; border-radius: 8px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
