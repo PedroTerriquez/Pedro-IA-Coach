@@ -3,6 +3,7 @@
   import { onMount } from 'svelte'
   import { toast } from '$lib/stores/ui'
   import { getAllLogs, getSettings, saveSettings } from '$lib/storage'
+  import FriendCard from '$lib/components/FriendCard.svelte'
 
   let username = $state('')
   let inputUsername = $state('')
@@ -189,14 +190,12 @@
         <div class="friends-empty">Aún no tienes amigos. Busca y agrega amigos arriba. 👆</div>
       {:else}
         {#each friends as f (f.username)}
-          <div class="friend-card">
-            <div class="friend-avatar">{f.username.charAt(0).toUpperCase()}</div>
-            <div class="friend-info">
-              <div class="friend-name">{f.username}</div>
-              <div class="friend-status">{f.exercisedToday ? 'Hoy ✅' : (f.lastUpdate ? 'Inactivo' : '—')}</div>
-            </div>
-            <div class="friend-streak">{f.streak}<span class="unit">{f.streak === 1 ? 'día' : 'días'}</span></div>
-          </div>
+          <FriendCard
+            username={f.username}
+            streak={f.streak}
+            exercisedToday={f.exercisedToday}
+            lastUpdate={f.lastUpdate}
+          />
         {/each}
       {/if}
     </div>
