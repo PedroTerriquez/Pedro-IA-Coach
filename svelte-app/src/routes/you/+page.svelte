@@ -24,6 +24,7 @@
   import MaintenanceCard from '$lib/components/MaintenanceCard.svelte'
   import NewExerciseForm from '$lib/components/NewExerciseForm.svelte'
   import ProgramCreateForm from '$lib/components/ProgramCreateForm.svelte'
+  import Button from '$lib/components/Button.svelte'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -624,7 +625,7 @@
     {:else if activeTab === 'ejercicios'}
       <div class="ex-header">
         <div id="ex-count" class="ex-count">{exercises.length} ejercicios</div>
-        <button class="btn-accent" onclick={() => showNewExercise = !showNewExercise}>+ Nuevo</button>
+        <Button variant="primary" {accent} onclick={() => showNewExercise = !showNewExercise}>+ Nuevo</Button>
       </div>
 
       {#if showNewExercise}
@@ -678,7 +679,7 @@
           <textarea id="ai-input" bind:value={aiInput} rows="8" placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" class="textarea-field textarea-lg"></textarea>
           <div id="ai-status" class="status-text">{aiStatus}</div>
         </div>
-        <button id="ai-import-btn" class="btn-accent-full" onclick={submitAIImport} disabled={importingAI} style="cursor:{importingAI ? 'default' : 'pointer'};background:{importingAI ? 'rgba(255,255,255,0.08)' : accent};color:{importingAI ? 'rgba(255,255,255,0.5)' : '#0a0a0a'}">{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</button>
+        <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI} style="cursor:{importingAI ? 'default' : 'pointer'};background:{importingAI ? 'rgba(255,255,255,0.08)' : accent};color:{importingAI ? 'rgba(255,255,255,0.5)' : '#0a0a0a'}">{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
       </div>
 
       <div class="section-label-wrap"><SectionLabel {accent}>Importar</SectionLabel></div>
@@ -759,18 +760,14 @@
   .row { display: flex; gap: 10px; align-items: center; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
   .text-input { padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
-  .btn-accent { flex-shrink: 0; padding: 10px 18px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
   .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
   .textarea-field { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5; }
   .textarea-lg { padding: 12px; line-height: 1.6; }
-  .btn-accent-full { margin: 0 16px 14px; width: calc(100% - 32px); padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
   .ex-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 12px; }
   .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
   .search-input { margin: 0 20px 10px; padding: 10px 14px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--font-sans); font-size: 14px; outline: none; width: calc(100% - 40px); box-sizing: border-box; }
   .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 20px; }
   .btn-accent-sm { padding: 7px 14px; border-radius: 8px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
-  .btn-primary-cta { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent, #d4ff3a); color: var(--bg); font-family: var(--font-sans); font-size: 13px; font-weight: 700; }
-  .btn-secondary { flex: 1; padding: 10px; border-radius: 10px; border: 0; cursor: pointer; background: var(--border); color: rgba(255,255,255,0.6); font-family: var(--font-sans); font-size: 13px; font-weight: 600; }
   .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }
   .dialog-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px; padding: 4px; }
