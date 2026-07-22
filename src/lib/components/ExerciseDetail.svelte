@@ -153,7 +153,7 @@
           <div class="nav-pill-row">
             <button class="pill-btn pill-prev" disabled={!hasPrev} onclick={() => onNavigate?.('prev')} aria-label="Anterior">
               <div class="pill-icon">
-                <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M10 5H1m0 0l4-4M1 5l4 4" stroke="rgba(255,255,255,0.25)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M10 5H1m0 0l4-4M1 5l4 4" stroke={hasPrev ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </div>
               <div class="pill-label-col">
                 <span class="pill-label">Anterior</span>
@@ -173,7 +173,7 @@
                 <span class="pill-name">Siguiente</span>
               </div>
               <div class="pill-icon">
-                <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M1 5h9m0 0L6 1m4 4L6 9" stroke="rgba(255,255,255,0.25)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M1 5h9m0 0L6 1m4 4L6 9" stroke={hasNext ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </div>
             </button>
           </div>
@@ -280,12 +280,16 @@
     border: 0.5px solid var(--border);
     border-radius: 12px;
     padding: 8px 12px;
-    cursor: default;
+    cursor: pointer;
     color: inherit;
     text-align: left;
     display: flex;
     align-items: center;
     gap: 9px;
+    opacity: 1;
+  }
+  .pill-btn:disabled {
+    cursor: default;
     opacity: 0.45;
   }
   .pill-prev {
@@ -320,7 +324,7 @@
     font-size: 9px;
     letter-spacing: 1.3px;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.45);
     font-weight: 600;
     line-height: 1;
   }
@@ -328,13 +332,17 @@
     font-family: var(--font-sans);
     font-size: 12px;
     font-weight: 600;
-    color: rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.75);
     letter-spacing: -0.1px;
     line-height: 1.25;
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .pill-btn:disabled .pill-label,
+  .pill-btn:disabled .pill-name {
+    color: rgba(255,255,255,0.3);
   }
   .iniciar-btn {
     flex-shrink: 0;
