@@ -154,11 +154,11 @@
 </script>
 
 {#if initialLoading}
-  <div class="friends-view">
+  <div class="page">
     <div class="friends-empty" id="friends-list">Cargando...</div>
   </div>
 {:else if !username}
-  <div class="username-prompt" id="username-prompt">
+  <div class="page" style="padding: 40px 20px;">
     <h2>👋 Bienvenido a Amigos</h2>
     <p>Elige un nombre de usuario para compartir tu racha con amigos.</p>
     <input
@@ -180,8 +180,10 @@
     </button>
   </div>
 {:else}
-  <div class="friends-view">
-    <div class="friends-header">👥 Amigos</div>
+  <div class="page">
+    <div class="page-header">
+      <div class="friends-header">👥 Amigos</div>
+    </div>
     <div class="friends-my-streak">
       🔥 Tu racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'día' : 'días'} {exercisedToday ? '· Hoy ✅' : ''}
     </div>
