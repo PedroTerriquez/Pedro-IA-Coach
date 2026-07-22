@@ -180,7 +180,7 @@
   </div>
 {:else}
   <div class="page">
-    <div class="page-header-row">
+    <div class="page-header">
       <div class="min-0">
         <div class="eyebrow">
           {planEditing ? 'Reprogramar' : 'Tu programa'}
@@ -331,7 +331,7 @@
 
 <style>
   .no-program-msg { padding: 56px 20px; text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; }
-  .page-header-row { padding: 56px 20px 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
   .min-0 { min-width: 0; }
   .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.6px; color: rgba(255,255,255,0.45); text-transform: uppercase; }
   .page-title { font-family: var(--font-sans); font-size: 38px; font-weight: 700; color: var(--text); letter-spacing: -1.5px; line-height: 1; margin-top: 4px; }
