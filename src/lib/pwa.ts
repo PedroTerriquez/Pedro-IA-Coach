@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.92 · 2026-07-15'
+export const APP_VERSION = 'v1.93 · 2026-07-21'
 
 let deferredPrompt: any = null
 
