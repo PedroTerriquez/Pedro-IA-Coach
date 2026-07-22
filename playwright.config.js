@@ -11,7 +11,7 @@ module.exports = defineConfig({
     browserName: 'chromium',
   },
   webServer: {
-    command: 'cd svelte-app && npm run build && npx http-server build -p 8080 -c-1 --silent',
+    command: 'npm run build && npx http-server build -p 8080 -c-1 --silent',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
   },

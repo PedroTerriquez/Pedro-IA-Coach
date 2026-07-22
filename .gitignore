@@ -1,7 +1,29 @@
-.env
-*.bak
-.DS_Store
 node_modules/
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Project
+*.bak
 .opencode/
 push-config.js
 test-results/
