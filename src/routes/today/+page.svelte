@@ -464,7 +464,7 @@
   let doneStepsVal = $derived((warmupDone ? 1 : 0) + (phase === 'stretch' || phase === 'complete' || stretchDone ? exercisesTotal : todayExDone) + (stretchDone || showCoach ? 1 : 0))
 </script>
 
-<div class="page today-page">
+<div class="page">
   {#if !loaded}
     <EmptyState message="Cargando..." />
   {:else if noProgram}
@@ -603,6 +603,6 @@
 {/if}
 
 <style>
-  .today-page { height: 100%; box-sizing: border-box; padding: 58px 16px 104px; display: flex; flex-direction: column; }
+  .page { padding: 56px 16px 104px; display: flex; flex-direction: column; }
   .phase-list { flex: 1; min-height: 0; margin-top: 16px; display: flex; flex-direction: column; gap: 11px; }
 </style>
