@@ -1,5 +1,7 @@
 <script lang="ts">
   import { bodyPartsFor } from '$lib/data/body-parts'
+  import Icon from './Icon.svelte'
+  import Button from './Button.svelte'
 
   interface ExerciseCoach {
     name: string
@@ -86,7 +88,7 @@
   <div class="coach-panel" onclick={(e) => e.stopPropagation()}>
     <div class="coach-header-bar">
       <div class="coach-avatar" style="background:{accent}1c;border-color:{accent}3a">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" fill="none"/><circle cx="9" cy="8.2" r="0.95" fill="{accent}"/><circle cx="6" cy="8.2" r="0.95" fill="{accent}"/><circle cx="12" cy="8.2" r="0.95" fill="{accent}"/></svg>
+        <Icon name="coach" size={18} color={accent} />
       </div>
       <div class="coach-header-info">
         <div class="coach-header-name">Coach IA</div>
@@ -109,7 +111,7 @@
           {:else}
             <div class="bubble-row ai-row">
               <div class="ai-avatar-sm" style="background:{accent}1c;border-color:{accent}3a">
-                <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" fill="none"/><circle cx="9" cy="8.2" r="0.95" fill="{accent}"/><circle cx="6" cy="8.2" r="0.95" fill="{accent}"/><circle cx="12" cy="8.2" r="0.95" fill="{accent}"/></svg>
+                <Icon name="coach" size={13} color={accent} />
               </div>
               <div>
                 <div class="bubble ai-bubble">
@@ -125,7 +127,7 @@
         {#if loading}
           <div class="bubble-row ai-row">
             <div class="ai-avatar-sm" style="background:{accent}1c;border-color:{accent}3a">
-              <svg width="13" height="13" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" fill="none"/><circle cx="9" cy="8.2" r="0.95" fill="{accent}"/><circle cx="6" cy="8.2" r="0.95" fill="{accent}"/><circle cx="12" cy="8.2" r="0.95" fill="{accent}"/></svg>
+              <Icon name="coach" size={13} color={accent} />
             </div>
             <div class="typing-indicator">
               <span class="typing-dot" style="background:{accent}"></span>
@@ -141,7 +143,7 @@
       <div class="pain-picker">
         <div class="pain-header">
           <span class="pain-title">¿Dónde lo sientes?</span>
-          <button class="pain-cancel" onclick={() => showBodyParts = false}>× cancelar</button>
+          <Button variant="text" onclick={() => showBodyParts = false}>× cancelar</Button>
         </div>
         <div class="pain-parts">
           {#each bodyParts as part}
@@ -353,15 +355,6 @@
     text-transform: uppercase;
     color: var(--text-secondary);
     font-weight: 600;
-  }
-  .pain-cancel {
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    padding: 2px;
-    color: var(--text-muted);
-    font-family: var(--font-sans);
-    font-size: 11px;
   }
   .pain-parts {
     display: flex;

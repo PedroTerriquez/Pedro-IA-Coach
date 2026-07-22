@@ -105,7 +105,7 @@
     <div class="page-header-title">Progreso.</div>
   </div>
 
-  <div style="margin:0 20px 16px">
+  <div class="segment-wrap">
     <SegmentedControl
       options={[
         { label: 'Constancia', value: 'constancia' },
@@ -153,7 +153,7 @@
         {#each filtered as e}
           {@const last = getLastWeight(e.logs)}
           {@const delta = getDelta(e.logs)}
-          <button class="ex-card" onclick={() => onOpenExercise(e)}>
+          <button class="card ex-card" onclick={() => onOpenExercise(e)}>
             <div class="ex-info">
               <div class="ex-name">{getExerciseDisplayName(e, $settings.language)}</div>
               <div class="ex-muscle">{e.muscle}</div>
@@ -182,7 +182,9 @@
     flex-direction: column;
   }
 
-
+  .segment-wrap {
+    margin: 0 20px 16px;
+  }
 
   .chips-row {
     display: flex;
@@ -203,10 +205,7 @@
     gap: 10px;
   }
   .ex-card {
-    background: #141414;
-    border-radius: 16px;
     padding: 14px;
-    border: 0.5px solid rgba(255,255,255,0.06);
     cursor: pointer;
     text-align: left;
     display: flex;

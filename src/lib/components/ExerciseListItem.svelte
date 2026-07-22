@@ -2,6 +2,8 @@
   import { resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import type { Exercise } from '$lib/types'
   import Button from './Button.svelte'
+  import TextInput from './TextInput.svelte'
+  import TextArea from './TextArea.svelte'
 
   let {
     exercise,
@@ -88,10 +90,10 @@
     <div class="exercise-expanded">
       {#if editing}
         <div class="stack edit-stack">
-          <input class="input-field" value={editName} oninput={(e) => oneditnameinput((e.target as HTMLInputElement).value)} placeholder="Nombre">
-          <input class="input-field" value={editMuscle} oninput={(e) => oneditmuscleinput((e.target as HTMLInputElement).value)} placeholder="Músculo">
-          <input class="input-field" value={editImgUrl} oninput={(e) => oneditimgurlinput((e.target as HTMLInputElement).value)} placeholder="URL de imagen">
-          <textarea oninput={(e) => onedittipsinput((e.target as HTMLTextAreaElement).value)} rows="3" placeholder="Consejos (uno por línea)" class="input-field textarea-field-sm">{editTips}</textarea>
+          <TextInput value={editName} oninput={oneditnameinput} placeholder="Nombre" />
+          <TextInput value={editMuscle} oninput={oneditmuscleinput} placeholder="Músculo" />
+          <TextInput value={editImgUrl} oninput={oneditimgurlinput} placeholder="URL de imagen" />
+          <TextArea value={editTips} oninput={onedittipsinput} rows={3} placeholder="Consejos (uno por línea)" compact />
           <div>
             <div class="alt-label">Alternativas</div>
             {#each localAlts as alt, i}
@@ -164,5 +166,4 @@
   .input-sm-alt { border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); font-size: 12px; }
   .alt-remove { background: none; border: 0; color: #ff6b6b; cursor: pointer; font-size: 16px; padding: 4px; }
   .btn-add-alt { width: 100%; padding: 8px; border-radius: 8px; border: 0.5px dashed rgba(255,255,255,0.15); cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); font-size: 12px; }
-  .textarea-field-sm { resize: vertical; font-family: inherit; }
 </style>

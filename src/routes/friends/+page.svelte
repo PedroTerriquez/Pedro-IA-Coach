@@ -6,6 +6,8 @@
   import FriendCard from '$lib/components/FriendCard.svelte'
   import SearchResults from '$lib/components/SearchResults.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
+  import TextInput from '$lib/components/TextInput.svelte'
+  import Button from '$lib/components/Button.svelte'
 
   let username = $state('')
   let inputUsername = $state('')
@@ -158,26 +160,24 @@
     <div class="friends-empty" id="friends-list">Cargando...</div>
   </div>
 {:else if !username}
-  <div class="page" style="padding: 40px 20px;">
+  <div class="page username-prompt">
     <h2>👋 Bienvenido a Amigos</h2>
     <p>Elige un nombre de usuario para compartir tu racha con amigos.</p>
-    <input
-      type="text"
-      id="username-input"
-      placeholder="tu_usuario"
-      maxlength="20"
-      autocomplete="off"
-      oninput={(e) => inputUsername = (e.target as HTMLInputElement).value}
-    >
-    <div class="error-msg" id="username-error" style="display:none"></div>
-    <button
-      class="btn-primary"
-      id="username-btn"
+    <div class="username-input-wrap">
+      <TextInput
+        bind:value={inputUsername}
+        placeholder="tu_usuario"
+        maxlength={20}
+        autocomplete="off"
+      />
+    </div>
+    <Button
+      variant="primary"
       onclick={handleSubmitUsername}
       disabled={inputUsername.trim().length < 2 || saving}
     >
       {saving ? 'Registrando...' : 'Listo'}
-    </button>
+    </Button>
   </div>
 {:else}
   <div class="page">
@@ -215,3 +215,10 @@
     />
   </div>
 {/if}
+
+<style>
+  .username-input-wrap {
+    max-width: 280px;
+    margin: 0 auto 16px;
+  }
+</style>

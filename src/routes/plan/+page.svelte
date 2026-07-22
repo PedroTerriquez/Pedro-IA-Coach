@@ -73,13 +73,24 @@
     const originalIdx = order[idx]
     if (originalIdx < week.days.length) {
       const day = week.days[originalIdx]
-      if (day && day.name !== 'Rest' && day.name !== 'Descanso') {
+      if (day && day.name !== 'Rest' && day.name !== 'Descanso' && day.exercises?.length > 0) {
         void loadWeights(day.exercises)
       }
     }
   })
 
   async function loadWeights(dayExercises: ProgramExercise[]) {
+    // Guard against empty lists: with no exercises, the loop below never reaches an
+    // `await`, so this whole function would otherwise run synchronously to completion
+    // inside the calling $effect's reactive tracking window. That makes the final
+    // `exerciseWeights = { ...exerciseWeights, ... }` line both read AND write the same
+    // $state from within the effect that's still on the call stack, which Svelte reports
+    // as `effect_update_depth_exceeded` (an effect re-triggering itself forever). Bailing
+    // out early avoids touching `exerciseWeights` at all when there's nothing to load —
+    // when there ARE exercises, the `await Storage.getLogsForExercise(...)` below always
+    // yields to a later microtask first, so the effect has already finished by the time
+    // `exerciseWeights` is written, and this loop never occurs.
+    if (!dayExercises || dayExercises.length === 0) return
     const weights: Record<string, number> = {}
     for (const ex of dayExercises) {
       const exId = ex.exerciseId || (ex as any).id
@@ -182,10 +193,10 @@
   <div class="page">
     <div class="page-header">
       <div class="min-0">
-        <div class="eyebrow">
+        <div class="page-header-eyebrow">
           {planEditing ? 'Reprogramar' : 'Tu programa'}
         </div>
-        <div class="page-title">
+        <div class="page-header-title">
           {planEditing ? 'Mover.' : 'Plan.'}
         </div>
       </div>
@@ -333,8 +344,6 @@
   .no-program-msg { padding: 56px 20px; text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; }
   .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
   .min-0 { min-width: 0; }
-  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.6px; color: rgba(255,255,255,0.45); text-transform: uppercase; }
-  .page-title { font-family: var(--font-sans); font-size: 38px; font-weight: 700; color: var(--text); letter-spacing: -1.5px; line-height: 1; margin-top: 4px; }
   .btn-reprogram { flex-shrink: 0; padding: 9px 15px; border-radius: 9999px; cursor: pointer; font-family: var(--font-sans); font-size: 13px; font-weight: 700; letter-spacing: -0.1px; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
   .section-pad-sm { padding: 0 20px; margin-bottom: 14px; }
   .section-pad-md { padding: 0 20px; margin-bottom: 16px; }

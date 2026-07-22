@@ -1,5 +1,6 @@
 <script lang="ts">
   import ExerciseRow from './ExerciseRow.svelte'
+  import ProgressBar from './ProgressBar.svelte'
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
 
   let {
@@ -10,7 +11,8 @@
     todayExDone = 0,
     exercisesTotal = 0,
     exercisesById = {},
-    onclick = () => {}
+    onclick = () => {},
+    onExerciseClick = null
   }: {
     day: { name?: string; exercises?: Array<{ exerciseId: string; sets?: number; reps?: string }> }
     accent?: string
@@ -20,6 +22,7 @@
     exercisesTotal?: number
     exercisesById?: Record<string, any>
     onclick?: () => void
+    onExerciseClick?: ((idx: number) => void) | null
   } = $props()
 </script>
 
@@ -43,14 +46,11 @@
     <div class="training-subtitle">{exercisesTotal} ejercicios</div>
   </div>
   <div class="progress-row">
-    <div class="progress-track">
-      <div class="progress-fill" style="background:{accent};width:{exercisesTotal > 0 ? (todayExDone / exercisesTotal) * 100 : 0}%"></div>
-    </div>
-    <span class="progress-count" style="color:{todayExDone > 0 ? accent : 'rgba(255,255,255,0.45)'}">{todayExDone}/{exercisesTotal}</span>
+    <ProgressBar done={todayExDone} total={exercisesTotal} {accent} />
   </div>
   {#if day?.exercises && day.exercises.length > 0}
     <div class="exercise-list">
-      {#each day.exercises as ex (ex.exerciseId)}
+      {#each day.exercises as ex, i (ex.exerciseId)}
         {@const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any}
         {@const imgUrl = resolveExerciseMedia(resolved).imgUrl}
         <ExerciseRow
@@ -60,6 +60,7 @@
           sets={ex.sets}
           reps={ex.reps}
           {accent}
+          onclick={onExerciseClick ? (e?: MouseEvent) => { e?.stopPropagation(); onExerciseClick!(i) } : undefined}
         />
       {/each}
     </div>
@@ -140,29 +141,6 @@
 
   .progress-row {
     margin-top: 12px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
-
-  .progress-track {
-    flex: 1;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255,255,255,0.1);
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.4s;
-  }
-
-  .progress-count {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.4px;
   }
 
   .exercise-list {

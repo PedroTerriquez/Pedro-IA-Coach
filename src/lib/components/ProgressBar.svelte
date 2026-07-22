@@ -2,21 +2,27 @@
   let {
     done = 0,
     total = 1,
-    accent = 'var(--accent)'
+    accent = 'var(--accent)',
+    trackWidth = '',
+    showLabel = true
   }: {
     done?: number
     total?: number
     accent?: string
+    trackWidth?: string
+    showLabel?: boolean
   } = $props()
 
   let pct = $derived(total > 0 ? (done / total) * 100 : 0)
 </script>
 
 <div class="progress-bar">
-  <div class="track">
+  <div class="track" style={trackWidth ? `flex:0 0 auto;width:${trackWidth}` : ''}>
     <div class="fill" style="width:{pct}%;background:{accent}"></div>
   </div>
-  <span class="label" style="color:{done > 0 ? accent : 'rgba(255,255,255,0.45)'}">{done}/{total}</span>
+  {#if showLabel}
+    <span class="label" style="color:{done > 0 ? accent : 'rgba(255,255,255,0.45)'}">{done}/{total}</span>
+  {/if}
 </div>
 
 <style>
@@ -24,6 +30,9 @@
     display: flex;
     align-items: center;
     gap: 7px;
+    width: 100%;
+    flex: 1;
+    min-width: 0;
   }
   .track {
     flex: 1;

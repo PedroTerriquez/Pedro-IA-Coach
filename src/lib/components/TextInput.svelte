@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { FullAutoFill } from 'svelte/elements'
+
   let {
     value = $bindable(''),
     placeholder = '',
@@ -6,7 +8,11 @@
     mono = false,
     disabled = false,
     compact = false,
-    style = ''
+    style = '',
+    maxlength = undefined,
+    autocomplete = undefined,
+    oninput = undefined,
+    onblur = undefined
   }: {
     value?: string
     placeholder?: string
@@ -15,6 +21,10 @@
     disabled?: boolean
     compact?: boolean
     style?: string
+    maxlength?: number
+    autocomplete?: FullAutoFill
+    oninput?: (val: string) => void
+    onblur?: () => void
   } = $props()
 </script>
 
@@ -26,6 +36,10 @@
   {placeholder}
   {disabled}
   {style}
+  {maxlength}
+  {autocomplete}
+  oninput={(e) => oninput?.((e.target as HTMLInputElement).value)}
+  {onblur}
 >
 
 <style>

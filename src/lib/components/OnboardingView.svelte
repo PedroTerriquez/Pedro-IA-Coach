@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation'
   import { ROUTES } from '$lib/routes'
   import GlowCard from './GlowCard.svelte'
+  import Button from './Button.svelte'
 
   let {
     accent = 'var(--accent)',
@@ -24,10 +25,12 @@
       </div>
       <div class="onboard-backup-desc">Haz un respaldo cada 2 semanas desde <strong style="color:{accent}">Perfil → Datos → Exportar</strong>. Así siempre podrás recuperar tu historial si algo le pasa al teléfono.</div>
     </div>
-    <button id="empty-state-start" class="btn-onboard" style="background:{accent};color:#0a0a0a" onclick={() => goto(ROUTES.you)}>
-      Comenzar
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-    </button>
+    <div class="cta-wrap">
+      <Button variant="primary" fullWidth {accent} style="padding:15px;border-radius:14px;font-size:15px;gap:8px" onclick={() => goto(ROUTES.you)}>
+        Comenzar
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </Button>
+    </div>
   </GlowCard>
   <div class="bottom-spacer">
     <div class="hint-text">Toca Comenzar para configurar tu rutina</div>
@@ -44,7 +47,7 @@
   .onboard-backup-card { margin-top: 18px; padding: 14px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 0.5px solid var(--border); }
   .onboard-backup-title { display: flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
   .onboard-backup-desc { margin-top: 6px; font-size: 12.5px; color: rgba(255,255,255,0.5); line-height: 1.5; }
-  .btn-onboard { margin-top: 20px; width: 100%; padding: 15px; border-radius: 14px; border: none; font-family: var(--font-sans); font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; letter-spacing: -0.2px; }
+  .cta-wrap { margin-top: 20px; }
   .bottom-spacer { margin-top: auto; text-align: center; padding: 24px 0 30px; }
   .hint-text { font-size: 12px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); letter-spacing: 1px; }
 </style>

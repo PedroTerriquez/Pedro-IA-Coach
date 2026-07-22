@@ -1,5 +1,6 @@
 <script lang="ts">
   import CardRow from './CardRow.svelte'
+  import TextInput from './TextInput.svelte'
 
   let {
     height = $bindable(''),
@@ -26,11 +27,11 @@
 
 <div class="card">
   <CardRow label="Estatura">
-    <input class="input-field-mono input-narrow" type="number" bind:value={height} onblur={() => onsave('height', height)}>
+    <TextInput type="number" mono bind:value={height} onblur={() => onsave('height', height)} style="width:72px;text-align:right" />
     <span class="unit-label">cm</span>
   </CardRow>
   <CardRow label="Peso">
-    <input class="input-field-mono input-narrow" type="number" bind:value={weight} onblur={() => onsave('weight', weight)}>
+    <TextInput type="number" mono bind:value={weight} onblur={() => onsave('weight', weight)} style="width:72px;text-align:right" />
     <span class="unit-label">kg</span>
   </CardRow>
   <CardRow label="Sexo">
@@ -42,7 +43,7 @@
     </select>
   </CardRow>
   <CardRow label="Edad">
-    <input class="input-field-mono input-narrow" type="number" bind:value={age} onblur={() => onsave('age', age)}>
+    <TextInput type="number" mono bind:value={age} onblur={() => onsave('age', age)} style="width:72px;text-align:right" />
   </CardRow>
   <CardRow label="Objetivo">
     <select class="input-field" bind:value={goal} onchange={() => onsave('goal', goal)}>
@@ -63,11 +64,10 @@
     </select>
   </CardRow>
   <CardRow label="Profesión" last={true}>
-    <input class="input-field" type="text" bind:value={occupation} onblur={() => onsave('occupation', occupation)} placeholder="Ej: Ingeniero, oficinista, repartidor…" style="width:160px">
+    <TextInput type="text" bind:value={occupation} onblur={() => onsave('occupation', occupation)} placeholder="Ej: Ingeniero, oficinista, repartidor…" style="width:160px" />
   </CardRow>
 </div>
 
 <style>
-  .input-narrow { width: 72px; text-align: right; }
   .unit-label { font-size: 12px; color: rgba(255,255,255,0.55); font-family: var(--font-mono); }
 </style>

@@ -26,6 +26,7 @@
   import NewExerciseForm from '$lib/components/NewExerciseForm.svelte'
   import ProgramCreateForm from '$lib/components/ProgramCreateForm.svelte'
   import Button from '$lib/components/Button.svelte'
+  import TextArea from '$lib/components/TextArea.svelte'
   import DataImportSection from '$lib/components/DataImportSection.svelte'
   import DataExportSection from '$lib/components/DataExportSection.svelte'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
@@ -584,7 +585,7 @@
 
       <div class="footer-bar">
         <div class="version-text">{APP_VERSION_STR}</div>
-        <button id="refresh-btn" class="refresh-btn" onclick={refresh}>↻</button>
+        <Button variant="ghost" onclick={refresh}>↻</Button>
       </div>
 
     {:else if activeTab === 'programas'}
@@ -639,7 +640,7 @@
         />
       {/if}
 
-      <div style="margin: 0 20px 10px;"><SearchInput value={exerciseSearch} placeholder="Buscar ejercicio…" oninput={(val) => exerciseSearch = val} /></div>
+      <div class="exercise-search-wrap"><SearchInput value={exerciseSearch} placeholder="Buscar ejercicio…" oninput={(val) => exerciseSearch = val} /></div>
 
       {#if loaded && exercises.length === 0}
         <EmptyState message="No hay ejercicios todavía. Crea tu primero." />
@@ -676,10 +677,12 @@
         <div class="card-content">
           <div class="card-title">Pega tu rutina en texto</div>
           <div class="card-subtitle">Describe tu rutina como se la dirías a un entrenador. La IA creará el programa y los ejercicios automáticamente.</div>
-          <textarea id="ai-input" bind:value={aiInput} rows="8" placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" class="textarea-field textarea-lg"></textarea>
+          <div class="ai-textarea-wrap">
+            <TextArea value={aiInput} rows={8} placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" oninput={(val) => aiInput = val} />
+          </div>
           <div id="ai-status" class="status-text">{aiStatus}</div>
         </div>
-        <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI} style="cursor:{importingAI ? 'default' : 'pointer'};background:{importingAI ? 'rgba(255,255,255,0.08)' : accent};color:{importingAI ? 'rgba(255,255,255,0.5)' : '#0a0a0a'}">{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
+        <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
       </div>
 
       <div class="section-label-wrap"><SectionLabel {accent}>Importar</SectionLabel></div>
@@ -716,7 +719,7 @@
 
       <div class="footer-bar footer-bar-bot">
         <div class="version-text">{APP_VERSION_STR}</div>
-        <button onclick={refresh} class="refresh-btn">↻</button>
+        <Button variant="ghost" onclick={refresh}>↻</Button>
       </div>
     {/if}
   </div>
@@ -748,14 +751,13 @@
   .footer-bar { display: flex; align-items: center; justify-content: space-between; margin: 16px 20px 0; }
   .footer-bar-bot { margin: 16px 20px 40px; }
   .version-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
-  .refresh-btn { padding: 5px 10px; border-radius: 6px; border: 0.5px solid var(--border-medium); cursor: pointer; background: transparent; color: rgba(255,255,255,0.4); font-family: var(--font-sans); font-size: 11px; font-weight: 500; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
   .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
-  .textarea-field { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5; }
-  .textarea-lg { padding: 12px; line-height: 1.6; }
+  .ai-textarea-wrap { margin-top: 10px; }
   .ex-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 12px; }
   .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
   .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 20px; }
+  .exercise-search-wrap { margin: 0 20px 10px; }
   .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }
   .dialog-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px; padding: 4px; }

@@ -40,7 +40,7 @@
       <TextArea value={coachInput} placeholder='Ej: "Cambia press banca por press inclinado", "¿Está balanceada mi rutina?"' {oninput} />
       <div id="prog-coach-status" class="status-text">{coachStatus}</div>
     </div>
-    <div style="margin:0 16px 14px">
+    <div class="submit-wrap">
       <Button variant="primary" fullWidth onclick={onsubmit}>Enviar al coach</Button>
     </div>
     {#if coachResponseVisible}
@@ -58,5 +58,6 @@
   .card-content { padding: 14px 16px; }
   .coach-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .coach-response-wrap { padding: 0 16px 14px; }
+  .submit-wrap { margin: 0 16px 14px; }
   .row { display: flex; gap: 10px; align-items: center; }
 </style>

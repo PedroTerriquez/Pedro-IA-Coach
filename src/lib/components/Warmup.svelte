@@ -1,5 +1,6 @@
 <script lang="ts">
   import Sheet from './Sheet.svelte'
+  import ProgressBar from './ProgressBar.svelte'
   import { WARMUP_GIF_MAP } from '$lib/data/warmup-gifs'
   import { EX_GIF_BASE } from '$lib/data/exercise-dictionary'
 
@@ -168,9 +169,7 @@
 
       <div class="progress-row">
         <div class="step-label">{idx + 1} / {total}</div>
-        <div class="progress-track">
-          <div class="progress-fill" style="background:{accent};width:{((idx + 1) / total) * 100}%"></div>
-        </div>
+        <ProgressBar done={idx + 1} {total} {accent} showLabel={false} />
       </div>
 
       <div
@@ -364,20 +363,6 @@
     letter-spacing: 1.4px;
     color: var(--text-muted);
     font-weight: 500;
-  }
-
-  .progress-track {
-    flex: 1;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--border);
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.3s ease;
   }
 
   .slide-container {

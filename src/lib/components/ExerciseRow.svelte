@@ -10,7 +10,7 @@
     accent?: string
     selectable?: boolean
     selected?: boolean
-    onclick?: () => void
+    onclick?: (e?: MouseEvent) => void
     actions?: import('svelte').Snippet
   } = $props()
 </script>

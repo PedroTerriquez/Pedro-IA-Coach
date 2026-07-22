@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import Button from './Button.svelte'
 
   let {
     title,
@@ -35,17 +36,9 @@
   {#if button}
     {@render button()}
   {:else}
-    <button
-      class="action-btn"
-      class:btn-primary={variant === 'primary'}
-      class:btn-accent-outline={variant === 'accent-outline'}
-      class:btn-muted-outline={variant === 'muted-outline'}
-      style={variant === 'primary' ? `background:${accent};color:#0a0a0a` : ''}
-      {onclick}
-      {disabled}
-    >
+    <Button variant={variant === 'primary' ? 'primary' : 'ghost'} {accent} {onclick} {disabled}>
       {actionLabel}
-    </button>
+    </Button>
   {/if}
 </div>
 
@@ -78,35 +71,5 @@
     font-family: var(--font-mono);
     color: rgba(255,255,255,0.35);
     letter-spacing: 0.2px;
-  }
-  .action-btn {
-    padding: 7px 14px;
-    border-radius: 8px;
-    border: 0;
-    cursor: pointer;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
-    touch-action: manipulation;
-  }
-  .action-btn:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  .btn-primary {
-    background: var(--accent);
-    color: #0a0a0a;
-  }
-  .btn-accent-outline {
-    background: transparent;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.5);
-  }
-  .btn-muted-outline {
-    background: transparent;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.5);
   }
 </style>

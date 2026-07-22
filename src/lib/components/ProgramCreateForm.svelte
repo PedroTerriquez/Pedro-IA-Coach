@@ -13,11 +13,12 @@
 
 <div class="card program-create-card">
   <div class="row">
-    <TextInput
-      bind:value
-      placeholder="Nombre del nuevo programa"
-      style="flex:1"
-    />
+    <div class="input-wrap">
+      <TextInput
+        bind:value
+        placeholder="Nombre del nuevo programa"
+      />
+    </div>
     <Button variant="primary" onclick={oncreate}>+ Nuevo</Button>
   </div>
 </div>
@@ -31,5 +32,9 @@
     display: flex;
     gap: 10px;
     align-items: center;
+  }
+
+  .input-wrap {
+    flex: 1;
   }
 </style>

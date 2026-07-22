@@ -1,5 +1,6 @@
 <script lang="ts">
   import StatusBadge from './StatusBadge.svelte'
+  import ProgressBar from './ProgressBar.svelte'
 
   let {
     phaseLabel,
@@ -66,11 +67,8 @@
     <div class="count-area">
       <div class="count-text">{count} {countLabel}</div>
       {#if progress}
-        <div class="progress-row">
-          <div class="progress-track">
-            <div class="progress-fill" style="width:{progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%"></div>
-          </div>
-          <span class="progress-label" style="color:{progress.done > 0 ? color : 'rgba(255,255,255,0.45)'}">{progress.done}/{progress.total}</span>
+        <div class="progress-wrap">
+          <ProgressBar done={progress.done} total={progress.total} accent={color} trackWidth="64px" />
         </div>
       {/if}
     </div>
@@ -203,29 +201,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .progress-row {
+  .progress-wrap {
     margin-top: 7px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
-  .progress-track {
-    width: 64px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255,255,255,0.1);
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: var(--accent);
-    transition: width 0.4s;
-  }
-  .progress-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.4px;
   }
 
   .action-btn {

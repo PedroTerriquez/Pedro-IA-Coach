@@ -1,5 +1,6 @@
 import { PUSH_SERVER_URL } from '$lib/config'
 import { writable } from 'svelte/store'
+import { sendPushNotification, notifyWatch } from '$lib/push'
 
 const REST_PENDING_CACHE = 'rest-pending'
 const REST_TIMER_CACHE = 'rest-timer'
@@ -188,6 +189,21 @@ export async function completeRest(name: string, tag: string): Promise<void> {
   if (pending) await storeRestPending(pending)
 
   await clearRestTimer()
+}
+
+// Shared "Iniciar" handler for ExerciseDetail's onStartRest — used identically from
+// today/+page.svelte and plan/+page.svelte so both routes trigger the same rest-timer
+// push/watch flow instead of duplicating it.
+export async function startRestFromExercise(data: { name: string; restSec: number; tag: string; sets: number; reps: string; exerciseId: string }): Promise<void> {
+  const { name, restSec, tag, sets, reps, exerciseId } = data
+  await storeRestPending({ name, restSec, tag, exerciseId, sets, reps })
+  const pushCache = await caches.open('push-pending')
+  await pushCache.put('/pending', new Response(JSON.stringify({
+    kind: 'start',
+    exerciseData: { name, restSec, sets, reps, exerciseId }
+  })))
+  const ok = await sendPushNotification(name, `${sets}×${reps} · Tap para iniciar descanso`, tag, { exerciseId })
+  if (!ok) await notifyWatch(name, `${sets}×${reps} · Tap para iniciar descanso`, tag)
 }
 
 export async function cancelRestTimer(tag: string): Promise<void> {

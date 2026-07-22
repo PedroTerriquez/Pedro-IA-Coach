@@ -11,7 +11,7 @@
     children,
     style = ''
   }: {
-    variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
+    variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'text'
     accent?: string
     disabled?: boolean
     fullWidth?: boolean
@@ -28,6 +28,7 @@
   class:btn-secondary={variant === 'secondary'}
   class:btn-danger={variant === 'danger'}
   class:btn-ghost={variant === 'ghost'}
+  class:btn-text={variant === 'text'}
   class:full-width={fullWidth}
   class:btn-sm={size === 'sm'}
   {disabled}
@@ -84,6 +85,14 @@
     padding: 5px 10px;
     border-radius: 6px;
     border: 0.5px solid rgba(255,255,255,0.08);
+  }
+  .btn-text {
+    background: transparent;
+    color: rgba(255,255,255,0.4);
+    font-weight: 500;
+    font-size: 10.5px;
+    padding: 4px 6px;
+    border-radius: 4px;
   }
   .full-width {
     width: 100%;

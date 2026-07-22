@@ -71,9 +71,11 @@
     showDetail = true
   }
 
-  function openExerciseDetail(ex: any) {
-    detailExercises = [ex]
-    detailIdx = 0
+  function openExerciseDetailAt(idx: number) {
+    if (hasWarmup && !warmupDone) return
+    if (todayExercises.length === 0) return
+    detailExercises = todayExercises
+    detailIdx = idx
     showDetail = true
   }
 
@@ -89,6 +91,23 @@
     if (!ok) await notifyWatch(name, `${sets}×${reps} · Tap para iniciar descanso`, tag)
   }
 
+  function logsForExercise(exerciseId: string, source: ExerciseLog[]): ExerciseLog[] {
+    return source
+      .filter(l => l.exerciseId === exerciseId)
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }
+
+  async function refreshExerciseLogs() {
+    allLogs = await Storage.getAllLogs()
+    if (todayExercises.length > 0) {
+      todayExercises = todayExercises.map(ex => ({
+        ...ex,
+        logs: logsForExercise(ex.exerciseId, allLogs)
+      }))
+      if (detailExercises.length > 0) detailExercises = todayExercises
+    }
+  }
+
   function onDetailClose() {
     showDetail = false
     detailExercises = []
@@ -97,6 +116,7 @@
 
   function onDetailLog() {
     loadTodayLogs()
+    refreshExerciseLogs()
   }
 
   function onDetailNavigate(dir: 'prev' | 'next') {
@@ -234,7 +254,8 @@
 
       todayExercises = day.exercises.map(ex => ({
         ...ex,
-        ...(exercisesByIdMap[ex.exerciseId] || {})
+        ...(exercisesByIdMap[ex.exerciseId] || {}),
+        logs: logsForExercise(ex.exerciseId, logs)
       }))
 
       loadTodayLogs()
@@ -568,6 +589,7 @@
           {exercisesTotal}
           {exercisesById}
           onclick={openTrainingDetail}
+          onExerciseClick={openExerciseDetailAt}
         />
       {/if}
     {/if}

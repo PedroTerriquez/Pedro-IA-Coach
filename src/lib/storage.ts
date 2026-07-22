@@ -2,6 +2,7 @@ import { getAll, get, put, del, getByIndex, generateId } from './db'
 import type { Exercise, ExerciseLog, Program, Settings } from './types'
 
 import { findExerciseEntry, findExerciseEntryFuzzy } from '$lib/data/exercise-dictionary'
+import { toast } from '$lib/stores/ui'
 
 function toLocalDateStr(date: Date): string {
   const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -10,14 +11,7 @@ function toLocalDateStr(date: Date): string {
 function getToday(): string { return toLocalDateStr(new Date()) }
 
 export function showToast(message: string, isError = false): void {
-  const existing = document.getElementById('backup-toast')
-  if (existing) existing.remove()
-  const toast = document.createElement('div')
-  toast.id = 'backup-toast'
-  toast.textContent = message
-  toast.style.cssText = `position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:12px;z-index:9999;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;background:${isError ? '#2a0f0f' : '#1a1a1a'};color:${isError ? '#ff6b6b' : '#fafafa'};border:0.5px solid ${isError ? 'rgba(255,107,107,0.25)' : 'rgba(255,255,255,0.08)'};backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);max-width:80%;text-align:center;transition:opacity 0.3s;`
-  document.body.appendChild(toast)
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300) }, 3500)
+  toast.show(message, isError)
 }
 
 const BACKUP_PREFIX = 'idb_backup_'

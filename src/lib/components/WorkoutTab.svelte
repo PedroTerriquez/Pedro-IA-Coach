@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Button from './Button.svelte'
+
   let {
     exercise,
     accent = 'var(--accent)',
@@ -101,7 +103,7 @@
         <div class="sr-panel">
           <div class="sr-header">
             <span class="sr-title">Series y repeticiones</span>
-            <button class="sr-remove" onclick={() => trackSR = false}>× quitar</button>
+            <Button variant="text" onclick={() => trackSR = false}>× quitar</Button>
           </div>
           <div class="sr-grid">
             <div class="mini-stepper">
@@ -141,7 +143,9 @@
       </button>
     {/if}
     {#if loggedToday}
-      <button class="clear-btn" onclick={() => onClear?.()}>× Eliminar registro de hoy</button>
+      <div class="clear-btn-wrap">
+        <Button variant="text" fullWidth onclick={() => onClear?.()}>× Eliminar registro de hoy</Button>
+      </div>
     {/if}
   </div>
 </div>
@@ -303,15 +307,6 @@
     color: rgba(255,255,255,0.5);
     font-weight: 600;
   }
-  .sr-remove {
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    color: rgba(255,255,255,0.4);
-    font-family: var(--font-sans);
-    font-size: 10.5px;
-    padding: 2px 4px;
-  }
   .sr-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -397,17 +392,8 @@
     cursor: default;
     box-shadow: none;
   }
-  .clear-btn {
+  .clear-btn-wrap {
     margin-top: 4px;
-    width: 100%;
-    padding: 5px;
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    color: rgba(255,255,255,0.4);
-    font-family: var(--font-sans);
-    font-size: 10.5px;
-    letter-spacing: 0.2px;
     position: relative;
     z-index: 1;
   }

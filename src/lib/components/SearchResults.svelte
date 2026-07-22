@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Button from './Button.svelte'
+
   let {
     query = '',
     searching = false,
@@ -29,13 +31,14 @@
             <span class="sr-name">{r.username}</span>
             <span class="sr-streak">{r.streak} {r.streak === 1 ? 'día' : 'días'}</span>
           </div>
-          <button
-            class="sr-add"
+          <Button
+            variant="primary"
+            size="sm"
             onclick={() => onadd?.(r.username)}
             disabled={addingFriend === r.username}
           >
             {addingFriend === r.username ? '...' : 'Agregar'}
-          </button>
+          </Button>
         </div>
       {/each}
     {/if}
@@ -67,16 +70,4 @@
   .sr-info { display: flex; flex-direction: column; gap: 2px; }
   .sr-name { font-size: 14px; font-weight: 600; color: var(--text); }
   .sr-streak { font-size: 12px; color: var(--text-muted); }
-  .sr-add {
-    padding: 6px 14px;
-    border-radius: 8px;
-    border: 0;
-    background: var(--accent, #d4ff3a);
-    color: #0a0a0a;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .sr-add:disabled { opacity: 0.5; cursor: default; }
 </style>

@@ -7,6 +7,7 @@
   import ExerciseHero from './ExerciseHero.svelte'
   import WorkoutTab from './WorkoutTab.svelte'
   import HistoryTab from './HistoryTab.svelte'
+  import Icon from './Icon.svelte'
 
   function getToday(): string {
     const d = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
@@ -249,7 +250,7 @@
 
       <!-- Coach FAB -->
       <button id="coach-fab" class="coach-fab" style="border-color:{accent}3a;background:{accent}1a;color:{accent}" onclick={() => chatOpen = true}>
-        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8.2c0-2.8 2.9-5 6.5-5s6.5 2.2 6.5 5-2.9 5-6.5 5c-.7 0-1.4-.08-2-.23L3.2 14.7l.5-2.4C2.95 11.4 2.5 9.9 2.5 8.2z"/><circle cx="9" cy="8.2" r="0.95" fill="currentColor"/><circle cx="6" cy="8.2" r="0.95" fill="currentColor"/><circle cx="12" cy="8.2" r="0.95" fill="currentColor"/></svg>
+        <Icon name="coach" size={14} />
         Coach IA
       </button>
 

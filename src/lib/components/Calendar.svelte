@@ -5,6 +5,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
 <script lang="ts">
   import * as storage from '$lib/storage'
   import ExerciseRow from './ExerciseRow.svelte'
+  import Button from './Button.svelte'
   import { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr, makeDayStatusFn, computeWeekStreak, computeBestWeekStreak } from '$lib/calendar-utils'
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
@@ -244,9 +245,9 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
         <div class="detail-missed-note">
           No registraste este entrenamiento. Estaba programado <strong>{selRec.day ? selRec.day.name : ''}</strong>{selRec.day && selRec.day.subtitle ? ` (${selRec.day.subtitle})` : ''}.
         </div>
-        <button class="detail-mark-btn" style="border-color:{accent}55;background:{accent}1c;color:{accent}" onclick={markAsDone}>
+        <Button variant="secondary" fullWidth style="margin-top:12px;padding:12px;border-radius:var(--radius-md);border:0.5px solid {accent}55;background:{accent}1c;color:{accent};font-size:14px" onclick={markAsDone}>
           Marcar como hecho
-        </button>
+        </Button>
       {/if}
 
       {#if !selRec.isRest && selRec.status !== 'none' && selRec.exercises.length > 0}
@@ -606,18 +607,6 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
     font-size: 12.5px;
     color: var(--text);
     line-height: 1.5;
-  }
-  .detail-mark-btn {
-    margin-top: 12px;
-    width: 100%;
-    padding: 12px;
-    border-radius: var(--radius-md);
-    border: 0.5px solid;
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
   }
   .detail-exercises {
     margin-top: 14px;
