@@ -4,5 +4,4 @@
 node_modules/
 .opencode/
 push-config.js
-!svelte-app/static/push-config.js
 test-results/
