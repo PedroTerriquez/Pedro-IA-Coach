@@ -70,6 +70,7 @@ export interface Settings {
   language?: string
   username?: string
   lastUpdate?: string
+  fontScale?: number
 }
 
 export interface BackupData {

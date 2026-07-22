@@ -326,11 +326,16 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const counter3 = await getCounter().textContent()
   expect(counter3).toBe(counter1)
 
-  // Mark warmup done — the app shows one phase view at a time, so completing
-  // warmup replaces the whole phase-card list with the TrainingCard (checked
-  // in Step 6), rather than leaving a "completed" warmup card in place.
+  // Mark warmup done — the Hoy tab must still show the Calentamiento card
+  // (now completed) alongside the training card, not swap it away.
   await hechoBtn.click()
   await expect(hechoBtn).not.toBeVisible({ timeout: 2000 })
+  await page.waitForTimeout(400)
+
+  const warmupCard = page.locator('[data-phase="warmup"]')
+  await expect(warmupCard).toBeVisible()
+  await expect(warmupCard).toHaveClass(/completed/)
+  await expect(page.locator('[data-phase="training"]')).toBeVisible()
 
   // ── Step 5: Plan — Switch Week ──
   // Wait for persistPhase() from warmup completion to settle in IndexedDB
@@ -356,6 +361,14 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const trainingCard = page.locator('[data-phase="training"]').first()
   await expect(trainingCard).toBeVisible()
   await expect(trainingCard).toContainText('Entrenamiento')
+
+  // The completed Calentamiento card stays on the Hoy tab alongside the
+  // training card — it must not disappear once warmup is done.
+  await expect(page.locator('[data-phase="warmup"]')).toBeVisible()
+  await expect(page.locator('[data-phase="warmup"]')).toHaveClass(/completed/)
+
+  // Estiramiento is locked until the (new week's) exercises are finished.
+  await expect(page.getByText('Termina el entrenamiento primero')).toBeVisible()
 
   // Exercise previews must render INSIDE the training card (not a separate
   // list elsewhere on the page).
@@ -415,6 +428,30 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await registerBtn.click()
   await page.waitForTimeout(600)
 
+  // Merged from the former tests/notifications.spec.cjs — a real user taps
+  // "Iniciar" right after logging a set, to start resting before the next one.
+  // This only stages the rest-timer push for the service worker; it must NOT
+  // arm the in-app timer/banner itself — those only start once the OS
+  // notification is tapped (covered in the "Rest timer notification flow"
+  // suite below, which picks up from exactly this staged state).
+  const iniciarBtn = page.getByRole('button', { name: 'Iniciar' })
+  await expect(iniciarBtn).toBeVisible()
+  await iniciarBtn.click()
+  await page.waitForTimeout(600)
+
+  const stagedPush = await page.evaluate(async () => {
+    const cache = await caches.open('push-pending')
+    const res = await cache.match('/pending')
+    return res ? await res.json() : null
+  })
+  expect(stagedPush).not.toBeNull()
+  expect(stagedPush.kind).toBe('start')
+  expect(stagedPush.exerciseData.name).toBe('Press Banca')
+  expect(stagedPush.exerciseData.restSec).toBe(180)
+  expect(stagedPush.exerciseData.sets).toBe(5)
+  expect(stagedPush.exerciseData.exerciseId).toBe('ex-bench')
+  await expect(page.locator('[data-component="RestTimerBanner"]')).toHaveCount(0)
+
   // Navigate to exercise 2 via Siguiente nav pill
   await page.getByRole('button', { name: 'Siguiente' }).first().click()
   await page.waitForTimeout(400)
@@ -439,7 +476,16 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await sheetCloseBtn.click()
   await page.waitForTimeout(500)
 
-  // Stretch sheet auto-opens after training completes (phase 3).
+  // Finishing all exercises must NOT force-launch the stretch overlay — the
+  // Hoy tab keeps showing the completed Calentamiento + Entrenamiento cards
+  // plus a tappable Estiramiento card, same as the warmup → training handoff.
+  await expect(page.locator('[data-phase="warmup"]')).toBeVisible()
+  await expect(page.locator('[data-phase="training"]')).toBeVisible()
+  const stretchCard = page.locator('[data-phase="stretch"]')
+  await expect(stretchCard).toBeVisible({ timeout: 5000 })
+  await stretchCard.click()
+  await page.waitForTimeout(400)
+
   const stretchHecho = page.getByRole('button', { name: 'Hecho' })
   await expect(stretchHecho).toBeVisible({ timeout: 5000 })
 
@@ -594,6 +640,50 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 // behavior lives in this one file. These are independent, narrowly-seeded
 // scenarios (not steps in the main flow above), so they're separate test()
 // calls sharing the seedIndexedDB/buildDayArray helpers already defined above.
+test.describe('You — Tamaño de texto (accessibility)', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('cycles Normal → Grande → Extra grande, scales the whole app, and persists', async ({ page }) => {
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const fontBtn = page.locator('#font-size-toggle-btn')
+    await expect(fontBtn).toBeVisible()
+    await expect(fontBtn).toContainText('Normal')
+    await expect(page.locator('html')).toHaveCSS('zoom', '1')
+
+    await fontBtn.click()
+    await page.waitForTimeout(300)
+    await expect(fontBtn).toContainText('Grande')
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.15')
+
+    await fontBtn.click()
+    await page.waitForTimeout(300)
+    await expect(fontBtn).toContainText('Extra grande')
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.3')
+
+    // Persisted to Settings — survives a reload, not just local component state
+    await page.reload()
+    await page.waitForTimeout(600)
+    await expect(page.locator('#font-size-toggle-btn')).toContainText('Extra grande')
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.3')
+
+    // Cycles back to Normal
+    await page.locator('#font-size-toggle-btn').click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('#font-size-toggle-btn')).toContainText('Normal')
+    await expect(page.locator('html')).toHaveCSS('zoom', '1')
+  })
+})
+
 test.describe('Warmup detail sheet rendering', () => {
   const BASE_SETTINGS = {
     id: 'settings',
@@ -694,8 +784,8 @@ test.describe('Warmup detail sheet rendering', () => {
 
   test('shows STALLBAR badge when item has stallbar: true', async ({ page }) => {
     // Chest exercise; seed sessionState at phase 3 with todayExDone matching
-    // the day's exercise count so the app auto-opens the stretch sheet
-    // directly on mount, skipping warmup/training entirely.
+    // the day's exercise count so the app lands on the Hoy tab with the
+    // Estiramiento card tappable (it doesn't auto-open on mount).
     const program = {
       id: 'prog-test',
       name: 'Test Program',
@@ -718,11 +808,18 @@ test.describe('Warmup detail sheet rendering', () => {
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', tips: [], alternatives: [] }],
       program,
+      // A real logged weight is required — the app reconciles todayExDone
+      // against actual exerciseLogs on mount and would otherwise zero it out.
+      exerciseLogs: [{ id: 'log-bench-today', exerciseId: 'ex-bench', date: today, weight: 60, units: 'kg' }],
       settings: { ...BASE_SETTINGS, sessionState: { date: today, phase: 3, todayExDone: 1 } },
     })
     await page.waitForTimeout(200)
     await page.reload()
     await page.waitForTimeout(1000)
+
+    // The Estiramiento card is now visible and active on the Hoy tab — tap it to open.
+    await page.locator('[data-phase="stretch"]').click()
+    await page.waitForTimeout(500)
 
     // Chest stretch: 3rd item "Apertura de Pecho Pasiva en Espaldera" has stallbar: true
     // Navigate Siguiente twice (same ~550ms swipe-lock as the main flow's warmup step)
@@ -885,6 +982,49 @@ test.describe('You — Datos tab', () => {
     } finally {
       fs.unlinkSync(logsFile)
     }
+  })
+
+  // Merged from the former tests/dict-normalize.spec.cjs — same Datos tab,
+  // continuing the route with an exercise the dictionary can't resolve.
+  test('shows ver más link + overlay for exercises with no dictionary match', async ({ page }) => {
+    const exercises = [
+      { id: 'ex-bench', name: 'Press Banca', dictId: '', muscle: '', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      { id: 'ex-madeup', name: 'Ejercicio Inventado X7', dictId: '', muscle: '', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+    ]
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises, settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.waitForTimeout(300)
+
+    // "Forzar" re-runs the migration even if already applied this session
+    const forceBtn = page.getByRole('button', { name: 'Forzar' })
+    await expect(forceBtn).toBeVisible()
+    await forceBtn.click()
+
+    const statusEl = page.locator('#dict-migrate-status')
+    await expect(statusEl).toContainText('sin match 1', { timeout: 10000 })
+
+    const verMas = page.locator('#ver-mas-link')
+    await expect(verMas).toBeVisible()
+    await expect(verMas).toContainText('ver más')
+    await verMas.click()
+    await page.waitForTimeout(300)
+
+    const overlay = page.locator('#skipped-overlay')
+    await expect(overlay).toBeVisible()
+    await expect(overlay).toContainText('Ejercicio Inventado X7')
+
+    const closeBtn = page.locator('#skipped-close-btn')
+    await expect(closeBtn).toBeVisible()
+    await closeBtn.click()
+    await page.waitForTimeout(200)
+    await expect(overlay).not.toBeVisible()
   })
 })
 
@@ -1072,6 +1212,125 @@ test.describe('Plan — exercise detail sheet', () => {
   })
 })
 
+test.describe('Exercise detail navigation', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-nav', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  function getTodayStr() {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  // Fires synthetic touch events directly at the element (bypassing the need
+  // for a real touch-capable browser context) to exercise ExerciseDetail's
+  // swipe-to-navigate handlers the same way a finger drag would.
+  async function swipe(page, dx) {
+    await page.evaluate((dx) => {
+      const el = document.querySelector('.detail-scroll')
+      const startX = 200
+      const startY = 400
+      const start = new TouchEvent('touchstart', {
+        touches: [new Touch({ identifier: 1, target: el, clientX: startX, clientY: startY })],
+        bubbles: true,
+        cancelable: true,
+      })
+      el.dispatchEvent(start)
+      const end = new TouchEvent('touchend', {
+        changedTouches: [new Touch({ identifier: 1, target: el, clientX: startX + dx, clientY: startY })],
+        bubbles: true,
+        cancelable: true,
+      })
+      el.dispatchEvent(end)
+    }, dx)
+  }
+
+  test('Anterior/Siguiente buttons and swipe both navigate exercises, keeping Registrar + Historial subtabs in sync', async ({ page }) => {
+    const program = {
+      id: 'prog-nav', name: 'Programa Nav',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca · Press Militar', duration: 60,
+          exercises: [
+            { exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 },
+            { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 },
+          ],
+        }),
+      }],
+    }
+    const today = getTodayStr()
+
+    await page.goto('today')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [
+        { id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+        { id: 'ex-military', name: 'Press Militar', muscle: 'Shoulders', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      ],
+      // Only Press Banca has a past log — Press Militar's Historial should
+      // start empty, proving the subtab re-derives data per exercise instead
+      // of holding onto whatever was shown for the previous one.
+      exerciseLogs: [{ id: 'log-bench', exerciseId: 'ex-bench', date: '2026-07-01', weight: 50, units: 'kg' }],
+      program,
+      // phase 2 = warmup already done, so the training card is tappable immediately.
+      settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0 } },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const trainingCard = page.locator('[data-phase="training"]').first()
+    await expect(trainingCard).toBeVisible()
+    await trainingCard.click()
+    await page.waitForTimeout(400)
+
+    const heroName = page.locator('.hero-name')
+    const anteriorBtn = page.getByRole('button', { name: 'Anterior' }).first()
+    const siguienteBtn = page.getByRole('button', { name: 'Siguiente' }).first()
+    const historialTab = page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Historial' })
+    const actualStat = page.locator('.stat-block', { hasText: 'Actual' })
+
+    // ── Starts on exercise 1 (Press Banca), Anterior disabled ──
+    await expect(heroName).toContainText('Banca')
+    await expect(anteriorBtn).toBeDisabled()
+    await expect(siguienteBtn).toBeEnabled()
+
+    // ── Siguiente → exercise 2 (Press Militar) ──
+    await siguienteBtn.click()
+    await page.waitForTimeout(300)
+    await expect(heroName).toContainText('Militar')
+    await expect(anteriorBtn).toBeEnabled()
+    await expect(siguienteBtn).toBeDisabled()
+
+    // ── Historial subtab reflects the CURRENT exercise (Press Militar has no logs) ──
+    await historialTab.click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.empty-history')).toBeVisible()
+
+    // ── Anterior → back to Press Banca; Historial subtab stays selected and
+    // updates to show Press Banca's own logged weight (not Militar's empty state) ──
+    await anteriorBtn.click()
+    await page.waitForTimeout(300)
+    await expect(heroName).toContainText('Banca')
+    await expect(page.locator('.empty-history')).not.toBeVisible()
+    await expect(actualStat).toContainText('50')
+
+    // ── Swipe left → Press Militar (same as clicking Siguiente) ──
+    await swipe(page, -150)
+    await page.waitForTimeout(300)
+    await expect(heroName).toContainText('Militar')
+    await expect(page.locator('.empty-history')).toBeVisible()
+
+    // ── Swipe right → back to Press Banca (same as clicking Anterior) ──
+    await swipe(page, 150)
+    await page.waitForTimeout(300)
+    await expect(heroName).toContainText('Banca')
+    await expect(actualStat).toContainText('50')
+  })
+})
+
 test.describe('Historial — Ejercicios sub-tab', () => {
   const SETTINGS = {
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
@@ -1119,5 +1378,143 @@ test.describe('Historial — Ejercicios sub-tab', () => {
     await page.locator('.chips-row').getByText('Todos', { exact: true }).click()
     await page.waitForTimeout(300)
     await expect(page.locator('.ex-card')).toHaveCount(2)
+  })
+})
+
+// Merged from the former tests/notifications.spec.cjs — picks up where the
+// main flow's Step 8 "Iniciar" tap left off (a push staged, nothing armed
+// yet) and walks the rest of that same journey: the OS notification gets
+// tapped, the app comes back to the foreground, and the in-app rest timer
+// takes over from there. All three tests re-stage the SW caches by hand
+// (standing in for "user tapped the OS push"), since Playwright can't
+// dispatch a real system notification tap.
+test.describe('Rest timer notification flow', () => {
+  test('tapping the start notification schedules the delayed push and shows the rest banner', async ({ page }) => {
+    let startTimerPayload = null
+    await page.route(/rest-timer\/start/, async (route) => {
+      startTimerPayload = route.request().postData()
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'scheduled' }) })
+    })
+    let cancelPayload = null
+    await page.route(/rest-timer\/cancel/, async (route) => {
+      cancelPayload = route.request().postData()
+      await route.fulfill({ status: 200, contentType: 'application/json', body: 'ok' })
+    })
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+
+    // The SW writes the exercise payload + flag when a start notification is tapped.
+    await page.evaluate(async () => {
+      const cache = await caches.open('rest-pending')
+      await cache.put('/pending', new Response(JSON.stringify({
+        name: 'Press Banca', restSec: 120, sets: 4, reps: '8-10', exerciseId: 'ex-bench',
+      })))
+      await cache.put('/from-notification', new Response('1'))
+    })
+
+    // Returning to the foreground (from tapping the OS notification) fires focus.
+    await page.evaluate(async () => {
+      window.dispatchEvent(new Event('focus'))
+      await new Promise(r => setTimeout(r, 300))
+    })
+    await page.waitForTimeout(1000)
+
+    const banner = page.locator('[data-component="RestTimerBanner"]')
+    await expect(banner).toBeVisible({ timeout: 3000 })
+    await expect(banner).toContainText('Press de Banca con Barra')
+
+    expect(startTimerPayload).not.toBeNull()
+    const payload = JSON.parse(startTimerPayload)
+    // endTime targets ~10s before the real rest end (latency compensation).
+    expect(typeof payload.endTime).toBe('number')
+    expect(payload.endTime).toBeGreaterThan(Date.now() + 100 * 1000)
+    expect(payload.endTime).toBeLessThan(Date.now() + 120 * 1000)
+    expect(payload.deviceId).toBeTruthy()
+    expect(payload.exerciseId).toBe('ex-bench')
+    expect(payload.restSec).toBe(120)
+    expect(payload.sets).toBe(4)
+    expect(payload.reps).toBe('8-10')
+    expect(payload.title).toBe('Press Banca')
+    expect(payload.tag).toBeTruthy()
+
+    // The "Saltar" button cancels the queued delayed push (tapping the card
+    // itself no longer cancels — avoids accidental cancels).
+    await banner.locator('.rtb-skip').click()
+    await page.waitForTimeout(500)
+    expect(cancelPayload).not.toBeNull()
+    const cancelData = JSON.parse(cancelPayload)
+    expect(cancelData.tag).toBeTruthy()
+    expect(cancelData.deviceId).toBeTruthy()
+  })
+
+  test('banner completion disappears silently and does not reschedule', async ({ page }) => {
+    let restTimerCalled = false
+    await page.route(/rest-timer\/start/, async (route) => {
+      restTimerCalled = true
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'scheduled' }) })
+    })
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+
+    await page.evaluate(async () => {
+      const cache = await caches.open('rest-timer')
+      await cache.put('/pending', new Response(JSON.stringify({
+        endTime: Date.now() - 1000,
+        name: 'Press Banca', tag: 'test-tag', restSec: 120, sets: 4, reps: '8-10', exerciseId: 'ex-bench',
+      })))
+    })
+
+    await page.evaluate(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+      await new Promise(r => setTimeout(r, 100))
+    })
+    await page.waitForTimeout(1500)
+
+    // Banner is decorative: it just disappears. No "Descanso terminado" toast —
+    // that message belongs to the delayed push (avoids a double notification).
+    await expect(page.locator('[data-component="RestTimerBanner"]')).toHaveCount(0)
+    const toastText = await page.evaluate(() => {
+      const t = document.getElementById('backup-toast')
+      return t ? t.textContent : ''
+    })
+    expect(toastText).not.toContain('Descanso terminado')
+    // Completion must not schedule a new delayed push (the push drives the cycle).
+    expect(restTimerCalled).toBe(false)
+  })
+
+  // Regression: returning to the foreground fires focus + visibilitychange
+  // near-simultaneously. A single tap must schedule exactly ONE delayed push,
+  // not one per event (the "3 notifications" bug).
+  test('concurrent foreground events schedule only one rest cycle', async ({ page }) => {
+    let startCalls = 0
+    await page.route(/rest-timer\/start/, async (route) => {
+      startCalls++
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'scheduled' }) })
+    })
+    await page.route(/rest-timer\/cancel/, async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: 'ok' })
+    })
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+
+    await page.evaluate(async () => {
+      const cache = await caches.open('rest-pending')
+      await cache.put('/pending', new Response(JSON.stringify({
+        name: 'Press Banca', restSec: 120, sets: 4, reps: '8-10', exerciseId: 'ex-bench',
+      })))
+      await cache.put('/from-notification', new Response('1'))
+      // Fire the foreground events back-to-back, like iOS does on notification tap.
+      window.dispatchEvent(new Event('focus'))
+      document.dispatchEvent(new Event('visibilitychange'))
+      window.dispatchEvent(new Event('focus'))
+      await new Promise(r => setTimeout(r, 500))
+    })
+    await page.waitForTimeout(1000)
+
+    await expect(page.locator('[data-component="RestTimerBanner"]')).toBeVisible({ timeout: 3000 })
+    expect(startCalls).toBe(1)
   })
 })

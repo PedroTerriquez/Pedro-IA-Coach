@@ -10,22 +10,26 @@
     hasWatch = false,
     notifPermission = 'default',
     language = 'es',
+    fontScale = 1,
     ontoggleunits = () => {},
     onaccentchange = () => {},
     ontogglewatch = () => {},
     onnotifclick = () => {},
-    togglelang = () => {}
+    togglelang = () => {},
+    onfontscalechange = () => {}
   }: {
     units: string
     accent: string
     hasWatch: boolean
     notifPermission: string
     language: string
+    fontScale?: number
     ontoggleunits: () => void
     onaccentchange: (val: string) => void
     ontogglewatch: () => void
     onnotifclick: () => void
     togglelang: () => void
+    onfontscalechange?: (val: number) => void
   } = $props()
 
   function permLabel(): string {
@@ -36,6 +40,26 @@
 
   function permActive(): boolean {
     return notifPermission === 'granted'
+  }
+
+  // Cycles Normal → Grande → Extra grande → Normal — kept as three fixed
+  // steps (not a slider) so it's a single tap for an older user to reach
+  // the largest size without fiddling with a control.
+  const FONT_SCALES: { value: number; label: string }[] = [
+    { value: 1, label: 'Normal' },
+    { value: 1.15, label: 'Grande' },
+    { value: 1.3, label: 'Extra grande' }
+  ]
+
+  function fontScaleLabel(): string {
+    const match = FONT_SCALES.find(f => Math.abs(f.value - fontScale) < 0.01)
+    return match ? match.label : 'Normal'
+  }
+
+  function cycleFontScale() {
+    const idx = FONT_SCALES.findIndex(f => Math.abs(f.value - fontScale) < 0.01)
+    const next = FONT_SCALES[(idx + 1) % FONT_SCALES.length]
+    onfontscalechange(next.value)
   }
 </script>
 
@@ -58,6 +82,9 @@
   </CardRow>
   <CardRow label="Idioma">
     <Button id="lang-toggle-btn" variant="ghost" onclick={togglelang}>{language === 'en' ? 'English' : 'Español'}</Button>
+  </CardRow>
+  <CardRow label="Tamaño de texto">
+    <Button id="font-size-toggle-btn" variant="ghost" onclick={cycleFontScale}>{fontScaleLabel()}</Button>
   </CardRow>
   <CardRow label="Instalar app" last={true}>
     <Button variant="ghost" onclick={() => installPWA()}>Añadir</Button>

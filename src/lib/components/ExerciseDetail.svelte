@@ -97,6 +97,22 @@
     onClose?.()
   }
 
+  let touchStartX = 0
+  let touchStartY = 0
+
+  function onTouchStart(e: TouchEvent) {
+    touchStartX = e.touches[0].clientX
+    touchStartY = e.touches[0].clientY
+  }
+
+  function onTouchEnd(e: TouchEvent) {
+    const dx = e.changedTouches[0].clientX - touchStartX
+    const dy = e.changedTouches[0].clientY - touchStartY
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.7) return
+    if (dx < 0 && hasNext) onNavigate?.('next')
+    else if (dx > 0 && hasPrev) onNavigate?.('prev')
+  }
+
   let isDirty = $derived(loggedToday && pendingWeight !== savedWeight)
   let isLoggedState = $derived(loggedToday && !isDirty)
 
@@ -147,7 +163,7 @@
 
 {#if open}
   <Sheet bind:open={open} onclose={close}>
-    <div class="detail-scroll" data-component="ExerciseDetail">
+    <div class="detail-scroll" data-component="ExerciseDetail" ontouchstart={onTouchStart} ontouchend={onTouchEnd}>
         <!-- Navigation pills -->
         <div class="nav-pills">
           <div class="nav-pill-row">
@@ -250,7 +266,7 @@
 
       <!-- Coach FAB -->
       <button id="coach-fab" class="coach-fab" style="border-color:{accent}3a;background:{accent}1a;color:{accent}" onclick={() => chatOpen = true}>
-        <Icon name="coach" size={14} />
+        <Icon name="coach" size={17} />
         Coach IA
       </button>
 
@@ -413,8 +429,8 @@
     position: absolute;
     bottom: 14px;
     left: 14px;
-    padding: 0 12px 0 10px;
-    height: 32px;
+    padding: 0 16px 0 13px;
+    height: 40px;
     border-radius: 9999px;
     border: 0.5px solid;
     backdrop-filter: blur(12px);
@@ -422,10 +438,10 @@
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     z-index: 200;
     font-family: var(--font-sans);
-    font-size: 11.5px;
+    font-size: 13.5px;
     font-weight: 600;
     letter-spacing: -0.2px;
   }

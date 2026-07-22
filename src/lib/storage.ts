@@ -194,7 +194,7 @@ export async function getSettings(): Promise<Settings> {
     sex: '', age: '', goal: '', experience: '', occupation: '',
     pushServerUrl: '', pushSubscribed: false, hasWatch: false,
     lastCoachAnalysis: null, lastUpdate: '', sessionState: null,
-    rescheduleWeekOrder: {}, username: '', language: 'es'
+    rescheduleWeekOrder: {}, username: '', language: 'es', fontScale: 1
   }
 }
 

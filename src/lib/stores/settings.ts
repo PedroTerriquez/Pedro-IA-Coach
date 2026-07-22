@@ -22,7 +22,7 @@ function createSettingsStore() {
   const store = writable<Settings>({
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
     accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false,
-    pushServerUrl: '', language: initialLang
+    pushServerUrl: '', language: initialLang, fontScale: 1
   })
 
   return {

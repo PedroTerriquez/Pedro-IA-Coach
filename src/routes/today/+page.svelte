@@ -250,8 +250,6 @@
 
       if (phase === 'loading') phase = hasWarmup ? 'warmup' : 'training'
 
-      if (phase === 'stretch') showStretch = stretchItems.length > 0
-
       todayExercises = day.exercises.map(ex => ({
         ...ex,
         ...(exercisesByIdMap[ex.exerciseId] || {}),
@@ -284,7 +282,6 @@
       completionToastShown = true
       phase = 'stretch'
       stretchDone = false
-      showStretch = hasStretch
       if (!hasStretch) {
         phase = 'complete'
         showCoach = true
@@ -338,7 +335,6 @@
       completionToastShown = true
       phase = 'stretch'
       stretchDone = false
-      showStretch = hasStretch
       if (!hasStretch) {
         phase = 'complete'
         showCoach = true
@@ -493,13 +489,17 @@
   {:else if isRestDay}
     <RestDayView {weekObj} {weekIdx} />
   {:else}
-    {#if phase === 'warmup' && !showWarmup}
+    {#if (phase === 'warmup' || phase === 'training' || phase === 'stretch') && day && !showWarmup && !showStretch && !showCoach && !coachCardMode}
       <PhaseHeader
         {accent}
         dayName={day?.name || ''}
         daySubtitle={day?.subtitle || ''}
         weekName={weekObj?.name || ''}
         weekTag={weekObj?.tag || ''}
+        showLiveDot={warmupDone}
+        showTimer={warmupDone && !!startedAt && !endedAt}
+        {timerDisplay}
+        {timerSweepPct}
       />
 
       <div class="phase-list">
@@ -509,7 +509,7 @@
             title="Calentamiento"
             subtitle="Activación dinámica"
             count={warmupItems.length}
-            status="active"
+            status={warmupDone ? 'completed' : 'active'}
             {accent}
             dataPhase="warmup"
             onclick={() => showWarmup = true}
@@ -517,19 +517,31 @@
         {/if}
 
         {#if todayExercises.length > 0}
-          <PhaseCard
-            phaseLabel="Fase 02"
-            title="Entrenamiento"
-            subtitle={day?.subtitle || `${exercisesTotal} ejercicios`}
-            count={exercisesTotal}
-            countLabel="ejercicios"
-            status={todayExDone >= exercisesTotal ? 'completed' : (hasWarmup && !warmupDone) ? 'locked' : 'active'}
-            {accent}
-            disabled={hasWarmup && !warmupDone}
-            progress={{ done: todayExDone, total: exercisesTotal }}
-            dataPhase="training"
-            onclick={openTrainingDetail}
-          />
+          {#if warmupDone}
+            <TrainingCard
+              {day}
+              {accent}
+              {todayExDone}
+              {exercisesTotal}
+              {exercisesById}
+              onclick={openTrainingDetail}
+              onExerciseClick={openExerciseDetailAt}
+            />
+          {:else}
+            <PhaseCard
+              phaseLabel="Fase 02"
+              title="Entrenamiento"
+              subtitle={day?.subtitle || `${exercisesTotal} ejercicios`}
+              count={exercisesTotal}
+              countLabel="ejercicios"
+              status="locked"
+              {accent}
+              disabled
+              progress={{ done: todayExDone, total: exercisesTotal }}
+              dataPhase="training"
+              onclick={openTrainingDetail}
+            />
+          {/if}
         {/if}
 
         {#if hasStretch}
@@ -542,6 +554,7 @@
               status="completed"
               accent="#c89bff"
               phaseColor="#c89bff"
+              dataPhase="stretch"
               onclick={() => showStretch = true}
             />
           {:else if !warmupDone}
@@ -564,37 +577,12 @@
               status="active"
               accent="#c89bff"
               phaseColor="#c89bff"
+              dataPhase="stretch"
               onclick={() => showStretch = true}
             />
           {/if}
         {/if}
       </div>
-    {/if}
-
-    {#if phase === 'training' && warmupDone && day && !showWarmup && !showStretch && !showCoach && !coachCardMode}
-      <PhaseHeader
-        {accent}
-        dayName={day?.name || ''}
-        daySubtitle={day?.subtitle || ''}
-        weekName={weekObj?.name || ''}
-        weekTag={weekObj?.tag || ''}
-        showLiveDot
-        showTimer={!!startedAt && !endedAt}
-        {timerDisplay}
-        {timerSweepPct}
-      />
-
-      {#if todayExercises.length > 0}
-        <TrainingCard
-          {day}
-          {accent}
-          {todayExDone}
-          {exercisesTotal}
-          {exercisesById}
-          onclick={openTrainingDetail}
-          onExerciseClick={openExerciseDetailAt}
-        />
-      {/if}
     {/if}
 
     {#if showCoach || coachCardMode}

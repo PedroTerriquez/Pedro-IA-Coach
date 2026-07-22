@@ -19,6 +19,7 @@
     if (s.accentColor) {
       document.documentElement.style.setProperty('--accent', s.accentColor)
     }
+    document.documentElement.style.setProperty('--ui-zoom', String(s.fontScale || 1))
   })
 
   let toastState = $derived($toast)

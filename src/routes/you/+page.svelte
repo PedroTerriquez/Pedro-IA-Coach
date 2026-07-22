@@ -175,6 +175,10 @@
     await settings.update({ hasWatch: !$settings.hasWatch })
   }
 
+  async function onFontScaleChange(val: number) {
+    await settings.update({ fontScale: val })
+  }
+
   async function onNotifClick() {
     if (Notification.permission === 'granted') {
       toast.show('Notificaciones ya activadas')
@@ -585,11 +589,13 @@
         hasWatch={$settings.hasWatch}
         notifPermission={typeof Notification !== 'undefined' ? Notification.permission : 'default'}
         language={$settings.language || 'es'}
+        fontScale={$settings.fontScale || 1}
         ontoggleunits={toggleUnits}
         onaccentchange={onAccentChange}
         ontogglewatch={toggleWatch}
         onnotifclick={onNotifClick}
         togglelang={toggleLang}
+        onfontscalechange={onFontScaleChange}
       />
 
       {#if loaded}
@@ -744,7 +750,7 @@
   </div>
 </div>
 
-<CenterDialog open={showSkippedOverlay} onclose={() => showSkippedOverlay = false}>
+<CenterDialog id="skipped-overlay" open={showSkippedOverlay} onclose={() => showSkippedOverlay = false}>
   <div class="dialog-header">
     <div class="dialog-title">Sin coincidencia en diccionario</div>
     <button id="skipped-close-btn" class="dialog-close" onclick={() => showSkippedOverlay = false}>✕</button>
