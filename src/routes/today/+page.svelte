@@ -9,6 +9,7 @@
   import { sendPushNotification, notifyWatch } from '$lib/push'
   import { storeRestPending, checkPendingRest, _checkRestTimer } from '$lib/rest-timer'
   import { runCoachAnalysis } from '$lib/coach-analysis'
+  import { APP_VERSION } from '$lib/pwa'
   import Warmup from '$lib/components/Warmup.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import PhaseCard from '$lib/components/PhaseCard.svelte'
@@ -593,6 +594,11 @@
       </Button>
     {/if}
   {/if}
+
+  <div class="footer-bar">
+    <div class="version-text">{APP_VERSION}</div>
+    <Button variant="ghost" onclick={() => location.reload()}>↻</Button>
+  </div>
 </div>
 
 {#if showWarmup && warmupItems.length > 0}
@@ -618,4 +624,6 @@
 <style>
   .page { padding: 56px 16px 104px; display: flex; flex-direction: column; }
   .phase-list { flex: 1; min-height: 0; margin-top: 16px; display: flex; flex-direction: column; gap: 11px; }
+  .footer-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+  .version-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
 </style>

@@ -3,7 +3,6 @@
   import { buildImportPrompt, buildProgramCoachPrompt } from '$lib/brain/prompts'
   import { buildUserProfile } from '$lib/ai'
   import { PUSH_SERVER_URL } from '$lib/config'
-  import { APP_VERSION } from '$lib/pwa'
   import { subscribePush } from '$lib/push'
   import { onMount } from 'svelte'
   import { settings } from '$lib/stores/settings'
@@ -543,8 +542,6 @@
     const last = logs[logs.length - 1]
     return `${last.weight}${last.units || units}`
   }
-
-  const APP_VERSION_STR = typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'v1.70'
 </script>
 
 <div class="page">
@@ -577,26 +574,30 @@
   <div class="tab-content">
     {#if activeTab === 'perfil'}
       <div class="section-label-wrap"><SectionLabel {accent}>Mis datos</SectionLabel></div>
-      <ProfileCard
-        {height} {weight} {sex} {age} {goal} {experience} {occupation}
-        {accent}
-        onsave={saveProfileField}
-      />
+      <div class="section-pad">
+        <ProfileCard
+          {height} {weight} {sex} {age} {goal} {experience} {occupation}
+          {accent}
+          onsave={saveProfileField}
+        />
+      </div>
 
       <div class="section-label-wrap"><SectionLabel {accent}>Ajustes rápidos</SectionLabel></div>
-      <QuickSettingsCard
-        {units} {accent}
-        hasWatch={$settings.hasWatch}
-        notifPermission={typeof Notification !== 'undefined' ? Notification.permission : 'default'}
-        language={$settings.language || 'es'}
-        fontScale={$settings.fontScale || 1}
-        ontoggleunits={toggleUnits}
-        onaccentchange={onAccentChange}
-        ontogglewatch={toggleWatch}
-        onnotifclick={onNotifClick}
-        togglelang={toggleLang}
-        onfontscalechange={onFontScaleChange}
-      />
+      <div class="section-pad">
+        <QuickSettingsCard
+          {units} {accent}
+          hasWatch={$settings.hasWatch}
+          notifPermission={typeof Notification !== 'undefined' ? Notification.permission : 'default'}
+          language={$settings.language || 'es'}
+          fontScale={$settings.fontScale || 1}
+          ontoggleunits={toggleUnits}
+          onaccentchange={onAccentChange}
+          ontogglewatch={toggleWatch}
+          onnotifclick={onNotifClick}
+          togglelang={toggleLang}
+          onfontscalechange={onFontScaleChange}
+        />
+      </div>
 
       {#if loaded}
         <div class="section-label-wrap"><SectionLabel {accent}>Estadísticas</SectionLabel></div>
@@ -607,11 +608,6 @@
           <StatBlock value={stats.distinctExercises} label="Ejercicios" size="md" />
         </div>
       {/if}
-
-      <div class="footer-bar">
-        <div class="version-text">{APP_VERSION_STR}</div>
-        <Button variant="ghost" onclick={refresh}>↻</Button>
-      </div>
 
     {:else if activeTab === 'programas'}
       <div class="section-pad-sm">
@@ -741,11 +737,6 @@
         onforce={() => runDictMigration(true)}
         onshowskipped={() => showSkippedOverlay = true}
       />
-
-      <div class="footer-bar footer-bar-bot">
-        <div class="version-text">{APP_VERSION_STR}</div>
-        <Button variant="ghost" onclick={refresh}>↻</Button>
-      </div>
     {/if}
   </div>
 </div>
@@ -764,18 +755,16 @@
 
 <style>
   .tab-content { margin-top: 20px; }
-  .section-label-wrap { margin-bottom: 10px; }
-  .section-card { margin: 0 20px; }
+  .section-label-wrap { margin: 20px 0 10px; }
+  .section-label-wrap:first-child { margin-top: 0; }
+  .section-card { margin: 0 20px 20px; }
   .card-content { padding: 14px 16px; }
   .page-header-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .username-field { outline: none; border: 0; display: inline-block; min-width: 50px; }
   .edit-btn { background: none; border: 0; cursor: pointer; flex-shrink: 0; margin-top: 6px; padding: 0; }
-  .section-pad { margin: 0 20px; }
+  .section-pad { margin: 0 20px 20px; }
   .section-pad-sm { padding: 0 20px; margin-bottom: 12px; }
   .stats-card { margin: 0 20px; padding: 16px 14px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
-  .footer-bar { display: flex; align-items: center; justify-content: space-between; margin: 16px 20px 0; }
-  .footer-bar-bot { margin: 16px 20px 40px; }
-  .version-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
   .stack { display: flex; flex-direction: column; gap: 8px; }
   .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
   .ai-textarea-wrap { margin-top: 10px; }

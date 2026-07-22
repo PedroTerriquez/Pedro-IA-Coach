@@ -5,9 +5,11 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
 <script lang="ts">
   import * as storage from '$lib/storage'
   import ExerciseRow from './ExerciseRow.svelte'
+  import ExerciseDetail from './ExerciseDetail.svelte'
   import Button from './Button.svelte'
   import { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr, makeDayStatusFn, computeWeekStreak, computeBestWeekStreak } from '$lib/calendar-utils'
-  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+  import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
+  import { startRestFromExercise } from '$lib/rest-timer'
 
   let {
     accent,
@@ -37,6 +39,10 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
 
   let viewMonth = $state(new Date(today.getFullYear(), today.getMonth(), 1))
   let selected = $state(calStripTime(today))
+
+  let showDetail = $state(false)
+  let detailExercises = $state<any[]>([])
+  let detailIdx = $state(0)
 
   const CAL_DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
   const CAL_DOW_LONG = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -85,6 +91,38 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
 
   function selectDate(date: Date) {
     selected = date
+  }
+
+  async function openExerciseDetailAt(dayExercises: any[], idx: number) {
+    const resolvedList = await Promise.all(dayExercises.map(async (ex) => {
+      const resolved = { ...ex, ...(exercisesMap[ex.exerciseId] || {}) } as any
+      const logs = await storage.getLogsForExercise(ex.exerciseId)
+      return { ...resolved, exerciseId: ex.exerciseId, logs }
+    }))
+    detailExercises = resolvedList
+    detailIdx = idx
+    showDetail = true
+  }
+
+  function onDetailClose() {
+    showDetail = false
+    detailExercises = []
+  }
+
+  async function onDetailLog() {
+    if (detailExercises.length === 0) return
+    const exId = detailExercises[detailIdx].exerciseId
+    const logs = await storage.getLogsForExercise(exId)
+    detailExercises = detailExercises.map((e, i) => i === detailIdx ? { ...e, logs } : e)
+    refresh()
+  }
+
+  function onDetailNavigate(dir: 'prev' | 'next') {
+    if (dir === 'next' && detailIdx < detailExercises.length - 1) {
+      detailIdx++
+    } else if (dir === 'prev' && detailIdx > 0) {
+      detailIdx--
+    }
   }
 
   async function markAsDone() {
@@ -260,14 +298,18 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
           <div class="detail-ex-list">
             {#each selRec.exercises as e, j}
               {@const log = selRec.logs ? selRec.logs.find((l: any) => l.exerciseId !== '__day__' && l.exerciseId === e.exerciseId) : null}
+              {@const resolved = { ...e, ...(exercisesMap[e.exerciseId] || {}) }}
+              {@const imgUrl = resolveExerciseMedia(resolved).imgUrl}
               <ExerciseRow
-                name={getExerciseDisplayName(e, language)}
-                muscle={e.muscle || ''}
+                name={getExerciseDisplayName(resolved, language)}
+                muscle={resolved.muscle || ''}
+                {imgUrl}
                 weight={log?.weight}
                 units={log?.units || units}
                 sets={e.sets}
                 reps={e.reps}
                 {accent}
+                onclick={() => openExerciseDetailAt(selRec.exercises, j)}
               />
             {/each}
           </div>
@@ -276,6 +318,21 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
     </div>
   </div>
 </div>
+
+{#if showDetail && detailExercises.length > 0}
+  <ExerciseDetail
+    exercise={detailExercises[detailIdx]}
+    open={showDetail}
+    {accent}
+    {units}
+    hasPrev={detailIdx > 0}
+    hasNext={detailIdx < detailExercises.length - 1}
+    onNavigate={onDetailNavigate}
+    onClose={onDetailClose}
+    onLog={onDetailLog}
+    onStartRest={startRestFromExercise}
+  />
+{/if}
 
 <style>
   .calendar-root {

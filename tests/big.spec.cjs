@@ -1212,6 +1212,51 @@ test.describe('Plan — exercise detail sheet', () => {
   })
 })
 
+test.describe('Historial — Constancia day detail', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-cal-detail', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('clicking an exercise row in the day detail opens ExerciseDetail', async ({ page }) => {
+    const program = {
+      id: 'prog-cal-detail', name: 'Programa Detalle Calendario',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+
+    await page.goto('history')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: SETTINGS,
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const exerciseRow = page.locator('.cal-detail .exercise-row', { hasText: 'Banca' })
+    await expect(exerciseRow).toBeVisible({ timeout: 3000 })
+    await exerciseRow.click()
+    await page.waitForTimeout(400)
+
+    // Same shared ExerciseDetail used on Plan/Today — proves Calendar's
+    // day-detail wiring opens the real sheet, not just a static row.
+    await expect(page.locator('.hero-google-btn')).toBeVisible()
+    const closeBtn = page.getByRole('button', { name: 'Cerrar' }).first()
+    await closeBtn.click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.hero-google-btn')).not.toBeVisible()
+  })
+})
+
 test.describe('Exercise detail navigation', () => {
   const SETTINGS = {
     id: 'settings', activeProgramId: 'prog-nav', currentWeekIdx: 0, units: 'kg',
@@ -1291,43 +1336,49 @@ test.describe('Exercise detail navigation', () => {
     const siguienteBtn = page.getByRole('button', { name: 'Siguiente' }).first()
     const historialTab = page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Historial' })
     const actualStat = page.locator('.stat-block', { hasText: 'Actual' })
+    const weightInput = page.locator('input[inputmode="decimal"]').first()
+    const logBtn = page.locator('.log-btn').first()
 
-    // ── Starts on exercise 1 (Press Banca), Anterior disabled ──
     await expect(heroName).toContainText('Banca')
     await expect(anteriorBtn).toBeDisabled()
     await expect(siguienteBtn).toBeEnabled()
+    await expect(weightInput).toHaveValue('50')
+    await expect(logBtn).toContainText('Registrar · 50kg')
 
-    // ── Siguiente → exercise 2 (Press Militar) ──
     await siguienteBtn.click()
     await page.waitForTimeout(300)
     await expect(heroName).toContainText('Militar')
     await expect(anteriorBtn).toBeEnabled()
     await expect(siguienteBtn).toBeDisabled()
+    await expect(weightInput).toHaveValue('')
+    await expect(logBtn).toContainText('Registrar · 0kg')
 
-    // ── Historial subtab reflects the CURRENT exercise (Press Militar has no logs) ──
     await historialTab.click()
     await page.waitForTimeout(300)
     await expect(page.locator('.empty-history')).toBeVisible()
 
-    // ── Anterior → back to Press Banca; Historial subtab stays selected and
-    // updates to show Press Banca's own logged weight (not Militar's empty state) ──
     await anteriorBtn.click()
     await page.waitForTimeout(300)
     await expect(heroName).toContainText('Banca')
     await expect(page.locator('.empty-history')).not.toBeVisible()
     await expect(actualStat).toContainText('50')
 
-    // ── Swipe left → Press Militar (same as clicking Siguiente) ──
+    await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Registrar' }).click()
+    await page.waitForTimeout(300)
+    await expect(weightInput).toHaveValue('50')
+    await expect(logBtn).toContainText('Registrar · 50kg')
+
     await swipe(page, -150)
     await page.waitForTimeout(300)
     await expect(heroName).toContainText('Militar')
-    await expect(page.locator('.empty-history')).toBeVisible()
+    await expect(weightInput).toHaveValue('')
+    await expect(logBtn).toContainText('Registrar · 0kg')
 
-    // ── Swipe right → back to Press Banca (same as clicking Anterior) ──
     await swipe(page, 150)
     await page.waitForTimeout(300)
     await expect(heroName).toContainText('Banca')
-    await expect(actualStat).toContainText('50')
+    await expect(weightInput).toHaveValue('50')
+    await expect(logBtn).toContainText('Registrar · 50kg')
   })
 })
 

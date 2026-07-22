@@ -84,6 +84,18 @@
 
   let chatOpen = $state(false)
 
+  let currentExerciseKey = $derived(exercise.exerciseId || exercise.id)
+  $effect(() => {
+    void currentExerciseKey
+    const isTrackingSR = todayLog?.sets !== undefined && todayLog?.reps !== undefined
+    savedWeight = todayLog ? todayLog.weight : null
+    pendingWeight = todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0)
+    loggedToday = !!todayLog
+    trackSR = isTrackingSR
+    pendingSets = isTrackingSR && todayLog ? todayLog.sets : exercise.sets
+    pendingReps = isTrackingSR && todayLog ? todayLog.reps : 8
+  })
+
   function parseRepsDefault(rep: string | number): number {
     if (typeof rep === 'number') return rep
     const m = String(rep).match(/(\d+)(?:\s*-\s*(\d+))?/)
