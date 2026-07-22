@@ -1,7 +1,7 @@
 <script lang="ts">
   import Button from './Button.svelte'
   let {
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     migrateStatus = '',
     skippedNames = [],
     onmigrate = () => {},
@@ -38,5 +38,5 @@
 <style>
   .maint-row { padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
   .maint-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-  .ver-mas { background: none; border: none; cursor: pointer; font-size: 10px; font-family: 'JetBrains Mono', monospace; text-decoration: underline; padding: 0; margin-left: 4px; }
+  .ver-mas { background: none; border: none; cursor: pointer; font-size: 10px; font-family: var(--font-mono); text-decoration: underline; padding: 0; margin-left: 4px; }
 </style>

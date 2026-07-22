@@ -6,7 +6,7 @@
 
   let {
     units = 'kg',
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     hasWatch = false,
     notifPermission = 'default',
     language = 'es',

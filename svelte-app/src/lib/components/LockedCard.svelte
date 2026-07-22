@@ -28,7 +28,7 @@
     text-align: center;
   }
   .locked-title {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 15px;
     font-weight: 600;
     color: rgba(255,255,255,0.5);

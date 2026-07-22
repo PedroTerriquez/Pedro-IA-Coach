@@ -64,7 +64,7 @@
     font-size: 12px;
     color: #fafafa;
     font-weight: 600;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
   }
   .action-desc {
     font-size: 10px;
@@ -75,7 +75,7 @@
   .action-status {
     margin-top: 4px;
     font-size: 10px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     color: rgba(255,255,255,0.35);
     letter-spacing: 0.2px;
   }
@@ -84,7 +84,7 @@
     border-radius: 8px;
     border: 0;
     cursor: pointer;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;

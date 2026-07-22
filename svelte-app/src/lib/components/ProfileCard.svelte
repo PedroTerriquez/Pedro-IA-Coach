@@ -69,5 +69,5 @@
 
 <style>
   .input-narrow { width: 72px; text-align: right; }
-  .unit-label { font-size: 12px; color: rgba(255,255,255,0.55); font-family: 'JetBrains Mono', monospace; }
+  .unit-label { font-size: 12px; color: rgba(255,255,255,0.55); font-family: var(--font-mono); }
 </style>

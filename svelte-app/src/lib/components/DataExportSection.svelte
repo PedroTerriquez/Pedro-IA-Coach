@@ -3,7 +3,7 @@
   import Button from './Button.svelte'
 
   let {
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     exercisesExportStatus = '',
     jsonExportStatus = '',
     onexercisesexport = undefined,

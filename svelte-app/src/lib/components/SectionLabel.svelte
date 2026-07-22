@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { children, accent = '#d4ff3a' }: {
+  let { children, accent = 'var(--accent)' }: {
     children?: import('svelte').Snippet
     accent?: string
   } = $props()
@@ -16,7 +16,7 @@
     align-items: center;
     gap: 8px;
     padding: 0 20px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 1.6px;
     text-transform: uppercase;

@@ -5,7 +5,7 @@
   import CoachResponseCard from './CoachResponseCard.svelte'
 
   let {
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     coachInput = '',
     coachStatus = '',
     coachResponseVisible = false,

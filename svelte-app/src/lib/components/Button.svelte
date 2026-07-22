@@ -47,7 +47,7 @@
     border-radius: 8px;
     border: 0;
     cursor: pointer;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 13px;
     font-weight: 700;
     white-space: nowrap;

@@ -20,7 +20,7 @@
   let planEditing = $state(false)
   let planSelectedSwapIdx = $state<number | null>(null)
   let planEditingOrder = $state<number[] | null>(null)
-  let exerciseWeights = $state<Record<string, string>>({})
+  let exerciseWeights = $state<Record<string, number>>({})
 
   let todayIdx = $derived((new Date().getDay() + 6) % 7)
   let accent = $derived($settings.accentColor || '#d4ff3a')
@@ -80,7 +80,7 @@
   })
 
   async function loadWeights(dayExercises: ProgramExercise[]) {
-    const weights: Record<string, string> = {}
+    const weights: Record<string, number> = {}
     for (const ex of dayExercises) {
       const exId = ex.exerciseId || (ex as any).id
       if (!exId) continue
@@ -88,7 +88,7 @@
         const logs = await Storage.getLogsForExercise(exId)
         if (logs.length > 0) {
           const last = logs[logs.length - 1]
-          weights[exId] = last.weight + (last.units || '')
+          weights[exId] = last.weight
         }
       } catch (e) {
         // ignore

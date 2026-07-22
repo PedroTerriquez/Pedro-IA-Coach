@@ -220,7 +220,7 @@
     min-width: 0;
   }
   .ex-name {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
     color: #fafafa;
@@ -248,7 +248,7 @@
     min-width: 56px;
   }
   .ex-last {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 16px;
     font-weight: 500;
     color: #fafafa;
@@ -260,7 +260,7 @@
     margin-left: 1px;
   }
   .ex-delta {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 0.6px;
     margin-top: 1px;

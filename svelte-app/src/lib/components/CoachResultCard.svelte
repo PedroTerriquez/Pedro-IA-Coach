@@ -5,7 +5,7 @@
 
   let {
     analysis,
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     loading = false,
     exerciseCount = 0,
     onclick,

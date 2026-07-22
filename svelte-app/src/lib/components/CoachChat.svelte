@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { bodyPartsFor } from '$lib/data/body-parts'
+
   interface ExerciseCoach {
     name: string
     muscle: string
@@ -23,23 +25,6 @@
   let chatThread = $state<{ role: string; content: string }[]>([])
   let showBodyParts = $state(false)
   let chatEl: HTMLDivElement
-
-  const bodyPartsFor = (muscle: string): string[] => {
-    const map: Record<string, string[]> = {
-      Chest: ['Pecho', 'Hombro frontal', 'Codo', 'Muñeca'],
-      Back: ['Hombro posterior', 'Codo', 'Muñeca', 'Lumbar'],
-      Shoulders: ['Hombro', 'Cuello', 'Codo'],
-      Biceps: ['Bíceps', 'Codo', 'Antebrazo'],
-      Triceps: ['Tríceps', 'Codo', 'Hombro'],
-      Legs: ['Cuádriceps', 'Rodilla', 'Isquios', 'Cadera', 'Tobillo', 'Glúteo'],
-      Quads: ['Cuádriceps', 'Rodilla', 'Cadera'],
-      Hamstrings: ['Isquios', 'Cadera', 'Rodilla'],
-      Glutes: ['Glúteo', 'Cadera', 'Lumbar'],
-      Calves: ['Pantorrilla', 'Tobillo', 'Aquiles'],
-      Abs: ['Abdomen', 'Lumbar', 'Cuello']
-    }
-    return map[muscle] || ['Hombro', 'Codo', 'Muñeca', 'Rodilla', 'Lumbar']
-  }
 
   let bodyParts = $derived(bodyPartsFor(exercise.muscle))
 

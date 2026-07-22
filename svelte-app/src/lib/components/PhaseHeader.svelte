@@ -5,7 +5,7 @@
   import type { Snippet } from 'svelte'
 
   let {
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     dayName = '',
     daySubtitle = '',
     weekName = '',

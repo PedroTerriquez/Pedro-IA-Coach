@@ -3,7 +3,7 @@
   import GlowCard from './GlowCard.svelte'
 
   let {
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
   }: {
     accent?: string
   } = $props()

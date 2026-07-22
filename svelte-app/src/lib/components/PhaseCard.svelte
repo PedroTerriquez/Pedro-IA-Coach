@@ -1,4 +1,6 @@
 <script lang="ts">
+  import StatusBadge from './StatusBadge.svelte'
+
   let {
     phaseLabel,
     title,
@@ -49,14 +51,9 @@
   <div class="top-row">
     <div class="phase-num">{phaseLabel}</div>
     {#if status === 'completed'}
-      <span class="badge badge-done">
-        <svg width="10" height="8" viewBox="0 0 11 9" fill="none"><path d="M1 4.5l3 3L10 1" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Completado
-      </span>
+      <StatusBadge label="Completado" status="completed" accent={color} />
     {:else if status === 'active'}
-      <span class="badge badge-active">
-        <span class="dot"></span>Sigue
-      </span>
+      <StatusBadge label="Sigue" status="active" accent={color} />
     {/if}
   </div>
 
@@ -154,7 +151,7 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9.5px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
@@ -165,45 +162,12 @@
     color: var(--accent);
   }
 
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 9px;
-    border-radius: 9999px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-  .badge-active {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
-    border: 0.5px solid color-mix(in srgb, var(--accent) 25%, transparent);
-    color: var(--accent);
-  }
-  .badge-done {
-    background: var(--accent);
-    font-weight: 700;
-    color: #0a0a0a;
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 33%, transparent);
-    padding: 4px 9px 4px 7px;
-  }
-  .dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 6px var(--accent);
-    display: inline-block;
-  }
-
   .content {
     position: relative;
     z-index: 1;
   }
   .title {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 27px;
     font-weight: 700;
     color: #fafafa;
@@ -231,7 +195,7 @@
     min-width: 0;
   }
   .count-text {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.3px;
     color: rgba(255,255,255,0.62);
@@ -259,7 +223,7 @@
     transition: width 0.4s;
   }
   .progress-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.4px;
   }

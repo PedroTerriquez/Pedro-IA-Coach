@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { name, muscle, accent = '#d4ff3a', size = 'lg', imgUrl, actions }: {
+  let { name, muscle, accent = 'var(--accent)', size = 'lg', imgUrl, actions }: {
     name: string
     muscle: string
     accent?: string
@@ -87,7 +87,7 @@
     z-index: 1;
   }
   .muscle-tag {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 1.5px;
     color: rgba(255,255,255,0.4);
@@ -97,7 +97,7 @@
     border-radius: 4px;
   }
   .muscle-tag-muted {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 1.5px;
     color: rgba(255,255,255,0.4);
@@ -122,7 +122,7 @@
     -webkit-backdrop-filter: blur(4px);
   }
   .ex-name {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 600;
     color: #fafafa;
     letter-spacing: -0.5px;

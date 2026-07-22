@@ -10,7 +10,7 @@
     totalGain = 0,
     pctChange = '0',
     weightCount = 0,
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     units = 'kg',
     todayStr = ''
   }: {

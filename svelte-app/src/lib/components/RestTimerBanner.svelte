@@ -8,7 +8,7 @@
     name = '',
     sets = 0,
     reps = '',
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     onskip = undefined
   }: {
     visible: boolean

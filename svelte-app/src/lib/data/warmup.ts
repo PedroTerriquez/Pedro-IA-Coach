@@ -853,7 +853,7 @@ export function resolveMuscles(muscleStr: string): string[] {
     // Only commas are compound separators; "/" appears inside parens (e.g. "Hombro (Anterior/Medio)")
     if (s.includes(',')) {
       const parts = s.split(',').map(p => p.trim()).filter(Boolean)
-      const resolved = new Set()
+      const resolved = new Set<string>()
       for (const p of parts) {
         const r = resolveOne(p)
         if (r) resolved.add(r)

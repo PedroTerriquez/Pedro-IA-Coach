@@ -143,15 +143,15 @@
   .exercise-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #0a0a0a; }
   .exercise-img-placeholder { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: #0a0a0a; }
   .exercise-info { flex: 1; min-width: 0; text-align: left; }
-  .exercise-name { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: #fafafa; letter-spacing: -0.3px; }
+  .exercise-name { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: #fafafa; letter-spacing: -0.3px; }
   .exercise-muscle { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
-  .exercise-chevron { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'JetBrains Mono', monospace; }
+  .exercise-chevron { font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
   .exercise-expanded { padding: 0 14px 14px; border-top: 0.5px solid rgba(255,255,255,0.04); }
   .edit-stack { margin-top: 12px; }
   .edit-actions { margin-top: 12px; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
   .row { display: flex; gap: 10px; align-items: center; }
-  .section-sublabel { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; }
+  .section-sublabel { font-size: 10px; color: rgba(255,255,255,0.4); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; }
   .tips-section { margin-top: 10px; }
   .tip-item { font-size: 12px; color: rgba(255,255,255,0.7); padding: 4px 0; border-bottom: 0.5px solid rgba(255,255,255,0.03); }
   .alts-section { margin-top: 10px; }
@@ -160,7 +160,7 @@
   .alt-item-reason { font-size: 11px; color: rgba(255,255,255,0.5); }
   .alt-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
   .alt-row { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
-  .input-sm { flex: 1; padding: 8px 10px; border-radius: 8px; border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a; color: #fafafa; font-size: 13px; outline: none; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; }
+  .input-sm { flex: 1; padding: 8px 10px; border-radius: 8px; border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a; color: #fafafa; font-size: 13px; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
   .input-sm-alt { border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); font-size: 12px; }
   .alt-remove { background: none; border: 0; color: #ff6b6b; cursor: pointer; font-size: 16px; padding: 4px; }
   .btn-add-alt { width: 100%; padding: 8px; border-radius: 8px; border: 0.5px dashed rgba(255,255,255,0.15); cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); font-size: 12px; }

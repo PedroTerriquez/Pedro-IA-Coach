@@ -1,18 +1,15 @@
 <script lang="ts">
   import Button from './Button.svelte'
+  import TextInput from './TextInput.svelte'
 
   let {
-    name = '',
-    muscle = '',
-    onnameinput = () => {},
-    onmuscleinput = () => {},
+    name = $bindable(''),
+    muscle = $bindable(''),
     onsave = () => {},
     oncancel = () => {}
   }: {
     name?: string
     muscle?: string
-    onnameinput?: (val: string) => void
-    onmuscleinput?: (val: string) => void
     onsave?: () => void
     oncancel?: () => void
   } = $props()
@@ -21,8 +18,8 @@
 <div class="card new-ex-card">
   <div class="card-title">Nuevo ejercicio</div>
   <div class="stack">
-    <input class="input-field" value={name} oninput={(e) => onnameinput((e.target as HTMLInputElement).value)} placeholder="Nombre del ejercicio">
-    <input class="input-field" value={muscle} oninput={(e) => onmuscleinput((e.target as HTMLInputElement).value)} placeholder="Músculo (ej: Pecho, Espalda)">
+    <TextInput bind:value={name} placeholder="Nombre del ejercicio" />
+    <TextInput bind:value={muscle} placeholder="Músculo (ej: Pecho, Espalda)" />
     <div class="row">
       <Button variant="primary" fullWidth onclick={onsave}>Guardar</Button>
       <Button variant="secondary" fullWidth onclick={oncancel}>Cancelar</Button>
@@ -54,18 +51,5 @@
     display: flex;
     gap: 10px;
     align-items: center;
-  }
-
-  .input-field {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    background: var(--bg);
-    color: var(--text);
-    font-size: 13px;
-    font-family: var(--font-sans);
-    outline: none;
-    box-sizing: border-box;
   }
 </style>

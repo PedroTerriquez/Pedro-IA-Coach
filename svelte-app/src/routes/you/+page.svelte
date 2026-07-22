@@ -564,7 +564,7 @@
         {units} {accent}
         hasWatch={$settings.hasWatch}
         notifPermission={typeof Notification !== 'undefined' ? Notification.permission : 'default'}
-        language={$settings.language}
+        language={$settings.language || 'es'}
         ontoggleunits={toggleUnits}
         onaccentchange={onAccentChange}
         ontogglewatch={toggleWatch}
@@ -590,8 +590,7 @@
     {:else if activeTab === 'programas'}
       <div class="section-pad-sm">
         <ProgramCreateForm
-          value={newProgramName}
-          oninput={(val) => newProgramName = val}
+          bind:value={newProgramName}
           oncreate={createNewProgram}
         />
       </div>
@@ -633,10 +632,8 @@
 
       {#if showNewExercise}
         <NewExerciseForm
-          name={newExerciseName}
-          muscle={newExerciseMuscle}
-          onnameinput={(val) => newExerciseName = val}
-          onmuscleinput={(val) => newExerciseMuscle = val}
+          bind:name={newExerciseName}
+          bind:muscle={newExerciseMuscle}
           onsave={saveNewExercise}
           oncancel={resetNewExercise}
         />
@@ -752,9 +749,7 @@
   .footer-bar-bot { margin: 16px 20px 40px; }
   .version-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
   .refresh-btn { padding: 5px 10px; border-radius: 6px; border: 0.5px solid var(--border-medium); cursor: pointer; background: transparent; color: rgba(255,255,255,0.4); font-family: var(--font-sans); font-size: 11px; font-weight: 500; }
-  .row { display: flex; gap: 10px; align-items: center; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
-  .text-input { padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
   .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
   .textarea-field { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5; }
   .textarea-lg { padding: 12px; line-height: 1.6; }

@@ -1,7 +1,7 @@
 <script lang="ts">
   let {
     exercise,
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     units = 'kg',
     pendingWeight = $bindable(0),
     pendingSets = $bindable(4),

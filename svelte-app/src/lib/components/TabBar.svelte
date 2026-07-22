@@ -71,7 +71,7 @@
     color: rgba(255,255,255,0.45);
     transition: color 0.2s;
     text-decoration: none;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
   }
   .tab-btn.active {
     color: var(--tab-accent, #d4ff3a);
@@ -80,7 +80,7 @@
     font-size: 9.5px;
     letter-spacing: 0.6px;
     font-weight: 600;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     text-transform: uppercase;
   }
 </style>

@@ -46,7 +46,7 @@
   let {
     exercise,
     open,
-    accent = '#d4ff3a',
+    accent = 'var(--accent)',
     units = 'kg',
     hasPrev = false,
     hasNext = false,
@@ -76,8 +76,8 @@
   let pendingWeight = $state(todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0))
   let loggedToday = $state(!!todayLog)
   let trackSR = $state(todayLog?.sets !== undefined && todayLog?.reps !== undefined)
-  let pendingSets = $state(trackSR ? todayLog.sets : exercise.sets)
-  let pendingReps = $state(trackSR ? todayLog.reps : 8)
+  let pendingSets = $state(trackSR && todayLog ? todayLog.sets : exercise.sets)
+  let pendingReps = $state(trackSR && todayLog ? todayLog.reps : 8)
   let iniciarLoading = $state(false)
   let showGif = $state(false)
 

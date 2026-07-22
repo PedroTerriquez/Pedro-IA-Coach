@@ -120,7 +120,7 @@
     background: rgba(155,209,255,0.1);
   }
   .badge-day {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 8px;
     letter-spacing: 1.2px;
     color: rgba(255,255,255,0.45);
@@ -130,7 +130,7 @@
     color: var(--accent);
   }
   .badge-num {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 16px;
     font-weight: 500;
     color: #fafafa;
@@ -147,7 +147,7 @@
     gap: 6px;
   }
   .day-title {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 16px;
     font-weight: 600;
     color: #fafafa;
@@ -173,7 +173,7 @@
     white-space: nowrap;
   }
   .day-empty {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 15px;
     font-weight: 500;
     color: rgba(255,255,255,0.35);
@@ -188,7 +188,7 @@
     border-radius: 9999px;
     background: color-mix(in srgb, var(--accent) 10%, transparent);
     border: 0.5px solid color-mix(in srgb, var(--accent) 23%, transparent);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 0.8px;
     text-transform: uppercase;
@@ -201,13 +201,13 @@
     text-align: right;
   }
   .meta-count {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 14px;
     color: #fafafa;
     font-weight: 500;
   }
   .meta-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
@@ -215,7 +215,7 @@
     margin-top: 1px;
   }
   .meta-rest {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 1.2px;
     text-transform: uppercase;

@@ -137,27 +137,7 @@
   let effortShown = $state(false)
   let streakShown = $state('')
 
-  onMount(async () => {
-    const [exs, progs, logs, s] = await Promise.all([
-      Storage.getExercises(),
-      Storage.getPrograms(),
-      Storage.getAllLogs(),
-      Storage.getSettings()
-    ])
-    exercises = exs
-    programs = progs
-    allLogs = logs
-    program = programs.find(p => p.id === s.activeProgramId) || null
-    weekIdx = s.currentWeekIdx || 0
-    weekObj = program?.weeks?.[weekIdx]
-    const toLocal = (date: Date) => {
-      const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-      return d.toISOString().slice(0, 10)
-    }
-    todayDate = toLocal(new Date())
-    sessionDate = todayDate
-
-    // Rest timer listeners must be registered regardless of program state
+  onMount(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
         checkPendingRest()
@@ -176,71 +156,91 @@
       window.removeEventListener('focus', onFocusCheck)
     }
 
-    checkPendingRest()
-    _checkRestTimer()
+    ;(async () => {
+      const [exs, progs, logs, s] = await Promise.all([
+        Storage.getExercises(),
+        Storage.getPrograms(),
+        Storage.getAllLogs(),
+        Storage.getSettings()
+      ])
+      exercises = exs
+      programs = progs
+      allLogs = logs
+      program = programs.find(p => p.id === s.activeProgramId) || null
+      weekIdx = s.currentWeekIdx || 0
+      weekObj = program?.weeks?.[weekIdx]
+      const toLocal = (date: Date) => {
+        const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+        return d.toISOString().slice(0, 10)
+      }
+      todayDate = toLocal(new Date())
+      sessionDate = todayDate
 
-    if (!program && exercises.length === 0) {
-      noProgram = true
+      checkPendingRest()
+      _checkRestTimer()
+
+      if (!program && exercises.length === 0) {
+        noProgram = true
+        loaded = true
+        return
+      }
+
+      if (!program || !weekObj) {
+        loaded = true
+        return
+      }
+
+      const order = (s.rescheduleWeekOrder?.[`${program.id}-week-${weekIdx}`] as unknown as number[]) || [0, 1, 2, 3, 4, 5, 6]
+      const originalDayIdx = order[detectedDayIdx < order.length ? detectedDayIdx : 0]
+      day = weekObj.days[originalDayIdx] || null
+
+      if (!day || day.name === 'Rest' || day.name === 'Descanso') {
+        isRestDay
+        loaded = true
+        return
+      }
+
+      const exercisesByIdMap = Object.fromEntries(exs.map(e => [e.id, e]))
+      const warmupMuscles = day.exercises.map(ex => {
+        const resolved = { ...ex, ...(exercisesByIdMap[ex.exerciseId] || {}) }
+        return resolved.muscle
+      }).filter(Boolean)
+      warmupItems = resolvePanelItems(warmupMuscles, 'warmup')
+      stretchItems = resolvePanelItems(warmupMuscles, 'stretch')
+
+      if (s.sessionState?.date === todayDate) {
+        const p = s.sessionState.phase || 1
+        const exDone = s.sessionState.todayExDone || 0
+        todayExDone = exDone
+        if (p >= 2) warmupDone = true
+        if (p >= 3) phase = 'training'
+        if (p >= 4) { stretchDone = true; phase = 'stretch' }
+        if (exDone >= day.exercises.length && p >= 3) phase = 'stretch'
+        if (p >= 4 && hasStretch) stretchDone = true
+        if (p >= 5) { phase = 'complete'; showCoach = true }
+      }
+
+      if (s.lastCoachAnalysis?.date === todayDate && s.lastCoachAnalysis?.weekIdx === weekIdx) {
+        coachCardMode = true
+        coachEffort = s.lastCoachAnalysis.effort || 'good'
+        coachDay = day
+      }
+
+      if (warmupDone || phase !== 'loading') phase = phase === 'loading' ? (warmupDone ? 'training' : 'warmup') : phase
+
+      if (phase === 'loading') phase = hasWarmup ? 'warmup' : 'training'
+
+      if (phase === 'stretch') showStretch = stretchItems.length > 0
+
+      todayExercises = day.exercises.map(ex => ({
+        ...ex,
+        ...(exercisesByIdMap[ex.exerciseId] || {})
+      }))
+
+      loadTodayLogs()
+
       loaded = true
-      return cleanup
-    }
-
-    if (!program || !weekObj) {
-      loaded = true
-      return cleanup
-    }
-
-    const order = (s.rescheduleWeekOrder?.[`${program.id}-week-${weekIdx}`] as unknown as number[]) || [0, 1, 2, 3, 4, 5, 6]
-    const originalDayIdx = order[detectedDayIdx < order.length ? detectedDayIdx : 0]
-    day = weekObj.days[originalDayIdx] || null
-
-    if (!day || day.name === 'Rest' || day.name === 'Descanso') {
-      isRestDay
-      loaded = true
-      return cleanup
-    }
-
-    const exercisesByIdMap = Object.fromEntries(exs.map(e => [e.id, e]))
-    const warmupMuscles = day.exercises.map(ex => {
-      const resolved = { ...ex, ...(exercisesByIdMap[ex.exerciseId] || {}) }
-      return resolved.muscle
-    }).filter(Boolean)
-    warmupItems = resolvePanelItems(warmupMuscles, 'warmup')
-    stretchItems = resolvePanelItems(warmupMuscles, 'stretch')
-
-    if (s.sessionState?.date === todayDate) {
-      const p = s.sessionState.phase || 1
-      const exDone = s.sessionState.todayExDone || 0
-      todayExDone = exDone
-      if (p >= 2) warmupDone = true
-      if (p >= 3) phase = 'training'
-      if (p >= 4) { stretchDone = true; phase = 'stretch' }
-      if (exDone >= day.exercises.length && p >= 3) phase = 'stretch'
-      if (p >= 4 && hasStretch) stretchDone = true
-      if (p >= 5) { phase = 'complete'; showCoach = true }
-    }
-
-    if (s.lastCoachAnalysis?.date === todayDate && s.lastCoachAnalysis?.weekIdx === weekIdx) {
-      coachCardMode = true
-      coachEffort = s.lastCoachAnalysis.effort || 'good'
-      coachDay = day
-    }
-
-    if (warmupDone || phase !== 'loading') phase = phase === 'loading' ? (warmupDone ? 'training' : 'warmup') : phase
-
-    if (phase === 'loading') phase = hasWarmup ? 'warmup' : 'training'
-
-    // Restore showStretch when phase is stretch
-    if (phase === 'stretch') showStretch = stretchItems.length > 0
-
-    todayExercises = day.exercises.map(ex => ({
-      ...ex,
-      ...(exercisesByIdMap[ex.exerciseId] || {})
-    }))
-
-    loadTodayLogs()
-
-    loaded = true
+    })()
 
     return cleanup
   })

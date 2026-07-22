@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
-  import CoachIcon from './CoachIcon.svelte'
+  import Icon from './Icon.svelte'
 
   let {
     title = 'Coach IA',
@@ -18,7 +18,7 @@
 <div class="coach-response" style="border-left:3px solid {accent}">
   <div class="response-header">
     <span class="response-icon" style="background:{accent}1f">
-      <CoachIcon size={13} color={accent} />
+      <Icon name="coach" size={13} color={accent} />
     </span>
     <span class="response-label" style="color:{accent}">{title}</span>
   </div>
@@ -42,7 +42,7 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 1.6px;
     text-transform: uppercase;
@@ -61,14 +61,14 @@
     font-size: 14.5px;
     line-height: 1.55;
     color: rgba(255,255,255,0.9);
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     letter-spacing: -0.1px;
     white-space: pre-wrap;
   }
   .response-provider {
     margin-top: 6px;
     font-size: 9px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     letter-spacing: 0.6px;
     color: rgba(255,255,255,0.3);
     text-transform: uppercase;

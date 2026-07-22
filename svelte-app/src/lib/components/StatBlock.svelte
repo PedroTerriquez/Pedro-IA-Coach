@@ -27,7 +27,7 @@
     min-width: 0;
   }
   .stat-value {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-weight: 500;
     line-height: 1;
     letter-spacing: -1px;
@@ -43,6 +43,6 @@
     letter-spacing: 1.4px;
     text-transform: uppercase;
     color: rgba(255,255,255,0.5);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
   }
 </style>

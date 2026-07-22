@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
-  let { exercise, accent = '#d4ff3a', loggedToday = false, showGif = $bindable(false) }: {
+  let { exercise, accent = 'var(--accent)', loggedToday = false, showGif = $bindable(false) }: {
     exercise: {
       name: string
       muscle: string

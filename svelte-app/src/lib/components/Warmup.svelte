@@ -1,50 +1,7 @@
 <script lang="ts">
   import Sheet from './Sheet.svelte'
-
-  const WARMUP_GIF_MAP: Record<string, string> = {
-    "Flexiones Dinámicas Excéntricas contra Pared": "pectorals/push-up-wall",
-    "Dislocaciones de Pecho y Hombro con Banda": "pectorals/dynamic-chest-stretch-male",
-    "Estiramiento de Pecho en Esquina de Pared": "pectorals/chest-and-front-of-shoulder-stretch",
-    "Estiramiento Un Brazo Contra Pared": "lats/one-arm-against-wall",
-    "Apertura de Pecho Pasiva en Espaldera": "pectorals/behind-head-chest-stretch",
-    "Movilidad Escapular en Y-T-W": "delts/band-y-raise",
-    "Giros Externos con Banda Dinámicos": "delts/cable-standing-shoulder-external-rotation",
-    "Estiramiento del Deltoides Posterior Cruzado": "delts/rear-deltoid-stretch",
-    "Estiramiento del Deltoides Anterior Sentado": "pectorals/chest-and-front-of-shoulder-stretch",
-    "Tracción Escapular Colgado": "traps/scapular-pull-up",
-    "Flexiones en Diamante sobre Pared": "pectorals/push-up-wall",
-    "Extensiones de Codo al Aire Activas": "triceps/overhead-triceps-stretch",
-    "Estiramiento de Tríceps por Detrás de la Cabeza": "triceps/overhead-triceps-stretch",
-    "Elongación de Tríceps contra Pared": "triceps/triceps-stretch",
-    "Estiramiento de Bíceps en Pared con Pulgar Abajo": "lats/one-arm-against-wall",
-    "Gato-Camello Dinámico": "spine/spine-stretch",
-    "Oruga Walkout Dinámica": "abs/inchworm",
-    "Torsión Espinal en el Suelo Estática": "glutes/bent-knee-lying-twist-male",
-    "Colgado Asistido Descompresivo": "traps/scapular-pull-up",
-    "Postura del Niño con Enfoque Lumbar": "lats/kneeling-lat-stretch",
-    "Plancha Alta con Toques de Hombro": "abs/shoulder-tap",
-    "Escarabajo Muerto (Dead Bug) Básico": "abs/dead-bug",
-    "Puentes de Glúteo Dinámicos con Pausa": "glutes/pelvic-tilt-into-bridge",
-    "Figura 4 Acostado Boca Arriba": "glutes/assisted-lying-gluteus-and-piriformis-stretch",
-    "Postura de la Paloma Pasiva en Suelo": "glutes/seated-piriformis-stretch",
-    "Estiramiento de Cuádriceps Acostado Boca Abajo": "quads/assisted-prone-lying-quads-stretch",
-    "Estiramiento de Cuádriceps Clásico de Pie": "quads/intermediate-hip-flexor-and-quad-stretch",
-    "Buenos Días Dinámicos con Manos en Nuca": "hamstrings/barbell-good-morning",
-    "Patadas Frankenstein Dinámicas": "glutes/frankenstein-squat",
-    "Estiramiento de Isquiotibiales con Banda en Suelo": "hamstrings/hamstring-stretch",
-    "Estiramiento Isquiotibial Unilateral en Banco": "hamstrings/leg-up-hamstring-stretch",
-    "Elevaciones de Talón de Pie Continuas": "calves/bodyweight-standing-calf-raise",
-    "Saltos Cortos sobre Metatarsos (Pogo Hops)": "calves/bodyweight-standing-calf-raise",
-    "Estiramiento de Gemelo en Escalón Pasivo": "calves/calf-stretch-with-hands-against-wall",
-    "Circulos de Muñecas con Puños Cerrados": "forearms/wrist-circles",
-    "Estiramiento de Flexores de Muñeca de Rodillas": "forearms/side-wrist-pull-stretch",
-    "Estiramiento de Extensores de Muñeca": "forearms/side-wrist-pull-stretch",
-    "Estiramiento Lateral de Cuello Asistido": "levator-scapulae/neck-side-stretch",
-    "Estiramiento de la Musculatura Cervical Posterior": "levator-scapulae/side-push-neck-stretch",
-    "Tracción Cervical Angular por Inclinación de Torso": "levator-scapulae/neck-side-stretch",
-  }
-
-  const EX_GIF_BASE = 'https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/'
+  import { WARMUP_GIF_MAP } from '$lib/data/warmup-gifs'
+  import { EX_GIF_BASE } from '$lib/data/exercise-dictionary'
 
   let { items, mode, accent, onComplete }: {
     items: any[]

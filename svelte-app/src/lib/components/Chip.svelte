@@ -18,6 +18,6 @@
     padding: 4px 10px;
     border-radius: 9999px;
     font-weight: 500;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
   }
 </style>
