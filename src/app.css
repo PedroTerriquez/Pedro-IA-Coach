@@ -267,10 +267,6 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
 }
 
-/* ── Friends Screen ── */
-.friends-view {
-  padding: 20px 16px 100px;
-}
 
 .friends-header {
   font-family: var(--font-sans);
