@@ -1,13 +1,14 @@
 <script lang="ts">
   import { page } from '$app/stores'
+  import { ROUTES } from '$lib/routes'
   import { settings } from '$lib/stores/settings'
 
   const tabs = [
-    { id: 'today', label: 'Hoy', path: '/today' },
-    { id: 'plan', label: 'Plan', path: '/plan' },
-    { id: 'history', label: 'Historial', path: '/history' },
-    { id: 'friends', label: 'Amigos', path: '/friends' },
-    { id: 'you', label: 'Tú', path: '/you' },
+    { id: 'today', label: 'Hoy', path: ROUTES.today },
+    { id: 'plan', label: 'Plan', path: ROUTES.plan },
+    { id: 'history', label: 'Historial', path: ROUTES.history },
+    { id: 'friends', label: 'Amigos', path: ROUTES.friends },
+    { id: 'you', label: 'Tú', path: ROUTES.you },
   ]
 
   let activePath = $derived($page.url.pathname)

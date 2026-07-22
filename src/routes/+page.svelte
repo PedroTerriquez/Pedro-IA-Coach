@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
+  import { ROUTES } from '$lib/routes'
 
   onMount(() => {
-    goto('/today', { replaceState: true })
+    goto(ROUTES.today, { replaceState: true })
   })
 </script>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
+  import { ROUTES } from '$lib/routes'
   import GlowCard from './GlowCard.svelte'
 
   let {
@@ -23,7 +24,7 @@
       </div>
       <div class="onboard-backup-desc">Haz un respaldo cada 2 semanas desde <strong style="color:{accent}">Perfil → Datos → Exportar</strong>. Así siempre podrás recuperar tu historial si algo le pasa al teléfono.</div>
     </div>
-    <button id="empty-state-start" class="btn-onboard" style="background:{accent};color:#0a0a0a" onclick={() => goto('/you')}>
+    <button id="empty-state-start" class="btn-onboard" style="background:{accent};color:#0a0a0a" onclick={() => goto(ROUTES.you)}>
       Comenzar
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
     </button>
