@@ -511,6 +511,7 @@
             count={warmupItems.length}
             status="active"
             {accent}
+            dataPhase="warmup"
             onclick={() => showWarmup = true}
           />
         {/if}
@@ -526,6 +527,7 @@
             {accent}
             disabled={hasWarmup && !warmupDone}
             progress={{ done: todayExDone, total: exercisesTotal }}
+            dataPhase="training"
             onclick={openTrainingDetail}
           />
         {/if}
@@ -544,6 +546,7 @@
             />
           {:else if !warmupDone}
             <LockedCard
+              id="today-locked-warmup-stretch"
               title="Termina el calentamiento primero"
               subtitle="Tus estiramientos aparecerán cuando completes todos los ejercicios."
             />
@@ -616,7 +619,7 @@
   <ExerciseDetail exercise={detailExercises[detailIdx]} open={showDetail} {accent} {units} hasPrev={detailIdx > 0} hasNext={detailIdx < detailExercises.length - 1} onNavigate={onDetailNavigate} onClose={onDetailClose} onLog={onDetailLog} onStartRest={onStartRest} />
 {/if}
 
-<CenterDialog open={effortModalShow} onclose={() => effortModalShow = false}>
+<CenterDialog id="effort-overlay" open={effortModalShow} onclose={() => effortModalShow = false}>
   <EffortSelector {accent} onselect={onEffort} />
 </CenterDialog>
 

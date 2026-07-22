@@ -146,8 +146,8 @@
 </script>
 
 {#if open}
-  <Sheet bind:open={open}>
-    <div class="detail-scroll">
+  <Sheet bind:open={open} onclose={close}>
+    <div class="detail-scroll" data-component="ExerciseDetail">
         <!-- Navigation pills -->
         <div class="nav-pills">
           <div class="nav-pill-row">

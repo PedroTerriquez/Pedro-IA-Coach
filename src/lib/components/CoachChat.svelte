@@ -82,7 +82,7 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="coach-overlay">
+<div class="coach-overlay" data-component="CoachChat">
   <div class="coach-backdrop" onclick={onclose}></div>
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="coach-panel" onclick={(e) => e.stopPropagation()}>

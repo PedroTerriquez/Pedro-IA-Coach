@@ -15,7 +15,7 @@
   } = $props()
 </script>
 
-<div class="card new-ex-card">
+<div class="card new-ex-card" data-component="NewExerciseForm">
   <div class="card-title">Nuevo ejercicio</div>
   <div class="stack">
     <TextInput bind:value={name} placeholder="Nombre del ejercicio" />

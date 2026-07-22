@@ -29,6 +29,8 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
   class="training-card"
+  data-phase="training"
+  data-component="TrainingCard"
   style="border-color:{accent}66;box-shadow:0 8px 28px {accent}12"
   role="button"
   tabindex="0"

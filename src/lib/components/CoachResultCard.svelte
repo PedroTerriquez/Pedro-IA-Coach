@@ -19,7 +19,7 @@
   } = $props()
 </script>
 
-<div class="coach-scroll">
+<div class="coach-scroll" data-component="CoachResultCard">
   <div class="stats-grid">
     <StatBlock value={exerciseCount} label="Ejercicios" {accent} />
     <StatBlock value="—" label="Volumen" {accent} />

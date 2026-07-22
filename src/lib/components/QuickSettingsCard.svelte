@@ -39,7 +39,7 @@
   }
 </script>
 
-<div class="card">
+<div class="card" data-component="QuickSettingsCard">
   <CardRow label="Unidades">
     <Button variant="ghost" onclick={ontoggleunits}>{units === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}</Button>
   </CardRow>
@@ -57,7 +57,7 @@
     </AccentToggle>
   </CardRow>
   <CardRow label="Idioma">
-    <Button variant="ghost" onclick={togglelang}>{language === 'en' ? 'English' : 'Español'}</Button>
+    <Button id="lang-toggle-btn" variant="ghost" onclick={togglelang}>{language === 'en' ? 'English' : 'Español'}</Button>
   </CardRow>
   <CardRow label="Instalar app" last={true}>
     <Button variant="ghost" onclick={() => installPWA()}>Añadir</Button>

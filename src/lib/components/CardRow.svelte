@@ -8,7 +8,7 @@
   } = $props()
 </script>
 
-<div class="card-row" class:card-row-last={last}>
+<div class="card-row" class:card-row-last={last} data-component="CardRow">
   <div class="card-label">{label}</div>
   {#if children}
     <div class="card-row-right">{@render children()}</div>

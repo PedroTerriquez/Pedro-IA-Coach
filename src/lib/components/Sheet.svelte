@@ -1,17 +1,19 @@
 <script lang="ts">
-  let { open = $bindable(false), children, header }: {
+  let { open = $bindable(false), children, header, onclose = () => {} }: {
     open: boolean
     children?: import('svelte').Snippet
     header?: import('svelte').Snippet
+    onclose?: () => void
   } = $props()
 
   function close() {
     open = false
+    onclose()
   }
 </script>
 
 {#if open}
-  <div class="sheet-overlay" role="dialog" aria-modal="true">
+  <div class="sheet-overlay" data-component="Sheet" role="dialog" aria-modal="true">
     <div class="sheet-backdrop" onclick={close}></div>
     <button class="sheet-close-btn" onclick={close} aria-label="Cerrar">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l10 10M12 2L2 12"/></svg>

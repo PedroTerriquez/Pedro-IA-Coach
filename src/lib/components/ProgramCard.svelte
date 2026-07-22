@@ -21,7 +21,7 @@
   } = $props()
 </script>
 
-<div class="card program-item" data-program-id={program.id}>
+<div class="card program-item" data-component="ProgramCard" data-program-id={program.id}>
   <div class="flex-1">
     <div class="row">
       <div class="program-name">{program.name}</div>

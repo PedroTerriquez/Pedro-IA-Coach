@@ -14,7 +14,8 @@
     progress,
     phaseColor,
     bgSvg,
-    onclick
+    onclick,
+    dataPhase = undefined
   }: {
     phaseLabel: string
     title: string
@@ -28,6 +29,7 @@
     phaseColor?: string
     bgSvg?: string
     onclick?: () => void
+    dataPhase?: string
   } = $props()
 
   let color = $derived(phaseColor || accent)
@@ -38,6 +40,8 @@
   class="phase-card"
   class:completed={status === 'completed'}
   class:disabled
+  data-phase={dataPhase}
+  data-component="PhaseCard"
   style="--accent:{color};{disabled ? 'opacity:0.55' : ''}"
   onclick={disabled ? undefined : onclick}
   role={onclick ? 'button' : undefined}

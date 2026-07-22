@@ -138,6 +138,7 @@
   <Sheet bind:open={isOpen}>
     <div
       class="warmup-scroll"
+      data-component="Warmup"
       ontouchstart={onTouchStart}
       ontouchmove={onTouchMove}
       ontouchend={onTouchEnd}

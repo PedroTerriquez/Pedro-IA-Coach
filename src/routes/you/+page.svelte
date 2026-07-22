@@ -563,7 +563,7 @@
       options={[
         { label: 'Perfil', value: 'perfil' },
         { label: 'Programas', value: 'programas' },
-        { label: 'Ejercicios', value: 'ejercicios' },
+        { label: 'Ejercicios', value: 'ejercicios', id: 'you-tab-ejercicios' },
         { label: 'Datos', value: 'datos' }
       ]}
       bind:value={activeTab}

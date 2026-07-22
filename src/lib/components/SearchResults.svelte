@@ -19,7 +19,7 @@
 </script>
 
 {#if show}
-  <div class="search-results">
+  <div class="search-results" data-component="SearchResults">
     {#if searching}
       <div class="sr-empty">Buscando...</div>
     {:else if results.length === 0}

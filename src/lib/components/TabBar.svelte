@@ -15,7 +15,7 @@
   let accent = $derived($settings.accentColor || '#d4ff3a')
 </script>
 
-<div class="tabbar-outer" style="--tab-accent: {accent}">
+<div class="tabbar-outer" data-component="TabBar" style="--tab-accent: {accent}">
   <div class="tabbar-inner">
     {#each tabs as tab}
       <a href={tab.path} class="tab-btn" class:active={activePath === tab.path}>

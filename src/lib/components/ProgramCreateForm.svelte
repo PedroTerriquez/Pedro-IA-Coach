@@ -11,7 +11,7 @@
   } = $props()
 </script>
 
-<div class="card program-create-card">
+<div class="card program-create-card" data-component="ProgramCreateForm">
   <div class="row">
     <div class="input-wrap">
       <TextInput

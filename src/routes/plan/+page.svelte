@@ -145,7 +145,9 @@
     const key = `${program.id}-week-${planWeekIdx}`
     const stored = await Storage.getSettings()
     const rs = (stored.rescheduleWeekOrder || {}) as Record<string, number[]>
-    rs[key] = newOrder
+    // newOrder is a Svelte $state array — IndexedDB's structured clone can't
+    // serialize the reactive proxy, so persist a plain-array copy.
+    rs[key] = [...newOrder]
     await settings.update({ rescheduleWeekOrder: rs as any })
   }
 

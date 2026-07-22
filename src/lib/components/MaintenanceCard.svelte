@@ -17,7 +17,7 @@
   } = $props()
 </script>
 
-<div class="card">
+<div class="card" data-component="MaintenanceCard">
   <div class="maint-row">
     <div class="flex-1">
       <div class="card-title">Normalizar ejercicios con diccionario</div>

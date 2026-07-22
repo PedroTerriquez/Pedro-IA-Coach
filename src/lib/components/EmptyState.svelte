@@ -5,7 +5,7 @@
   } = $props()
 </script>
 
-<div class="empty-state" {style}>
+<div class="empty-state" data-component="EmptyState" {style}>
   {message}
 </div>
 

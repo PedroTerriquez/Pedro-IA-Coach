@@ -9,7 +9,8 @@
     size = 'md',
     onclick = undefined,
     children,
-    style = ''
+    style = '',
+    id = undefined
   }: {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'text'
     accent?: string
@@ -19,11 +20,13 @@
     onclick?: (e: MouseEvent) => void
     children?: Snippet
     style?: string
+    id?: string
   } = $props()
 </script>
 
 <button
   class="btn-base"
+  data-component="Button"
   class:btn-primary={variant === 'primary'}
   class:btn-secondary={variant === 'secondary'}
   class:btn-danger={variant === 'danger'}
@@ -33,6 +36,7 @@
   class:btn-sm={size === 'sm'}
   {disabled}
   {onclick}
+  {id}
   style="{variant === 'primary' ? `background:${accent};color:#0a0a0a` : ''};{style}"
 >
   {#if children}{@render children()}{/if}

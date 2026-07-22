@@ -72,7 +72,7 @@
   let media = $derived(resolveExerciseMedia(exercise))
 </script>
 
-<div class="card exercise-item" data-exercise-id={exercise.id}>
+<div class="card exercise-item" data-component="ExerciseListItem" data-exercise-id={exercise.id}>
   <button class="exercise-toggle" onclick={() => ontoggle(exercise.id)}>
     {#if media.imgUrl}
       <img src={media.imgUrl} alt="" class="exercise-img">

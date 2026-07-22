@@ -12,7 +12,8 @@
     maxlength = undefined,
     autocomplete = undefined,
     oninput = undefined,
-    onblur = undefined
+    onblur = undefined,
+    id = undefined
   }: {
     value?: string
     placeholder?: string
@@ -25,6 +26,7 @@
     autocomplete?: FullAutoFill
     oninput?: (val: string) => void
     onblur?: () => void
+    id?: string
   } = $props()
 </script>
 
@@ -38,6 +40,8 @@
   {style}
   {maxlength}
   {autocomplete}
+  {id}
+  data-component="TextInput"
   oninput={(e) => oninput?.((e.target as HTMLInputElement).value)}
   {onblur}
 >

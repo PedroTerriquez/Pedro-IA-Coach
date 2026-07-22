@@ -11,7 +11,7 @@
   } = $props()
 </script>
 
-<div class="no-program-wrapper">
+<div class="no-program-wrapper" data-component="OnboardingView">
   <div class="eyebrow">Bienvenido</div>
   <div class="hero-title">Entrenemos.</div>
   <GlowCard blobColor={accent} padding="24px">

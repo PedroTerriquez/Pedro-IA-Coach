@@ -32,7 +32,7 @@
   } = $props()
 </script>
 
-<div class="day-card" class:today={isToday} style="--accent:{accent}">
+<div class="day-card" class:today={isToday} data-component="DayCard" style="--accent:{accent}">
   <button class="day-header" onclick={onclick} disabled={!onclick}>
     <div class="day-badge" class:today-badge={isToday} class:rest-badge={isRest}>
       <div class="badge-day">{dayName}</div>

@@ -16,7 +16,7 @@
   let pct = $derived(total > 0 ? (done / total) * 100 : 0)
 </script>
 
-<div class="progress-bar">
+<div class="progress-bar" data-component="ProgressBar">
   <div class="track" style={trackWidth ? `flex:0 0 auto;width:${trackWidth}` : ''}>
     <div class="fill" style="width:{pct}%;background:{accent}"></div>
   </div>

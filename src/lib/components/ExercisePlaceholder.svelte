@@ -12,7 +12,7 @@
   let fontSize = $derived(size === 'sm' ? '14px' : '22px')
 </script>
 
-<div class="placeholder" style="height:{h}px" class:has-image={!!imgUrl}>
+<div class="placeholder" data-component="ExercisePlaceholder" style="height:{h}px" class:has-image={!!imgUrl}>
   {#if imgUrl}
     <div class="img-bg" style="background-image:url({imgUrl})">
       <div class="top-row">

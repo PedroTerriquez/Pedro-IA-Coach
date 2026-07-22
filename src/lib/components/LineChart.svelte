@@ -53,6 +53,6 @@
   })
 </script>
 
-<svg {width} {height} style="display:block;overflow:visible">
+<svg {width} {height} style="display:block;overflow:visible" data-component="LineChart">
   {@html svgContent}
 </svg>

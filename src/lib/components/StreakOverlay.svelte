@@ -8,7 +8,7 @@
   } = $props()
 </script>
 
-<div class="streak-overlay">
+<div class="streak-overlay" id="streak-overlay" data-component="StreakOverlay">
   <div class="stack-center">
     <div class="streak-flame">🔥</div>
     <div class="streak-count">{count}</div>

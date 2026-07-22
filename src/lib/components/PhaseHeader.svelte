@@ -29,7 +29,7 @@
   } = $props()
 </script>
 
-<div class="phase-header">
+<div class="phase-header" data-component="PhaseHeader">
   {#if showLiveDot}
     <div class="eyebrow-row">
       <span class="live-dot" style="background:{accent};box-shadow:0 0 8px {accent}"></span>

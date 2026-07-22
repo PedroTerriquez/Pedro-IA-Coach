@@ -51,7 +51,7 @@
 </script>
 
 {#if visible && remainingMs > 0}
-  <div class="rtb" class:is-ending={isEnding} style="--accent:{accent}">
+  <div class="rtb" class:is-ending={isEnding} data-component="RestTimerBanner" style="--accent:{accent}">
     <div class="rtb-ring-wrap">
       <svg class="rtb-ring" viewBox="0 0 56 56" aria-hidden="true">
         <circle class="rtb-ring-track" cx="28" cy="28" r="24"></circle>

@@ -25,7 +25,7 @@
   } = $props()
 </script>
 
-<div class="section-pad-bot">
+<div class="section-pad-bot" data-component="CoachIACard">
   <div id="you-prog-coach-card" class="card coach-card">
     <div class="card-content">
       <div class="row">

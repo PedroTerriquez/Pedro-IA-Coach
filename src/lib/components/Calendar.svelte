@@ -114,7 +114,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
   }
 </script>
 
-<div class="calendar-root">
+<div class="calendar-root" data-component="Calendar">
   <!-- Streak Card -->
   <div class="streak-card" style="border-color:{accent}2e">
     <div class="streak-glow" style="background:{accent}"></div>

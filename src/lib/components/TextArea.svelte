@@ -17,6 +17,7 @@
 <textarea
   class="textarea-field"
   class:textarea-compact={compact}
+  data-component="TextArea"
   {value}
   {placeholder}
   {rows}

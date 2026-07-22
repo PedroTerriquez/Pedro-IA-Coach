@@ -17,6 +17,7 @@
 <button
   class="accent-toggle"
   class:accent-toggle-active={active}
+  data-component="AccentToggle"
   style="--toggle-accent:{accent}"
   {onclick}
   type="button"

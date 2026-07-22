@@ -15,7 +15,7 @@
   let statusText = $derived(exercisedToday ? 'Hoy ✅' : (lastUpdate ? 'Inactivo' : '—'))
 </script>
 
-<div class="friend-card">
+<div class="friend-card" data-component="FriendCard">
   <div class="friend-avatar">{initial}</div>
   <div class="friend-info">
     <div class="friend-name">{username}</div>

@@ -17,14 +17,16 @@
   } = $props()
 </script>
 
-<ActionRow title="Ejercicios JSON" description="Descarga solo los ejercicios como JSON" status={exercisesExportStatus} {accent}>
-  {#snippet button()}
-    <Button size="sm" onclick={onexercisesexport}>Exportar JSON</Button>
-  {/snippet}
-</ActionRow>
-<ActionRow title="Logs+ajustes JSON" description="Descarga toda la base de datos como JSON" status={jsonExportStatus} {accent}>
-  {#snippet button()}
-    <Button size="sm" onclick={onlogsexport}>Exportar JSON</Button>
-  {/snippet}
-</ActionRow>
+<div data-component="DataExportSection">
+  <ActionRow title="Ejercicios JSON" description="Descarga solo los ejercicios como JSON" status={exercisesExportStatus} {accent}>
+    {#snippet button()}
+      <Button size="sm" onclick={onexercisesexport}>Exportar JSON</Button>
+    {/snippet}
+  </ActionRow>
+  <ActionRow title="Logs+ajustes JSON" description="Descarga toda la base de datos como JSON" status={jsonExportStatus} {accent}>
+    {#snippet button()}
+      <Button size="sm" onclick={onlogsexport}>Exportar JSON</Button>
+    {/snippet}
+  </ActionRow>
+</div>
 

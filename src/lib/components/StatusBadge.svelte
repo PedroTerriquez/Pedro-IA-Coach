@@ -15,7 +15,7 @@
 </script>
 
 {#if status === 'completed'}
-  <span class="badge completed" style="--accent:{accent}">
+  <span class="badge completed" data-component="StatusBadge" style="--accent:{accent}">
     <svg width="10" height="8" viewBox="0 0 11 9" fill="none"><path d="M1 4.5l3 3L10 1" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     {#if children}
       {@render children()}
@@ -24,7 +24,7 @@
     {/if}
   </span>
 {:else}
-  <span class="badge active" style="--accent:{accent}">
+  <span class="badge active" data-component="StatusBadge" style="--accent:{accent}">
     <span class="pulse-dot"></span>
     {#if children}
       {@render children()}

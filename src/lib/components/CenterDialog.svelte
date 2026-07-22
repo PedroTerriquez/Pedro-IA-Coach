@@ -4,11 +4,13 @@
   let {
     open = false,
     children,
-    onclose = () => {}
+    onclose = () => {},
+    id = undefined
   }: {
     open?: boolean
     children?: Snippet
     onclose?: () => void
+    id?: string
   } = $props()
 
   function handleBackdrop(e: MouseEvent) {
@@ -17,7 +19,7 @@
 </script>
 
 {#if open}
-  <div class="dialog-backdrop" role="button" tabindex="0" onclick={handleBackdrop} onkeydown={(e) => { if (e.key === 'Escape') onclose() }}>
+  <div {id} class="dialog-backdrop" data-component="CenterDialog" role="button" tabindex="0" onclick={handleBackdrop} onkeydown={(e) => { if (e.key === 'Escape') onclose() }}>
     <div class="dialog-panel">
       {#if children}{@render children()}{/if}
     </div>

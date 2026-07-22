@@ -15,7 +15,7 @@
   } = $props()
 </script>
 
-<div class="coach-response" style="border-left:3px solid {accent}">
+<div class="coach-response" data-component="CoachResponseCard" style="border-left:3px solid {accent}">
   <div class="response-header">
     <span class="response-icon" style="background:{accent}1f">
       <Icon name="coach" size={13} color={accent} />

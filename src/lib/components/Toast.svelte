@@ -15,7 +15,7 @@
 </script>
 
 {#if visible}
-  <div id="backup-toast" class="toast" class:toast-error={isError}>
+  <div id="backup-toast" class="toast" class:toast-error={isError} data-component="Toast">
     {#if children}
       {@render children()}
     {:else}

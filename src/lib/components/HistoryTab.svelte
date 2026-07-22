@@ -27,7 +27,7 @@
   } = $props()
 </script>
 
-<div class="tab-content">
+<div class="tab-content" data-component="HistoryTab">
   <div class="stats-grid">
     <StatBlock value={maxWeight} label="Máx total" unit={units} {accent} />
     <StatBlock value={lastLog ? lastLog.weight : 0} label="Actual" unit={units} />

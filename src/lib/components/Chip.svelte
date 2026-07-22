@@ -7,7 +7,7 @@
   } = $props()
 </script>
 
-<span class="pill" style="background:{color};color:{textColor};{style}" role="status">
+<span class="pill" style="background:{color};color:{textColor};{style}" role="status" data-component="Chip">
   {#if children}{@render children()}{/if}
 </span>
 

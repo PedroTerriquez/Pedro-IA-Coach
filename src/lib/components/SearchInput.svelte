@@ -2,11 +2,13 @@
   let {
     value = '',
     placeholder = 'Buscar...',
-    oninput = () => {}
+    oninput = () => {},
+    id = undefined
   }: {
     value?: string
     placeholder?: string
     oninput?: (val: string) => void
+    id?: string
   } = $props()
 </script>
 
@@ -15,6 +17,8 @@
   type="text"
   {value}
   {placeholder}
+  {id}
+  data-component="SearchInput"
   oninput={(e) => oninput((e.target as HTMLInputElement).value)}
 />
 

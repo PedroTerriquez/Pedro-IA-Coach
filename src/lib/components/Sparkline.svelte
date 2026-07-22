@@ -27,6 +27,6 @@
   })
 </script>
 
-<svg {width} {height} style="display:block">
+<svg {width} {height} style="display:block" data-component="Sparkline">
   {@html svgContent}
 </svg>

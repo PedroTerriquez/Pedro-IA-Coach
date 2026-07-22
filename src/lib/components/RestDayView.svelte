@@ -13,30 +13,32 @@
   } = $props()
 </script>
 
-<div class="page-top">
-  <div class="eyebrow">Hoy</div>
-  <div class="hero-title">Descanso.</div>
-</div>
-<div class="rest-card-wrapper">
-  <GlowCard blobColor="#9bd1ff" padding="28px">
-    <Chip color="rgba(155,209,255,0.15)" textColor="#9bd1ff">DESCANSO</Chip>
-    <div class="rest-title">La recuperación es donde creces.</div>
-    <div class="rest-desc">Sin pesas hoy. Tómalo con calma{weekObj ? ' y prepara tu cuerpo para la ' + (weekIdx >= 2 ? 'Semana A' : 'próxima sesión') : ''}.</div>
-  </GlowCard>
-</div>
-<div class="recovery-header">
-  <SectionLabel accent="#9bd1ff">Lista de recuperación</SectionLabel>
-</div>
-<div class="tip-list">
-  {#each RECOVERY_TIPS as tip}
-    <div class="recovery-card">
-      <div class="recovery-icon">{tip.icon}</div>
-      <div class="flex-1">
-        <div class="recovery-title">{tip.title}</div>
-        <div class="recovery-desc">{tip.body}</div>
+<div data-component="RestDayView">
+  <div class="page-top">
+    <div class="eyebrow">Hoy</div>
+    <div class="hero-title">Descanso.</div>
+  </div>
+  <div class="rest-card-wrapper">
+    <GlowCard blobColor="#9bd1ff" padding="28px">
+      <Chip color="rgba(155,209,255,0.15)" textColor="#9bd1ff">DESCANSO</Chip>
+      <div class="rest-title">La recuperación es donde creces.</div>
+      <div class="rest-desc">Sin pesas hoy. Tómalo con calma{weekObj ? ' y prepara tu cuerpo para la ' + (weekIdx >= 2 ? 'Semana A' : 'próxima sesión') : ''}.</div>
+    </GlowCard>
+  </div>
+  <div class="recovery-header">
+    <SectionLabel accent="#9bd1ff">Lista de recuperación</SectionLabel>
+  </div>
+  <div class="tip-list">
+    {#each RECOVERY_TIPS as tip}
+      <div class="recovery-card">
+        <div class="recovery-icon">{tip.icon}</div>
+        <div class="flex-1">
+          <div class="recovery-title">{tip.title}</div>
+          <div class="recovery-desc">{tip.body}</div>
+        </div>
       </div>
-    </div>
-  {/each}
+    {/each}
+  </div>
 </div>
 
 <style>

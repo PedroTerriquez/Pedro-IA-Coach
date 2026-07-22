@@ -10,7 +10,7 @@
   } = $props()
 </script>
 
-<div class="timer-wrapper">
+<div class="timer-wrapper" data-component="TimerRing">
   <svg width="64" height="64" class="timer-ring">
     <circle cx="32" cy="32" r="27" stroke="rgba(255,255,255,0.08)" stroke-width="5" fill="none"/>
     <circle cx="32" cy="32" r="27" stroke="{accent}cc" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="{sweepPct * 169.65} 169.65" style="transition:stroke-dasharray 0.6s linear"/>

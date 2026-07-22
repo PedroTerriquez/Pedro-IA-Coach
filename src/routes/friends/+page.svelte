@@ -160,11 +160,12 @@
     <div class="friends-empty" id="friends-list">Cargando...</div>
   </div>
 {:else if !username}
-  <div class="page username-prompt">
+  <div class="page username-prompt" id="username-prompt">
     <h2>👋 Bienvenido a Amigos</h2>
     <p>Elige un nombre de usuario para compartir tu racha con amigos.</p>
     <div class="username-input-wrap">
       <TextInput
+        id="username-input"
         bind:value={inputUsername}
         placeholder="tu_usuario"
         maxlength={20}
@@ -172,6 +173,7 @@
       />
     </div>
     <Button
+      id="username-btn"
       variant="primary"
       onclick={handleSubmitUsername}
       disabled={inputUsername.trim().length < 2 || saving}
@@ -204,7 +206,7 @@
       {/if}
     </div>
     <div class="friend-search">
-      <SearchInput value={searchQuery} placeholder="🔍 Buscar usuario..." oninput={(val) => searchQuery = val} />
+      <SearchInput id="friend-search-input" value={searchQuery} placeholder="🔍 Buscar usuario..." oninput={(val) => searchQuery = val} />
     </div>
     <SearchResults
       query={searchQuery}

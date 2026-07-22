@@ -1,8 +1,8 @@
 <script lang="ts">
-  let { title, subtitle }: { title: string; subtitle: string } = $props()
+  let { title, subtitle, id = undefined }: { title: string; subtitle: string; id?: string } = $props()
 </script>
 
-<div class="locked-card">
+<div class="locked-card" {id} data-component="LockedCard">
   <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
     <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="rgba(255,255,255,0.3)" stroke-width="1.4"/>
     <path d="M5 7V5a3 3 0 016 0v2" stroke="rgba(255,255,255,0.3)" stroke-width="1.4"/>

@@ -15,7 +15,7 @@
   ] as const
 </script>
 
-<div class="effort-selector">
+<div class="effort-selector" data-component="EffortSelector">
   <div class="dialog-center">
     <div class="dialog-emoji">🧑‍🏫</div>
     <div class="dialog-title">¿Cómo sentiste la sesión?</div>
@@ -23,7 +23,7 @@
   </div>
   <div class="stack">
     {#each efforts as [eff, emoji, label, desc]}
-      <button class="effort-btn" onclick={() => onselect(eff)}>
+      <button class="effort-btn" data-effort={eff} onclick={() => onselect(eff)}>
         <div class="effort-emoji" style="background:{accent}1a;border-color:{accent}33">{emoji}</div>
         <div>
           <div class="effort-label">{label}</div>

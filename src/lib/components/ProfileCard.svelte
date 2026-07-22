@@ -25,17 +25,17 @@
   } = $props()
 </script>
 
-<div class="card">
+<div class="card" data-component="ProfileCard">
   <CardRow label="Estatura">
-    <TextInput type="number" mono bind:value={height} onblur={() => onsave('height', height)} style="width:72px;text-align:right" />
+    <TextInput id="height-input" type="number" mono bind:value={height} onblur={() => onsave('height', height)} style="width:72px;text-align:right" />
     <span class="unit-label">cm</span>
   </CardRow>
   <CardRow label="Peso">
-    <TextInput type="number" mono bind:value={weight} onblur={() => onsave('weight', weight)} style="width:72px;text-align:right" />
+    <TextInput id="weight-input" type="number" mono bind:value={weight} onblur={() => onsave('weight', weight)} style="width:72px;text-align:right" />
     <span class="unit-label">kg</span>
   </CardRow>
   <CardRow label="Sexo">
-    <select class="input-field" bind:value={sex} onchange={() => onsave('sex', sex)}>
+    <select id="sex-input" class="input-field" bind:value={sex} onchange={() => onsave('sex', sex)}>
       <option value="">Seleccionar</option>
       <option value="Masculino">Masculino</option>
       <option value="Femenino">Femenino</option>
@@ -43,10 +43,10 @@
     </select>
   </CardRow>
   <CardRow label="Edad">
-    <TextInput type="number" mono bind:value={age} onblur={() => onsave('age', age)} style="width:72px;text-align:right" />
+    <TextInput id="age-input" type="number" mono bind:value={age} onblur={() => onsave('age', age)} style="width:72px;text-align:right" />
   </CardRow>
   <CardRow label="Objetivo">
-    <select class="input-field" bind:value={goal} onchange={() => onsave('goal', goal)}>
+    <select id="goal-input" class="input-field" bind:value={goal} onchange={() => onsave('goal', goal)}>
       <option value="">Seleccionar</option>
       <option value="hipertrofia">Hipertrofia</option>
       <option value="fuerza">Fuerza</option>
@@ -56,7 +56,7 @@
     </select>
   </CardRow>
   <CardRow label="Experiencia">
-    <select class="input-field" bind:value={experience} onchange={() => onsave('experience', experience)}>
+    <select id="exp-input" class="input-field" bind:value={experience} onchange={() => onsave('experience', experience)}>
       <option value="">Seleccionar</option>
       <option value="principiante">Principiante</option>
       <option value="intermedio">Intermedio</option>
@@ -64,7 +64,7 @@
     </select>
   </CardRow>
   <CardRow label="Profesión" last={true}>
-    <TextInput type="text" bind:value={occupation} onblur={() => onsave('occupation', occupation)} placeholder="Ej: Ingeniero, oficinista, repartidor…" style="width:160px" />
+    <TextInput id="occ-input" type="text" bind:value={occupation} onblur={() => onsave('occupation', occupation)} placeholder="Ej: Ingeniero, oficinista, repartidor…" style="width:160px" />
   </CardRow>
 </div>
 

@@ -25,7 +25,7 @@
   } = $props()
 </script>
 
-<div class="action-row">
+<div class="action-row" data-component="ActionRow">
   <div class="action-info">
     <div class="action-title">{title}</div>
     <div class="action-desc">{description}</div>

@@ -64,7 +64,7 @@
   function decReps() { pendingReps = Math.max(1, +pendingReps - 1) }
 </script>
 
-<div class="tab-content">
+<div class="tab-content" data-component="WorkoutTab">
   <div class="workout-card" style="border-color:{loggedToday ? `${accent}33` : 'rgba(255,255,255,0.06)'};box-shadow:{loggedToday ? `0 8px 32px ${accent}11` : '0 6px 20px rgba(0,0,0,0.2)'}">
     {#if loggedToday}
       <div class="card-glow" style="background:{accent}"></div>

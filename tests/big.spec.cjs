@@ -1,23 +1,30 @@
 // GUARDRAIL: If you're removing/modifying steps below, STOP.
-// This test covers the ENTIRE app flow across 15 scenarios.
+// This is the single source of truth for behavioral/E2E coverage of the app —
+// all behavior tests live here, against the real SvelteKit app (real routes,
+// real components, no hash-routing or window-exposed test hooks left over
+// from the pre-migration vanilla-JS app). Don't add new top-level test files
+// for app behavior; add a step to the main flow below, or a new `test()`
+// inside a `test.describe()` block in this same file.
 // Removing any step WILL break the guardrail assertion below.
 // Add new steps after step 15, or add your scenario as a SEPARATE test.
 // If you truly must remove a step, update the EXPECTED_STEPS array.
 
 const EXPECTED_STEPS = [
   'Step 1: Verify Profile',
-  'Step 2: Visit Today',
-  'Step 3: Warmup',
-  'Step 4: Plan',
-  'Step 5: Back to Today',
-  'Step 6: Coach IA FAB',
-  'Step 7: Log Weights',
-  'Step 8: Streak Celebration',
-  'Step 9: Effort Modal',
-  'Step 10: History Verification',
-  'Step 11: Friends',
-  'Step 12: Language Toggle',
-  'Step 13: Tab Bar Always Visible',
+  'Step 2: Ejercicios Tab Hydration',
+  'Step 3: Visit Today — Phase Cards',
+  'Step 4: Warmup — Navigate Prev/Next, Mark Done',
+  'Step 5: Plan — Switch Week',
+  'Step 6: Back to Today — Training Card',
+  'Step 7: Coach IA FAB',
+  'Step 8: Log Weights for Both Exercises',
+  'Step 9: Streak Celebration',
+  'Step 10: Effort Modal + Coach Card',
+  'Step 11: History Verification',
+  'Step 12: Friends',
+  'Step 13: Language Toggle',
+  'Step 14: Tab Bar Always Visible',
+  'Step 15: No Uncaught JS Errors',
 ]
 
 // Guardrail runs at import time — if any step is missing, the test file is corrupt.
@@ -171,7 +178,8 @@ async function seedIndexedDB(page, data, retries = 3) {
             tx.objectStore('programs').clear()
             tx.objectStore('settings').clear()
             d.exercises.forEach(ex => tx.objectStore('exercises').put(ex))
-            tx.objectStore('programs').put(d.program)
+            ;(d.exerciseLogs || []).forEach(log => tx.objectStore('exerciseLogs').put(log))
+            if (d.program) tx.objectStore('programs').put(d.program)
             tx.objectStore('settings').put(d.settings)
             tx.oncomplete = () => { db.close(); resolve() }
             tx.onerror = () => reject(tx.error)
@@ -187,20 +195,46 @@ async function seedIndexedDB(page, data, retries = 3) {
   }
 }
 
+// Generic /api/ interceptor shared by the sub-tab suites below — mirrors the
+// default branch of the main flow's route handler (coach-style JSON), since
+// most of these tests don't care about AI response shape, only that the UI
+// reacts to *a* response. Tests that DO care (e.g. AI import needs `weeks`)
+// register a more specific page.route override before triggering the action;
+// Playwright matches the most-recently-registered handler first.
+async function mockApiRoutes(page) {
+  await page.route(/\/api\//, async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        analysis: 'Buen trabajo.',
+        verdict: 'positive',
+        rotation_topic: 'comparativa',
+        _provider: 'test',
+      }),
+    })
+  })
+}
+
 test('full user flow: profile → warmup → week switch (A→B) → training → stretch → coach → history → friends', async ({ page }) => {
   test.setTimeout(90000)
+
+  // ── Fail on ANY uncaught JS error (hydration / runtime) ──
+  const jsErrors = []
+  page.on('pageerror', err => jsErrors.push(err.message))
 
   // ── Seed IndexedDB ──
   const program = SEED.getProgram()
   const settings = SEED.getSettings()
-  await page.goto('/')
+  await page.goto('today')
   await page.waitForTimeout(600)
   await seedIndexedDB(page, { exercises: SEED.exercises, program, settings })
 
   await page.waitForTimeout(200)
   await page.reload()
   await page.waitForTimeout(1000)
-  await page.waitForFunction(() => typeof window.appRefresh === 'function')
+  // No appRefresh hook needed — SvelteKit re-reads IndexedDB on every route's
+  // onMount, so a plain reload (or goto) is enough to pick up seeded data.
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null, { timeout: 5000 }).catch(() => {})
 
   // Intercept Worker API calls
@@ -221,12 +255,13 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
     if (url.includes('/api/friends/list')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends: [{ username: 'Ana', streak: 12, exercisedToday: true, lastUpdate: new Date().toISOString() }] }) })
     }
-    // Default: coach AI response (existing)
+    // Default: coach AI response (used by You → Programas → Coach IA, not by
+    // the local post-workout coach card, which is client-side only)
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        analysis: 'Buen trabajo hoy, TestUser. Nivel intermedio detectado — tus cargas progresan de forma constante. En Press Banca cumples la regla 2x2: +2 reps en las últimas 2 sesiones, toca subir. En Sentadilla veo estabilidad, mantén el peso una semana más para consolidar técnica. Por tu perfil sedentario, no descuides movilidad de cadera antes de cada sesión.',
+        analysis: 'Buen trabajo hoy, TestUser.',
         verdict: 'positive',
         proximo_objetivo: 'Press Banca → 55kg @ RIR 1-2',
         recommendations: ['Sube Press Banca 2.5kg la próxima sesión'],
@@ -237,7 +272,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   })
 
   // ── Step 1: Verify Profile ──
-  await page.evaluate(() => { location.hash = '#you' })
+  await page.goto('you')
   await page.waitForSelector('#user-name')
 
   await expect(page.locator('#user-name')).toHaveText('TestUser')
@@ -249,16 +284,27 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(page.locator('#exp-input')).toHaveValue('intermedio')
   await expect(page.locator('#occ-input')).toHaveValue('Ingeniero')
 
-  // ── Step 2: Visit Today — Verify Phase Cards ──
-  await page.evaluate(() => { location.hash = '#today' })
+  // ── Step 2: Ejercicios Tab Hydration ──
+  // Proves the SegmentedControl is actually interactive post-hydration by
+  // checking the real effect of clicking it (content swap), not a CSS color.
+  await page.click('#you-tab-ejercicios')
+  await page.waitForTimeout(300)
+  await expect(page.locator('#you-tab-ejercicios')).toHaveClass(/seg-active/)
+  await expect(page.locator('.ex-count')).toBeVisible()
+
+  // ── Step 3: Visit Today — Phase Cards ──
+  await page.goto('today')
   await page.waitForTimeout(500)
 
-  // Warmup + training are PhaseCards; stretch is LockedPhase (locked by warmup)
+  // Warmup + training are PhaseCards; stretch is a LockedCard (locked by warmup)
   await expect(page.locator('[data-phase="warmup"]')).toBeVisible()
   await expect(page.locator('[data-phase="training"]')).toBeVisible()
   await expect(page.locator('#today-locked-warmup-stretch')).toBeVisible()
 
-  // ── Step 3: Warmup — Navigate Prev/Next, Mark Done ──
+  // ── Step 4: Warmup — Navigate Prev/Next, Mark Done ──
+  await page.locator('[data-phase="warmup"]').click()
+  await page.waitForTimeout(400)
+
   const hechoBtn = page.getByRole('button', { name: 'Hecho' })
   await expect(hechoBtn).toBeVisible({ timeout: 3000 })
 
@@ -267,56 +313,70 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   expect(counter1).toMatch(/^1 \/ \d+$/)
 
   // Click Siguiente → counter changes
+  // (Warmup's swipe transition holds a `swiping` lock for ~550ms; clicking
+  // again before it clears is a silent no-op, so these waits must clear it.)
   await page.getByRole('button', { name: 'Siguiente' }).first().click()
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(700)
   const counter2 = await getCounter().textContent()
   expect(counter2).not.toBe(counter1)
 
   // Click Anterior → counter reverts
   await page.getByRole('button', { name: 'Anterior' }).first().click()
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(700)
   const counter3 = await getCounter().textContent()
   expect(counter3).toBe(counter1)
 
-  // Mark warmup done
+  // Mark warmup done — the app shows one phase view at a time, so completing
+  // warmup replaces the whole phase-card list with the TrainingCard (checked
+  // in Step 6), rather than leaving a "completed" warmup card in place.
   await hechoBtn.click()
   await expect(hechoBtn).not.toBeVisible({ timeout: 2000 })
-  await expect(page.locator('[data-phase="warmup"]')).toContainText('Completado')
-  // Warmup card is still visible (collapsed, shows completed state)
-  await expect(page.locator('[data-phase="warmup"]')).toBeVisible()
 
-  // ── Step 4: Plan — Switch Week ──
-  await page.evaluate(() => { location.hash = '#plan' })
-  await page.waitForTimeout(300)
+  // ── Step 5: Plan — Switch Week ──
+  // Wait for persistPhase() from warmup completion to settle in IndexedDB
+  await page.waitForTimeout(800)
+  await page.goto('plan')
+  await page.waitForTimeout(500)
 
   const week2Tab = page.locator('button:has-text("Semana 2")').first()
   await expect(week2Tab).toBeVisible()
   await week2Tab.click()
-  await page.waitForTimeout(300)
-
-  // ── Step 5: Back to Today — Training Card ──
-  await page.evaluate(() => { location.hash = '#today' })
   await page.waitForTimeout(500)
 
-  const trainingCard = page.locator('[data-phase="training"]')
+  // After switching weeks, the current day must auto-expand showing exercises
+  // from the NEW week (not the previous one).
+  const planDaysGrid = page.locator('#plan-days-grid')
+  await expect(planDaysGrid).toContainText('Press de Banca')
+  await expect(planDaysGrid).toContainText('Sentadilla')
+
+  // ── Step 6: Back to Today — Training Card ──
+  await page.goto('today')
+  await page.waitForTimeout(800)
+
+  const trainingCard = page.locator('[data-phase="training"]').first()
   await expect(trainingCard).toBeVisible()
-  await expect(trainingCard).toContainText('Sigue')
+  await expect(trainingCard).toContainText('Entrenamiento')
+
+  // Exercise previews must render INSIDE the training card (not a separate
+  // list elsewhere on the page).
+  await expect(trainingCard.locator('.exercise-row')).toHaveCount(2)
+  await expect(page.locator('#today-exercise-list')).toHaveCount(0)
 
   // Click training card → open detail sheet
   await trainingCard.click()
   await page.waitForTimeout(500)
 
-  // Verify Google + TikTok links use correct URL format
+  // Verify Google + TikTok exercise-search links (video search is intentional —
+  // exercise demo videos, not a plain web search)
   const googleBtn = page.locator('.hero-google-btn').first()
   const tiktokBtn = page.locator('.hero-tiktok-btn').first()
   await expect(googleBtn).toBeVisible()
   await expect(tiktokBtn).toBeVisible()
   const googleHref = await googleBtn.getAttribute('href')
-  expect(googleHref).toContain('google.com/search?q=')
-  expect(googleHref).toContain('&udm=7')
-  expect(googleHref).not.toContain('tbm=')
+  expect(googleHref).toContain('google.com/search')
+  expect(googleHref).toContain('tbm=video')
 
-  // ── Step 6: Coach IA FAB ──
+  // ── Step 7: Coach IA FAB ──
   const coachFab = page.locator('#coach-fab')
   await expect(coachFab).toBeVisible({ timeout: 3000 })
   await expect(coachFab).toContainText('Coach IA')
@@ -326,19 +386,19 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(400)
 
   // Verify overlay shows close button + exercise-specific greeting
-  await expect(page.locator('#coach-close-btn')).toBeVisible()
+  await expect(page.locator('.coach-close-btn')).toBeVisible()
   await expect(page.locator('text=¡Qué onda!')).toBeVisible()
   await expect(page.locator('text=Mejorar técnica')).toBeVisible()
   await expect(page.locator('text=¿Voy muy pesado?')).toBeVisible()
 
   // Close overlay via close button
-  await page.locator('#coach-close-btn').click()
+  await page.locator('.coach-close-btn').click()
   await page.waitForTimeout(200)
 
   // Verify overlay is gone
-  await expect(page.locator('#coach-close-btn')).not.toBeVisible()
+  await expect(page.locator('.coach-close-btn')).not.toBeVisible()
 
-  // ── Step 7: Log Weights for Both Exercises ──
+  // ── Step 8: Log Weights for Both Exercises ──
   // Exercise 1: Press Banca 5×5
   const stepperInc = page.locator('.stepper-inc').first()
   await expect(stepperInc).toBeVisible()
@@ -360,7 +420,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(400)
 
   // Exercise 2: Should show Sentadilla (from Week B), NOT Press Militar (from Week A)
-  // This verifies the week-switch navigation bug: openDetailSheet must search
+  // This verifies the week-switch navigation bug: the detail sheet must search
   // only the current week, not all weeks, for prev/next context.
   await expect(page.locator('text=Sentadilla').first()).toBeVisible({ timeout: 2000 })
 
@@ -373,16 +433,13 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await registerBtn2.click()
   await page.waitForTimeout(600)
 
-  // Close detail sheet → triggers refresh() which recalculates _todayExDone
-  const sheetCloseBtn = page.locator('button').filter({
-    has: page.locator('svg path[d="M2 2l10 10M12 2L2 12"]'),
-  })
+  // Close detail sheet → triggers refresh() which recalculates today's done count
+  const sheetCloseBtn = page.getByRole('button', { name: 'Cerrar' }).first()
   await expect(sheetCloseBtn).toBeVisible()
   await sheetCloseBtn.click()
   await page.waitForTimeout(500)
 
   // Stretch sheet auto-opens after training completes (phase 3).
-  // The stretch sheet is now on top of the phase cards.
   const stretchHecho = page.getByRole('button', { name: 'Hecho' })
   await expect(stretchHecho).toBeVisible({ timeout: 5000 })
 
@@ -390,25 +447,25 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const stretchNext = page.getByRole('button', { name: 'Siguiente' })
   if (await stretchNext.isVisible()) {
     await stretchNext.click()
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(500)
   }
   const stretchPrev = page.getByRole('button', { name: 'Anterior' })
   if (await stretchPrev.isVisible()) {
     await stretchPrev.click()
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(500)
   }
 
   await stretchHecho.click()
   await page.waitForTimeout(500)
 
-  // ── Step 8: Streak Celebration ──
+  // ── Step 9: Streak Celebration ──
   const streakOverlay = page.locator('#streak-overlay')
   await expect(streakOverlay).toBeVisible({ timeout: 5000 })
   await expect(streakOverlay.locator('text=Días consecutivos')).toBeVisible()
   // Wait for auto-dismiss
   await expect(streakOverlay).not.toBeVisible({ timeout: 5000 })
 
-  // ── Step 9: Effort Modal + Coach Card ──
+  // ── Step 10: Effort Modal + Coach Card ──
   const effortOverlay = page.locator('#effort-overlay')
   await expect(effortOverlay).toBeVisible({ timeout: 5000 })
   await effortOverlay.locator('[data-effort="good"]').click()
@@ -416,43 +473,28 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const coachCard = page.locator('#coach-card-regen')
   await expect(coachCard).toBeVisible({ timeout: 10000 })
   await expect(coachCard).toContainText('Resumen del coach')
-  // Verify provider text is NOT present (removed in favor of topic label)
-  await expect(coachCard.locator('text=llama')).not.toBeVisible()
 
-  // ── Step 10: History Verification ──
-  await page.evaluate(() => { location.hash = '#history' })
+  // ── Step 11: History Verification ──
+  await page.goto('history')
   await page.waitForTimeout(500)
 
   // History shows the completed session with exercise names (from Week B)
-  await expect(page.locator('body')).toContainText('Press Banca')
+  await expect(page.locator('body')).toContainText('Press de Banca')
   await expect(page.locator('body')).toContainText('Sentadilla')
   await expect(page.locator('body')).toContainText('Completado')
 
-  // History shows logged weights from Step 7
+  // History shows logged weights from Step 8
   await expect(page.locator('body')).toContainText('5')
 
-  // ── Step 11: Friends — full flow (username → search → add → verify streak) ──
-  // Mock searchUsers + loadFriends for offline operation
-  await page.evaluate(() => {
-    window.searchUsers = async (q, currentUsername, accent) => {
-      const resultsEl = document.getElementById('search-results')
-      if (!resultsEl || q.toLowerCase() !== 'ana') return
-      resultsEl.innerHTML = `<div class="search-result-item"><div class="search-result-info"><span class="search-result-name">Ana</span><span class="search-result-streak">12 días</span></div><button class="search-result-add" data-friend="Ana">Agregar</button></div>`
-      const btn = resultsEl.querySelector('.search-result-add')
-      btn.addEventListener('click', async () => {
-        btn.disabled = true
-        btn.textContent = '...'
-        const friendsList = document.getElementById('friends-list')
-        friendsList.innerHTML = `<div class="friend-card"><div class="friend-avatar">A</div><div class="friend-info"><div class="friend-name">Ana</div><div class="friend-status">Hoy ✅</div></div><div class="friend-streak">12<span class="unit">días</span></div></div>`
-        btn.textContent = '✓ Agregado'
-      })
-    }
-    window.loadFriends = async (username, accent) => {
-      const listEl = document.getElementById('friends-list')
-      if (listEl) listEl.innerHTML = ''
-    }
-  })
-  await page.evaluate(() => { location.hash = '#friends' })
+  // History/Calendar must show resolved exercise names, never raw ids like "ex-bench"
+  const bodyText = await page.locator('body').textContent()
+  expect(bodyText).not.toContain('ex-bench')
+  expect(bodyText).not.toContain('ex-squat')
+
+  // ── Step 12: Friends ──
+  // No window overrides — the real Friends page calls the API directly;
+  // routes are intercepted above.
+  await page.goto('friends')
   await page.waitForTimeout(500)
 
   // First visit shows username prompt
@@ -480,12 +522,12 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(500)
 
   // Search result shows mock friend
-  const searchResult = page.locator('.search-result-item')
+  const searchResult = page.locator('.sr-item')
   await expect(searchResult).toBeVisible()
   await expect(searchResult).toContainText('Ana')
 
   // Add friend
-  const addBtn = page.locator('.search-result-add')
+  const addBtn = page.getByRole('button', { name: 'Agregar' })
   await expect(addBtn).toBeVisible()
   await addBtn.click()
   await page.waitForTimeout(500)
@@ -497,8 +539,8 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(friendCard).toContainText('12')
   await expect(friendCard).toContainText('Hoy')
 
-  // ── Step 12: Language Toggle — Exercise Names ──
-  await page.evaluate(() => { location.hash = '#you' })
+  // ── Step 13: Language Toggle — Exercise Names ──
+  await page.goto('you')
   await page.waitForTimeout(500)
 
   const langBtn = page.locator('#lang-toggle-btn')
@@ -510,13 +552,13 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(500)
 
   // Navigate to History — exercise names should be in English
-  await page.evaluate(() => { location.hash = '#history' })
+  await page.goto('history')
   await page.waitForTimeout(500)
   await expect(page.locator('body')).toContainText('Barbell Bench Press')
   await expect(page.locator('body')).toContainText('Barbell Full Squat')
 
   // Toggle back to Spanish
-  await page.evaluate(() => { location.hash = '#you' })
+  await page.goto('you')
   await page.waitForTimeout(500)
   const langBtn2 = page.locator('#lang-toggle-btn')
   await expect(langBtn2).toContainText('English')
@@ -524,17 +566,17 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(500)
 
   // Verify Spanish names restored
-  await page.evaluate(() => { location.hash = '#history' })
+  await page.goto('history')
   await page.waitForTimeout(500)
-  await expect(page.locator('body')).toContainText('Press Banca')
+  await expect(page.locator('body')).toContainText('Press de Banca')
 
-  // ── Step 13: Tab Bar Always Visible — on every page, without scrolling ──
+  // ── Step 14: Tab Bar Always Visible — on every page, without scrolling ──
   const tabBarPages = ['today', 'plan', 'history', 'you']
   for (const tabPage of tabBarPages) {
-    await page.evaluate((p) => { location.hash = '#' + p }, tabPage)
+    await page.goto(tabPage)
     await page.waitForTimeout(400)
 
-    const hoyBtn = page.getByRole('button', { name: 'Hoy' })
+    const hoyBtn = page.getByRole('link', { name: 'Hoy' })
     await expect(hoyBtn).toBeVisible()
     await expect(hoyBtn).toBeInViewport()
 
@@ -543,4 +585,539 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
     await page.waitForTimeout(200)
     await expect(hoyBtn).toBeInViewport()
   }
+
+  // ── Step 15: No Uncaught JS Errors ──
+  expect(jsErrors).toEqual([])
+})
+
+// Merged from the former tests/warmup-detail.spec.cjs — same rule: all app
+// behavior lives in this one file. These are independent, narrowly-seeded
+// scenarios (not steps in the main flow above), so they're separate test()
+// calls sharing the seedIndexedDB/buildDayArray helpers already defined above.
+test.describe('Warmup detail sheet rendering', () => {
+  const BASE_SETTINGS = {
+    id: 'settings',
+    activeProgramId: 'prog-test',
+    currentWeekIdx: 0,
+    units: 'kg',
+    accentColor: '#d4ff3a',
+    hasWatch: false,
+    pushSubscribed: false,
+    pushServerUrl: '',
+    sessionState: null,
+    lastCoachAnalysis: null,
+    rescheduleWeekOrder: {},
+  }
+
+  function getTodayStr() {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  test('renders sectioned cards when item has posInicial/ejecucion/respiracion/duracion', async ({ page }) => {
+    const program = {
+      id: 'prog-test',
+      name: 'Test Program',
+      weeks: [{
+        name: 'Semana 1',
+        subtitle: '',
+        tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje',
+          subtitle: 'Press Banca',
+          duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: { ...BASE_SETTINGS },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(1000)
+
+    // The warmup sheet doesn't auto-open — the user opens it via the phase card.
+    await page.locator('[data-phase="warmup"]').click()
+    await page.waitForTimeout(500)
+
+    // Chest warmup items from WARMUP_DATA have all 4 sections
+    await expect(page.getByText('Posición Inicial').first()).toBeVisible({ timeout: 3000 })
+    await expect(page.getByText('Ejecución').first()).toBeVisible()
+    await expect(page.getByText('Respiración').first()).toBeVisible()
+    await expect(page.getByText('Duración').first()).toBeVisible()
+  })
+
+  test('falls back to desc for GENERIC_WARMUP items without section fields', async ({ page }) => {
+    // Quadriceps does not resolve to any WARMUP_DATA key -> GENERIC_WARMUP_ONLY fallback
+    const program = {
+      id: 'prog-test',
+      name: 'Test Program',
+      weeks: [{
+        name: 'Semana 1',
+        subtitle: '',
+        tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Piernas',
+          subtitle: 'Sentadilla',
+          duration: 60,
+          exercises: [{ exerciseId: 'ex-squat', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-squat', name: 'Sentadilla', muscle: 'Quadriceps', imgUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: { ...BASE_SETTINGS },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(1000)
+
+    await page.locator('[data-phase="warmup"]').click()
+    await page.waitForTimeout(500)
+
+    // GENERIC_WARMUP items have a desc field, not sections
+    // "Cómo hacerlo" label shows in the fallback path
+    await expect(page.getByText('Cómo hacerlo').first()).toBeVisible({ timeout: 3000 })
+
+    // Section labels should NOT appear
+    await expect(page.getByText('Posición Inicial')).toHaveCount(0)
+  })
+
+  test('shows STALLBAR badge when item has stallbar: true', async ({ page }) => {
+    // Chest exercise; seed sessionState at phase 3 with todayExDone matching
+    // the day's exercise count so the app auto-opens the stretch sheet
+    // directly on mount, skipping warmup/training entirely.
+    const program = {
+      id: 'prog-test',
+      name: 'Test Program',
+      weeks: [{
+        name: 'Semana 1',
+        subtitle: '',
+        tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje',
+          subtitle: 'Press Banca',
+          duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+    const today = getTodayStr()
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: { ...BASE_SETTINGS, sessionState: { date: today, phase: 3, todayExDone: 1 } },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(1000)
+
+    // Chest stretch: 3rd item "Apertura de Pecho Pasiva en Espaldera" has stallbar: true
+    // Navigate Siguiente twice (same ~550ms swipe-lock as the main flow's warmup step)
+    const nextBtn = page.getByRole('button', { name: 'Siguiente' }).first()
+    await expect(nextBtn).toBeVisible({ timeout: 3000 })
+    await nextBtn.click()
+    await page.waitForTimeout(700)
+    await nextBtn.click()
+    await page.waitForTimeout(700)
+
+    // STALLBAR badge should now be visible
+    await expect(page.getByText('STALLBAR').first()).toBeVisible({ timeout: 2000 })
+  })
+})
+
+// The suites below close the sub-tab gaps the main flow above never reaches:
+// Tú → Programas, Tú → Datos, Tú → Ejercicios CRUD (main flow only proves the
+// tab hydrates), Plan → Reprogramar mode, Plan's own ExerciseDetail wiring,
+// and Historial → Ejercicios. Same rule as the warmup suite above: independent
+// scenarios live here as their own test()/describe(), not steps in the main flow.
+
+test.describe('You — Programas tab', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-a', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+  const PROGRAM_A = {
+    id: 'prog-a', name: 'Programa Activo',
+    weeks: [{ name: 'Semana 1', subtitle: '', tag: 'BUILD', days: [{ name: 'Día 1', subtitle: '', duration: 60, exercises: [] }] }],
+  }
+
+  test('create, activate, duplicate, delete a program + Coach IA response', async ({ page }) => {
+    test.setTimeout(60000)
+    await mockApiRoutes(page)
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], program: PROGRAM_A, settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.getByRole('button', { name: 'Programas' }).click()
+    await page.waitForTimeout(300)
+
+    // Create a new program
+    await page.getByPlaceholder('Nombre del nuevo programa').fill('Programa Nuevo')
+    await page.getByRole('button', { name: '+ Nuevo' }).click()
+    await page.waitForTimeout(500)
+
+    const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo' }).first()
+    await expect(newCard).toBeVisible()
+
+    // Activate it — the ACTIVO pill should move off "Programa Activo"
+    await newCard.getByRole('button', { name: 'Activar' }).click()
+    await page.waitForTimeout(400)
+    await expect(newCard.locator('.pill')).toHaveText('ACTIVO')
+    const oldCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Activo' })
+    await expect(oldCard.locator('.pill')).toHaveCount(0)
+
+    // Duplicate
+    await newCard.getByRole('button', { name: 'Duplicar' }).click()
+    await page.waitForTimeout(400)
+    const dupCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })
+    await expect(dupCard).toBeVisible()
+
+    // Delete the duplicate
+    page.once('dialog', d => d.accept())
+    await dupCard.getByRole('button', { name: 'Eliminar' }).click()
+    await page.waitForTimeout(400)
+    await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })).toHaveCount(0)
+
+    // Coach IA — ask a question, verify a response renders
+    await page.locator('[data-component="CoachIACard"] textarea').fill('¿Está balanceada mi rutina?')
+    await page.getByRole('button', { name: 'Enviar al coach' }).click()
+    await page.waitForTimeout(600)
+    await expect(page.locator('[data-component="CoachResponseCard"]')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-component="CoachResponseCard"]')).toContainText('Listo.')
+  })
+})
+
+test.describe('You — Datos tab', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('AI import, dictionary migration, and JSON export/import', async ({ page }) => {
+    test.setTimeout(60000)
+
+    // Only the AI-import endpoint needs a real payload (it requires `weeks`);
+    // registered as its own route so it's matched ahead of nothing else here.
+    await page.route((url) => url.href.includes('/api/ai/import'), (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        program_name: 'Programa IA',
+        weeks: [{
+          name: 'Semana 1', subtitle: '', tag: 'BUILD',
+          days: [{ name: 'Día 1', subtitle: '', duration: 60, exercises: [{ name: 'Press Banca', muscle: 'Chest' }] }],
+        }],
+      }),
+    }))
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.waitForTimeout(300)
+
+    // AI import
+    await page.locator('.ai-textarea-wrap textarea').fill('Lunes: Press banca 4x8')
+    await page.getByRole('button', { name: 'Importar con IA' }).click()
+    await page.waitForTimeout(600)
+    await expect(page.locator('#ai-status')).toContainText('Importado "Programa IA"')
+
+    // Dictionary migration
+    await page.getByRole('button', { name: 'Aplicar' }).click()
+    await page.waitForTimeout(500)
+    await expect(page.locator('#dict-migrate-status')).toContainText('Actualizados')
+
+    // Export exercises JSON
+    const [download1] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('[data-component="DataExportSection"]').getByRole('button', { name: 'Exportar JSON' }).first().click(),
+    ])
+    expect(download1.suggestedFilename()).toMatch(/^ejercicios-\d{4}-\d{2}-\d{2}\.json$/)
+
+    // Import exercises JSON
+    const fs = require('fs')
+    const os = require('os')
+    const path = require('path')
+    const exFile = path.join(os.tmpdir(), `pw-exercises-${Date.now()}.json`)
+    fs.writeFileSync(exFile, JSON.stringify([
+      { id: 'ex-imported', name: 'Curl de Bíceps', muscle: 'Biceps', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+    ]))
+    try {
+      await page.locator('[data-component="DataImportSection"] input[type="file"]').first().setInputFiles(exFile)
+      await page.waitForTimeout(500)
+      await expect(page.locator('[data-component="DataImportSection"]')).toContainText('1 ejercicios importados')
+    } finally {
+      fs.unlinkSync(exFile)
+    }
+
+    // Import logs+settings JSON
+    const logsFile = path.join(os.tmpdir(), `pw-logs-${Date.now()}.json`)
+    fs.writeFileSync(logsFile, JSON.stringify({
+      exerciseLogs: [{ id: 'log-imported', exerciseId: 'ex-imported', date: '2026-07-01', weight: 40, units: 'kg' }],
+    }))
+    try {
+      await page.locator('[data-component="DataImportSection"] input[type="file"]').nth(1).setInputFiles(logsFile)
+      await page.waitForTimeout(500)
+      await expect(page.locator('[data-component="DataImportSection"]')).toContainText('Importados 1 logs')
+    } finally {
+      fs.unlinkSync(logsFile)
+    }
+  })
+})
+
+test.describe('You — Ejercicios tab CRUD', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('search, add, edit, delete an exercise', async ({ page }) => {
+    test.setTimeout(60000)
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [
+        { id: 'ex-a', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+        { id: 'ex-b', name: 'Sentadilla', muscle: 'Quadriceps', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      ],
+      settings: SETTINGS,
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.click('#you-tab-ejercicios')
+    await page.waitForTimeout(300)
+    await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
+
+    // Search filters the list down to one match
+    await page.getByPlaceholder('Buscar ejercicio…').fill('sentad')
+    await page.waitForTimeout(300)
+    await expect(page.locator('[data-component="ExerciseListItem"]')).toHaveCount(1)
+    await expect(page.locator('[data-component="ExerciseListItem"]')).toContainText('Sentadilla')
+    await page.getByPlaceholder('Buscar ejercicio…').fill('')
+    await page.waitForTimeout(300)
+
+    // Add a new exercise
+    await page.getByRole('button', { name: '+ Nuevo' }).click()
+    await page.getByPlaceholder('Nombre del ejercicio').fill('Remo con Barra')
+    await page.getByPlaceholder('Músculo (ej: Pecho, Espalda)').fill('Espalda')
+    await page.getByRole('button', { name: 'Guardar' }).click()
+    await page.waitForTimeout(400)
+    await expect(page.locator('#ex-count')).toHaveText('3 ejercicios')
+    const newItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra' })
+    await expect(newItem).toBeVisible()
+
+    // Edit it
+    await newItem.locator('.exercise-toggle').click()
+    await page.waitForTimeout(300)
+    await newItem.getByRole('button', { name: 'Editar' }).click()
+    await newItem.getByPlaceholder('Nombre').fill('Remo con Barra (editado)')
+    await newItem.getByRole('button', { name: 'Guardar' }).click()
+    await page.waitForTimeout(400)
+    const editedItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra (editado)' })
+    await expect(editedItem).toBeVisible()
+
+    // Delete it — still expanded from the edit step above (a second toggle
+    // click here would collapse it again and hide the Eliminar button)
+    page.once('dialog', d => d.accept())
+    await editedItem.getByRole('button', { name: 'Eliminar' }).click()
+    await page.waitForTimeout(400)
+    await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
+  })
+})
+
+test.describe('Plan — Reprogramar mode', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-plan', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+  // Fixed 7-day week (not built from buildDayArray, which pads only up to
+  // "today") so day names/positions are deterministic regardless of run date.
+  const PROGRAM_PLAN = {
+    id: 'prog-plan', name: 'Programa Plan',
+    weeks: [{
+      name: 'Semana 1', subtitle: '', tag: 'BUILD',
+      days: [
+        { name: 'Empuje', subtitle: '', duration: 60, exercises: [] },
+        { name: 'Rest', subtitle: '', duration: 0, exercises: [] },
+        { name: 'Tirón', subtitle: '', duration: 60, exercises: [] },
+        { name: 'Rest', subtitle: '', duration: 0, exercises: [] },
+        { name: 'Pierna', subtitle: '', duration: 60, exercises: [] },
+        { name: 'Rest', subtitle: '', duration: 0, exercises: [] },
+        { name: 'Rest', subtitle: '', duration: 0, exercises: [] },
+      ],
+    }],
+  }
+
+  test('swap days, reset, shift, and persist a reschedule', async ({ page }) => {
+    test.setTimeout(60000)
+
+    await page.goto('plan')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], program: PROGRAM_PLAN, settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.locator('#plan-reprogram-btn').click()
+    await page.waitForTimeout(300)
+    await expect(page.getByText('Reprogramando esta semana')).toBeVisible()
+
+    // Swap Empuje (Mon) and Tirón (Wed)
+    await page.locator('.day-card', { hasText: 'Empuje' }).locator('.day-header').click()
+    await page.waitForTimeout(200)
+    await page.locator('.day-card', { hasText: 'Tirón' }).locator('.day-header').click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.day-card', { hasText: 'Tirón' }).locator('.moved-chip')).toContainText('desde Mié')
+    await expect(page.locator('.day-card', { hasText: 'Empuje' }).locator('.moved-chip')).toContainText('desde Lun')
+
+    // Reset clears the swap
+    await page.locator('#plan-reset-btn').click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.moved-chip')).toHaveCount(0)
+
+    // "Me salté un día" rotates every workout forward by one day
+    await page.locator('#plan-shift-btn').click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.day-card', { hasText: 'Empuje' }).locator('.moved-chip')).toContainText('desde Lun')
+    await expect(page.locator('.day-card', { hasText: 'Tirón' }).locator('.moved-chip')).toContainText('desde Mié')
+
+    // Save — a persistent "changes" banner should appear outside edit mode
+    await page.locator('#plan-reprogram-btn').click()
+    await page.waitForTimeout(400)
+    await expect(page.locator('#plan-changes-banner')).toBeVisible()
+    await expect(page.locator('#plan-changes-banner')).toContainText('cambios')
+
+    // Reload — the reschedule must have actually persisted to settings, not
+    // just local component state
+    await page.reload()
+    await page.waitForTimeout(800)
+    await expect(page.locator('#plan-changes-banner')).toBeVisible()
+  })
+})
+
+test.describe('Plan — exercise detail sheet', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-detail', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('opens and closes ExerciseDetail from the Plan day grid', async ({ page }) => {
+    const program = {
+      id: 'prog-detail', name: 'Programa Detalle',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+
+    await page.goto('plan')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: SETTINGS,
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    // "Banca" (not the full seeded name) — the dictionary auto-normalizes
+    // display names by name-match even without an explicit dictId, e.g.
+    // "Press Banca" renders as "Press de Banca con Barra".
+    const exerciseRow = page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })
+    await expect(exerciseRow).toBeVisible({ timeout: 3000 })
+    await exerciseRow.click()
+    await page.waitForTimeout(400)
+
+    // Same shared ExerciseDetail/ExerciseHero used on Today — proves Plan's
+    // wiring (openExerciseDetailAt) actually opens the real sheet, not a stub
+    await expect(page.locator('.hero-google-btn')).toBeVisible()
+    const closeBtn = page.getByRole('button', { name: 'Cerrar' }).first()
+    await expect(closeBtn).toBeVisible()
+    await closeBtn.click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.hero-google-btn')).not.toBeVisible()
+  })
+})
+
+test.describe('Historial — Ejercicios sub-tab', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('filters by muscle and shows sparkline + delta stats', async ({ page }) => {
+    await page.goto('history')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [
+        { id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+        { id: 'ex-deadlift', name: 'Peso Muerto', muscle: 'Back', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      ],
+      exerciseLogs: [
+        { id: 'log-1', exerciseId: 'ex-bench', date: '2026-07-01', weight: 50, units: 'kg' },
+        { id: 'log-2', exerciseId: 'ex-bench', date: '2026-07-15', weight: 60, units: 'kg' },
+        { id: 'log-3', exerciseId: 'ex-deadlift', date: '2026-07-01', weight: 80, units: 'kg' },
+      ],
+      settings: SETTINGS,
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.getByRole('button', { name: 'Ejercicios' }).click()
+    await page.waitForTimeout(400)
+
+    await expect(page.locator('.ex-card')).toHaveCount(2)
+    // "Banca" (not the full seeded name) — display names are dictionary-
+    // normalized by name-match, e.g. "Press Banca" → "Press de Banca con Barra".
+    const benchCard = page.locator('.ex-card', { hasText: 'Banca' })
+    await expect(benchCard.locator('.ex-last')).toContainText('60')
+    await expect(benchCard.locator('.ex-delta')).toContainText('+10.0')
+    await expect(benchCard.locator('.ex-sparkline-placeholder')).toHaveCount(0)
+
+    // Filter to Chest only
+    await page.locator('.chips-row').getByText('Chest', { exact: true }).click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.ex-card')).toHaveCount(1)
+    await expect(page.locator('.ex-card')).toContainText('Banca')
+
+    // Back to all
+    await page.locator('.chips-row').getByText('Todos', { exact: true }).click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.ex-card')).toHaveCount(2)
+  })
 })

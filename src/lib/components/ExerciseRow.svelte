@@ -15,7 +15,7 @@
   } = $props()
 </script>
 
-<button class="exercise-row" class:selected {onclick} type="button">
+<button class="exercise-row" class:selected data-component="ExerciseRow" {onclick} type="button">
   <div class="ex-thumb">
     {#if imgUrl}
       <img src={imgUrl} alt="" />

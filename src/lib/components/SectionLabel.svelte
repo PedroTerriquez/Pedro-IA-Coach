@@ -5,7 +5,7 @@
   } = $props()
 </script>
 
-<div class="section-label">
+<div class="section-label" data-component="SectionLabel">
   <span class="dot" style="background:{accent}"></span>
   {#if children}{@render children()}{/if}
 </div>

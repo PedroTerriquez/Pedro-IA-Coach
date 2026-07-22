@@ -16,7 +16,7 @@
   } = $props()
 </script>
 
-<div class="hero-wrap">
+<div class="hero-wrap" data-component="ExerciseHero">
   <div class="hero" class:logged-hero={loggedToday} style="border-color:{loggedToday ? accent : 'rgba(255,255,255,0.06)'};box-shadow:{loggedToday ? `0 0 0 4px ${accent}1a,0 8px 32px ${accent}22` : 'none'}">
     <div class="hero-media">
       {#if exercise.gifUrl}

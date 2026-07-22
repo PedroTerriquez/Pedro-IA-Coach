@@ -2,15 +2,16 @@
   import { fly } from 'svelte/transition'
 
   let { options, value = $bindable(), accent = 'var(--accent)' }: {
-    options: { label: string; value: string }[]
+    options: { label: string; value: string; id?: string }[]
     value: string
     accent?: string
   } = $props()
 </script>
 
-<div class="seg-control">
+<div class="seg-control" data-component="SegmentedControl">
   {#each options as opt}
     <button
+      id={opt.id}
       class="seg-btn"
       class:seg-active={value === opt.value}
       style={value === opt.value ? `color:${accent}` : ''}

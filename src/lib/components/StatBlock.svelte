@@ -11,7 +11,7 @@
   let unitSize = $derived(size === 'md' ? 11 : 14)
 </script>
 
-<div class="stat-block">
+<div class="stat-block" data-component="StatBlock">
   <div class="stat-value" style="color:{accent};font-size:{numSize}px">
     {value}
     {#if unit}
