@@ -379,7 +379,7 @@
     coachCardMode = true
     coachDay = day
     try {
-      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx)
+      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx, $settings.language === 'en' ? 'en' : 'es')
       coachResult = result
       coachLoading = false
       const s = await Storage.getSettings()

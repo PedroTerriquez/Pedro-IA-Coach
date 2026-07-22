@@ -1,6 +1,7 @@
 <script lang="ts">
   import { buildAIDictionary } from '$lib/brain/dictionary'
-  import { AI_SYSTEM_PROMPT } from '$lib/brain/prompts'
+  import { buildImportPrompt, buildProgramCoachPrompt } from '$lib/brain/prompts'
+  import { buildUserProfile } from '$lib/ai'
   import { PUSH_SERVER_URL } from '$lib/config'
   import { APP_VERSION } from '$lib/pwa'
   import { subscribePush } from '$lib/push'
@@ -256,10 +257,20 @@
     coachStatus = '⏳ Consultando al coach…'
     coachResponseVisible = false
     try {
+      const s = await Storage.getSettings()
+      const language = s.language === 'en' ? 'en' : 'es'
       const res = await fetch(`${PUSH_SERVER_URL}/api/ai/program-coach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, program: activeProgram, settings: $settings, dictionary: buildAIDictionary() })
+        body: JSON.stringify({
+          text,
+          program: activeProgram,
+          settings: $settings,
+          language,
+          userProfile: buildUserProfile(s),
+          systemPrompt: buildProgramCoachPrompt(language),
+          dictionary: buildAIDictionary()
+        })
       })
       const data = await res.json()
       if (data.program) {
@@ -376,10 +387,18 @@
     importingAI = true
     aiStatus = '⏳ Procesando…'
     try {
+      const s = await Storage.getSettings()
+      const language = s.language === 'en' ? 'en' : 'es'
       const res = await fetch(`${PUSH_SERVER_URL}/api/ai/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, systemPrompt: AI_SYSTEM_PROMPT, dictionary: buildAIDictionary() })
+        body: JSON.stringify({
+          text,
+          systemPrompt: buildImportPrompt(language),
+          language,
+          userProfile: buildUserProfile(s),
+          dictionary: buildAIDictionary()
+        })
       })
       const data = await res.json()
       if (!data.weeks || data.weeks.length === 0) throw new Error('La IA no pudo generar un programa válido')

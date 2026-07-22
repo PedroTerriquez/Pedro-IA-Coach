@@ -2,12 +2,13 @@
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import { onMount } from 'svelte'
   import { settings } from '$lib/stores/settings'
-  import { toast } from '$lib/stores/ui'
   import type { Program, Exercise, ProgramExercise, ProgramDay } from '$lib/types'
   import * as Storage from '$lib/storage'
   import ExerciseRow from '$lib/components/ExerciseRow.svelte'
   import DayCard from '$lib/components/DayCard.svelte'
   import Icon from '$lib/components/Icon.svelte'
+  import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
+  import { startRestFromExercise } from '$lib/rest-timer'
 
   const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
   const DEFAULT_ORDER = [0, 1, 2, 3, 4, 5, 6]
@@ -21,6 +22,10 @@
   let planSelectedSwapIdx = $state<number | null>(null)
   let planEditingOrder = $state<number[] | null>(null)
   let exerciseWeights = $state<Record<string, number>>({})
+
+  let showDetail = $state(false)
+  let detailExercises = $state<any[]>([])
+  let detailIdx = $state(0)
 
   let todayIdx = $derived((new Date().getDay() + 6) % 7)
   let accent = $derived($settings.accentColor || '#d4ff3a')
@@ -177,9 +182,37 @@
     planSelectedSwapIdx = null
   }
 
-  function handleOpenExercise(ex: ProgramExercise) {
-    const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any
-    toast.show(getExerciseDisplayName(resolved) || resolved.name || 'Ejercicio', false, 2000)
+  async function openExerciseDetailAt(dayExercises: ProgramExercise[], idx: number) {
+    const resolvedList = await Promise.all(dayExercises.map(async (ex) => {
+      const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any
+      const logs = await Storage.getLogsForExercise(ex.exerciseId)
+      return { ...resolved, exerciseId: ex.exerciseId, logs }
+    }))
+    detailExercises = resolvedList
+    detailIdx = idx
+    showDetail = true
+  }
+
+  function onDetailClose() {
+    showDetail = false
+    detailExercises = []
+  }
+
+  async function onDetailLog() {
+    if (detailExercises.length === 0) return
+    const exId = detailExercises[detailIdx].exerciseId
+    const logs = await Storage.getLogsForExercise(exId)
+    const last = logs[logs.length - 1]
+    if (last) exerciseWeights = { ...exerciseWeights, [exId]: last.weight }
+    detailExercises = detailExercises.map((e, i) => i === detailIdx ? { ...e, logs } : e)
+  }
+
+  function onDetailNavigate(dir: 'prev' | 'next') {
+    if (dir === 'next' && detailIdx < detailExercises.length - 1) {
+      detailIdx++
+    } else if (dir === 'prev' && detailIdx > 0) {
+      detailIdx--
+    }
   }
 </script>
 
@@ -315,7 +348,7 @@
               onclick={isWorkoutDay ? () => handleDayToggle(calIdx, hasWorkout, isRest) : undefined}
             >
               {#if isExpanded && isWorkoutDay}
-                {#each (day?.exercises || []) as ex (ex.exerciseId)}
+                {#each (day?.exercises || []) as ex, exIdx (ex.exerciseId)}
                   {@const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any}
                   {@const imgUrl = resolveExerciseMedia(resolved).imgUrl}
                   {@const exId = ex.exerciseId}
@@ -328,7 +361,7 @@
                     weight={exerciseWeights[exId]}
                     {units}
                     {accent}
-                    onclick={() => handleOpenExercise(ex)}
+                    onclick={() => openExerciseDetailAt(day?.exercises || [], exIdx)}
                   />
                 {/each}
               {/if}
@@ -338,6 +371,21 @@
       {/if}
     {/if}
   </div>
+{/if}
+
+{#if showDetail && detailExercises.length > 0}
+  <ExerciseDetail
+    exercise={detailExercises[detailIdx]}
+    open={showDetail}
+    {accent}
+    {units}
+    hasPrev={detailIdx > 0}
+    hasNext={detailIdx < detailExercises.length - 1}
+    onNavigate={onDetailNavigate}
+    onClose={onDetailClose}
+    onLog={onDetailLog}
+    onStartRest={startRestFromExercise}
+  />
 {/if}
 
 <style>

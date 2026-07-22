@@ -1,21 +1,43 @@
 import * as Storage from '$lib/storage'
 import { generateId } from '$lib/db'
-import type { Program } from '$lib/types'
+import type { Program, Settings } from '$lib/types'
 
 import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary } from '$lib/brain/dictionary'
-import { AI_SYSTEM_PROMPT, AI_PROGRAM_COACH_PROMPT } from '$lib/brain/prompts'
+import { buildImportPrompt, buildProgramCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+
+function resolveLanguage(settings: Settings): PromptLanguage {
+  return settings.language === 'en' ? 'en' : 'es'
+}
+
+export function buildUserProfile(settings: Settings) {
+  return {
+    user_name: settings.userName || '',
+    age: settings.age || '',
+    sex: settings.sex || '',
+    body_weight: settings.weight ? `${settings.weight}${settings.units || 'kg'}` : '',
+    height_cm: settings.height || '',
+    goal: settings.goal || '',
+    experience: settings.experience || '',
+    occupation: settings.occupation || '',
+    units: settings.units || 'kg',
+  }
+}
 
 export async function importWithAI(text: string, onProgress?: (current: number, total: number, name: string) => void): Promise<void> {
   const dictionary = buildAIDictionary()
+  const settings = await Storage.getSettings()
+  const language = resolveLanguage(settings)
 
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       text,
-      systemPrompt: AI_SYSTEM_PROMPT || '',
+      systemPrompt: buildImportPrompt(language),
+      language,
+      userProfile: buildUserProfile(settings),
       dictionary
     })
   })
@@ -102,17 +124,8 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
   }
 
   const settings = await Storage.getSettings()
-  const userProfile = {
-    user_name: settings.userName || '',
-    age: settings.age || '',
-    sex: settings.sex || '',
-    body_weight: settings.weight ? `${settings.weight}${settings.units || 'kg'}` : '',
-    height_cm: settings.height || '',
-    goal: settings.goal || '',
-    experience: settings.experience || '',
-    occupation: settings.occupation || '',
-    units: settings.units || 'kg',
-  }
+  const language = resolveLanguage(settings)
+  const userProfile = buildUserProfile(settings)
 
   const exerciseNames = program.weeks.flatMap(w =>
     w.days.flatMap(d => d.exercises.map(ex => exerciseMap.get(ex.exerciseId)?.name).filter(Boolean) as string[])
@@ -126,7 +139,8 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
       text,
       currentProgram: programWithNames,
       userProfile,
-      systemPrompt: AI_PROGRAM_COACH_PROMPT || '',
+      language,
+      systemPrompt: buildProgramCoachPrompt(language),
       dictionary: filteredDictionary,
     })
   })
@@ -186,6 +200,7 @@ export async function exerciseCoachChat(exerciseName: string, muscle: string, al
   if (!PUSH_SERVER_URL) return { reply: 'Configura push-config.js para usar el coach IA.' }
 
   try {
+    const settings = await Storage.getSettings()
     const res = await fetch(`${PUSH_SERVER_URL}/api/ai/exercise-coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -194,6 +209,8 @@ export async function exerciseCoachChat(exerciseName: string, muscle: string, al
         muscle,
         alternatives,
         messages,
+        language: resolveLanguage(settings),
+        userProfile: buildUserProfile(settings),
       })
     })
 
