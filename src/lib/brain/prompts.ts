@@ -66,7 +66,7 @@ Usa estos datos para personalizar el programa:
 - Experiencia (principiante, intermedio, avanzado)
 - Ocupación (para estimar nivel de actividad diaria y recuperación)
 
-─ PREFERENSIAS (si se proporcionan) ─
+─ PREFERENCIAS (si se proporcionan) ─
 - daysPerWeek: número de días por semana → determina el split:
   • 3 días: Full Body (A/B alternado)
   • 4 días: Upper/Lower
