@@ -1,8 +1,5 @@
 <script lang="ts">
-  import { buildAIDictionary } from '$lib/brain/dictionary'
-  import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt } from '$lib/brain/prompts'
-  import { buildUserProfile } from '$lib/ai'
-  import { PUSH_SERVER_URL } from '$lib/config'
+  import { importWithAI, generateProgramWithAI, programCoach, type ProgramOverrides } from '$lib/ai'
   import { subscribePush } from '$lib/push'
   import { onMount } from 'svelte'
   import { settings } from '$lib/stores/settings'
@@ -266,51 +263,13 @@
     coachStatus = '⏳ Consultando al coach…'
     coachResponseVisible = false
     try {
-      const s = await Storage.getSettings()
-      const language = s.language === 'en' ? 'en' : 'es'
-      const res = await fetch(`${PUSH_SERVER_URL}/api/ai/program-coach`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          program: activeProgram,
-          settings: $settings,
-          language,
-          userProfile: buildUserProfile(s),
-          systemPrompt: buildProgramCoachPrompt(language),
-          dictionary: buildAIDictionary()
-        })
-      })
-      const data = await res.json()
-      if (data.program) {
-        const prog: Program = {
-          id: await generateId(),
-          name: data.program_name || data.program.name || 'Programa Coach',
-          weeks: data.program.weeks || []
-        }
-        if (prog.weeks.length > 0) {
-          for (const week of prog.weeks) {
-            for (const day of week.days) {
-              for (const ex of day.exercises) {
-                const resolved = await Storage.findOrCreateExerciseByName(
-                  (ex as any)._exerciseName || ex.exerciseId, (ex as any).muscle || '', { noFuzzy: true }
-                )
-                ex.exerciseId = resolved.id
-              }
-            }
-          }
-          await Storage.saveProgram(prog)
-          await settings.update({ activeProgramId: prog.id })
-          coachStatus = `✅ Nuevo programa "${prog.name}" creado y activado`
-          refresh()
-        } else {
-          coachResponseText = 'El programa generado no tiene semanas válidas. Intenta de nuevo.'
-          coachResponseVisible = true
-          coachStatus = ''
-        }
+      const result = await programCoach(text, activeProgram)
+      if (result.program) {
+        coachStatus = `✅ Nuevo programa "${result.program.name}" creado y activado`
+        refresh()
       } else {
-        coachResponseText = data.message || 'Listo.'
-        coachProvider = data._provider || 'llama'
+        coachResponseText = result.message || 'Listo.'
+        coachProvider = result._provider || ''
         coachResponseVisible = true
         coachStatus = ''
       }
@@ -324,42 +283,12 @@
     generatingProgram = true
     generateStatus = '⏳ Generando programa…'
     try {
-      const overrides: Record<string, any> = {}
+      const overrides: ProgramOverrides = {}
       if (generateDaysPerWeek) overrides.daysPerWeek = generateDaysPerWeek
       if (generateEquipment) overrides.equipment = generateEquipment
       if (generateFocus) overrides.focus = generateFocus
 
-      const s = await Storage.getSettings()
-      const language = s.language === 'en' ? 'en' : 'es'
-      const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userProfile: buildUserProfile(s),
-          overrides,
-          language,
-          systemPrompt: buildGeneratePrompt(language),
-        })
-      })
-      const data = await res.json()
-      if (!data.weeks || data.weeks.length === 0) throw new Error('La IA no pudo generar un programa válido')
-      for (const week of data.weeks) {
-        for (const day of week.days) {
-          for (const ex of day.exercises) {
-            const resolved = await Storage.findOrCreateExerciseByName(
-              ex.name || ex.exerciseId, ex.muscle || '', { noFuzzy: true }
-            )
-            ex.exerciseId = resolved.id
-          }
-        }
-      }
-      const program: Program = {
-        id: await generateId(),
-        name: data.program_name || 'Generado con IA',
-        weeks: data.weeks
-      }
-      await Storage.saveProgram(program)
-      await settings.update({ activeProgramId: program.id })
+      const program = await generateProgramWithAI(overrides)
       generateStatus = `✅ "${program.name}" generado con ${program.weeks.length} semana(s)`
       programSubTab = 'manual'
       refresh()
@@ -446,38 +375,7 @@
     importingAI = true
     aiStatus = '⏳ Procesando…'
     try {
-      const s = await Storage.getSettings()
-      const language = s.language === 'en' ? 'en' : 'es'
-      const res = await fetch(`${PUSH_SERVER_URL}/api/ai/import`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          systemPrompt: buildImportPrompt(language),
-          language,
-          userProfile: buildUserProfile(s),
-          dictionary: buildAIDictionary()
-        })
-      })
-      const data = await res.json()
-      if (!data.weeks || data.weeks.length === 0) throw new Error('La IA no pudo generar un programa válido')
-      for (const week of data.weeks) {
-        for (const day of week.days) {
-          for (const ex of day.exercises) {
-            const resolved = await Storage.findOrCreateExerciseByName(
-              ex.name || ex.exerciseId, ex.muscle || '', { noFuzzy: true }
-            )
-            ex.exerciseId = resolved.id
-          }
-        }
-      }
-      const program: Program = {
-        id: await generateId(),
-        name: data.program_name || 'Importado con IA',
-        weeks: data.weeks
-      }
-      await Storage.saveProgram(program)
-      await settings.update({ activeProgramId: program.id })
+      const program = await importWithAI(text)
       aiStatus = `✅ Importado "${program.name}" con ${program.weeks.length} semana(s)`
       aiInput = ''
       refresh()

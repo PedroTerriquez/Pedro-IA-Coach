@@ -25,7 +25,7 @@ export function buildUserProfile(settings: Settings) {
   }
 }
 
-export async function importWithAI(text: string, onProgress?: (current: number, total: number, name: string) => void): Promise<void> {
+export async function importWithAI(text: string, onProgress?: (current: number, total: number, name: string) => void): Promise<Program> {
   const dictionary = buildAIDictionary()
   const settings = await Storage.getSettings()
   const language = resolveLanguage(settings)
@@ -102,6 +102,8 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
   s.activeProgramId = program.id
   s.currentWeekIdx = 0
   await Storage.saveSettings(s)
+
+  return program
 }
 
 export interface ProgramOverrides {
@@ -110,7 +112,7 @@ export interface ProgramOverrides {
   focus?: string
 }
 
-export async function generateProgramWithAI(overrides: ProgramOverrides = {}): Promise<void> {
+export async function generateProgramWithAI(overrides: ProgramOverrides = {}): Promise<Program> {
   const settings = await Storage.getSettings()
   const language = resolveLanguage(settings)
   const userProfile = buildUserProfile(settings)
@@ -176,9 +178,11 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}): P
   s.activeProgramId = program.id
   s.currentWeekIdx = 0
   await Storage.saveSettings(s)
+
+  return program
 }
 
-export async function programCoach(text: string, program: Program): Promise<{ program?: Program; message?: string }> {
+export async function programCoach(text: string, program: Program): Promise<{ program?: Program; message?: string; _provider?: string }> {
   const dictionary = buildAIDictionary()
 
   const exercises = await Storage.getExercises()
@@ -264,10 +268,10 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
     s.activeProgramId = newProgram.id
     await Storage.saveSettings(s)
 
-    return { program: newProgram }
+    return { program: newProgram, _provider: data._provider }
   }
 
-  return { message: data.message || 'Listo.' }
+  return { message: data.message || 'Listo.', _provider: data._provider }
 }
 
 export async function exerciseCoachChat(exerciseName: string, muscle: string, alternatives: string[], messages: { role: string; content: string }[]): Promise<{ reply: string; _provider?: string }> {

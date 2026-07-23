@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.95 · 2026-07-23 · Gemini model fix + coach layout'
+export const APP_VERSION = 'v1.96 · 2026-07-23 · Fix broken IA Powered tab (wrong field names)'
 
 let deferredPrompt: any = null
 
