@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.94 · 2026-07-23 · IA Generate Program'
+export const APP_VERSION = 'v1.95 · 2026-07-23 · Gemini model fix + coach layout'
 
 let deferredPrompt: any = null
 

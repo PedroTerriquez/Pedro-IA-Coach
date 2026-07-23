@@ -58,7 +58,7 @@
 </div>
 
 <style>
-  .coach-scroll { flex: 1; min-height: 0; overflow-y: auto; margin-top: 16px; }
+  .coach-scroll { margin-top: 16px; }
   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .coach-header { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 600; }
   .coach-header-icon { width: 22px; height: 22px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }

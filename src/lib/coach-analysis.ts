@@ -19,50 +19,30 @@ export interface CoachAnalysisResult {
 
 const ROTATION_TOPICS = ['comparativa', 'racha', 'esfuerzo_volumen', 'recuperacion', 'progreso_global', 'retrospectiva_semanal']
 
-const FALLBACK_ANALYSIS: Record<'es' | 'en', Record<string, string>> = {
-  es: {
-    easy: 'Buen trabajo, pero podrías considerar aumentar el peso la próxima sesión para seguir progresando.',
-    good: 'Excelente sesión. Carga adecuada, buen volumen. Sigue así.',
-    heavy: 'Buena intensidad. Considera ajustar las cargas si la fatiga se acumula.',
-    failure: 'Entrenamiento intenso al fallo. Prioriza la recuperación y ajusta las cargas si es necesario.',
-  },
-  en: {
-    easy: 'Good work, but consider increasing the weight next session to keep progressing.',
-    good: 'Excellent session. Solid load, good volume. Keep it up.',
-    heavy: 'Good intensity. Consider adjusting loads if fatigue builds up.',
-    failure: 'Intense training to failure. Prioritize recovery and adjust loads if needed.',
-  },
+const FALLBACK_ANALYSIS: Record<string, string> = {
+  easy: 'Buen trabajo, pero podrías considerar aumentar el peso la próxima sesión para seguir progresando.',
+  good: 'Excelente sesión. Carga adecuada, buen volumen. Sigue así.',
+  heavy: 'Buena intensidad. Considera ajustar las cargas si la fatiga se acumula.',
+  failure: 'Entrenamiento intenso al fallo. Prioriza la recuperación y ajusta las cargas si es necesario.',
 }
 
-const FALLBACK_RECS: Record<'es' | 'en', Record<string, string[]>> = {
-  es: {
-    easy: ['Aumenta el peso en 2.5-5 kg', 'Reduce repeticiones si subes peso', 'Mantén la técnica'],
-    good: ['Sigue progresando', 'Mantén el rango de repeticiones', 'Buen control de carga'],
-    heavy: ['Monitorea fatiga', 'Considera deload la próxima semana', 'Prioriza sueño y recuperación'],
-    failure: ['Toma un día extra de descanso', 'Reduce carga 10-20%', 'Enfócate en técnica'],
-  },
-  en: {
-    easy: ['Increase weight by 2.5-5 kg', 'Reduce reps if you go up in weight', 'Maintain technique'],
-    good: ['Keep progressing', 'Maintain your rep range', 'Good load control'],
-    heavy: ['Monitor fatigue', 'Consider a deload next week', 'Prioritize sleep and recovery'],
-    failure: ['Take an extra rest day', 'Reduce load 10-20%', 'Focus on technique'],
-  },
+const FALLBACK_RECS: Record<string, string[]> = {
+  easy: ['Aumenta el peso en 2.5-5 kg', 'Reduce repeticiones si subes peso', 'Mantén la técnica'],
+  good: ['Sigue progresando', 'Mantén el rango de repeticiones', 'Buen control de carga'],
+  heavy: ['Monitorea fatiga', 'Considera deload la próxima semana', 'Prioriza sueño y recuperación'],
+  failure: ['Toma un día extra de descanso', 'Reduce carga 10-20%', 'Enfócate en técnica'],
 }
 
-function fallbackResult(date: string, weekIdx: number, effort: string, lang: 'es' | 'en', rotationHint: string): CoachAnalysisResult {
-  const effortKey = effort as keyof typeof FALLBACK_ANALYSIS.es
-  const fallbackText = lang === 'en' ? 'Session completed. Good work.' : 'Sesión completada. Buen trabajo.'
-  const defaultRecs = lang === 'en'
-    ? ['Keep training', 'Stay consistent', 'Listen to your body']
-    : ['Sigue entrenando', 'Mantén la constancia', 'Escucha a tu cuerpo']
+function fallbackResult(date: string, weekIdx: number, effort: string, rotationHint: string): CoachAnalysisResult {
+  const effortKey = effort as keyof typeof FALLBACK_ANALYSIS
   return {
     date,
     weekIdx,
     effort,
-    analysis: FALLBACK_ANALYSIS[lang][effortKey] || fallbackText,
+    analysis: FALLBACK_ANALYSIS[effortKey] || 'Sesión completada. Buen trabajo.',
     verdict: 'neutral',
-    proximo_objetivo: lang === 'en' ? 'Stay consistent this week' : 'Mantén la constancia esta semana',
-    recommendations: FALLBACK_RECS[lang][effortKey] || defaultRecs,
+    proximo_objetivo: 'Mantén la constancia esta semana',
+    recommendations: FALLBACK_RECS[effortKey] || ['Sigue entrenando', 'Mantén la constancia', 'Escucha a tu cuerpo'],
     rotation_topic: rotationHint,
   }
 }
@@ -72,8 +52,7 @@ export async function runCoachAnalysis(
   effort: string,
   exercises: Exercise[],
   todayDate: string,
-  weekIdx: number,
-  language: 'es' | 'en' = 'es'
+  weekIdx: number
 ): Promise<CoachAnalysisResult> {
   const exercisesById = Object.fromEntries(exercises.map(e => [e.id, e]))
   const todayLogs = await getLogsForDate(todayDate)
@@ -131,7 +110,7 @@ export async function runCoachAnalysis(
     const res = await fetch(`${PUSH_SERVER_URL}/api/ai/coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionData, systemPrompt: buildCoachPrompt(language) })
+      body: JSON.stringify({ sessionData, systemPrompt: buildCoachPrompt('es') })
     })
 
     const data = await res.json()
@@ -149,6 +128,6 @@ export async function runCoachAnalysis(
       _provider: data._provider,
     }
   } catch {
-    return fallbackResult(todayDate, weekIdx, effort, language, rotationHint)
+    return fallbackResult(todayDate, weekIdx, effort, rotationHint)
   }
 }

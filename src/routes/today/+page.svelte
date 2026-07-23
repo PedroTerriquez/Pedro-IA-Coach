@@ -377,7 +377,7 @@
     coachCardMode = true
     coachDay = day
     try {
-      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx, $settings.language === 'en' ? 'en' : 'es')
+      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx)
       coachResult = result
       coachLoading = false
       const s = await Storage.getSettings()
@@ -588,11 +588,13 @@
     {/if}
 
     {#if showCoach || coachCardMode}
-      <CoachResultCard analysis={coachResult} {accent} loading={coachLoading} exerciseCount={day?.exercises?.length || 0} onclick={resetDay} />
-      <Button variant="ghost" fullWidth onclick={resetDay}>
-        <Icon name="restart" size={14} color="rgba(255,255,255,0.6)" />
-        Reiniciar día
-      </Button>
+      <div class="coach-complete">
+        <CoachResultCard analysis={coachResult} {accent} loading={coachLoading} exerciseCount={day?.exercises?.length || 0} onclick={resetDay} />
+        <Button variant="ghost" fullWidth onclick={resetDay}>
+          <Icon name="restart" size={14} color="rgba(255,255,255,0.6)" />
+          Reiniciar día
+        </Button>
+      </div>
     {/if}
   {/if}
 
@@ -625,6 +627,7 @@
 <style>
   .page { padding: 56px 16px 104px; display: flex; flex-direction: column; }
   .phase-list { flex: 1; min-height: 0; margin-top: 16px; display: flex; flex-direction: column; gap: 11px; }
+  .coach-complete { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
   .footer-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
   .version-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
 </style>
