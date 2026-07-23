@@ -4,8 +4,24 @@
 export const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 export const EX_GIF_BASE = 'https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/';
 
+// Fallback media for entries whose free-exercise-db/ExerciseGymGifsDB photo or gif is
+// wrong. Sourced from github.com/hasaneyldrm/exercises-dataset, pinned to a commit
+// (repo has no version tags). The dataset code/JSON is MIT, but the images/gifs
+// themselves are (c) Gym visual, redistributed at 180x180 with a required attribution
+// notice (see that repo's NOTICE.md) — GYMVISUAL_ATTRIBUTION must be shown wherever a
+// GYMVISUAL_OVERRIDES entry is actually rendered.
+export const GYMVISUAL_BASE = 'https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@7455efae41b330c265e7cd4b78dfa848e7ce5ebd/';
+export const GYMVISUAL_ATTRIBUTION = '© Gym visual — gymvisual.com';
+
 const _IMG = (p: string): string => IMG_BASE + p + '/0.jpg'
 const _GIF = (path: string): string => EX_GIF_BASE + '/' + path + '.gif'
+const _GV = (path: string): string => GYMVISUAL_BASE + path
+
+// Per-exercise media overrides, keyed by dictionary entry `id`. Fill in as wrong
+// images/gifs are found. `image`/`gif` are the `image`/`gif_url` paths from that
+// dataset's data/exercises.json, e.g.:
+// 'press-banca-barra': { image: 'images/0001-2gPfomN.jpg', gif: 'videos/0001-2gPfomN.gif' },
+const GYMVISUAL_OVERRIDES: Record<string, { image?: string; gif?: string }> = {}
 
 const FREE_EXERCISE_DIRS = new Set([
   '3_4_Sit-Up',
@@ -2504,9 +2520,15 @@ const SKIP_KEYWORD = new Set([
 export function resolveExerciseMedia(exercise: any) {
   const entry = exercise?.dictId ? getEntryById(exercise.dictId) : null
   const skipId = entry?.id
+  const override = skipId ? GYMVISUAL_OVERRIDES[skipId] : undefined
+  let usedGymvisual = false
 
   // 1. User override
   let imgUrl = exercise?.imgUrl || ''
+  if (!imgUrl && override?.image) {
+    imgUrl = _GV(override.image)
+    usedGymvisual = true
+  }
   if (!imgUrl) {
     // 2. Dictionary entry image (skip if image is known-wrong)
     const dictImage = entry?.image || getExerciseImageFromDictionary(exercise?.name || '') || ''
@@ -2524,11 +2546,15 @@ export function resolveExerciseMedia(exercise: any) {
     if (keywordDir) imgUrl = _IMG(keywordDir)
   }
 
-  const gifUrl = entry?.gif || getExerciseGifUrl(exercise?.name || '') || null
+  let gifUrl = entry?.gif || getExerciseGifUrl(exercise?.name || '') || null
+  if (override?.gif) {
+    gifUrl = _GV(override.gif)
+    usedGymvisual = true
+  }
 
   // 4. GIF fallback — use GIF as static image when no valid photo
   if (!imgUrl && gifUrl) imgUrl = gifUrl
 
-  return { imgUrl: imgUrl || '', gifUrl }
+  return { imgUrl: imgUrl || '', gifUrl, attribution: usedGymvisual ? GYMVISUAL_ATTRIBUTION : null }
 }
 
