@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.93 · 2026-07-21 · 21:29'
+export const APP_VERSION = 'v1.94 · 2026-07-23 · IA Generate Program'
 
 let deferredPrompt: any = null
 
