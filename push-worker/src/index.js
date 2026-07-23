@@ -339,6 +339,32 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/ai/generate-program') {
+      try {
+        const { userProfile, overrides, systemPrompt, language } = await req.json()
+
+        const overrideBlock = overrides
+          ? '\n\nPREFERENCIAS DEL USUARIO:\n' + JSON.stringify(overrides)
+          : ''
+        const profileBlock = userProfile
+          ? '\n\nPERFIL DEL USUARIO:\n' + JSON.stringify(userProfile)
+          : ''
+        const fullPrompt = 'Genera un programa de entrenamiento completo para este usuario.' + profileBlock + overrideBlock
+
+        const { text, provider } = await callAI([
+          { role: 'system', content: systemPrompt || '' },
+          { role: 'user', content: fullPrompt },
+        ], env, { model: 'gemini-2.5-pro', responseFormat: 'json', responseSchema: IMPORT_SCHEMA, safetySettings: GEMINI_SAFETY })
+
+        const parsed = parseAIResponse(text)
+        if (!parsed) return respond({ error: 'La IA no generó JSON válido. Intenta de nuevo.', raw: text, _provider: provider }, 502)
+
+        return respond({ ...parsed, _provider: provider })
+      } catch (err) {
+        return respond({ error: 'Error de IA: ' + err.message }, 500)
+      }
+    }
+
     if (url.pathname === '/api/ai/program-coach') {
       try {
         const { text: userText, currentProgram, userProfile, systemPrompt, dictionary } = await req.json()
