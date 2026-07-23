@@ -1,6 +1,6 @@
 <script lang="ts">
   import { buildAIDictionary } from '$lib/brain/dictionary'
-  import { buildImportPrompt, buildProgramCoachPrompt } from '$lib/brain/prompts'
+  import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt } from '$lib/brain/prompts'
   import { buildUserProfile } from '$lib/ai'
   import { PUSH_SERVER_URL } from '$lib/config'
   import { subscribePush } from '$lib/push'
@@ -65,6 +65,12 @@
   let coachResponseVisible = $state(false)
   let coachResponseText = $state('')
   let coachProvider = $state('')
+  let programSubTab = $state<'manual' | 'ia'>('manual')
+  let generateDaysPerWeek = $state<number | null>(null)
+  let generateEquipment = $state<string | null>(null)
+  let generateFocus = $state<string | null>(null)
+  let generatingProgram = $state(false)
+  let generateStatus = $state('')
 
   // Datos tab state
   let aiInput = $state('')
@@ -312,6 +318,56 @@
       coachStatus = `❌ ${err.message}`
     }
     coachInput = ''
+  }
+
+  async function submitGenerate() {
+    generatingProgram = true
+    generateStatus = '⏳ Generando programa…'
+    try {
+      const overrides: Record<string, any> = {}
+      if (generateDaysPerWeek) overrides.daysPerWeek = generateDaysPerWeek
+      if (generateEquipment) overrides.equipment = generateEquipment
+      if (generateFocus) overrides.focus = generateFocus
+
+      const s = await Storage.getSettings()
+      const language = s.language === 'en' ? 'en' : 'es'
+      const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userProfile: buildUserProfile(s),
+          overrides,
+          language,
+          systemPrompt: buildGeneratePrompt(language),
+        })
+      })
+      const data = await res.json()
+      if (!data.weeks || data.weeks.length === 0) throw new Error('La IA no pudo generar un programa válido')
+      for (const week of data.weeks) {
+        for (const day of week.days) {
+          for (const ex of day.exercises) {
+            const resolved = await Storage.findOrCreateExerciseByName(
+              ex.name || ex.exerciseId, ex.muscle || '', { noFuzzy: true }
+            )
+            ex.exerciseId = resolved.id
+          }
+        }
+      }
+      const program: Program = {
+        id: await generateId(),
+        name: data.program_name || 'Generado con IA',
+        weeks: data.weeks
+      }
+      await Storage.saveProgram(program)
+      await settings.update({ activeProgramId: program.id })
+      generateStatus = `✅ "${program.name}" generado con ${program.weeks.length} semana(s)`
+      programSubTab = 'manual'
+      refresh()
+    } catch (err: any) {
+      generateStatus = `❌ ${err.message}`
+    } finally {
+      generatingProgram = false
+    }
   }
 
   // ── Ejercicios tab ──
@@ -610,41 +666,105 @@
       {/if}
 
     {:else if activeTab === 'programas'}
-      <div class="section-pad-sm">
-        <ProgramCreateForm
-          bind:value={newProgramName}
-          oncreate={createNewProgram}
+      <div class="section-pad">
+        <SegmentedControl
+          options={[
+            { label: 'Manual', value: 'manual' },
+            { label: 'IA Powered', value: 'ia' }
+          ]}
+          bind:value={programSubTab}
         />
       </div>
 
-      {#if programs.length === 0}
-        <EmptyState message="No hay programas todavía. Crea o importa uno." />
-      {:else}
-        <div class="program-list">
-          {#each programs as p (p.id)}
-            <ProgramCard
-              program={p}
-              isActive={$settings.activeProgramId === p.id}
-              {accent}
-              totalExercises={getTotalExercises(p)}
-              onactivate={activateProgram}
-              onduplicate={duplicateProgram}
-              ondelete={deleteProgram}
-            />
-          {/each}
+      {#if programSubTab === 'manual'}
+        <div class="section-pad-sm">
+          <ProgramCreateForm
+            bind:value={newProgramName}
+            oncreate={createNewProgram}
+          />
         </div>
-      {/if}
 
-      <CoachIACard
-        {accent}
-        {coachInput}
-        {coachStatus}
-        {coachResponseVisible}
-        {coachResponseText}
-        {coachProvider}
-        oninput={(val) => coachInput = val}
-        onsubmit={submitCoach}
-      />
+        {#if programs.length === 0}
+          <EmptyState message="No hay programas todavía. Crea o importa uno." />
+        {:else}
+          <div class="program-list">
+            {#each programs as p (p.id)}
+              <ProgramCard
+                program={p}
+                isActive={$settings.activeProgramId === p.id}
+                {accent}
+                totalExercises={getTotalExercises(p)}
+                onactivate={activateProgram}
+                onduplicate={duplicateProgram}
+                ondelete={deleteProgram}
+              />
+            {/each}
+          </div>
+        {/if}
+
+      {:else if programSubTab === 'ia'}
+        <div class="section-label-wrap"><SectionLabel {accent}>Importar con IA</SectionLabel></div>
+        <div class="card section-card">
+          <div class="card-content">
+            <div class="card-title">Pega tu rutina en texto</div>
+            <div class="card-subtitle">Describe tu rutina como se la dirías a un entrenador. La IA creará el programa y los ejercicios automáticamente.</div>
+            <div class="ai-textarea-wrap">
+              <TextArea value={aiInput} rows={8} placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" oninput={(val) => aiInput = val} />
+            </div>
+            <div id="ai-status" class="status-text">{aiStatus}</div>
+          </div>
+          <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
+        </div>
+
+        <div class="section-label-wrap"><SectionLabel {accent}>Generar desde cero</SectionLabel></div>
+        <div class="card section-card">
+          <div class="card-content">
+            <div class="card-title">Generar programa desde cero</div>
+            <div class="card-subtitle">La IA crea un programa completo basado en tu perfil y preferencias.</div>
+
+            <div class="chip-group">
+              <div class="chip-group-label">Días por semana</div>
+              <div class="chip-row">
+                {#each [3, 4, 5, 6] as d}
+                  <button class="chip-btn" class:chip-active={generateDaysPerWeek === d} onclick={() => generateDaysPerWeek = generateDaysPerWeek === d ? null : d}>{d}d</button>
+                {/each}
+              </div>
+            </div>
+
+            <div class="chip-group">
+              <div class="chip-group-label">Equipo</div>
+              <div class="chip-row">
+                {#each [{ v: 'gym', l: 'Gimnasio' }, { v: 'mancuernas', l: 'Mancuernas' }, { v: 'calistenia', l: 'Calistenia' }] as e}
+                  <button class="chip-btn" class:chip-active={generateEquipment === e.v} onclick={() => generateEquipment = generateEquipment === e.v ? null : e.v}>{e.l}</button>
+                {/each}
+              </div>
+            </div>
+
+            <div class="chip-group">
+              <div class="chip-group-label">Enfoque</div>
+              <div class="chip-row">
+                {#each [{ v: 'upper', l: 'Upper Body' }, { v: 'lower', l: 'Lower Body' }, { v: 'full', l: 'Full Body' }] as f}
+                  <button class="chip-btn" class:chip-active={generateFocus === f.v} onclick={() => generateFocus = generateFocus === f.v ? null : f.v}>{f.l}</button>
+                {/each}
+              </div>
+            </div>
+
+            <div class="status-text">{generateStatus}</div>
+          </div>
+          <Button variant="primary" {accent} fullWidth onclick={submitGenerate} disabled={generatingProgram}>{generatingProgram ? '⏳ Generando…' : 'Generar programa con IA'}</Button>
+        </div>
+
+        <CoachIACard
+          {accent}
+          {coachInput}
+          {coachStatus}
+          {coachResponseVisible}
+          {coachResponseText}
+          {coachProvider}
+          oninput={(val) => coachInput = val}
+          onsubmit={submitCoach}
+        />
+      {/if}
 
     {:else if activeTab === 'ejercicios'}
       <div class="ex-header">
