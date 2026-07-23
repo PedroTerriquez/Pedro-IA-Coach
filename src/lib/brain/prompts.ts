@@ -57,6 +57,61 @@ export const FORMAT_IMPORT = `Convierte la rutina del usuario a este JSON exacto
   }]
 }`
 
+export const FORMAT_GENERATE = `Genera un programa de entrenamiento completo basado en el perfil del usuario y sus preferencias. SOLO JSON, sin markdown, sin explicaciones.
+
+─ PERFIL DEL USUARIO ─
+Usa estos datos para personalizar el programa:
+- Edad, sexo, peso corporal, estatura
+- Objetivo (hipertrofia, fuerza, pérdida de grasa, recomposición, rendimiento)
+- Experiencia (principiante, intermedio, avanzado)
+- Ocupación (para estimar nivel de actividad diaria y recuperación)
+
+─ PREFERENSIAS (si se proporcionan) ─
+- daysPerWeek: número de días por semana → determina el split:
+  • 3 días: Full Body (A/B alternado)
+  • 4 días: Upper/Lower
+  • 5 días: Push/Pull/Legs + Upper + Lower (o Arnold split)
+  • 6 días: Push/Pull/Legs × 2
+- equipment: "gimnasio" (todas las máquinas/barra/mancuernas), "mancuernas" (solo dumbbells + banco), "calistenia" (peso corporal)
+- focus: "upper" (priorizar torso), "lower" (priorizar piernas), "full" (cuerpo completo equilibrado)
+
+─ REGLAS POR NIVEL DE EXPERIENCIA ─
+- Principiante: 2-3 ejercicios/día, enfoque en compuestos, 3 series, 60-90s descanso
+- Intermedio: 3-4 ejercicios/día, mezcla compuestos/aislamientos, 3-4 series, 60-120s descanso
+- Avanzado: 4-5 ejercicios/día, variaciones avanzadas, 4-5 series, 90-180s descanso
+
+─ REGLAS POR OBJETIVO ─
+- Hipertrofia: 8-12 reps, 90s descanso, volumen moderado-alto
+- Fuerza: 3-5 reps, 180s descanso, intensidad alta
+- Pérdida de grasa: 10-15 reps, 45-60s descanso, circuitos posibles
+- Recomposición: mixto (compuestos pesados + accessorios con volumen)
+- Rendimiento: variación de rep ranges, énfasis en patrones de movimiento
+
+─ ESTRUCTURA ─
+Genera 4 semanas. Cada semana puede tener tag: "VOLUMEN", "FUERZA", o "".
+Usa nombres de ejercicios del DICCIONARIO cuando sea posible. Si no existe, sigue la convención: "Nombre Común (Especificidad)".
+
+─ FORMATO DE SALIDA (JSON) ─
+{
+  "program_name": string (descriptivo, ej: "Upper/Lower — Hipertrofia Intermedia"),
+  "weeks": [{
+    "name": string (ej: "Semana 1"),
+    "tag": "VOLUMEN" | "FUERZA" | "",
+    "days": [{
+      "name": string (ej: "Upper A"),
+      "subtitle": string (músculos del día),
+      "duration_min": number (estimado),
+      "exercises": [{
+        "exercise_name": string,
+        "muscle": string (grupo muscular principal),
+        "sets": number,
+        "reps": string (rango "8-12" o número "10"),
+        "rest_sec": number
+      }]
+    }]
+  }]
+}`
+
 export const FORMAT_COACH = `Analiza la sesión de entrenamiento como un entrenador personal de élite. Exprésate en texto natural y fluido — como si hablaras directamente con el atleta.
 
 ── PERFIL DEL USUARIO ──
@@ -148,4 +203,13 @@ export function buildProgramCoachPrompt(language: PromptLanguage = 'es'): string
     _programCoachPromptCache.set(language, `${buildAIRole(language)}\n\n${FORMAT_PROGRAM_COACH}`)
   }
   return _programCoachPromptCache.get(language)!
+}
+
+const _generatePromptCache = new Map<PromptLanguage, string>()
+
+export function buildGeneratePrompt(language: PromptLanguage = 'es'): string {
+  if (!_generatePromptCache.has(language)) {
+    _generatePromptCache.set(language, `${buildAIRole(language)}\n\n${FORMAT_GENERATE}`)
+  }
+  return _generatePromptCache.get(language)!
 }
