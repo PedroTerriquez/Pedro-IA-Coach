@@ -4,7 +4,7 @@ import type { Program, Settings } from '$lib/types'
 
 import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary } from '$lib/brain/dictionary'
-import { buildImportPrompt, buildProgramCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
+import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
 function resolveLanguage(settings: Settings): PromptLanguage {
@@ -67,6 +67,80 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
       for (const ex of (d.exercises || [])) {
         processed++
         if (onProgress) onProgress(processed, totalExercises, ex.exercise_name || ex.name || '')
+        const exercise = await Storage.findOrCreateExerciseByName(ex.exercise_name || ex.name, ex.muscle || '', { noFuzzy: true })
+        exercises.push({
+          exerciseId: exercise.id,
+          sets: ex.sets || 3,
+          reps: String(ex.reps || '10'),
+          rest: ex.rest_sec || ex.rest || 90,
+        })
+      }
+      days.push({
+        name: d.name || 'Día',
+        subtitle: d.subtitle || '',
+        duration: d.duration_min || d.duration || 60,
+        exercises,
+      })
+    }
+    weeks.push({
+      name: w.name || 'Semana 1',
+      subtitle: w.subtitle || '',
+      tag: w.tag || '',
+      days,
+    })
+  }
+
+  const program: Program = {
+    id: await generateId(),
+    name: programName,
+    weeks
+  }
+
+  await Storage.saveProgram(program)
+
+  const s = await Storage.getSettings()
+  s.activeProgramId = program.id
+  s.currentWeekIdx = 0
+  await Storage.saveSettings(s)
+}
+
+export interface ProgramOverrides {
+  daysPerWeek?: number
+  equipment?: string
+  focus?: string
+}
+
+export async function generateProgramWithAI(overrides: ProgramOverrides = {}): Promise<void> {
+  const settings = await Storage.getSettings()
+  const language = resolveLanguage(settings)
+  const userProfile = buildUserProfile(settings)
+
+  const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userProfile,
+      overrides,
+      language,
+      systemPrompt: buildGeneratePrompt(language),
+    })
+  })
+
+  if (!res.ok) throw new Error(`AI generation failed: ${res.status}`)
+
+  const data = await res.json()
+  if (!data.weeks || data.weeks.length === 0) {
+    throw new Error('La IA no pudo generar un programa válido')
+  }
+
+  const programName = data.program_name || 'Generado con IA'
+
+  const weeks: Program['weeks'] = []
+  for (const w of data.weeks) {
+    const days: Program['weeks'][0]['days'] = []
+    for (const d of (w.days || [])) {
+      const exercises: Program['weeks'][0]['days'][0]['exercises'] = []
+      for (const ex of (d.exercises || [])) {
         const exercise = await Storage.findOrCreateExerciseByName(ex.exercise_name || ex.name, ex.muscle || '', { noFuzzy: true })
         exercises.push({
           exerciseId: exercise.id,
