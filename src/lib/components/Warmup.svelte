@@ -1,6 +1,7 @@
 <script lang="ts">
   import Sheet from './Sheet.svelte'
   import ProgressBar from './ProgressBar.svelte'
+  import Button from './Button.svelte'
   import { WARMUP_GIF_MAP } from '$lib/data/warmup-gifs'
   import { EX_GIF_BASE } from '$lib/data/exercise-dictionary'
 
@@ -153,10 +154,10 @@
             <div class="nav-name">{items[idx - 1]?.name || 'Primero'}</div>
           </div>
         </button>
-        <button class="done-btn" style="background:{accent}" onclick={close}>
+        <Button variant="primary" {accent} onclick={close} style="flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
           <svg width="14" height="11" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4L13 1.5" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Hecho
-        </button>
+        </Button>
         <button class="nav-btn nav-next" disabled={idx >= total - 1} onclick={next}>
           <div class="nav-icon">
             <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M1 5h9m0 0L6 1m4 4L6 9" stroke={idx >= total - 1 ? 'var(--text-muted)' : 'var(--text-secondary)'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -331,24 +332,6 @@
 
   .nav-next .nav-name {
     text-align: right;
-  }
-
-  .done-btn {
-    flex-shrink: 0;
-    border: 0;
-    cursor: pointer;
-    color: var(--bg);
-    border-radius: 12px;
-    padding: 8px 16px;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: -0.1px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    touch-action: manipulation;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
   .progress-row {

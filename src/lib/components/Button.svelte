@@ -37,7 +37,7 @@
   {disabled}
   {onclick}
   {id}
-  style="{variant === 'primary' ? `background:${accent};color:#0a0a0a` : ''};{style}"
+  style="{variant === 'primary' ? `background:${accent};color:var(--bg)` : ''};{style}"
 >
   {#if children}{@render children()}{/if}
 </button>
@@ -69,7 +69,7 @@
   }
   .btn-primary {
     background: var(--accent);
-    color: #0a0a0a;
+    color: var(--bg);
   }
   .btn-secondary {
     background: rgba(255,255,255,0.06);
@@ -83,16 +83,16 @@
   }
   .btn-ghost {
     background: transparent;
-    color: rgba(255,255,255,0.4);
+    color: var(--text-tertiary);
     font-weight: 500;
     font-size: 11px;
     padding: 5px 10px;
     border-radius: 6px;
-    border: 0.5px solid rgba(255,255,255,0.08);
+    border: 0.5px solid var(--border-medium);
   }
   .btn-text {
     background: transparent;
-    color: rgba(255,255,255,0.4);
+    color: var(--text-tertiary);
     font-weight: 500;
     font-size: 10.5px;
     padding: 4px 6px;

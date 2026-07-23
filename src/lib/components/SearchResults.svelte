@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from './Button.svelte'
+  import EmptyState from './EmptyState.svelte'
 
   let {
     query = '',
@@ -21,9 +22,9 @@
 {#if show}
   <div class="search-results" data-component="SearchResults">
     {#if searching}
-      <div class="sr-empty">Buscando...</div>
+      <EmptyState message="Buscando..." style="padding:20px" />
     {:else if results.length === 0}
-      <div class="sr-empty">No se encontraron usuarios</div>
+      <EmptyState message="No se encontraron usuarios" style="padding:20px" />
     {:else}
       {#each results as r (r.username)}
         <div class="sr-item">
@@ -51,12 +52,6 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-  }
-  .sr-empty {
-    text-align: center;
-    padding: 20px;
-    font-size: 13px;
-    color: var(--text-muted);
   }
   .sr-item {
     display: flex;

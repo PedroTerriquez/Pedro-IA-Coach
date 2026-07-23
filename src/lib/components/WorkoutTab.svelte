@@ -96,7 +96,7 @@
     </div>
     <div class="sr-section">
       {#if !trackSR}
-        <button class="sr-add-btn" onclick={() => trackSR = true}>
+        <button class="btn-dashed-add" style="margin-top:12px" onclick={() => trackSR = true}>
           <span class="sr-plus">＋</span> Registrar series y repeticiones
         </button>
       {:else}
@@ -138,7 +138,7 @@
         Guardado · {pendingWeight}{units}
       </button>
     {:else}
-      <button class="log-btn active" style="background:{accent};color:#0a0a0a;box-shadow:0 6px 20px {accent}33" onclick={() => onSave?.()}>
+      <button class="log-btn active" style="background:{accent};color:var(--bg);box-shadow:0 6px 20px {accent}33" onclick={() => onSave?.()}>
         Registrar · {pendingWeight}{units}
       </button>
     {/if}
@@ -266,23 +266,6 @@
   .sr-section {
     position: relative;
     z-index: 1;
-  }
-  .sr-add-btn {
-    margin-top: 12px;
-    width: 100%;
-    padding: 8px 10px;
-    border-radius: 9px;
-    cursor: pointer;
-    background: transparent;
-    border: 0.5px dashed rgba(255,255,255,0.15);
-    color: rgba(255,255,255,0.55);
-    font-family: var(--font-sans);
-    font-size: 11.5px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
   }
   .sr-plus {
     font-size: 13px;

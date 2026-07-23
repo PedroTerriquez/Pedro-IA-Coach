@@ -6,6 +6,7 @@
     title,
     description,
     status = '',
+    statusContent,
     actionLabel = '',
     onclick = () => {},
     accent = 'var(--accent)',
@@ -16,6 +17,7 @@
     title: string
     description: string
     status?: string
+    statusContent?: Snippet
     actionLabel?: string
     onclick?: () => void
     accent?: string
@@ -29,7 +31,9 @@
   <div class="action-info">
     <div class="action-title">{title}</div>
     <div class="action-desc">{description}</div>
-    {#if status}
+    {#if statusContent}
+      <div class="action-status">{@render statusContent()}</div>
+    {:else if status}
       <div class="action-status">{status}</div>
     {/if}
   </div>

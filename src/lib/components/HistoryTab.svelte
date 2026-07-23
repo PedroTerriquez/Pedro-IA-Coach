@@ -1,6 +1,7 @@
 <script lang="ts">
   import LineChart from './LineChart.svelte'
   import StatBlock from './StatBlock.svelte'
+  import EmptyState from './EmptyState.svelte'
 
   let {
     allLogData = [],
@@ -49,7 +50,7 @@
   <div class="session-label">Sesiones anteriores</div>
   <div class="session-list">
     {#if allLogData.length === 0}
-      <div class="empty-history">No hay sesiones registradas. ¡Empieza a registrar!</div>
+      <EmptyState class="empty-history" style="padding:20px" message="No hay sesiones registradas. ¡Empieza a registrar!" />
     {:else}
       {#each reversedLogs as sess, i}
         {@const isPR = weightCount >= 2 && sess.weight === maxWeight}
@@ -143,12 +144,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-  .empty-history {
-    padding: 20px;
-    text-align: center;
-    font-size: 13px;
-    color: rgba(255,255,255,0.4);
   }
   .session-row {
     background: var(--surface);

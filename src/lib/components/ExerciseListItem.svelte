@@ -103,7 +103,7 @@
                 <button onclick={() => removeAlt(i)} class="alt-remove">✕</button>
               </div>
             {/each}
-            <button onclick={onaddalt} class="btn-add-alt">+ Añadir alternativa</button>
+            <button onclick={onaddalt} class="btn-dashed-add">+ Añadir alternativa</button>
           </div>
           <div class="row">
             <Button variant="primary" fullWidth onclick={onsaveedit}>Guardar</Button>
@@ -165,5 +165,4 @@
   .input-sm { flex: 1; padding: 8px 10px; border-radius: 8px; border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a; color: #fafafa; font-size: 13px; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
   .input-sm-alt { border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); font-size: 12px; }
   .alt-remove { background: none; border: 0; color: #ff6b6b; cursor: pointer; font-size: 16px; padding: 4px; }
-  .btn-add-alt { width: 100%; padding: 8px; border-radius: 8px; border: 0.5px dashed rgba(255,255,255,0.15); cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); font-size: 12px; }
 </style>

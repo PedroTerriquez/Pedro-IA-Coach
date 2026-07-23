@@ -8,6 +8,7 @@
   import DayCard from '$lib/components/DayCard.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
+  import Button from '$lib/components/Button.svelte'
   import { startRestFromExercise } from '$lib/rest-timer'
 
   const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -235,7 +236,7 @@
           {planEditing ? 'Mover.' : 'Plan.'}
         </div>
       </div>
-      <button id="plan-reprogram-btn" class="btn-reprogram" style="border:{planEditing ? '0' : `0.5px solid ${accent}55`};background:{planEditing ? accent : 'transparent'};color:{planEditing ? '#0a0a0a' : accent}"
+      <button id="plan-reprogram-btn" class="btn-reprogram" style="border:{planEditing ? '0' : `0.5px solid ${accent}55`};background:{planEditing ? accent : 'transparent'};color:{planEditing ? 'var(--bg)' : accent}"
         onclick={toggleEditing}>
         {#if planEditing}
           Listo
@@ -256,8 +257,7 @@
             <div class="banner-title">Reprogramando esta semana</div>
             <div class="banner-subtitle">Los 7 días de la semana. Intercambia con espacios libres.</div>
           </div>
-          <button id="plan-reset-btn" class="btn-reset-sm" style="cursor:{editingChanges === 0 ? 'default' : 'pointer'};background:{editingChanges === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.08)'};color:{editingChanges === 0 ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.85)'}"
-            onclick={handleReset}>Restablecer</button>
+          <Button id="plan-reset-btn" variant="ghost" disabled={editingChanges === 0} onclick={handleReset}>Restablecer</Button>
         </div>
       </div>
 
@@ -268,7 +268,7 @@
             <div class="shift-title">Me salté un día</div>
             <div class="shift-desc">Corre cada entrenamiento un día hacia adelante (Lun→Mar, Mar→Mié…).</div>
           </div>
-          <div class="shift-cta" style="background:{accent};color:#0a0a0a">Desplazar</div>
+          <div class="shift-cta" style="background:{accent};color:var(--bg)">Desplazar</div>
         </button>
       </div>
 
@@ -317,7 +317,7 @@
       {#if weeks.length > 0}
         <div id="plan-week-tabs" class="week-tabs">
           {#each weeks as w, i (i)}
-            <button class="week-tab" style="background:{planWeekIdx === i ? '#1f1f1f' : 'transparent'};border:{planWeekIdx === i ? `0.5px solid ${(w as any).accent || accent}66` : '0.5px solid rgba(255,255,255,0.06)'};color:{planWeekIdx === i ? '#fafafa' : 'rgba(255,255,255,0.5)'}"
+            <button class="week-tab" style="background:{planWeekIdx === i ? 'var(--surface-hover)' : 'transparent'};border:{planWeekIdx === i ? `0.5px solid ${(w as any).accent || accent}66` : '0.5px solid var(--border)'};color:{planWeekIdx === i ? 'var(--text)' : 'rgba(255,255,255,0.5)'}"
               onclick={() => handleWeekClick(i)}>
               <div class="week-tag" style="color:{planWeekIdx === i ? ((w as any).accent || accent) : 'rgba(255,255,255,0.4)'}">{w.tag || ''}</div>
               <div class="week-name">{w.name}</div>
@@ -403,7 +403,6 @@
   .flex-1 { flex: 1; min-width: 0; }
   .banner-title { font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
   .banner-subtitle { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; line-height: 1.35; }
-  .btn-reset-sm { flex-shrink: 0; padding: 7px 11px; border-radius: 9999px; border: 0; font-family: var(--font-sans); font-size: 12px; font-weight: 600; }
   .shift-btn { width: 100%; text-align: left; cursor: pointer; background: var(--surface); border: 0.5px solid var(--border-medium); border-radius: 16px; padding: 13px 14px; display: flex; align-items: center; gap: 13px; color: inherit; }
   .shift-icon { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 18px; }
   .shift-title { font-family: var(--font-sans); font-size: 14.5px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
