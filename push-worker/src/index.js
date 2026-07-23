@@ -341,7 +341,7 @@ export default {
 
     if (url.pathname === '/api/ai/generate-program') {
       try {
-        const { userProfile, overrides, systemPrompt, language } = await req.json()
+        const { userProfile, overrides, systemPrompt } = await req.json()
 
         const overrideBlock = overrides
           ? '\n\nPREFERENCIAS DEL USUARIO:\n' + JSON.stringify(overrides)
