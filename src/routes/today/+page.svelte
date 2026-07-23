@@ -245,6 +245,7 @@
         coachCardMode = true
         coachEffort = s.lastCoachAnalysis.effort || 'good'
         coachDay = day
+        coachResult = s.lastCoachAnalysis
       }
 
       if (warmupDone || phase !== 'loading') phase = phase === 'loading' ? (warmupDone ? 'training' : 'warmup') : phase

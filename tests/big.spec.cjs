@@ -520,6 +520,23 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(coachCard).toBeVisible({ timeout: 10000 })
   await expect(coachCard).toContainText('Resumen del coach')
 
+  // Regression guard: the post-workout coach card must show the *real*
+  // /api/ai/coach response, not a static canned string keyed only by effort
+  // level (the old client-side-only stub). Asserting this test's mocked
+  // payload verbatim proves the network call is actually wired up.
+  await expect(coachCard).toContainText('Buen trabajo hoy, TestUser.')
+  await expect(coachCard).toContainText('Press Banca → 55kg @ RIR 1-2')
+  await expect(coachCard).toContainText('Sube Press Banca 2.5kg la próxima sesión')
+
+  // ── Step 10b: Coach result survives closing and reopening the app ──
+  // Regression guard: reloading must keep showing the coach's analysis for
+  // today, not fall back to just the bare "Ejercicios/Volumen/PRs" stat grid.
+  await page.reload()
+  await page.waitForTimeout(1000)
+  const coachCardAfterReload = page.locator('#coach-card-regen')
+  await expect(coachCardAfterReload).toBeVisible({ timeout: 10000 })
+  await expect(coachCardAfterReload).toContainText('Buen trabajo hoy, TestUser.')
+
   // ── Step 11: History Verification ──
   await page.goto('history')
   await page.waitForTimeout(500)
