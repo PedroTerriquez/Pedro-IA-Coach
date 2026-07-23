@@ -328,7 +328,7 @@ export default {
         const { text, provider } = await callAI([
           { role: 'system', content: systemPrompt || '' },
           { role: 'user', content: fullPrompt },
-        ], env, { model: 'gemini-2.5-pro', responseFormat: 'json', responseSchema: IMPORT_SCHEMA, safetySettings: GEMINI_SAFETY })
+        ], env, { model: 'gemini-2.5-pro', maxTokens: 16384, responseFormat: 'json', responseSchema: IMPORT_SCHEMA, safetySettings: GEMINI_SAFETY })
 
         const parsed = parseAIResponse(text)
         if (!parsed) return respond({ error: 'La IA no generó JSON válido. Intenta simplificar la rutina.', raw: text, _provider: provider }, 502)
@@ -354,7 +354,7 @@ export default {
         const { text, provider } = await callAI([
           { role: 'system', content: systemPrompt || '' },
           { role: 'user', content: fullPrompt },
-        ], env, { model: 'gemini-2.5-pro', responseFormat: 'json', responseSchema: IMPORT_SCHEMA, safetySettings: GEMINI_SAFETY })
+        ], env, { model: 'gemini-2.5-pro', maxTokens: 16384, responseFormat: 'json', responseSchema: IMPORT_SCHEMA, safetySettings: GEMINI_SAFETY })
 
         const parsed = parseAIResponse(text)
         if (!parsed) return respond({ error: 'La IA no generó JSON válido. Intenta de nuevo.', raw: text, _provider: provider }, 502)
