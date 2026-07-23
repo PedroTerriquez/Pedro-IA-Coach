@@ -813,19 +813,6 @@
       {/if}
 
     {:else if activeTab === 'datos'}
-      <div class="section-label-wrap"><SectionLabel {accent}>Importar con IA</SectionLabel></div>
-      <div class="card section-card">
-        <div class="card-content">
-          <div class="card-title">Pega tu rutina en texto</div>
-          <div class="card-subtitle">Describe tu rutina como se la dirías a un entrenador. La IA creará el programa y los ejercicios automáticamente.</div>
-          <div class="ai-textarea-wrap">
-            <TextArea value={aiInput} rows={8} placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" oninput={(val) => aiInput = val} />
-          </div>
-          <div id="ai-status" class="status-text">{aiStatus}</div>
-        </div>
-        <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
-      </div>
-
       <div class="section-label-wrap"><SectionLabel {accent}>Importar</SectionLabel></div>
       <div class="card section-card">
         <DataImportSection
@@ -896,4 +883,25 @@
   .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }
   .dialog-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px; padding: 4px; }
   .skipped-item { padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; font-size: 13px; color: var(--text); font-family: var(--font-sans); }
+  .chip-group { margin-top: 14px; }
+  .chip-group-label { font-size: 11px; color: rgba(255,255,255,0.5); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 500; }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip-btn {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.6);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip-btn.chip-active {
+    background: var(--accent);
+    color: #0a0a0a;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
 </style>
