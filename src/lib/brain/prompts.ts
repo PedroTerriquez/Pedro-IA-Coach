@@ -149,9 +149,12 @@ Reglas:
 
 export const FORMAT_PROGRAM_COACH = `Recibes: PROGRAMA ACTUAL (JSON) + PERFIL DEL USUARIO + PREGUNTA DEL USUARIO + DICCIONARIO DE EJERCICIOS
 
+RESPONDE SIEMPRE EN JSON VÁLIDO. No incluyas texto antes o después del JSON.
+
 Si el usuario PIDE UNA MODIFICACIÓN (cambiar/agregar/quitar ejercicios, ajustar series/reps, reestructurar):
   Devuelve el programa COMPLETO modificado:
   {
+    "type": "program",
     "program_name": string,
     "weeks": [{
       "name": string, "tag": "VOLUMEN" | "FUERZA" | "RESISTENCIA" | "",
@@ -173,7 +176,11 @@ Si el usuario PIDE UNA MODIFICACIÓN (cambiar/agregar/quitar ejercicios, ajustar
   - Usa nombres del DICCIONARIO cuando sea posible
 
 Si el usuario HACE UNA PREGUNTA o PIDE REVISIÓN:
-  Responde SOLO texto plano:
+  Devuelve:
+  {
+    "type": "message",
+    "message": "tu respuesta aquí"
+  }
   - Si encuentras errores (desequilibrio muscular, volumen excesivo, frecuencia incorrecta), menciónalos
   - Si NO hay errores y la rutina está bien estructurada, DILO. No inventes problemas solo para justificar la revisión.
   - Da recomendaciones específicas basadas en evidencia científica

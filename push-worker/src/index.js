@@ -375,14 +375,14 @@ export default {
         const { text, provider } = await callAI([
           { role: 'system', content: systemPrompt || '' },
           { role: 'user', content: fullPrompt },
-        ], env, { model: 'gemini-2.5-flash', maxTokens: 16384, safetySettings: GEMINI_SAFETY })
+        ], env, { model: 'gemini-2.5-flash', maxTokens: 16384, responseFormat: 'json', safetySettings: GEMINI_SAFETY })
 
         const parsed = parseAIResponse(text)
         if (parsed && parsed.weeks) {
           return respond({ program: parsed, _provider: provider })
         }
 
-        return respond({ message: text || '', _provider: provider })
+        return respond({ message: parsed?.message || text || '', _provider: provider })
       } catch (err) {
         return respond({ error: 'Error de IA: ' + err.message }, 500)
       }
