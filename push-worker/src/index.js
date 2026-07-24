@@ -375,7 +375,7 @@ export default {
         const { text, provider } = await callAI([
           { role: 'system', content: systemPrompt || '' },
           { role: 'user', content: fullPrompt },
-        ], env, { model: 'gemini-2.5-flash', maxTokens: 4096, safetySettings: GEMINI_SAFETY })
+        ], env, { model: 'gemini-2.5-flash', maxTokens: 16384, safetySettings: GEMINI_SAFETY })
 
         const parsed = parseAIResponse(text)
         if (parsed && parsed.weeks) {
