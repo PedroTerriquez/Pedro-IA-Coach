@@ -25,6 +25,46 @@ export function buildUserProfile(settings: Settings) {
   }
 }
 
+async function buildProgramFromAIResponse(data: any, opts?: { noFuzzy?: boolean }): Promise<Program> {
+  const weeks: Program['weeks'] = []
+  for (const w of data.weeks) {
+    const days: Program['weeks'][0]['days'] = []
+    for (const d of (w.days || [])) {
+      const exercises: Program['weeks'][0]['days'][0]['exercises'] = []
+      for (const ex of (d.exercises || [])) {
+        const exercise = await Storage.findOrCreateExerciseByName(
+          ex.exercise_name || ex.name, ex.muscle || '', { noFuzzy: opts?.noFuzzy }
+        )
+        exercises.push({
+          exerciseId: exercise.id,
+          sets: ex.sets || 3,
+          reps: String(ex.reps || '10'),
+          rest: ex.rest_sec || ex.rest || 90,
+        })
+      }
+      days.push({
+        name: d.name || 'Día',
+        subtitle: d.subtitle || '',
+        duration: d.duration_min || d.duration || 60,
+        exercises,
+      })
+    }
+    weeks.push({
+      name: w.name || 'Semana 1',
+      subtitle: w.subtitle || '',
+      tag: w.tag || '',
+      days,
+    })
+  }
+
+  const program: Program = {
+    id: await generateId(),
+    name: data.program_name || 'Programa IA',
+    weeks,
+  }
+  return program
+}
+
 export async function importWithAI(text: string, onProgress?: (current: number, total: number, name: string) => void): Promise<Program> {
   const dictionary = buildAIDictionary()
   const settings = await Storage.getSettings()
@@ -58,43 +98,10 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
     }
   }
 
-  let processed = 0
-  const weeks: Program['weeks'] = []
-  for (const w of data.weeks) {
-    const days: Program['weeks'][0]['days'] = []
-    for (const d of (w.days || [])) {
-      const exercises: Program['weeks'][0]['days'][0]['exercises'] = []
-      for (const ex of (d.exercises || [])) {
-        processed++
-        if (onProgress) onProgress(processed, totalExercises, ex.exercise_name || ex.name || '')
-        const exercise = await Storage.findOrCreateExerciseByName(ex.exercise_name || ex.name, ex.muscle || '', { noFuzzy: true })
-        exercises.push({
-          exerciseId: exercise.id,
-          sets: ex.sets || 3,
-          reps: String(ex.reps || '10'),
-          rest: ex.rest_sec || ex.rest || 90,
-        })
-      }
-      days.push({
-        name: d.name || 'Día',
-        subtitle: d.subtitle || '',
-        duration: d.duration_min || d.duration || 60,
-        exercises,
-      })
-    }
-    weeks.push({
-      name: w.name || 'Semana 1',
-      subtitle: w.subtitle || '',
-      tag: w.tag || '',
-      days,
-    })
-  }
+  const program = await buildProgramFromAIResponse(data, { noFuzzy: true })
+  program.name = programName
 
-  const program: Program = {
-    id: await generateId(),
-    name: programName,
-    weeks
-  }
+  if (onProgress) onProgress(totalExercises, totalExercises, '')
 
   await Storage.saveProgram(program)
 
@@ -137,40 +144,8 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}): P
 
   const programName = data.program_name || 'Generado con IA'
 
-  const weeks: Program['weeks'] = []
-  for (const w of data.weeks) {
-    const days: Program['weeks'][0]['days'] = []
-    for (const d of (w.days || [])) {
-      const exercises: Program['weeks'][0]['days'][0]['exercises'] = []
-      for (const ex of (d.exercises || [])) {
-        const exercise = await Storage.findOrCreateExerciseByName(ex.exercise_name || ex.name, ex.muscle || '', { noFuzzy: true })
-        exercises.push({
-          exerciseId: exercise.id,
-          sets: ex.sets || 3,
-          reps: String(ex.reps || '10'),
-          rest: ex.rest_sec || ex.rest || 90,
-        })
-      }
-      days.push({
-        name: d.name || 'Día',
-        subtitle: d.subtitle || '',
-        duration: d.duration_min || d.duration || 60,
-        exercises,
-      })
-    }
-    weeks.push({
-      name: w.name || 'Semana 1',
-      subtitle: w.subtitle || '',
-      tag: w.tag || '',
-      days,
-    })
-  }
-
-  const program: Program = {
-    id: await generateId(),
-    name: programName,
-    weeks
-  }
+  const program = await buildProgramFromAIResponse(data, { noFuzzy: true })
+  program.name = programName
 
   await Storage.saveProgram(program)
 
@@ -227,44 +202,13 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
   const data = await res.json()
 
   if (data.program && data.program.weeks && data.program.weeks.length) {
-    const newWeeks: Program['weeks'] = []
-    for (const w of data.program.weeks) {
-      const days: Program['weeks'][0]['days'] = []
-      for (const d of (w.days || [])) {
-        const exercises: Program['weeks'][0]['days'][0]['exercises'] = []
-        for (const ex of (d.exercises || [])) {
-          const exercise = await Storage.findOrCreateExerciseByName(ex.exercise_name || ex.name, ex.muscle || '')
-          exercises.push({
-            exerciseId: exercise.id,
-            sets: ex.sets || 3,
-            reps: String(ex.reps || '10'),
-            rest: ex.rest_sec || ex.rest || 90,
-          })
-        }
-        days.push({
-          name: d.name || 'Día',
-          subtitle: d.subtitle || '',
-          duration: d.duration_min || d.duration || 60,
-          exercises,
-        })
-      }
-      newWeeks.push({
-        name: w.name || 'Semana 1',
-        subtitle: w.subtitle || '',
-        tag: w.tag || '',
-        days,
-      })
-    }
+    const newProgram = await buildProgramFromAIResponse(data.program)
 
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
     const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
     const baseName = data.program.program_name || program.name || 'Coach IA'
-    const newProgram: Program = {
-      id: await generateId(),
-      name: `${baseName} — ${stamp}`,
-      weeks: newWeeks,
-    }
+    newProgram.name = `${baseName} — ${stamp}`
 
     await Storage.saveProgram(newProgram)
 
