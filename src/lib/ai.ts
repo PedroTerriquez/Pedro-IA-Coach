@@ -4,7 +4,7 @@ import type { Program, Settings } from '$lib/types'
 
 import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionary'
-import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, type PromptLanguage } from '$lib/brain/prompts'
+import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
 function resolveLanguage(settings: Settings): PromptLanguage {
@@ -228,16 +228,15 @@ export async function exerciseCoachChat(exerciseName: string, muscle: string, al
 
   try {
     const settings = await Storage.getSettings()
+    const userProfile = buildUserProfile(settings)
+    const systemPrompt = buildExerciseCoachPrompt(exerciseName, muscle, alternatives, userProfile)
+
     const res = await fetch(`${PUSH_SERVER_URL}/api/ai/exercise-coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        exercise_name: exerciseName,
-        muscle,
-        alternatives,
         messages,
-        language: resolveLanguage(settings),
-        userProfile: buildUserProfile(settings),
+        systemPrompt,
       })
     })
 
