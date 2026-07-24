@@ -32,7 +32,7 @@
     {/snippet}
     {#snippet button()}
       <div class="maint-actions">
-        <Button size="sm" style="border-color:{accent}55;color:{accent}" onclick={onmigrate}>Aplicar</Button>
+        <Button size="sm" {accent} onclick={onmigrate}>Aplicar</Button>
         <Button variant="secondary" size="sm" onclick={onforce}>Forzar</Button>
       </div>
     {/snippet}
