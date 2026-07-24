@@ -3,7 +3,7 @@ import { generateId } from '$lib/db'
 import type { Program, Settings } from '$lib/types'
 
 import { PUSH_SERVER_URL } from '$lib/config'
-import { buildAIDictionary } from '$lib/brain/dictionary'
+import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionary'
 import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
@@ -184,7 +184,7 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
   const exerciseNames = program.weeks.flatMap(w =>
     w.days.flatMap(d => d.exercises.map(ex => exerciseMap.get(ex.exerciseId)?.name).filter(Boolean) as string[])
   )
-  const filteredDictionary = buildAIDictionary(exerciseNames)
+  const filteredDictionary = buildFilteredDictionary(exerciseNames)
 
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/program-coach`, {
     method: 'POST',
