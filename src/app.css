@@ -33,7 +33,7 @@ html {
   /* Set from Settings → Tamaño de texto (fontScale); scales the whole app
      (layout + text together) rather than just font-size, since most
      components use fixed px font sizes instead of rem. */
-  zoom: var(--ui-zoom, 1);
+  /* zoom removed — was breaking position:fixed on Safari */
 }
 
 html, body {

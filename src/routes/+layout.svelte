@@ -19,7 +19,7 @@
     if (s.accentColor) {
       document.documentElement.style.setProperty('--accent', s.accentColor)
     }
-    document.documentElement.style.setProperty('--ui-zoom', String(s.fontScale || 1))
+    document.querySelector('.app-shell')?.style.setProperty('--ui-zoom', String(s.fontScale || 1))
   })
 
   let toastState = $derived($toast)
@@ -53,5 +53,6 @@
   .app-shell {
     padding-bottom: 96px;
     min-height: 100dvh;
+    zoom: var(--ui-zoom, 1);
   }
 </style>
