@@ -139,8 +139,8 @@
       {#each muscles as m}
         <button onclick={() => setFilter(m)}>
           <Chip
-            color={historyFilter === m ? accent : undefined}
-            textColor={historyFilter === m ? 'var(--bg)' : undefined}
+            color={historyFilter === m ? accent : 'rgba(255,255,255,0.06)'}
+            textColor={historyFilter === m ? 'var(--bg)' : 'rgba(255,255,255,0.5)'}
           >{m}</Chip>
         </button>
       {/each}
@@ -193,6 +193,12 @@
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+  }
+  .chips-row button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
   }
   .chips-row::-webkit-scrollbar {
     display: none;
