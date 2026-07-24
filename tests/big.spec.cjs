@@ -911,7 +911,7 @@ test.describe('You — Programas tab', () => {
     await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })).toHaveCount(0)
 
     // Coach IA — ask a question, verify a response renders
-    await page.locator('[data-component="CoachIACard"] textarea').fill('¿Está balanceada mi rutina?')
+    await page.locator('[data-component="ProgramEditorIACard"] textarea').fill('¿Está balanceada mi rutina?')
     await page.getByRole('button', { name: 'Enviar al coach' }).click()
     await page.waitForTimeout(600)
     await expect(page.locator('[data-component="CoachResponseCard"]')).toBeVisible({ timeout: 5000 })

@@ -17,7 +17,7 @@
   import ProfileCard from '$lib/components/ProfileCard.svelte'
   import QuickSettingsCard from '$lib/components/QuickSettingsCard.svelte'
   import ProgramCard from '$lib/components/ProgramCard.svelte'
-  import CoachIACard from '$lib/components/CoachIACard.svelte'
+  import ProgramEditorIACard from '$lib/components/ProgramEditorIACard.svelte'
   import ExerciseListItem from '$lib/components/ExerciseListItem.svelte'
   import MaintenanceCard from '$lib/components/MaintenanceCard.svelte'
   import NewExerciseForm from '$lib/components/NewExerciseForm.svelte'
@@ -652,7 +652,7 @@
           <Button variant="primary" {accent} fullWidth onclick={submitGenerate} disabled={generatingProgram}>{generatingProgram ? '⏳ Generando…' : 'Generar programa con IA'}</Button>
         </div>
 
-        <CoachIACard
+        <ProgramEditorIACard
           {accent}
           {coachInput}
           {coachStatus}
