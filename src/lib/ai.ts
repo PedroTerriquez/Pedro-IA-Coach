@@ -256,9 +256,13 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
       })
     }
 
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+    const baseName = data.program.program_name || program.name || 'Coach IA'
     const newProgram: Program = {
       id: await generateId(),
-      name: data.program.program_name || 'Coach IA',
+      name: `${baseName} — ${stamp}`,
       weeks: newWeeks,
     }
 
