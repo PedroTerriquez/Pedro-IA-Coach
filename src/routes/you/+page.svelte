@@ -643,7 +643,7 @@
             <div class="chip-group">
               <div class="chip-group-label">Enfoque</div>
               <div class="chip-row">
-                {#each [{ v: 'upper', l: 'Upper Body' }, { v: 'lower', l: 'Lower Body' }, { v: 'full', l: 'Full Body' }] as f}
+                {#each [{ v: 'full', l: 'Cuerpo completo' }, { v: 'chest', l: 'Pecho' }, { v: 'back', l: 'Espalda' }, { v: 'legs', l: 'Piernas' }, { v: 'shoulders', l: 'Hombros' }, { v: 'arms', l: 'Brazos' }, { v: 'core', l: 'Abdomen' }] as f}
                   <button class="chip-btn" class:chip-active={generateFocus === f.v} onclick={() => generateFocus = generateFocus === f.v ? null : f.v}>{f.l}</button>
                 {/each}
               </div>

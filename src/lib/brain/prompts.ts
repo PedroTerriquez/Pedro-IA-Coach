@@ -78,7 +78,7 @@ Usa estos datos para personalizar el programa:
   • 5 días: Push/Pull/Legs + Upper + Lower (o Arnold split)
   • 6 días: Push/Pull/Legs × 2
 - equipment: "gimnasio" (todas las máquinas/barra/mancuernas), "mancuernas" (solo dumbbells + banco), "calistenia" (peso corporal)
-- focus: "upper" (priorizar torso), "lower" (priorizar piernas), "full" (cuerpo completo equilibrado)
+- focus: "full" (cuerpo completo equilibrado), "chest" (priorizar pecho), "back" (priorizar espalda), "legs" (priorizar piernas), "shoulders" (priorizar hombros), "arms" (priorizar brazos), "core" (priorizar abdomen)
 - limitations: zonas del cuerpo con molestias o lesiones → EVITA ejercicios que carguen esa zona. Usa alternativas que trabajen el mismo grupo muscular sin impactar la zona limitada. Si "Espalda" → evita remo pesado, peso muerto, sentadilla trasera; usa variantes con soporte o máquinas. Si "Rodilla" → evita sentadilla profunda, prensa con rango completo; usa sentadilla parcial, extensión de cuádriceps en máquina. Si "Hombro" → evita press militar, laterales con mucho peso; usa press inclinado, cruces en polea. Adapta según la zona.
 
 ─ REGLAS POR NIVEL DE EXPERIENCIA ─
