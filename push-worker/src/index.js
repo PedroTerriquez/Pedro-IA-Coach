@@ -162,6 +162,37 @@ function buildProfileBlock(profile) {
   return `\n\nPERFIL DEL USUARIO:\nEl usuario es ${desc}.`
 }
 
+function parseAIResponse(text) {
+  text = (text || '').trim()
+  const m = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  if (m) text = m[1].trim()
+  try { return JSON.parse(text) } catch { return null }
+}
+
+async function handleAIEndpoint(req, env, { buildPrompt, schema, model, maxTokens }) {
+  const body = await req.json()
+
+  const aiOpts = { safetySettings: GEMINI_SAFETY }
+  if (schema) {
+    aiOpts.responseFormat = 'json'
+    aiOpts.responseSchema = schema
+  }
+  if (model) aiOpts.model = model
+  if (maxTokens) aiOpts.maxTokens = maxTokens
+
+  const messages = body.messages?.length
+    ? [{ role: 'system', content: body.systemPrompt || '' }, ...body.messages]
+    : [
+        { role: 'system', content: body.systemPrompt || '' },
+        { role: 'user', content: buildPrompt(body) },
+      ]
+
+  const { text, provider } = await callAI(messages, env, aiOpts)
+
+  const parsed = schema ? parseAIResponse(text) : null
+  return { parsed, text, provider }
+}
+
 // ── Web Push send (manual, no web-push library) ──
 
 // Wake the device's Service Worker with a payload-less push (VAPID auth only).
@@ -256,13 +287,6 @@ export default {
       return new Response(body, { status, headers })
     }
 
-    function parseAIResponse(text) {
-      text = (text || '').trim()
-      const m = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-      if (m) text = m[1].trim()
-      try { return JSON.parse(text) } catch { return null }
-    }
-
     if (url.pathname === '/api/push/subscribe') {
       if (!env.PUSH_KV) return respond('Push KV not configured', 501)
       try {
@@ -314,18 +338,13 @@ export default {
 
     if (url.pathname === '/api/ai/coach') {
       try {
-        const { sessionData, systemPrompt } = await req.json()
-        if (!sessionData) return respond({ error: 'No session data provided' }, 400)
+        const result = await handleAIEndpoint(req, env, {
+          buildPrompt: (body) => 'DATOS DE LA SESIÓN:\n' + JSON.stringify(body.sessionData),
+          schema: COACH_SCHEMA,
+        })
 
-        const { text, provider } = await callAI([
-          { role: 'system', content: systemPrompt || '' },
-          { role: 'user', content: 'DATOS DE LA SESIÓN:\n' + JSON.stringify(sessionData) },
-        ], env, { responseFormat: 'json', responseSchema: COACH_SCHEMA, safetySettings: GEMINI_SAFETY })
-
-        const parsed = parseAIResponse(text)
-        if (!parsed) return respond({ error: 'La IA no generó JSON válido', raw: text, _provider: provider }, 502)
-
-        return respond({ ...parsed, _provider: provider })
+        if (!result.parsed) return respond({ error: 'La IA no generó JSON válido', raw: result.text, _provider: result.provider }, 502)
+        return respond({ ...result.parsed, _provider: result.provider })
       } catch (err) {
         return respond({ error: 'Error de IA: ' + err.message }, 500)
       }
@@ -333,23 +352,20 @@ export default {
 
     if (url.pathname === '/api/ai/import') {
       try {
-        const { text: userText, systemPrompt, dictionary, userProfile } = await req.json()
-        if (!userText) return respond({ error: 'No text provided' }, 400)
+        const result = await handleAIEndpoint(req, env, {
+          buildPrompt: (body) => {
+            const dictBlock = (body.dictionary?.length)
+              ? '\n\nDICCIONARIO DE EJERCICIOS (usa el campo "es" EXACTO cuando el ejercicio corresponda; "en" y "aliases" son solo para ayudarte a identificarlo):\n' + JSON.stringify(body.dictionary)
+              : ''
+            return 'RUTINA DEL USUARIO:\n' + body.text + buildProfileBlock(body.userProfile) + dictBlock
+          },
+          schema: IMPORT_SCHEMA,
+          model: 'gemini-2.5-flash',
+          maxTokens: 16384,
+        })
 
-        const dictBlock = (dictionary && dictionary.length)
-          ? '\n\nDICCIONARIO DE EJERCICIOS (usa el campo "es" EXACTO cuando el ejercicio corresponda; "en" y "aliases" son solo para ayudarte a identificarlo):\n' + JSON.stringify(dictionary)
-          : ''
-        const fullPrompt = 'RUTINA DEL USUARIO:\n' + userText + buildProfileBlock(userProfile) + dictBlock
-
-        const { text, provider } = await callAI([
-          { role: 'system', content: systemPrompt || '' },
-          { role: 'user', content: fullPrompt },
-        ], env, { model: 'gemini-2.5-flash', maxTokens: 16384, responseFormat: 'json', responseSchema: IMPORT_SCHEMA, safetySettings: GEMINI_SAFETY })
-
-        const parsed = parseAIResponse(text)
-        if (!parsed) return respond({ error: 'La IA no generó JSON válido. Intenta simplificar la rutina.', raw: text, _provider: provider }, 502)
-
-        return respond({ ...parsed, _provider: provider })
+        if (!result.parsed) return respond({ error: 'La IA no generó JSON válido. Intenta simplificar la rutina.', raw: result.text, _provider: result.provider }, 502)
+        return respond({ ...result.parsed, _provider: result.provider })
       } catch (err) {
         return respond({ error: 'Error de IA: ' + err.message }, 500)
       }
@@ -357,22 +373,20 @@ export default {
 
     if (url.pathname === '/api/ai/generate-program') {
       try {
-        const { userProfile, overrides, systemPrompt } = await req.json()
+        const result = await handleAIEndpoint(req, env, {
+          buildPrompt: (body) => {
+            const overrideBlock = body.overrides
+              ? '\n\nPREFERENCIAS DEL USUARIO:\n' + JSON.stringify(body.overrides)
+              : ''
+            return 'Genera un programa de entrenamiento completo para este usuario.' + buildProfileBlock(body.userProfile) + overrideBlock
+          },
+          schema: IMPORT_SCHEMA,
+          model: 'gemini-2.5-flash',
+          maxTokens: 16384,
+        })
 
-        const overrideBlock = overrides
-          ? '\n\nPREFERENCIAS DEL USUARIO:\n' + JSON.stringify(overrides)
-          : ''
-        const fullPrompt = 'Genera un programa de entrenamiento completo para este usuario.' + buildProfileBlock(userProfile) + overrideBlock
-
-        const { text, provider } = await callAI([
-          { role: 'system', content: systemPrompt || '' },
-          { role: 'user', content: fullPrompt },
-        ], env, { model: 'gemini-2.5-flash', maxTokens: 16384, responseFormat: 'json', responseSchema: IMPORT_SCHEMA, safetySettings: GEMINI_SAFETY })
-
-        const parsed = parseAIResponse(text)
-        if (!parsed) return respond({ error: 'La IA no generó JSON válido. Intenta de nuevo.', raw: text, _provider: provider }, 502)
-
-        return respond({ ...parsed, _provider: provider })
+        if (!result.parsed) return respond({ error: 'La IA no generó JSON válido. Intenta de nuevo.', raw: result.text, _provider: result.provider }, 502)
+        return respond({ ...result.parsed, _provider: result.provider })
       } catch (err) {
         return respond({ error: 'Error de IA: ' + err.message }, 500)
       }
@@ -380,22 +394,22 @@ export default {
 
     if (url.pathname === '/api/ai/program-coach') {
       try {
-        const { text: userText, currentProgram, userProfile, systemPrompt, dictionary } = await req.json()
-        if (!userText) return respond({ error: 'No text provided' }, 400)
+        const result = await handleAIEndpoint(req, env, {
+          buildPrompt: (body) => {
+            return 'PROGRAMA ACTUAL:\n' + JSON.stringify(body.currentProgram)
+              + buildProfileBlock(body.userProfile)
+              + '\n\nPREGUNTA DEL USUARIO:\n' + body.text
+              + '\n\nDICCIONARIO DE EJERCICIOS:\n' + JSON.stringify(body.dictionary || [])
+          },
+          model: 'gemini-2.5-flash',
+          maxTokens: 16384,
+        })
 
-        const fullPrompt = 'PROGRAMA ACTUAL:\n' + JSON.stringify(currentProgram) + buildProfileBlock(userProfile) + '\n\nPREGUNTA DEL USUARIO:\n' + userText + '\n\nDICCIONARIO DE EJERCICIOS:\n' + JSON.stringify(dictionary || [])
-
-        const { text, provider } = await callAI([
-          { role: 'system', content: systemPrompt || '' },
-          { role: 'user', content: fullPrompt },
-        ], env, { model: 'gemini-2.5-flash', maxTokens: 16384, responseFormat: 'json', safetySettings: GEMINI_SAFETY })
-
-        const parsed = parseAIResponse(text)
+        const parsed = result.parsed
         if (parsed && parsed.weeks) {
-          return respond({ program: parsed, _provider: provider })
+          return respond({ program: parsed, _provider: result.provider })
         }
-
-        return respond({ message: parsed?.message || text || '', _provider: provider })
+        return respond({ message: parsed?.message || result.text || '', _provider: result.provider })
       } catch (err) {
         return respond({ error: 'Error de IA: ' + err.message }, 500)
       }
@@ -403,15 +417,10 @@ export default {
 
     if (url.pathname === '/api/ai/exercise-coach') {
       try {
-        const { messages, systemPrompt } = await req.json()
-        if (!messages || !messages.length) return respond({ error: 'No messages provided' }, 400)
-
-        const { text, provider } = await callAI([
-          { role: 'system', content: systemPrompt || '' },
-          ...messages.map(m => ({ role: m.role, content: m.content })),
-        ], env, { safetySettings: GEMINI_SAFETY })
-
-        return respond({ reply: text || '', _provider: provider })
+        const result = await handleAIEndpoint(req, env, {
+          buildPrompt: () => '',
+        })
+        return respond({ reply: result.text || '', _provider: result.provider })
       } catch (err) {
         return respond({ error: 'Error de IA: ' + err.message }, 500)
       }
