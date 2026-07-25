@@ -65,7 +65,7 @@
   let programSubTab = $state<'manual' | 'ia'>('manual')
   let generateDaysPerWeek = $state<number | null>(null)
   let generateEquipment = $state<string | null>(null)
-  let generateFocus = $state<string | null>(null)
+  let generateFocus = $state<string[]>([])
   let generateLimitations = $state<string[]>([])
   let generatingProgram = $state(false)
   let generateStatus = $state('')
@@ -287,7 +287,7 @@
       const overrides: ProgramOverrides = {}
       if (generateDaysPerWeek) overrides.daysPerWeek = generateDaysPerWeek
       if (generateEquipment) overrides.equipment = generateEquipment
-      if (generateFocus) overrides.focus = generateFocus
+      if (generateFocus.length) overrides.focus = generateFocus
       if (generateLimitations.length) overrides.limitations = generateLimitations
 
       const program = await generateProgramWithAI(overrides)
@@ -644,7 +644,7 @@
               <div class="chip-group-label">Enfoque</div>
               <div class="chip-row">
                 {#each [{ v: 'full', l: 'Cuerpo completo' }, { v: 'chest', l: 'Pecho' }, { v: 'back', l: 'Espalda' }, { v: 'legs', l: 'Piernas' }, { v: 'shoulders', l: 'Hombros' }, { v: 'arms', l: 'Brazos' }, { v: 'core', l: 'Abdomen' }] as f}
-                  <button class="chip-btn" class:chip-active={generateFocus === f.v} onclick={() => generateFocus = generateFocus === f.v ? null : f.v}>{f.l}</button>
+                  <button class="chip-btn" class:chip-active={generateFocus.includes(f.v)} onclick={() => { generateFocus = generateFocus.includes(f.v) ? generateFocus.filter(v => v !== f.v) : [...generateFocus, f.v] }}>{f.l}</button>
                 {/each}
               </div>
             </div>

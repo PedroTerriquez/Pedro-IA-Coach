@@ -117,7 +117,7 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
 export interface ProgramOverrides {
   daysPerWeek?: number
   equipment?: string
-  focus?: string
+  focus?: string | string[]
   limitations?: string[]
 }
 
