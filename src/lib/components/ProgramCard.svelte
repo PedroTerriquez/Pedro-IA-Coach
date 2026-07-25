@@ -21,13 +21,10 @@
   } = $props()
 </script>
 
-<div class="card program-item" data-component="ProgramCard" data-program-id={program.id}>
+<div class="card program-item" class:active={isActive} style={isActive ? `border-color:${accent}55` : ''} data-component="ProgramCard" data-program-id={program.id}>
   <div class="flex-1">
     <div class="row">
       <div class="program-name">{program.name}</div>
-      {#if isActive}
-        <span class="pill" style="background:{accent}22;color:{accent}">ACTIVO</span>
-      {/if}
     </div>
     <div class="program-meta">{program.weeks.length} semana(s) · {totalExercises} ejercicios totales</div>
   </div>
@@ -39,7 +36,8 @@
 </div>
 
 <style>
-  .program-item { margin: 0 20px; padding: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .program-item { padding: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 1.5px solid transparent; transition: border-color 0.2s; }
+  .program-item.active { border-color: var(--accent); }
   .program-name { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: #fafafa; letter-spacing: -0.3px; }
   .program-meta { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
   .row { display: flex; gap: 10px; align-items: center; }
