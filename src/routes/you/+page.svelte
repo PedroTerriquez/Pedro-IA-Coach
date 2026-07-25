@@ -66,6 +66,7 @@
   let generateDaysPerWeek = $state<number | null>(null)
   let generateEquipment = $state<string | null>(null)
   let generateFocus = $state<string | null>(null)
+  let generateLimitations = $state<string[]>([])
   let generatingProgram = $state(false)
   let generateStatus = $state('')
 
@@ -287,6 +288,7 @@
       if (generateDaysPerWeek) overrides.daysPerWeek = generateDaysPerWeek
       if (generateEquipment) overrides.equipment = generateEquipment
       if (generateFocus) overrides.focus = generateFocus
+      if (generateLimitations.length) overrides.limitations = generateLimitations
 
       const program = await generateProgramWithAI(overrides)
       generateStatus = `✅ "${program.name}" generado con ${program.weeks.length} semana(s)`
@@ -643,6 +645,15 @@
               <div class="chip-row">
                 {#each [{ v: 'upper', l: 'Upper Body' }, { v: 'lower', l: 'Lower Body' }, { v: 'full', l: 'Full Body' }] as f}
                   <button class="chip-btn" class:chip-active={generateFocus === f.v} onclick={() => generateFocus = generateFocus === f.v ? null : f.v}>{f.l}</button>
+                {/each}
+              </div>
+            </div>
+
+            <div class="chip-group">
+              <div class="chip-group-label">Zonas con molestia</div>
+              <div class="chip-row">
+                {#each ['Espalda', 'Hombro', 'Rodilla', 'Cadera', 'Cuello', 'Muñeca', 'Codo', 'Tobillo'] as part}
+                  <button class="chip-btn" class:chip-active={generateLimitations.includes(part)} onclick={() => { generateLimitations = generateLimitations.includes(part) ? generateLimitations.filter(p => p !== part) : [...generateLimitations, part] }}>{part}</button>
                 {/each}
               </div>
             </div>

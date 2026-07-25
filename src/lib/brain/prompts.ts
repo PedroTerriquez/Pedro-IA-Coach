@@ -79,6 +79,7 @@ Usa estos datos para personalizar el programa:
   • 6 días: Push/Pull/Legs × 2
 - equipment: "gimnasio" (todas las máquinas/barra/mancuernas), "mancuernas" (solo dumbbells + banco), "calistenia" (peso corporal)
 - focus: "upper" (priorizar torso), "lower" (priorizar piernas), "full" (cuerpo completo equilibrado)
+- limitations: zonas del cuerpo con molestias o lesiones → EVITA ejercicios que carguen esa zona. Usa alternativas que trabajen el mismo grupo muscular sin impactar la zona limitada. Si "Espalda" → evita remo pesado, peso muerto, sentadilla trasera; usa variantes con soporte o máquinas. Si "Rodilla" → evita sentadilla profunda, prensa con rango completo; usa sentadilla parcial, extensión de cuádriceps en máquina. Si "Hombro" → evita press militar, laterales con mucho peso; usa press inclinado, cruces en polea. Adapta según la zona.
 
 ─ REGLAS POR NIVEL DE EXPERIENCIA ─
 - Principiante: 2-3 ejercicios/día, enfoque en compuestos, 3 series, 60-90s descanso

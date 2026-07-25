@@ -118,6 +118,7 @@ export interface ProgramOverrides {
   daysPerWeek?: number
   equipment?: string
   focus?: string
+  limitations?: string[]
 }
 
 export async function generateProgramWithAI(overrides: ProgramOverrides = {}): Promise<Program> {
@@ -159,8 +160,6 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}): P
 }
 
 export async function programCoach(text: string, program: Program): Promise<{ program?: Program; message?: string; _provider?: string }> {
-  const dictionary = buildAIDictionary()
-
   const exercises = await Storage.getExercises()
   const exerciseMap = new Map(exercises.map(e => [e.id, e]))
 
