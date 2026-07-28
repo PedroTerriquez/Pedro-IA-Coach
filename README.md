@@ -7,7 +7,7 @@
 
 ## Try it now
 
-→ **[https://pedroterriquez.github.io/training-with-pedro/](https://pedroterriquez.github.io/training-with-pedro/)**
+→ **[https://pedroterriquez.github.io/Pedro-IA-Coach/](https://pedroterriquez.github.io/Pedro-IA-Coach/)**
 
 Open it on your phone, add to home screen (it's a PWA), and you're ready to train.
 
@@ -113,7 +113,7 @@ Open the app on workout day. The **Today** screen auto-detects the day and shows
 
 ## How to use it (daily workout)
 
-1. Open **[https://pedroterriquez.github.io/training-with-pedro/](https://pedroterriquez.github.io/training-with-pedro/)** on your phone
+1. Open **[https://pedroterriquez.github.io/Pedro-IA-Coach/](https://pedroterriquez.github.io/Pedro-IA-Coach/)** on your phone
 2. **Add to home screen** (Safari: Share → Add to Home Screen — it's a PWA)
 3. Go to **You → Datos → Importar con IA** — paste your routine in plain text, AI structures it as a program
 4. **Tap the program** to activate it
@@ -143,7 +143,7 @@ Auto-creates exercises by name if they don't exist. Pipe (`|`) separates tips. `
 ## Deploy your own
 
 ```bash
-git clone git@github.com:PedroTerriquez/training-with-pedro.git
+git clone git@github.com:PedroTerriquez/Pedro-IA-Coach.git
 ```
 
 Then enable GitHub Pages in repo Settings → Pages → Deploy from branch `main`, root folder.

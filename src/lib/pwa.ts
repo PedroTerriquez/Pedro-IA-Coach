@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.99 · 2026-07-28 · Program editor: manual CRUD for weeks, days, exercises'
+export const APP_VERSION = 'v2.00 · 2026-07-28 · Fix GitHub Pages base path after repo rename'
 
 let deferredPrompt: any = null
 

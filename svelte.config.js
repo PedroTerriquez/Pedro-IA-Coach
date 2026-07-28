@@ -15,7 +15,7 @@ const config = {
 			strict: true
 		}),
 		paths: {
-			base: '/training-with-pedro'
+			base: '/Pedro-IA-Coach'
 		}
 	}
 };

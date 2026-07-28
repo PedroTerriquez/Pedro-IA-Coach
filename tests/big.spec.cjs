@@ -675,29 +675,29 @@ test.describe('You — Tamaño de texto (accessibility)', () => {
     const fontBtn = page.locator('#font-size-toggle-btn')
     await expect(fontBtn).toBeVisible()
     await expect(fontBtn).toContainText('Normal')
-    await expect(page.locator('html')).toHaveCSS('zoom', '1')
+    await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
 
     await fontBtn.click()
     await page.waitForTimeout(300)
     await expect(fontBtn).toContainText('Grande')
-    await expect(page.locator('html')).toHaveCSS('zoom', '1.15')
+    await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.15')
 
     await fontBtn.click()
     await page.waitForTimeout(300)
     await expect(fontBtn).toContainText('Extra grande')
-    await expect(page.locator('html')).toHaveCSS('zoom', '1.3')
+    await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
 
     // Persisted to Settings — survives a reload, not just local component state
     await page.reload()
     await page.waitForTimeout(600)
     await expect(page.locator('#font-size-toggle-btn')).toContainText('Extra grande')
-    await expect(page.locator('html')).toHaveCSS('zoom', '1.3')
+    await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
 
     // Cycles back to Normal
     await page.locator('#font-size-toggle-btn').click()
     await page.waitForTimeout(300)
     await expect(page.locator('#font-size-toggle-btn')).toContainText('Normal')
-    await expect(page.locator('html')).toHaveCSS('zoom', '1')
+    await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
   })
 })
 
@@ -894,9 +894,9 @@ test.describe('You — Programas tab', () => {
     // Activate it — the ACTIVO pill should move off "Programa Activo"
     await newCard.getByRole('button', { name: 'Activar' }).click()
     await page.waitForTimeout(400)
-    await expect(newCard.locator('.pill')).toHaveText('ACTIVO')
+    await expect(newCard).toHaveClass(/active/)
     const oldCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Activo' })
-    await expect(oldCard.locator('.pill')).toHaveCount(0)
+    await expect(oldCard).not.toHaveClass(/active/)
 
     // Duplicate
     await newCard.getByRole('button', { name: 'Duplicar' }).click()
@@ -910,7 +910,9 @@ test.describe('You — Programas tab', () => {
     await page.waitForTimeout(400)
     await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })).toHaveCount(0)
 
-    // Coach IA — ask a question, verify a response renders
+    // Coach IA — switch to IA Powered sub-tab, ask a question, verify a response renders
+    await page.getByRole('button', { name: 'IA Powered' }).click()
+    await page.waitForTimeout(300)
     await page.locator('[data-component="ProgramEditorIACard"] textarea').fill('¿Está balanceada mi rutina?')
     await page.getByRole('button', { name: 'Enviar al coach' }).click()
     await page.waitForTimeout(600)
@@ -950,7 +952,9 @@ test.describe('You — Datos tab', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.getByRole('button', { name: 'Programas' }).click()
+    await page.waitForTimeout(300)
+    await page.getByRole('button', { name: 'IA Powered' }).click()
     await page.waitForTimeout(300)
 
     // AI import
@@ -958,6 +962,10 @@ test.describe('You — Datos tab', () => {
     await page.getByRole('button', { name: 'Importar con IA' }).click()
     await page.waitForTimeout(600)
     await expect(page.locator('#ai-status')).toContainText('Importado "Programa IA"')
+
+    // Switch to Datos tab for dictionary migration + JSON import/export
+    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.waitForTimeout(300)
 
     // Dictionary migration
     await page.getByRole('button', { name: 'Aplicar' }).click()
@@ -1654,5 +1662,118 @@ test.describe('Rest timer notification flow', () => {
 
     await expect(page.locator('[data-component="RestTimerBanner"]')).toBeVisible({ timeout: 3000 })
     expect(startCalls).toBe(1)
+  })
+})
+
+test.describe('You — Datos export/import roundtrip', () => {
+  test('exports logs+settings, clears stores, reimports, verifies integrity', async ({ page }) => {
+    test.setTimeout(60000)
+    const fs = require('fs')
+
+    const exercises = [
+      { id: 'ex-rt-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: ['Mantén hombros atrás'], alternatives: [] },
+      { id: 'ex-rt-deadlift', name: 'Peso Muerto', muscle: 'Back', imgUrl: '', gifUrl: '', tips: ['Espalda recta'], alternatives: [] },
+    ]
+    const exerciseLogs = [
+      { id: 'log-rt-1', exerciseId: 'ex-rt-bench', date: '2026-07-01', weight: 50, units: 'kg' },
+      { id: 'log-rt-2', exerciseId: 'ex-rt-deadlift', date: '2026-07-01', weight: 80, units: 'kg' },
+      { id: 'log-rt-3', exerciseId: 'ex-rt-bench', date: '2026-07-15', weight: 55, units: 'kg' },
+    ]
+    const program = {
+      id: 'prog-rt', name: 'Programa Roundtrip',
+      weeks: [{ name: 'Semana 1', subtitle: '', tag: 'BUILD', days: [{ name: 'Día 1', subtitle: '', duration: 60, exercises: [{ exerciseId: 'ex-rt-bench', sets: 4, reps: '8-10', rest: 120 }] }] }],
+    }
+    const settings = {
+      id: 'settings', activeProgramId: 'prog-rt', currentWeekIdx: 0, units: 'kg',
+      accentColor: '#d4ff3a', hasWatch: false, userName: 'RoundTripUser', height: '175', weight: '78',
+      sex: 'Masculino', age: '30', goal: 'hipertrofia', experience: 'intermedio', occupation: 'Dev',
+      pushSubscribed: false, pushServerUrl: '', sessionState: null, lastCoachAnalysis: null,
+      rescheduleWeekOrder: {}, language: 'es',
+    }
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises, exerciseLogs, program, settings })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.waitForTimeout(300)
+
+    // Export logs+settings JSON (second Exportar JSON button)
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('[data-component="DataExportSection"]').getByRole('button', { name: 'Exportar JSON' }).nth(1).click(),
+    ])
+    expect(download.suggestedFilename()).toMatch(/^training-backup-\d{4}-\d{2}-\d{2}\.json$/)
+
+    // Read file and verify content matches seeded data
+    const filePath = await download.path()
+    expect(filePath).not.toBeNull()
+    await page.waitForTimeout(500)
+    const raw = fs.readFileSync(filePath, 'utf8')
+    const data = JSON.parse(raw)
+    expect(data.exercises).toHaveLength(2)
+    expect(data.exerciseLogs).toHaveLength(3)
+    expect(data.programs).toHaveLength(1)
+    expect(data.settings.activeProgramId).toBe('prog-rt')
+    expect(data.exercises[0].name).toBe('Press Banca')
+    expect(data.exercises[1].name).toBe('Peso Muerto')
+    expect(data.exerciseLogs[0].weight).toBe(50)
+    expect(data.exerciseLogs[2].weight).toBe(55)
+    expect(data.settings.language).toBe('es')
+    expect(data.exportedAt).toBeDefined()
+
+    // Clear all stores
+    await page.evaluate(async () => {
+      const req = indexedDB.open('coach-pedro-ai', 1)
+      const db = await new Promise((resolve, reject) => {
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      const tx = db.transaction(['exercises', 'exerciseLogs', 'programs', 'settings'], 'readwrite')
+      tx.objectStore('exercises').clear()
+      tx.objectStore('exerciseLogs').clear()
+      tx.objectStore('programs').clear()
+      tx.objectStore('settings').clear()
+      await new Promise((resolve, reject) => {
+        tx.oncomplete = () => { db.close(); resolve() }
+        tx.onerror = () => reject(tx.error)
+      })
+    })
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    // Verify empty state
+    await page.waitForSelector('#you-tab-ejercicios')
+    await page.locator('#you-tab-ejercicios').click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('#ex-count')).toContainText('0 ejercicios')
+
+    // Import the exported file back
+    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.waitForTimeout(300)
+    await page.locator('[data-component="DataImportSection"] input[type="file"]').nth(1).setInputFiles(filePath)
+    await page.waitForTimeout(600)
+    await expect(page.locator('[data-component="DataImportSection"]')).toContainText('Importados 2 ejercicios, 1 programas, 3 logs')
+
+    // Reload so the app picks up restored settings
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    // Verify exercises restored
+    await page.locator('#you-tab-ejercicios').click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('#ex-count')).toContainText('2 ejercicios')
+    await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Banca' })).toBeVisible()
+    await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Muerto' })).toBeVisible()
+
+    // Verify settings survived roundtrip
+    await page.goto('you')
+    await page.waitForTimeout(500)
+    await expect(page.locator('#user-name')).toContainText('RoundTripUser')
+    await expect(page.locator('#height-input')).toHaveValue('175')
+    await expect(page.locator('#weight-input')).toHaveValue('78')
   })
 })
