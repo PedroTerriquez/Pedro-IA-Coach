@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v2.03 · 2026-07-28 · Onboarding walkthrough con tooltips secuenciales'
+export const APP_VERSION = 'v2.04 · 2026-07-28 · Fix base path comparison for onboarding banner'
 
 let deferredPrompt: any = null
 

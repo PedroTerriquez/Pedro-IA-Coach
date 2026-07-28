@@ -926,6 +926,7 @@ test.describe('You — Datos tab', () => {
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
     accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
     sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+    onboarded: true, onboardingStep: -1,
   }
 
   test('AI import, dictionary migration, and JSON export/import', async ({ page }) => {

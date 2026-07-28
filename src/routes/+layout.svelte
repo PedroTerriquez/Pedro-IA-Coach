@@ -9,6 +9,7 @@
   import { restBannerState, cancelRestTimer } from '$lib/rest-timer'
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
+  import { ROUTES } from '$lib/routes'
 
   let { children } = $props()
 
@@ -30,6 +31,13 @@
   let onboarded = $derived($settings.onboarded ?? false)
   let onboardingStep = $derived($settings.onboardingStep ?? 0)
 
+  let dismissed = $state(false)
+
+  $effect(() => {
+    currentPath
+    dismissed = false
+  })
+
   function advanceOnboarding() {
     const next = onboardingStep + 1
     if (next >= 4) {
@@ -45,17 +53,10 @@
 
   function getBannerStep(): number {
     if (onboarded || dismissed) return -1
-    if (onboardingStep === 0 || onboardingStep === 1) return currentPath === '/you' ? onboardingStep : -1
-    if (onboardingStep === 2 || onboardingStep === 3) return currentPath === '/today' ? onboardingStep : -1
+    if (onboardingStep === 0 || onboardingStep === 1) return currentPath === ROUTES.you ? onboardingStep : -1
+    if (onboardingStep === 2 || onboardingStep === 3) return currentPath === ROUTES.today ? onboardingStep : -1
     return -1
   }
-
-  let dismissed = $state(false)
-
-  $effect(() => {
-    currentPath
-    dismissed = false
-  })
 
   let bannerStep = $derived(getBannerStep())
 </script>
