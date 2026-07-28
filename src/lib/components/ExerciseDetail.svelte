@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { logWeight, getSettings, saveSettings } from '$lib/storage'
+  import { logWeight, getSettings } from '$lib/storage'
   import { toast } from '$lib/stores/ui'
+  import { settings } from '$lib/stores/settings'
   import { parseRepsDefault } from '$lib/exercise-utils'
   import type { ExerciseLogBlock } from '$lib/types'
   import Sheet from './Sheet.svelte'
@@ -149,9 +150,9 @@
     loggedToday = true
     onLog?.()
 
-    const s = await getSettings()
-    if (!s.onboarded && (s.onboardingStep ?? 0) <= 2) {
-      await saveSettings({ ...s, onboardingStep: 3 })
+    const currentSettings = await getSettings()
+    if (!currentSettings.onboarded && (currentSettings.onboardingStep ?? 0) <= 2) {
+      await settings.update({ onboardingStep: 3 })
     }
   }
 

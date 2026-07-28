@@ -3,6 +3,7 @@
   import * as Storage from '$lib/storage'
   import { generateId } from '$lib/db'
   import { toast } from '$lib/stores/ui'
+  import { settings } from '$lib/stores/settings'
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
   import TextInput from './TextInput.svelte'
@@ -154,9 +155,9 @@
     }
     await Storage.saveProgram(prog)
 
-    const settingsData = await Storage.getSettings()
-    if (!settingsData.onboarded && (settingsData.onboardingStep ?? 0) <= 1) {
-      await Storage.saveSettings({ ...settingsData, onboardingStep: 2 })
+    const currentSettings = await Storage.getSettings()
+    if (!currentSettings.onboarded && (currentSettings.onboardingStep ?? 0) <= 1) {
+      await settings.update({ onboardingStep: 2 })
     }
 
     open = false
