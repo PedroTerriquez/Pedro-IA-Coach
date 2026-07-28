@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v2.00 · 2026-07-28 · Fix GitHub Pages base path after repo rename'
+export const APP_VERSION = 'v2.01 · 2026-07-28 · Redirect new users (no profile) to Tú tab'
 
 let deferredPrompt: any = null
 
