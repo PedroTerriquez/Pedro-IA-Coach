@@ -76,7 +76,7 @@
 
 {#if bannerStep >= 0}
   <OnboardingBanner
-    bind:step={bannerStep}
+    step={bannerStep}
     {accent}
     onNext={advanceOnboarding}
     onSkip={skipOnboarding}
