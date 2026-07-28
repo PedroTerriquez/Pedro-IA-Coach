@@ -5,8 +5,10 @@
   import TabBar from '$lib/components/TabBar.svelte'
   import Toast from '$lib/components/Toast.svelte'
   import RestTimerBanner from '$lib/components/RestTimerBanner.svelte'
+  import OnboardingBanner from '$lib/components/OnboardingBanner.svelte'
   import { restBannerState, cancelRestTimer } from '$lib/rest-timer'
   import { onMount } from 'svelte'
+  import { page } from '$app/stores'
 
   let { children } = $props()
 
@@ -24,6 +26,31 @@
 
   let toastState = $derived($toast)
   let accent = $derived($settings.accentColor || '#d4ff3a')
+  let currentPath = $derived($page.url.pathname)
+  let onboarded = $derived($settings.onboarded ?? false)
+  let onboardingStep = $derived($settings.onboardingStep ?? 0)
+
+  function advanceOnboarding() {
+    const next = onboardingStep + 1
+    if (next >= 4) {
+      settings.update({ onboarded: true, onboardingStep: -1 })
+    } else {
+      settings.update({ onboardingStep: next })
+    }
+  }
+
+  function skipOnboarding() {
+    // dismiss — step stays, reappears next visit
+  }
+
+  function getBannerStep(): number {
+    if (onboarded) return -1
+    if (onboardingStep === 0 || onboardingStep === 1) return currentPath === '/you' ? onboardingStep : -1
+    if (onboardingStep === 2 || onboardingStep === 3) return currentPath === '/today' ? onboardingStep : -1
+    return -1
+  }
+
+  let bannerStep = $derived(getBannerStep())
 </script>
 
 <svelte:head>
@@ -46,6 +73,15 @@
   {accent}
   onskip={() => cancelRestTimer($restBannerState.tag)}
 />
+
+{#if bannerStep >= 0}
+  <OnboardingBanner
+    bind:step={bannerStep}
+    {accent}
+    onNext={advanceOnboarding}
+    onSkip={skipOnboarding}
+  />
+{/if}
 
 <Toast visible={toastState.visible} message={toastState.message} isError={toastState.isError} />
 

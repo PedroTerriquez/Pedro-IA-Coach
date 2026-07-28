@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v2.01 · 2026-07-28 · Redirect new users (no profile) to Tú tab'
+export const APP_VERSION = 'v2.02 · 2026-07-28 · Mount OnboardingBanner in layout with state logic'
 
 let deferredPrompt: any = null
 
