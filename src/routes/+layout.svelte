@@ -40,15 +40,22 @@
   }
 
   function skipOnboarding() {
-    // dismiss — step stays, reappears next visit
+    dismissed = true
   }
 
   function getBannerStep(): number {
-    if (onboarded) return -1
+    if (onboarded || dismissed) return -1
     if (onboardingStep === 0 || onboardingStep === 1) return currentPath === '/you' ? onboardingStep : -1
     if (onboardingStep === 2 || onboardingStep === 3) return currentPath === '/today' ? onboardingStep : -1
     return -1
   }
+
+  let dismissed = $state(false)
+
+  $effect(() => {
+    currentPath
+    dismissed = false
+  })
 
   let bannerStep = $derived(getBannerStep())
 </script>
