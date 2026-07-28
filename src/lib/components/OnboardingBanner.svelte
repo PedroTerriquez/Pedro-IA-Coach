@@ -42,13 +42,13 @@
 </script>
 
 {#if step >= 0 && step < steps.length}
-  <div class="onboarding-banner" style="--cb-accent: {accent}">
-    <button class="close-btn" onclick={onSkip} aria-label="Cerrar">✕</button>
-    <div class="ob-content">
+  <div class="onboarding-banner" style="--cb-accent: {accent}" data-component="OnboardingBanner">
+    <button type="button" class="close-btn" onclick={onSkip} aria-label="Cerrar">✕</button>
+    <div class="ob-content" aria-live="polite">
       <div class="ob-icon">{current.icon}</div>
       <div class="ob-title">{current.title}</div>
       <div class="ob-desc">{current.desc}</div>
-      <button class="ob-btn" onclick={onNext}>{current.btn}</button>
+      <button type="button" class="ob-btn" onclick={onNext}>{current.btn}</button>
       <div class="ob-dots">
         {#each steps as _, i}
           <span class="dot" class:active={i === step} style:background={i === step ? accent : ''}></span>
@@ -75,6 +75,9 @@
   @keyframes slideUp {
     from { transform: translateY(40px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .onboarding-banner { animation: none; }
   }
   .close-btn {
     position: absolute;
