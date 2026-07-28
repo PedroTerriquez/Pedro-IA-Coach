@@ -153,6 +153,12 @@
       weeks: resolvedWeeks
     }
     await Storage.saveProgram(prog)
+
+    const settingsData = await Storage.getSettings()
+    if (!settingsData.onboarded && (settingsData.onboardingStep ?? 0) <= 1) {
+      await Storage.saveSettings({ ...settingsData, onboardingStep: 2 })
+    }
+
     open = false
     toast.show(isNew ? 'Programa creado' : 'Programa guardado')
     onsave()
