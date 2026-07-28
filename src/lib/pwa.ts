@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.98 · 2026-07-28 · Advanced per-set tracking, exercise dictionary expansion'
+export const APP_VERSION = 'v1.99 · 2026-07-28 · Program editor: manual CRUD for weeks, days, exercises'
 
 let deferredPrompt: any = null
 

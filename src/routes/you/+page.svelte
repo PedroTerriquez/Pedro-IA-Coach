@@ -18,6 +18,7 @@
   import ProfileCard from '$lib/components/ProfileCard.svelte'
   import QuickSettingsCard from '$lib/components/QuickSettingsCard.svelte'
   import ProgramCard from '$lib/components/ProgramCard.svelte'
+  import ProgramEditor from '$lib/components/ProgramEditor.svelte'
   import ProgramEditorIACard from '$lib/components/ProgramEditorIACard.svelte'
   import ExerciseListItem from '$lib/components/ExerciseListItem.svelte'
   import MaintenanceCard from '$lib/components/MaintenanceCard.svelte'
@@ -58,6 +59,8 @@
 
   // Program tab state
   let newProgramName = $state('')
+  let editProgram = $state<Program | null>(null)
+  let showEditor = $state(false)
   let coachInput = $state('')
   let coachStatus = $state('')
   let coachResponseVisible = $state(false)
@@ -210,23 +213,28 @@
   // ── Programas tab ──
 
   async function createNewProgram() {
-    const name = newProgramName.trim() || 'Nuevo programa'
-    const program: Program = {
-      id: await generateId(),
-      name,
-      weeks: [{
-        name: 'Semana 1', subtitle: '', tag: 'VOLUMEN',
-        days: [
-          { name: 'Día 1', subtitle: '', duration: 60, exercises: [] },
-          { name: 'Día 2', subtitle: '', duration: 60, exercises: [] },
-          { name: 'Día 3', subtitle: '', duration: 60, exercises: [] }
-        ]
-      }]
+    const name = newProgramName.trim()
+    if (name) {
+      const program: Program = {
+        id: await generateId(),
+        name,
+        weeks: [{
+          name: 'Semana 1', subtitle: '', tag: 'VOLUMEN',
+          days: [
+            { name: 'Día 1', subtitle: '', duration: 60, exercises: [] },
+            { name: 'Día 2', subtitle: '', duration: 60, exercises: [] },
+            { name: 'Día 3', subtitle: '', duration: 60, exercises: [] }
+          ]
+        }]
+      }
+      await Storage.saveProgram(program)
+      newProgramName = ''
+      toast.show('Programa creado')
+      refresh()
+    } else {
+      editProgram = null
+      showEditor = true
     }
-    await Storage.saveProgram(program)
-    newProgramName = ''
-    toast.show('Programa creado')
-    refresh()
   }
 
   async function activateProgram(id: string) {
@@ -255,6 +263,11 @@
     }
     toast.show('Programa eliminado')
     refresh()
+  }
+
+  function openEditor(p: Program | null) {
+    editProgram = p
+    showEditor = true
   }
 
   async function submitCoach() {
@@ -596,6 +609,7 @@
                 {accent}
                 totalExercises={getTotalExercises(p)}
                 onactivate={activateProgram}
+                onedit={openEditor}
                 onduplicate={duplicateProgram}
                 ondelete={deleteProgram}
               />
@@ -771,6 +785,13 @@
     {/each}
   </div>
 </CenterDialog>
+
+<ProgramEditor
+  bind:open={showEditor}
+  program={editProgram}
+  {accent}
+  onsave={() => { showEditor = false; editProgram = null; refresh() }}
+/>
 
 <style>
   .tab-content { margin-top: 20px; }

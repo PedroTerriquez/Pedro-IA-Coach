@@ -8,6 +8,7 @@
     accent = 'var(--accent)',
     totalExercises = 0,
     onactivate = () => {},
+    onedit = () => {},
     onduplicate = () => {},
     ondelete = () => {}
   }: {
@@ -16,6 +17,7 @@
     accent?: string
     totalExercises?: number
     onactivate?: (id: string) => void
+    onedit?: (p: Program) => void
     onduplicate?: (p: Program) => void
     ondelete?: (p: Program) => void
   } = $props()
@@ -31,6 +33,7 @@
   {#if !isActive}
     <Button variant="secondary" style="background:{accent}22;color:{accent}" onclick={() => onactivate(program.id)}>Activar</Button>
   {/if}
+  <Button variant="secondary" onclick={() => onedit(program)}>Editar</Button>
   <Button variant="secondary" onclick={() => onduplicate(program)}>Duplicar</Button>
   <Button variant="danger" onclick={() => ondelete(program)}>Eliminar</Button>
 </div>
