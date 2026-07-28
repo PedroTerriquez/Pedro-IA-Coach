@@ -189,13 +189,24 @@ export async function deleteProgram(id: string): Promise<void> {
 // ── Settings ──
 export async function getSettings(): Promise<Settings> {
   const s = await get<Settings>('settings', 'settings')
+  if (s && s.onboarded === undefined) {
+    const programs = await getAll<Program>('programs')
+    const hasProfile = s.age && s.age !== ''
+    const hasPrograms = programs.length > 0
+    if (hasProfile || hasPrograms) {
+      s.onboarded = true
+      s.onboardingStep = -1
+      await put('settings', s)
+    }
+  }
   return s || {
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
     accentColor: '#d4ff3a', userName: 'Pedro', height: '', weight: '',
     sex: '', age: '', goal: '', experience: '', occupation: '',
     pushServerUrl: '', pushSubscribed: false, hasWatch: false,
     lastCoachAnalysis: null, lastUpdate: '', sessionState: null,
-    rescheduleWeekOrder: {}, username: '', language: 'es', fontScale: 1
+    rescheduleWeekOrder: {}, username: '', language: 'es', fontScale: 1,
+    onboarded: false, onboardingStep: 0
   }
 }
 

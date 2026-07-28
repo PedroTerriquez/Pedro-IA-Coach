@@ -78,6 +78,8 @@ export interface Settings {
   username?: string
   lastUpdate?: string
   fontScale?: number
+  onboarded?: boolean
+  onboardingStep?: number
 }
 
 export interface BackupData {
