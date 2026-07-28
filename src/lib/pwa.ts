@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.96 · 2026-07-23 · Fix broken IA Powered tab (wrong field names)'
+export const APP_VERSION = 'v1.97 · 2026-07-23 · StatsGrid component, IA free banner, stat centering'
 
 let deferredPrompt: any = null
 

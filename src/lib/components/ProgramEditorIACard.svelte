@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Icon from './Icon.svelte'
   import Button from './Button.svelte'
   import TextArea from './TextArea.svelte'
   import CoachResponseCard from './CoachResponseCard.svelte'
+  import SectionLabel from './SectionLabel.svelte'
 
   let {
     accent = 'var(--accent)',
@@ -28,15 +28,8 @@
   <div class="section-pad-bot" data-component="ProgramEditorIACard">
   <div id="you-prog-coach-card" class="card coach-card">
     <div class="card-content">
-      <div class="row">
-        <span class="coach-icon" style="background:{accent}1f">
-          <Icon name="coach" size={14} color={accent} />
-        </span>
-        <div>
-          <div class="card-title">Coach IA de programas</div>
-          <div class="card-subtitle">Pregunta o pide cambios en tu rutina.</div>
-        </div>
-      </div>
+      <div class="coach-title-wrap"><SectionLabel {accent}>Coach IA de programas</SectionLabel></div>
+      <div class="card-subtitle">Pregunta o pide cambios en tu rutina.</div>
       <TextArea value={coachInput} placeholder='Ej: "Cambia press banca por press inclinado", "¿Está balanceada mi rutina?"' {oninput} />
       <div id="prog-coach-status" class="status-text">{coachStatus}</div>
     </div>
@@ -56,8 +49,8 @@
 <style>
   .coach-card { margin: 0 20px; overflow: hidden; }
   .card-content { padding: 14px 16px; }
-  .coach-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .coach-title-wrap { margin-bottom: 6px; }
+  .coach-title-wrap :global(.section-label) { padding: 0; }
   .coach-response-wrap { padding: 0 16px 14px; }
   .submit-wrap { margin: 0 16px 14px; }
-  .row { display: flex; gap: 10px; align-items: center; }
 </style>

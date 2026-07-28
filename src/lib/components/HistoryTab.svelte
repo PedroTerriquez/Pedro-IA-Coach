@@ -1,5 +1,6 @@
 <script lang="ts">
   import LineChart from './LineChart.svelte'
+  import StatsGrid from './StatsGrid.svelte'
   import StatBlock from './StatBlock.svelte'
   import EmptyState from './EmptyState.svelte'
 
@@ -29,10 +30,12 @@
 </script>
 
 <div class="tab-content" data-component="HistoryTab">
-  <div class="stats-grid">
-    <StatBlock value={maxWeight} label="Máx total" unit={units} {accent} />
-    <StatBlock value={lastLog ? lastLog.weight : 0} label="Actual" unit={units} />
-    <StatBlock value={`${totalGain >= 0 ? '+' : ''}${totalGain.toFixed(1)}`} label="Δ 6 sem." unit={units} accent={totalGain >= 0 ? accent : '#ff6b6b'} />
+  <div style="margin-bottom:20px">
+    <StatsGrid columns={3}>
+      <StatBlock value={maxWeight} label="Máx total" unit={units} {accent} />
+      <StatBlock value={lastLog ? lastLog.weight : 0} label="Actual" unit={units} />
+      <StatBlock value={`${totalGain >= 0 ? '+' : ''}${totalGain.toFixed(1)}`} label="Δ 6 sem." unit={units} accent={totalGain >= 0 ? accent : '#ff6b6b'} />
+    </StatsGrid>
   </div>
 
   {#if allLogData.length > 0}
@@ -95,12 +98,6 @@
 <style>
   .tab-content {
     padding: 14px 20px 30px;
-  }
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 20px;
   }
   .chart-wrap {
     margin-bottom: 20px;

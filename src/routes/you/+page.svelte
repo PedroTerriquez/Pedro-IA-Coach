@@ -13,6 +13,7 @@
   import EmptyState from '$lib/components/EmptyState.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
   import StatBlock from '$lib/components/StatBlock.svelte'
+  import StatsGrid from '$lib/components/StatsGrid.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
   import ProfileCard from '$lib/components/ProfileCard.svelte'
   import QuickSettingsCard from '$lib/components/QuickSettingsCard.svelte'
@@ -557,12 +558,12 @@
 
       {#if loaded}
         <div class="section-label-wrap"><SectionLabel {accent}>Estadísticas</SectionLabel></div>
-        <div class="card stats-card">
-          <StatBlock value={stats.streak} label="Racha" size="md" />
-          <StatBlock value={stats.totalWorkouts} label="Entrenos" size="md" />
-          <StatBlock value={stats.weeks} label="Semanas" size="md" />
-          <StatBlock value={stats.distinctExercises} label="Ejercicios" size="md" />
-        </div>
+          <StatsGrid columns={4} variant="card">
+            <StatBlock value={stats.streak} label="Racha" size="md" />
+            <StatBlock value={stats.totalWorkouts} label="Entrenos" size="md" />
+            <StatBlock value={stats.weeks} label="Semanas" size="md" />
+            <StatBlock value={stats.distinctExercises} label="Ejercicios" size="md" />
+          </StatsGrid>
       {/if}
 
     {:else if activeTab === 'programas'}
@@ -603,10 +604,13 @@
         {/if}
 
       {:else if programSubTab === 'ia'}
-        <div class="section-label-wrap"><SectionLabel {accent}>Importar con IA</SectionLabel></div>
+        <div class="ia-free-banner">
+          Gratis por tiempo limitado
+        </div>
+
         <div class="card section-card">
           <div class="card-content">
-            <div class="card-title">Pega tu rutina en texto</div>
+            <div class="fieldset-heading"><span class="heading-bar" style="background:{accent}"></span>Pega tu rutina en texto</div>
             <div class="card-subtitle">Describe tu rutina como se la dirías a un entrenador. La IA creará el programa y los ejercicios automáticamente.</div>
             <div class="ai-textarea-wrap">
               <TextArea value={aiInput} rows={8} placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" oninput={(val) => aiInput = val} />
@@ -616,10 +620,9 @@
           <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
         </div>
 
-        <div class="section-label-wrap"><SectionLabel {accent}>Generar desde cero</SectionLabel></div>
         <div class="card section-card">
           <div class="card-content">
-            <div class="card-title">Generar programa desde cero</div>
+            <div class="fieldset-heading"><span class="heading-bar" style="background:{accent}"></span>Generar programa desde cero</div>
             <div class="card-subtitle">La IA crea un programa completo basado en tu perfil y preferencias.</div>
 
             <div class="chip-group">
@@ -775,12 +778,13 @@
   .section-label-wrap:first-child { margin-top: 0; }
   .section-card { margin: 0 20px 20px; }
   .card-content { padding: 14px 16px; }
+  .fieldset-heading { display: flex; align-items: center; gap: 10px; font-family: var(--font-sans); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .heading-bar { width: 3px; height: 16px; border-radius: 2px; flex-shrink: 0; }
   .page-header-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .username-field { outline: none; border: 0; display: inline-block; min-width: 50px; }
   .edit-btn { background: none; border: 0; cursor: pointer; flex-shrink: 0; margin-top: 6px; padding: 0; }
   .section-pad { margin: 0 20px 20px; }
   .section-pad-sm { padding: 0 20px; margin-bottom: 12px; }
-  .stats-card { margin: 0 20px; padding: 16px 14px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
   .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
   .ai-textarea-wrap { margin-top: 10px; }
@@ -812,5 +816,18 @@
     color: #0a0a0a;
     border-color: var(--accent);
     font-weight: 600;
+  }
+  .ia-free-banner {
+    margin: 0 20px 14px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    text-align: center;
+    letter-spacing: 0.3px;
+    background: linear-gradient(135deg, rgba(0,220,130,0.22) 0%, rgba(0,180,255,0.15) 100%);
+    color: #00e88a;
+    border: 1px solid rgba(0,232,138,0.3);
   }
 </style>

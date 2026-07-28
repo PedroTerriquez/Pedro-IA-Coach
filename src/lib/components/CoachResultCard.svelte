@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import GlowCard from './GlowCard.svelte'
+  import StatsGrid from './StatsGrid.svelte'
   import StatBlock from './StatBlock.svelte'
   import LoadingSpinner from './LoadingSpinner.svelte'
 
@@ -20,11 +21,11 @@
 </script>
 
 <div class="coach-scroll" data-component="CoachResultCard">
-  <div class="stats-grid">
+  <StatsGrid columns={3} variant="card">
     <StatBlock value={exerciseCount} label="Ejercicios" {accent} />
     <StatBlock value="—" label="Volumen" {accent} />
     <StatBlock value={0} label="PRs" {accent} />
-  </div>
+  </StatsGrid>
   {#if loading}
     <GlowCard blobColor={accent} borderColor="{accent}2e" padding="18px">
       <LoadingSpinner text="Analizando tu entrenamiento…" {accent} />
@@ -59,7 +60,6 @@
 
 <style>
   .coach-scroll { margin-top: 16px; }
-  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .coach-header { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 600; }
   .coach-header-icon { width: 22px; height: 22px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
   .analysis-text { margin-top: 12px; font-size: 14.5px; line-height: 1.55; color: rgba(255,255,255,0.9); font-family: var(--font-sans); letter-spacing: -0.1px; }

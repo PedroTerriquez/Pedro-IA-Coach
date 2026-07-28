@@ -23,7 +23,7 @@
 
 <style>
   .stat-block {
-    text-align: left;
+    text-align: center;
     min-width: 0;
   }
   .stat-value {
