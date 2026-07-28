@@ -21,7 +21,7 @@
   <ActionRow title="Ejercicios (JSON)" description="Importa solo ejercicios desde un archivo JSON" status={exercisesImportStatus} {accent}>
     {#snippet button()}
       <input type="file" accept=".json" style="display:none" onchange={onexercisesimport} />
-      <Button size="sm" onclick={(e) => ((e.target as HTMLElement).previousElementSibling as HTMLInputElement)?.click()}>Importar</Button>
+      <Button size="sm" onclick={(e) => ((e.target as HTMLElement).previousElementSibling as HTMLInputElement)?.click()}>Importar JSON</Button>
     {/snippet}
   </ActionRow>
   <ActionRow title="Logs+ajustes JSON" description="Restaura toda la base de datos desde un JSON" status={jsonImportStatus} {accent}>

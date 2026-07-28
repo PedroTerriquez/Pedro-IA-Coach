@@ -69,7 +69,10 @@ export async function runCoachAnalysis(
     const sets = todayLog.sets ?? progEx?.sets ?? 0
     let reps: any = todayLog.reps ?? progEx?.reps ?? 0
     if (typeof reps === 'string') reps = parseInt(reps) || 0
-    volume += todayLog.weight * sets * reps
+    const hasBlocks = Array.isArray(todayLog.blocks) && todayLog.blocks.length > 0
+    volume += hasBlocks
+      ? todayLog.blocks!.reduce((a, b) => a + b.sets * b.reps * b.weight, 0)
+      : todayLog.weight * sets * reps
 
     const allExLogs = await getLogsForExercise(exId)
     const prevLogs = allExLogs.filter(l => l.date !== todayDate && l.weight > 0)
@@ -82,6 +85,7 @@ export async function runCoachAnalysis(
       weight: todayLog.weight,
       sets,
       reps,
+      blocks: hasBlocks ? todayLog.blocks : undefined,
       previous_best: previousBest,
       is_pr: isPR,
     })

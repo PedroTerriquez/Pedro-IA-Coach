@@ -9,6 +9,12 @@ export interface Exercise {
   dictId?: string
 }
 
+export interface ExerciseLogBlock {
+  sets: number
+  reps: number
+  weight: number
+}
+
 export interface ExerciseLog {
   id: string
   exerciseId: string
@@ -17,6 +23,7 @@ export interface ExerciseLog {
   units: string
   sets?: number
   reps?: string
+  blocks?: ExerciseLogBlock[]
 }
 
 export interface ProgramExercise {

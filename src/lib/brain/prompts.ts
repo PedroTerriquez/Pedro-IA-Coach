@@ -78,7 +78,7 @@ Usa estos datos para personalizar el programa:
   • 5 días: Push/Pull/Legs + Upper + Lower (o Arnold split)
   • 6 días: Push/Pull/Legs × 2
 - equipment: "gimnasio" (todas las máquinas/barra/mancuernas), "mancuernas" (solo dumbbells + banco), "calistenia" (peso corporal)
-- focus: "full" (cuerpo completo equilibrado), "chest" (priorizar pecho), "back" (priorizar espalda), "legs" (priorizar piernas), "shoulders" (priorizar hombros), "arms" (priorizar brazos), "core" (priorizar abdomen)
+- focus: "full" (cuerpo completo — TODOS los grupos musculares permitidos), "chest" (SOLO pecho), "back" (SOLO espalda), "legs" (SOLO piernas — cuádriceps, femorales, glúteos, pantorrillas), "shoulders" (SOLO hombros), "arms" (SOLO bíceps, tríceps, antebrazos), "core" (SOLO abdomen y lumbares). El usuario puede combinar varios focos (ej: ["arms","legs"]) → SOLO incluye ejercicios de esos grupos. REGLA ESTRICTA: cuando focus NO es "full", PROHÍBE exercises de cualquier grupo muscular fuera del foco seleccionado. Ej: focus=["arms","legs"] → NADA de pecho, espalda, hombros, abdomen.
 - limitations: zonas del cuerpo con molestias o lesiones → EVITA ejercicios que carguen esa zona. Usa alternativas que trabajen el mismo grupo muscular sin impactar la zona limitada. Si "Espalda" → evita remo pesado, peso muerto, sentadilla trasera; usa variantes con soporte o máquinas. Si "Rodilla" → evita sentadilla profunda, prensa con rango completo; usa sentadilla parcial, extensión de cuádriceps en máquina. Si "Hombro" → evita press militar, laterales con mucho peso; usa press inclinado, cruces en polea. Adapta según la zona.
 
 ─ REGLAS POR NIVEL DE EXPERIENCIA ─
@@ -94,8 +94,12 @@ Usa estos datos para personalizar el programa:
 - Rendimiento: variación de rep ranges, énfasis en patrones de movimiento
 
 ─ ESTRUCTURA ─
-Genera 4 semanas. Cada semana puede tener tag: "VOLUMEN", "FUERZA", o "".
+Genera 1 semana completa. Si el usuario pide explícitamente más semanas, genera las que pida.
+
 Usa nombres de ejercicios del DICCIONARIO cuando sea posible. Si no existe, sigue la convención: "Nombre Común (Especificidad)".
+
+─ REGLA DE FOCO (OBLIGATORIA) ─
+Si el usuario proporciona focus que NO es "full", cada ejercicio DEBE pertenecer a uno de los grupos musculares del foco. Si focus=["arms","legs"], TODOS los ejercicios deben ser de brazos (bíceps, tríceps, antebrazos) o piernas (cuádriceps, femorales, glúteos, pantorrillas). NUNCA incluyas ejercicios de pecho, espalda, hombros o abdomen si no están en el foco. Esto es una RESTRICCIÓN, no una preferencia.
 
 ─ FORMATO DE SALIDA (JSON) ─
 {

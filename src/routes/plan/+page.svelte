@@ -104,8 +104,7 @@
       try {
         const logs = await Storage.getLogsForExercise(exId)
         if (logs.length > 0) {
-          const last = logs[logs.length - 1]
-          weights[exId] = last.weight
+          weights[exId] = Math.max(...logs.map(l => l.weight))
         }
       } catch (e) {
         // ignore
@@ -205,8 +204,7 @@
     if (detailExercises.length === 0) return
     const exId = detailExercises[detailIdx].exerciseId
     const logs = await Storage.getLogsForExercise(exId)
-    const last = logs[logs.length - 1]
-    if (last) exerciseWeights = { ...exerciseWeights, [exId]: last.weight }
+    if (logs.length > 0) exerciseWeights = { ...exerciseWeights, [exId]: Math.max(...logs.map(l => l.weight)) }
     detailExercises = detailExercises.map((e, i) => i === detailIdx ? { ...e, logs } : e)
   }
 

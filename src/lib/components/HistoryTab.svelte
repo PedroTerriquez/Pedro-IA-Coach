@@ -3,6 +3,7 @@
   import StatsGrid from './StatsGrid.svelte'
   import StatBlock from './StatBlock.svelte'
   import EmptyState from './EmptyState.svelte'
+  import type { ExerciseLogBlock } from '$lib/types'
 
   let {
     allLogData = [],
@@ -16,8 +17,8 @@
     units = 'kg',
     todayStr = ''
   }: {
-    allLogData?: { weight: number; date: string; units?: string; sets?: number; reps?: string }[]
-    reversedLogs?: { weight: number; date: string; units?: string; sets?: number; reps?: string }[]
+    allLogData?: { weight: number; date: string; units?: string; sets?: number; reps?: string; blocks?: ExerciseLogBlock[] }[]
+    reversedLogs?: { weight: number; date: string; units?: string; sets?: number; reps?: string; blocks?: ExerciseLogBlock[] }[]
     maxWeight?: number
     lastLog?: { weight: number; date: string } | null
     totalGain?: number
@@ -27,6 +28,10 @@
     units?: string
     todayStr?: string
   } = $props()
+
+  function blockBreakdown(blocks: ExerciseLogBlock[]): string {
+    return blocks.map(b => `${b.sets}×${b.reps}@${b.weight}`).join(' · ')
+  }
 </script>
 
 <div class="tab-content" data-component="HistoryTab">
@@ -67,7 +72,9 @@
           <div class="session-info">
             <div class="session-date" style="color:{isToday ? accent : 'rgba(255,255,255,0.7)'}">
               {sess.date}
-              {#if isToday && sess.sets && sess.reps}
+              {#if sess.blocks && sess.blocks.length > 0}
+                <span class="session-sr">{blockBreakdown(sess.blocks)}</span>
+              {:else if sess.sets && sess.reps}
                 <span class="session-sr">{sess.sets}×{sess.reps}</span>
               {/if}
             </div>
@@ -168,11 +175,16 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
+    min-width: 0;
     font-family: var(--font-mono);
     font-size: 12px;
     letter-spacing: 0.4px;
   }
   .session-sr {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--font-mono);
     font-size: 10px;
     color: rgba(255,255,255,0.5);

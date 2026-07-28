@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.97 · 2026-07-23 · StatsGrid component, IA free banner, stat centering'
+export const APP_VERSION = 'v1.98 · 2026-07-28 · Advanced per-set tracking, exercise dictionary expansion'
 
 let deferredPrompt: any = null
 

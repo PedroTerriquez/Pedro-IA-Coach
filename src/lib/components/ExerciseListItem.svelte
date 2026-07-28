@@ -140,7 +140,7 @@
 </div>
 
 <style>
-  .exercise-item { margin: 0 20px; padding: 0; overflow: hidden; }
+  .exercise-item { padding: 0; overflow: hidden; }
   .exercise-toggle { width: 100%; background: transparent; border: 0; cursor: pointer; padding: 14px; display: flex; align-items: center; gap: 12px; color: inherit; text-align: left; font-family: inherit; }
   .exercise-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #0a0a0a; }
   .exercise-img-placeholder { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: #0a0a0a; }

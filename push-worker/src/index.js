@@ -378,7 +378,7 @@ export default {
             const overrideBlock = body.overrides
               ? '\n\nPREFERENCIAS DEL USUARIO:\n' + JSON.stringify(body.overrides)
               : ''
-            return 'Genera un programa de entrenamiento completo para este usuario.' + buildProfileBlock(body.userProfile) + overrideBlock
+            return 'Genera 1 semana de entrenamiento para este usuario.' + buildProfileBlock(body.userProfile) + overrideBlock
           },
           schema: IMPORT_SCHEMA,
           model: 'gemini-2.5-flash',

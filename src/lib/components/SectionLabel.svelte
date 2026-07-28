@@ -6,7 +6,7 @@
 </script>
 
 <div class="section-label" data-component="SectionLabel">
-  <span class="dot" style="background:{accent}"></span>
+  <span class="accent-bar" style="background:{accent}"></span>
   {#if children}{@render children()}{/if}
 </div>
 
@@ -17,16 +17,16 @@
     gap: 8px;
     padding: 0 20px;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 1.6px;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.5);
-    font-weight: 500;
+    color: rgba(255,255,255,0.82);
+    font-weight: 600;
   }
-  .dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
+  .accent-bar {
+    width: 3px;
+    height: 12px;
+    border-radius: 2px;
     flex-shrink: 0;
     display: inline-block;
   }

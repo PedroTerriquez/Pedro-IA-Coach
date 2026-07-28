@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { name, muscle, imgUrl, sets, reps, weight, units = 'kg', accent = 'var(--accent)', selectable = false, selected = false, onclick, actions }: {
+  let { name, muscle, imgUrl, sets, reps, weight, units = 'kg', accent = 'var(--accent)', weightIsTarget = false, selectable = false, selected = false, onclick, actions }: {
     name: string
     muscle: string
     imgUrl?: string
@@ -8,6 +8,7 @@
     weight?: number
     units?: string
     accent?: string
+    weightIsTarget?: boolean
     selectable?: boolean
     selected?: boolean
     onclick?: (e?: MouseEvent) => void
@@ -28,11 +29,21 @@
     <div class="ex-muscle">{muscle}</div>
   </div>
   <div class="ex-meta">
-    {#if weight != null && weight > 0}
-      <div class="ex-weight">{weight}<span class="ex-unit">{units}</span></div>
-    {/if}
     {#if sets != null && reps}
       <div class="ex-sets">{sets}<span class="ex-x">x</span>{reps}</div>
+    {/if}
+    {#if weight != null && weight > 0}
+      <div
+        class="weight-pill"
+        class:target={weightIsTarget}
+        style={weightIsTarget ? `border-color:${accent};color:${accent}` : `background:${accent}26`}
+      >
+        {#if weightIsTarget}
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={accent} stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+        {:else}
+          {weight}<span class="ex-unit">{units}</span>
+        {/if}
+      </div>
     {/if}
   </div>
   {#if actions}
@@ -112,15 +123,31 @@
   }
 
   .ex-meta {
-    text-align: right;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex-shrink: 0;
   }
 
-  .ex-weight {
+  .weight-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    border: 1px solid transparent;
     font-family: var(--font-mono);
-    font-size: 17px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text);
+    white-space: nowrap;
+  }
+
+  .weight-pill.target {
+    background: transparent;
+    border-style: dashed;
+    border-width: 1.5px;
+    padding: 4px 8px;
   }
 
   .ex-unit {

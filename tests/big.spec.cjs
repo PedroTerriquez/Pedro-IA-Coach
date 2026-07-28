@@ -1227,6 +1227,76 @@ test.describe('Plan — exercise detail sheet', () => {
     await page.waitForTimeout(300)
     await expect(page.locator('.hero-google-btn')).not.toBeVisible()
   })
+
+  test('multi-block logger: build 3 blocks, save real volume, and see the breakdown in Historial', async ({ page }) => {
+    const program = {
+      id: 'prog-blocks', name: 'Programa Bloques',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 3, reps: '10', rest: 90 }],
+        }),
+      }],
+    }
+
+    await page.goto('plan')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: { ...SETTINGS, activeProgramId: 'prog-blocks' },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const exerciseRow = page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })
+    await expect(exerciseRow).toBeVisible({ timeout: 3000 })
+    await exerciseRow.click()
+    await page.waitForTimeout(400)
+
+    // Enter the multi-block editor
+    await page.getByRole('button', { name: /Series y repeticiones por bloque/ }).click()
+    await page.waitForTimeout(200)
+    await expect(page.locator('.block-card')).toHaveCount(1)
+
+    // Block 1 defaults to the plan's 3 sets × 10 reps — just set the weight to 10kg
+    const block1Weight = page.locator('.block-card').nth(0).locator('.block-field-input').nth(2)
+    await block1Weight.fill('10')
+
+    // Duplicate block 1 → edit into block 2 (3×12·8kg)
+    await page.locator('.block-card').nth(0).locator('.block-actions button').nth(0).click()
+    await page.waitForTimeout(150)
+    await expect(page.locator('.block-card')).toHaveCount(2)
+    await page.locator('.block-card').nth(1).locator('.block-field-input').nth(1).fill('12')
+    await page.locator('.block-card').nth(1).locator('.block-field-input').nth(2).fill('8')
+
+    // Duplicate block 2 → edit into block 3 (3×8·12kg)
+    await page.locator('.block-card').nth(1).locator('.block-actions button').nth(0).click()
+    await page.waitForTimeout(150)
+    await expect(page.locator('.block-card')).toHaveCount(3)
+    await page.locator('.block-card').nth(2).locator('.block-field-input').nth(1).fill('8')
+    await page.locator('.block-card').nth(2).locator('.block-field-input').nth(2).fill('12')
+
+    // Totals bar: 3 bloques · 9 series · 876 kg volumen (3×10×10 + 3×12×8 + 3×8×12)
+    const totalValues = page.locator('.total-value')
+    await expect(totalValues.nth(0)).toHaveText('3')
+    await expect(totalValues.nth(1)).toHaveText('9')
+    await expect(totalValues.nth(2)).toContainText('876')
+
+    const logBtn = page.locator('.log-btn')
+    await expect(logBtn).toContainText('Registrar · 3 bloques · máx 12kg')
+    await logBtn.click()
+    await page.waitForTimeout(400)
+    await expect(logBtn).toContainText('Guardado · 3 bloques · máx 12kg')
+
+    // Historial should read the same blocks back for today's breakdown
+    await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Historial' }).click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.session-sr').first()).toHaveText('3×10@10 · 3×12@8 · 3×8@12')
+    await expect(page.locator('.stat-block', { hasText: 'Máx total' })).toContainText('12')
+  })
 })
 
 test.describe('Historial — Constancia day detail', () => {

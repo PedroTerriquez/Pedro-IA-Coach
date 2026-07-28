@@ -1,6 +1,8 @@
 <script lang="ts">
   import { logWeight } from '$lib/storage'
   import { toast } from '$lib/stores/ui'
+  import { parseRepsDefault } from '$lib/exercise-utils'
+  import type { ExerciseLogBlock } from '$lib/types'
   import Sheet from './Sheet.svelte'
   import SegmentedControl from './SegmentedControl.svelte'
   import CoachChat from './CoachChat.svelte'
@@ -27,6 +29,7 @@
     units: string
     sets?: number
     reps?: string
+    blocks?: ExerciseLogBlock[]
   }
 
   interface ExerciseDetail {
@@ -73,37 +76,36 @@
   let lastLog = $derived(exercise.logs?.length ? exercise.logs[exercise.logs.length - 1] : null)
 
   let tab = $state<'workout' | 'history'>('workout')
-  let savedWeight = $state(todayLog ? todayLog.weight : null)
   let pendingWeight = $state(todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0))
   let loggedToday = $state(!!todayLog)
-  let trackSR = $state(todayLog?.sets !== undefined && todayLog?.reps !== undefined)
-  let pendingSets = $state(trackSR && todayLog ? todayLog.sets : exercise.sets)
-  let pendingReps = $state(trackSR && todayLog ? todayLog.reps : 8)
   let iniciarLoading = $state(false)
-  let showGif = $state(false)
+  let showGif = $state(true)
 
   let chatOpen = $state(false)
+
+  function seedBlocks(): ExerciseLogBlock[] {
+    if (todayLog?.blocks?.length) return todayLog.blocks.map(b => ({ ...b }))
+    if (todayLog?.sets !== undefined && todayLog?.reps !== undefined) {
+      return [{ sets: todayLog.sets, reps: parseRepsDefault(todayLog.reps), weight: todayLog.weight }]
+    }
+    return [{ sets: exercise.sets, reps: parseRepsDefault(exercise.reps), weight: todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0) }]
+  }
+
+  let advanced = $state(!!todayLog?.blocks?.length)
+  let blocks = $state<ExerciseLogBlock[]>(seedBlocks())
+  let savedKey = $state<string | null>(advanced ? JSON.stringify(blocks) : (loggedToday ? String(pendingWeight) : null))
 
   let currentExerciseKey = $derived(exercise.exerciseId || exercise.id)
   $effect(() => {
     void currentExerciseKey
-    const isTrackingSR = todayLog?.sets !== undefined && todayLog?.reps !== undefined
-    savedWeight = todayLog ? todayLog.weight : null
-    pendingWeight = todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0)
+    const isBlockMode = !!todayLog?.blocks?.length
+    const seededBlocks = seedBlocks()
     loggedToday = !!todayLog
-    trackSR = isTrackingSR
-    pendingSets = isTrackingSR && todayLog ? todayLog.sets : exercise.sets
-    pendingReps = isTrackingSR && todayLog ? todayLog.reps : 8
+    pendingWeight = todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0)
+    advanced = isBlockMode
+    blocks = seededBlocks
+    savedKey = isBlockMode ? JSON.stringify(seededBlocks) : (loggedToday ? String(pendingWeight) : null)
   })
-
-  function parseRepsDefault(rep: string | number): number {
-    if (typeof rep === 'number') return rep
-    const m = String(rep).match(/(\d+)(?:\s*-\s*(\d+))?/)
-    if (!m) return 8
-    return parseInt(m[2] || m[1], 10)
-  }
-
-  let repsParsed = $derived(parseRepsDefault(trackSR ? String(pendingReps) : exercise.reps))
 
   function close() {
     onClose?.()
@@ -125,25 +127,35 @@
     else if (dx > 0 && hasPrev) onNavigate?.('prev')
   }
 
-  let isDirty = $derived(loggedToday && pendingWeight !== savedWeight)
+  let totalSets = $derived(blocks.reduce((a, b) => a + (b.sets || 0), 0))
+  let topWeight = $derived(blocks.length ? Math.max(...blocks.map(b => b.weight)) : 0)
+  let currentKey = $derived(advanced ? JSON.stringify(blocks) : String(pendingWeight))
+  let isDirty = $derived(loggedToday && currentKey !== savedKey)
   let isLoggedState = $derived(loggedToday && !isDirty)
 
   async function handleSave() {
-    if (pendingWeight === 0) return
-    await logWeight(exercise.exerciseId || exercise.id, pendingWeight, units, trackSR ? pendingSets : undefined, trackSR ? String(pendingReps) : undefined)
-    savedWeight = pendingWeight
+    if (advanced) {
+      if (!blocks.length) return
+      const top = blocks.reduce((best, b) => (b.weight > best.weight ? b : best), blocks[0])
+      await logWeight(exercise.exerciseId || exercise.id, topWeight, units, totalSets, String(top.reps), undefined, blocks.map(b => ({ ...b })))
+      pendingWeight = topWeight
+      toast.show(`✅ ${blocks.length} bloque${blocks.length > 1 ? 's' : ''} · máx ${topWeight}${units} registrado`)
+    } else {
+      if (pendingWeight === 0) return
+      await logWeight(exercise.exerciseId || exercise.id, pendingWeight, units)
+      toast.show(`✅ ${pendingWeight}${units} registrado`)
+    }
+    savedKey = currentKey
     loggedToday = true
     onLog?.()
-    toast.show(`✅ ${pendingWeight}${units} registrado`)
   }
 
   async function handleClear() {
     loggedToday = false
-    savedWeight = null
     pendingWeight = lastLog ? lastLog.weight : 0
-    trackSR = false
-    pendingSets = exercise.sets
-    pendingReps = parseRepsDefault(exercise.reps)
+    advanced = false
+    blocks = [{ sets: exercise.sets, reps: parseRepsDefault(exercise.reps), weight: lastLog ? lastLog.weight : 0 }]
+    savedKey = null
   }
 
   async function handleIniciar() {
@@ -252,9 +264,8 @@
             {isDirty}
             {isLoggedState}
             bind:pendingWeight
-            bind:pendingSets
-            bind:pendingReps
-            bind:trackSR
+            bind:blocks
+            bind:advanced
             onSave={handleSave}
             onClear={handleClear}
           />

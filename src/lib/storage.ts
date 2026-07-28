@@ -1,5 +1,5 @@
 import { getAll, get, put, del, getByIndex, generateId } from './db'
-import type { Exercise, ExerciseLog, Program, Settings } from './types'
+import type { Exercise, ExerciseLog, ExerciseLogBlock, Program, Settings } from './types'
 
 import { findExerciseEntry, findExerciseEntryFuzzy } from '$lib/data/exercise-dictionary'
 import { toast } from '$lib/stores/ui'
@@ -142,7 +142,7 @@ export async function getLogsForExercise(exerciseId: string): Promise<ExerciseLo
   return all.filter(l => l.exerciseId === exerciseId)
 }
 
-export async function logWeight(exerciseId: string, weight: number, units: string, sets?: number, reps?: string, dateStr?: string): Promise<IDBValidKey> {
+export async function logWeight(exerciseId: string, weight: number, units: string, sets?: number, reps?: string, dateStr?: string, blocks?: ExerciseLogBlock[]): Promise<IDBValidKey> {
   dateStr = dateStr || getToday()
   const all = await getAll<ExerciseLog>('exerciseLogs')
   const existing = all.find(l => l.exerciseId === exerciseId && l.date === dateStr)
@@ -155,6 +155,7 @@ export async function logWeight(exerciseId: string, weight: number, units: strin
   }
   if (sets !== undefined) log.sets = sets
   if (reps !== undefined) log.reps = reps
+  if (blocks !== undefined && blocks.length) log.blocks = blocks
   return put('exerciseLogs', log)
 }
 
