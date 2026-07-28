@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { logWeight } from '$lib/storage'
+  import { logWeight, getSettings, saveSettings } from '$lib/storage'
   import { toast } from '$lib/stores/ui'
   import { parseRepsDefault } from '$lib/exercise-utils'
   import type { ExerciseLogBlock } from '$lib/types'
@@ -148,6 +148,11 @@
     savedKey = currentKey
     loggedToday = true
     onLog?.()
+
+    const s = await getSettings()
+    if (!s.onboarded && (s.onboardingStep ?? 0) <= 2) {
+      await saveSettings({ ...s, onboardingStep: 3 })
+    }
   }
 
   async function handleClear() {
