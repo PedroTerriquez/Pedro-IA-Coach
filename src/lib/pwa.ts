@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v2.02 · 2026-07-28 · Mount OnboardingBanner in layout with state logic'
+export const APP_VERSION = 'v2.03 · 2026-07-28 · Onboarding walkthrough con tooltips secuenciales'
 
 let deferredPrompt: any = null
 
