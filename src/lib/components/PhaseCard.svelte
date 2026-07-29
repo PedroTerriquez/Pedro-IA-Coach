@@ -54,7 +54,7 @@
   {/if}
 
   <div class="top-row">
-    <div class="phase-num">{phaseLabel}</div>
+    <div class="title">{title}</div>
     {#if status === 'completed'}
       <StatusBadge label="Completado" status="completed" accent={color} />
     {:else if status === 'active'}
@@ -62,10 +62,7 @@
     {/if}
   </div>
 
-  <div class="content">
-    <div class="title">{title}</div>
-    <div class="subtitle">{subtitle}</div>
-  </div>
+  <div class="subtitle">{subtitle}</div>
 
   <div class="bottom-row">
     <div class="count-area">
@@ -147,7 +144,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 12px;
   }
   .phase-num {
     display: flex;
@@ -164,10 +161,6 @@
     color: var(--accent);
   }
 
-  .content {
-    position: relative;
-    z-index: 1;
-  }
   .title {
     font-family: var(--font-sans);
     font-size: 27px;
@@ -175,8 +168,14 @@
     color: #fafafa;
     letter-spacing: -0.8px;
     line-height: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .subtitle {
+    position: relative;
+    z-index: 1;
     margin-top: 4px;
     font-size: 12.5px;
     color: rgba(255,255,255,0.5);

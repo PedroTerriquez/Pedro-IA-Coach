@@ -50,7 +50,7 @@
     bottom: 0;
     background: var(--surface);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    max-height: 92%;
+    max-height: 88%;
     overflow: hidden;
     box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.5);
     border: 0.5px solid var(--border);

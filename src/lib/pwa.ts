@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v2.06 · 2026-07-28 · Install guide, platform detection, Sheet safe area fix'
+export const APP_VERSION = 'v2.07 · 2026-07-28 · PhaseCard layout, completed training shows PhaseCard'
 
 let deferredPrompt: any = null
 let installed = false

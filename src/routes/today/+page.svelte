@@ -519,7 +519,7 @@
         {/if}
 
         {#if todayExercises.length > 0}
-          {#if warmupDone}
+          {#if warmupDone && todayExDone < exercisesTotal}
             <TrainingCard
               {day}
               {accent}
@@ -528,6 +528,19 @@
               {exercisesById}
               onclick={openTrainingDetail}
               onExerciseClick={openExerciseDetailAt}
+            />
+          {:else if warmupDone && todayExDone >= exercisesTotal}
+            <PhaseCard
+              phaseLabel="Fase 02"
+              title="Entrenamiento"
+              subtitle={day?.subtitle || `${exercisesTotal} ejercicios`}
+              count={exercisesTotal}
+              countLabel="ejercicios"
+              status="completed"
+              {accent}
+              progress={{ done: todayExDone, total: exercisesTotal }}
+              dataPhase="training"
+              onclick={openTrainingDetail}
             />
           {:else}
             <PhaseCard
