@@ -1,4 +1,6 @@
-export const APP_VERSION = 'v2.10 · 2026-07-28 19:53 · Install guide: distinct visuals per step, You page padding cleanup'
+const _VER_BASE = 'v2.11'
+const _VER_DESC = 'Install guide: distinct visuals per step, You page padding cleanup'
+export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
 let installed = false
