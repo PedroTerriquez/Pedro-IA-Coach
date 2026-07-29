@@ -91,12 +91,51 @@
           <div class="phone-silhouette">
             <div class="ps-notch"></div>
             <div class="ps-url-bar">
-              <span class="ps-url">coachpedro.ai</span>
+              <span class="ps-url">
+                {#if step === 0}
+                  Safari
+                {:else}
+                  coachpedro.ai
+                {/if}
+              </span>
             </div>
-            <div class="ps-content">
-              <div class="ps-line"></div>
-              <div class="ps-line short"></div>
-              <div class="ps-line"></div>
+            <div class="ps-content" data-step={step}>
+              {#if step === 0}
+                <div class="ps-safari-icon">
+                  <svg width="28" height="28" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#007AFF"/><text x="24" y="24" text-anchor="middle" dominant-baseline="central" font-size="22" font-weight="700" fill="white" font-family="sans-serif">S</text></svg>
+                </div>
+                <div class="ps-line" style="background:#007AFF33;width:80%"></div>
+                <div class="ps-line short"></div>
+                <div class="ps-line" style="width:70%"></div>
+              {:else if step === 1}
+                <div class="ps-line" style="width:75%"></div>
+                <div class="ps-line short" style="background:var(--accent);opacity:0.4"></div>
+                <div class="ps-line" style="width:60%"></div>
+                <div class="ps-line short" style="width:40%"></div>
+                <div class="ps-arrow-down">
+                  <svg width="16" height="16" viewBox="0 0 33 33"><path d="M16.5 2L17 24L20 21L24 25L16.5 32L9 25L13 21L16 24L16 2Z" fill="#007AFF"/></svg>
+                </div>
+              {:else if step === 2}
+                <div class="ps-share-sheet">
+                  <div class="pss-row"><span class="pss-icon">📄</span><span class="pss-label">Copiar</span></div>
+                  <div class="pss-row"><span class="pss-icon">🖨️</span><span class="pss-label">Imprimir</span></div>
+                  <div class="pss-row active" style="border-color:var(--accent);background:var(--accent)15"><span class="pss-icon">📲</span><span class="pss-label" style="font-weight:600">Agregar a pantalla de inicio</span></div>
+                  <div class="pss-row"><span class="pss-icon">📩</span><span class="pss-label">Enviar</span></div>
+                </div>
+              {:else if step === 3}
+                <div class="ps-confirm-dialog">
+                  <div class="ps-cd-header">Agregar a inicio</div>
+                  <div class="ps-cd-body">
+                    <span class="ps-cd-icon">📲</span>
+                    <span class="ps-cd-name">Coach Pedro</span>
+                    <span class="ps-cd-url">coachpedro.ai</span>
+                  </div>
+                  <div class="ps-cd-actions">
+                    <span class="ps-cd-btn">Cancelar</span>
+                    <span class="ps-cd-btn primary">Agregar</span>
+                  </div>
+                </div>
+              {/if}
             </div>
             <div class="ps-toolbar">
               <span class="ps-tb-icon">&lt;</span>
@@ -117,24 +156,56 @@
           <div class="phone-silhouette">
             <div class="ps-notch"></div>
             <div class="ps-url-bar">
-              <span class="ps-url">coachpedro.ai</span>
-              {#if step === 1}
-                <span class="menu-dots-icon">
-                  <img src="{base}/icons/android-menu-dots.svg" alt="Menú" class="menu-svg">
+              <span class="ps-url">
+                {#if step === 0}
+                  Chrome
+                {:else}
+                  coachpedro.ai
+                {/if}
+              </span>
+              <span class="menu-dots-icon">
+                <img src="{base}/icons/android-menu-dots.svg" alt="Menú" class="menu-svg">
+                {#if step === 1}
                   <span class="bounce-arrow-wrap down">
                     <img src="{base}/icons/ios-bouncing-arrow.svg" alt="" class="bounce-arrow">
                   </span>
-                </span>
-              {:else}
-                <span class="menu-dots-icon">
-                  <img src="{base}/icons/android-menu-dots.svg" alt="Menú" class="menu-svg">
-                </span>
-              {/if}
+                {/if}
+              </span>
             </div>
-            <div class="ps-content">
-              <div class="ps-line"></div>
-              <div class="ps-line short"></div>
-              <div class="ps-line"></div>
+            <div class="ps-content" data-step={step}>
+              {#if step === 0}
+                <div class="ps-chrome-icon">
+                  <svg width="28" height="28" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#4285F4"/><text x="24" y="24" text-anchor="middle" dominant-baseline="central" font-size="22" font-weight="700" fill="white" font-family="sans-serif">C</text></svg>
+                </div>
+                <div class="ps-line" style="background:#4285F433;width:85%"></div>
+                <div class="ps-line short"></div>
+                <div class="ps-line" style="width:65%"></div>
+              {:else if step === 1}
+                <div class="ps-line" style="width:75%"></div>
+                <div class="ps-line short"></div>
+                <div class="ps-line" style="width:60%"></div>
+                <div class="ps-line short" style="width:40%"></div>
+              {:else if step === 2}
+                <div class="ps-android-menu">
+                  <div class="pss-row"><span class="pss-icon">★</span><span class="pss-label">Marcadores</span></div>
+                  <div class="pss-row"><span class="pss-icon">📜</span><span class="pss-label">Historial</span></div>
+                  <div class="pss-row active" style="border-color:var(--accent);background:var(--accent)15"><span class="pss-icon">📲</span><span class="pss-label" style="font-weight:600">Instalar app</span></div>
+                  <div class="pss-row"><span class="pss-icon">⚙️</span><span class="pss-label">Configuración</span></div>
+                </div>
+              {:else if step === 3}
+                <div class="ps-confirm-dialog">
+                  <div class="ps-cd-header">Instalar app</div>
+                  <div class="ps-cd-body">
+                    <span class="ps-cd-icon">📲</span>
+                    <span class="ps-cd-name">Coach Pedro</span>
+                    <span class="ps-cd-url">coachpedro.ai</span>
+                  </div>
+                  <div class="ps-cd-actions">
+                    <span class="ps-cd-btn">Cancelar</span>
+                    <span class="ps-cd-btn primary">Instalar</span>
+                  </div>
+                </div>
+              {/if}
             </div>
             <div class="ps-toolbar">
               <span class="ps-tb-icon">◁</span>
@@ -149,16 +220,10 @@
           {step + 1} / {totalSteps}
         </div>
 
-        {#if isIOS && step === 2}
+        {#if step === 2}
           <div class="callout">
             <span class="callout-icon">📲</span>
-            <span class="callout-text">Agregar a pantalla de inicio</span>
-          </div>
-        {/if}
-        {#if !isIOS && (step === 2 || step === 3)}
-          <div class="callout">
-            <span class="callout-icon">📲</span>
-            <span class="callout-text">Instalar app</span>
+            <span class="callout-text">{isIOS ? 'Agregar a pantalla de inicio' : 'Instalar app'}</span>
           </div>
         {/if}
       </div>
@@ -484,4 +549,105 @@
     transition: opacity 0.15s;
   }
   .guide-btn:hover { opacity: 0.9; }
+
+  /* ── Step-specific content ── */
+  .ps-content[data-step="0"] {
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .ps-safari-icon, .ps-chrome-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2px;
+  }
+  .ps-arrow-down {
+    display: flex;
+    justify-content: center;
+    margin-top: auto;
+    margin-bottom: 2px;
+    animation: bounceSoft 1.5s ease-in-out infinite;
+  }
+  @keyframes bounceSoft {
+    0%, 100% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(4px); opacity: 0.6; }
+  }
+
+  /* ── Share sheet / Android menu ── */
+  .ps-share-sheet, .ps-android-menu {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 0.5px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .pss-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    font-size: 6.5px;
+    color: rgba(255,255,255,0.7);
+    border-bottom: 0.5px solid rgba(255,255,255,0.04);
+    min-height: 20px;
+  }
+  .pss-row:last-child { border-bottom: none; }
+  .pss-row.active {
+    border-radius: 4px;
+    margin: 1px 2px;
+    padding: 4px 6px;
+  }
+  .pss-icon { font-size: 8px; width: 14px; text-align: center; }
+  .pss-label { flex: 1; }
+
+  /* ── Confirm dialog ── */
+  .ps-confirm-dialog {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .ps-cd-header {
+    font-size: 7px;
+    font-weight: 600;
+    color: var(--text);
+    padding: 6px 8px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.06);
+    text-align: center;
+  }
+  .ps-cd-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 8px;
+  }
+  .ps-cd-icon { font-size: 14px; }
+  .ps-cd-name {
+    font-size: 7px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .ps-cd-url {
+    font-size: 6px;
+    color: rgba(255,255,255,0.4);
+  }
+  .ps-cd-actions {
+    display: flex;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+  }
+  .ps-cd-btn {
+    flex: 1;
+    text-align: center;
+    padding: 5px 0;
+    font-size: 7px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+  }
+  .ps-cd-btn.primary {
+    color: var(--accent);
+    border-left: 0.5px solid rgba(255,255,255,0.06);
+  }
 </style>
