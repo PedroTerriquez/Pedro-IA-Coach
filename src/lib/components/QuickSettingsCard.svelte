@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { installPWA } from '$lib/pwa'
+  import { canInstall, installPWA, useNativePrompt, isStandalone } from '$lib/pwa'
   import CardRow from './CardRow.svelte'
   import AccentToggle from './AccentToggle.svelte'
   import Button from './Button.svelte'
+  import InstallGuide from './InstallGuide.svelte'
 
   let {
     units = 'kg',
@@ -32,6 +33,9 @@
     onfontscalechange?: (val: number) => void
   } = $props()
 
+  let showGuide = $state(false)
+  let installStatus = $state<'idle' | 'installed'>('idle')
+
   function permLabel(): string {
     if (typeof Notification === 'undefined') return 'No disponible'
     return notifPermission === 'granted' ? 'Activadas'
@@ -42,9 +46,6 @@
     return notifPermission === 'granted'
   }
 
-  // Cycles Normal → Grande → Extra grande → Normal — kept as three fixed
-  // steps (not a slider) so it's a single tap for an older user to reach
-  // the largest size without fiddling with a control.
   const FONT_SCALES: { value: number; label: string }[] = [
     { value: 1, label: 'Normal' },
     { value: 1.15, label: 'Grande' },
@@ -61,6 +62,16 @@
     const next = FONT_SCALES[(idx + 1) % FONT_SCALES.length]
     onfontscalechange(next.value)
   }
+
+  function handleInstall() {
+    if (useNativePrompt()) {
+      installPWA()
+    } else {
+      showGuide = true
+    }
+  }
+
+  let showInstallRow = $derived(canInstall())
 </script>
 
 <div class="card" data-component="QuickSettingsCard">
@@ -83,13 +94,23 @@
   <CardRow label="Idioma">
     <Button id="lang-toggle-btn" variant="ghost" onclick={togglelang}>{language === 'en' ? 'English' : 'Español'}</Button>
   </CardRow>
-  <CardRow label="Tamaño de texto">
+  <CardRow label="Tamaño de texto" last={!showInstallRow}>
     <Button id="font-size-toggle-btn" variant="ghost" onclick={cycleFontScale}>{fontScaleLabel()}</Button>
   </CardRow>
-  <CardRow label="Instalar app" last={true}>
-    <Button variant="ghost" onclick={() => installPWA()}>Añadir</Button>
-  </CardRow>
+  {#if showInstallRow}
+    <CardRow label="Instalar app" last={true}>
+      {#if isStandalone() || installStatus === 'installed'}
+        <Button variant="ghost" disabled>✓ Instalada</Button>
+      {:else if useNativePrompt()}
+        <Button variant="ghost" onclick={handleInstall}>Instalar</Button>
+      {:else}
+        <Button variant="ghost" onclick={handleInstall}>Ver instrucciones</Button>
+      {/if}
+    </CardRow>
+  {/if}
 </div>
+
+<InstallGuide open={showGuide} {accent} onclose={() => showGuide = false} />
 
 <style>
   .accent-picker { width: 40px; height: 28px; border: 0.5px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0; background: transparent; cursor: pointer; }

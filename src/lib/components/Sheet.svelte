@@ -74,7 +74,6 @@
   }
   .sheet-close-btn {
     position: absolute;
-    top: 14px;
     right: 14px;
     width: 32px;
     height: 32px;
@@ -90,6 +89,7 @@
     z-index: 110;
     padding: 0;
     color: var(--text-secondary);
+    top: max(14px, env(safe-area-inset-top, 14px));
   }
   .sheet-body {
     overflow: auto;
