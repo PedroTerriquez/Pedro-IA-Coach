@@ -89,7 +89,13 @@
       <div class="visual-area">
         {#if isIOS}
           <div class="phone-silhouette">
-            <div class="ps-notch"></div>
+            <div class="ps-statusbar">
+              <span class="ps-time">9:41</span>
+              <span class="ps-notch"></span>
+              <span class="ps-icons">
+                <svg width="10" height="10" viewBox="0 0 14 12"><path d="M1 8h12v2H1zm0-3h12v2H1zm0-3h12v2H1z" fill="rgba(255,255,255,0.35)"/><path d="M1 2h12v1H1z" fill="rgba(255,255,255,0.2)"/></svg>
+              </span>
+            </div>
             <div class="ps-url-bar">
               <span class="ps-url">
                 {#if step === 0}

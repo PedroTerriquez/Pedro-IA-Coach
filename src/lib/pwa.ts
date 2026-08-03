@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.11'
-const _VER_DESC = 'Install guide: distinct visuals per step, You page padding cleanup'
+const _VER_BASE = 'v2.12'
+const _VER_DESC = 'InstallGuide status bar visual, You page padding fix'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

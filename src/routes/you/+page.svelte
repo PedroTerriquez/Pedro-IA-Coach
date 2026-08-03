@@ -794,25 +794,25 @@
 />
 
 <style>
-  .tab-content { margin-top: 20px; }
-  .section-label-wrap { margin: 20px 0 10px; }
+  .tab-content { margin-top: 20px; padding: 0 20px; }
+  .section-label-wrap { margin: 20px 0 10px; padding: 0; }
   .section-label-wrap:first-child { margin-top: 0; }
-  .section-card { margin: 0 20px 20px; }
+  .section-card { margin: 0 0 20px; }
   .card-content { padding: 14px 16px; }
   .fieldset-heading { display: flex; align-items: center; gap: 10px; font-family: var(--font-sans); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
   .heading-bar { width: 3px; height: 16px; border-radius: 2px; flex-shrink: 0; }
   .page-header-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .username-field { outline: none; border: 0; display: inline-block; min-width: 50px; }
   .edit-btn { background: none; border: 0; cursor: pointer; flex-shrink: 0; margin-top: 6px; padding: 0; }
-  .section-pad { margin: 0 20px 20px; }
-  .section-pad-sm { padding: 0 20px; margin-bottom: 12px; }
+  .section-pad { margin: 0 0 20px; }
+  .section-pad-sm { padding: 0; margin-bottom: 12px; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
-  .program-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
+  .program-list { padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .ai-textarea-wrap { margin-top: 10px; }
-  .ex-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 12px; }
+  .ex-header { display: flex; justify-content: space-between; align-items: center; padding: 0 0 12px; }
   .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
-  .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 20px; }
-  .exercise-search-wrap { margin: 0 20px 10px; }
+  .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 0 20px; }
+  .exercise-search-wrap { margin: 0 0 10px; }
   .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }
   .dialog-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px; padding: 4px; }
@@ -839,7 +839,7 @@
     font-weight: 600;
   }
   .ia-free-banner {
-    margin: 0 20px 14px;
+    margin: 0 0 14px;
     padding: 10px 14px;
     border-radius: 12px;
     font-size: 12px;
