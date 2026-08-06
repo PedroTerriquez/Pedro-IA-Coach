@@ -2,7 +2,7 @@ name: Deploy SvelteKit to GitHub Pages
 
 on:
   push:
-    branches: [sveltekit-migration]
+    branches: [main]
 
 permissions:
   contents: read
