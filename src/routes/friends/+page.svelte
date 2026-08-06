@@ -1,0 +1,226 @@
+<script lang="ts">
+  import { PUSH_SERVER_URL } from '$lib/config'
+  import { onMount } from 'svelte'
+  import { toast } from '$lib/stores/ui'
+  import { getAllLogs, getSettings, saveSettings } from '$lib/storage'
+  import FriendCard from '$lib/components/FriendCard.svelte'
+  import SearchResults from '$lib/components/SearchResults.svelte'
+  import SearchInput from '$lib/components/SearchInput.svelte'
+  import TextInput from '$lib/components/TextInput.svelte'
+  import Button from '$lib/components/Button.svelte'
+
+  let username = $state('')
+  let inputUsername = $state('')
+  let friends = $state<any[]>([])
+  let searchQuery = $state('')
+  let searchResults = $state<any[]>([])
+  let loading = $state(true)
+  let initialLoading = $state(true)
+  let saving = $state(false)
+  let searching = $state(false)
+  let addingFriend = $state<string | null>(null)
+  let myStreak = $state(0)
+  let exercisedToday = $state(false)
+
+  function getPreviousDate(dateStr: string): string {
+    const d = new Date(dateStr + 'T12:00:00')
+    d.setDate(d.getDate() - 1)
+    return d.toISOString().slice(0, 10)
+  }
+
+  function computeStreak(allLogs: any[]): number {
+    const dates = [...new Set(allLogs.filter(l => l.weight > 0).map(l => l.date))]
+    dates.sort().reverse()
+    let streak = 0
+    const today = new Date().toISOString().slice(0, 10)
+    let expected = today
+    for (const d of dates) {
+      if (d === expected) { streak++; expected = getPreviousDate(expected) }
+      else break
+    }
+    return streak
+  }
+
+  onMount(async () => {
+    const s = await getSettings()
+    username = s.username || ''
+    initialLoading = false
+    if (username) {
+      await loadFriends()
+    } else {
+      loading = false
+    }
+  })
+
+  async function loadFriends() {
+    loading = true
+    const allLogs = await getAllLogs()
+    myStreak = computeStreak(allLogs)
+    const today = new Date().toISOString().slice(0, 10)
+    exercisedToday = allLogs.some(l => l.date === today && l.weight > 0)
+
+    try {
+      if (!PUSH_SERVER_URL) {
+        friends = []
+        return
+      }
+      const res = await fetch(`${PUSH_SERVER_URL}/api/friends/list?username=${encodeURIComponent(username)}`)
+      const data = await res.json()
+      friends = data.friends || []
+    } catch {
+      friends = []
+    } finally {
+      loading = false
+    }
+  }
+
+  async function handleSubmitUsername() {
+    const val = inputUsername.trim()
+    if (val.length < 2 || saving) return
+    saving = true
+    try {
+      const s = await getSettings()
+      s.username = val
+      await saveSettings(s)
+      if (PUSH_SERVER_URL) {
+        fetch(`${PUSH_SERVER_URL}/api/user/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: val }),
+        }).catch(() => {})
+      }
+      username = val
+      await loadFriends()
+    } catch {
+      try {
+        const s = await getSettings()
+        s.username = val
+        await saveSettings(s)
+        username = val
+        await loadFriends()
+      } catch {}
+    } finally {
+      saving = false
+    }
+  }
+
+  $effect(() => {
+    const q = searchQuery
+    if (q.length < 1) {
+      searchResults = []
+      searching = false
+      return
+    }
+    loadSearchResults(q)
+  })
+
+  async function loadSearchResults(q: string) {
+    searching = true
+    try {
+      if (!PUSH_SERVER_URL) {
+        searchResults = []
+        return
+      }
+      const res = await fetch(`${PUSH_SERVER_URL}/api/friends/search?q=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      searchResults = (data.results || []).filter((r: any) => r.username !== username)
+    } catch {
+      searchResults = []
+    } finally {
+      searching = false
+    }
+  }
+
+  async function addFriend(friendUsername: string) {
+    addingFriend = friendUsername
+    try {
+      const res = await fetch(`${PUSH_SERVER_URL}/api/friends/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, friendUsername }),
+      })
+      if (res.ok) {
+        searchQuery = ''
+        searchResults = []
+        await loadFriends()
+      } else {
+        const data = await res.json()
+        toast.show(data.error || 'Error', true)
+      }
+    } catch {
+      toast.show('Error al agregar amigo', true)
+    } finally {
+      addingFriend = null
+    }
+  }
+</script>
+
+{#if initialLoading}
+  <div class="page">
+    <div class="friends-empty" id="friends-list">Cargando...</div>
+  </div>
+{:else if !username}
+  <div class="page username-prompt" id="username-prompt">
+    <h2>👋 Bienvenido a Amigos</h2>
+    <p>Elige un nombre de usuario para compartir tu racha con amigos.</p>
+    <div class="username-input-wrap">
+      <TextInput
+        id="username-input"
+        bind:value={inputUsername}
+        placeholder="tu_usuario"
+        maxlength={20}
+        autocomplete="off"
+      />
+    </div>
+    <Button
+      id="username-btn"
+      variant="primary"
+      onclick={handleSubmitUsername}
+      disabled={inputUsername.trim().length < 2 || saving}
+    >
+      {saving ? 'Registrando...' : 'Listo'}
+    </Button>
+  </div>
+{:else}
+  <div class="page">
+    <div class="page-header">
+      <div class="friends-header">👥 Amigos</div>
+    </div>
+    <div class="friends-my-streak">
+      🔥 Tu racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'día' : 'días'} {exercisedToday ? '· Hoy ✅' : ''}
+    </div>
+    <div class="friends-list" id="friends-list">
+      {#if loading}
+        <div class="friends-empty">Cargando amigos...</div>
+      {:else if friends.length === 0}
+        <div class="friends-empty">Aún no tienes amigos. Busca y agrega amigos arriba. 👆</div>
+      {:else}
+        {#each friends as f (f.username)}
+          <FriendCard
+            username={f.username}
+            streak={f.streak}
+            exercisedToday={f.exercisedToday}
+            lastUpdate={f.lastUpdate}
+          />
+        {/each}
+      {/if}
+    </div>
+    <div class="friend-search">
+      <SearchInput id="friend-search-input" value={searchQuery} placeholder="🔍 Buscar usuario..." oninput={(val) => searchQuery = val} />
+    </div>
+    <SearchResults
+      query={searchQuery}
+      {searching}
+      results={searchResults}
+      {addingFriend}
+      onadd={addFriend}
+    />
+  </div>
+{/if}
+
+<style>
+  .username-input-wrap {
+    max-width: 280px;
+    margin: 0 auto 16px;
+  }
+</style>
