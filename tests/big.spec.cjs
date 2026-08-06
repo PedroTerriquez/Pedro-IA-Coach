@@ -514,7 +514,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // ── Step 10: Effort Modal + Coach Card ──
   const effortOverlay = page.locator('#effort-overlay')
   await expect(effortOverlay).toBeVisible({ timeout: 5000 })
-  await effortOverlay.locator('[data-effort="good"]').click()
+  await effortOverlay.locator('[data-effort="Justo"]').click()
 
   const coachCard = page.locator('#coach-card-regen')
   await expect(coachCard).toBeVisible({ timeout: 10000 })
@@ -530,7 +530,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // ── Step 10b: Coach result survives closing and reopening the app ──
   // Regression guard: reloading must keep showing the coach's analysis for
-  // today, not fall back to just the bare "Ejercicios/Volumen/PRs" stat grid.
+  // today, not fall back to just the bare "Racha/Volumen/PRs" stat grid.
   await page.reload()
   await page.waitForTimeout(1000)
   const coachCardAfterReload = page.locator('#coach-card-regen')

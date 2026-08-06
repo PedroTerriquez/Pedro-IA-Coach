@@ -4,31 +4,43 @@
   import StatsGrid from './StatsGrid.svelte'
   import StatBlock from './StatBlock.svelte'
   import LoadingSpinner from './LoadingSpinner.svelte'
+  import Button from './Button.svelte'
 
   let {
     analysis,
     accent = 'var(--accent)',
     loading = false,
-    exerciseCount = 0,
+    error = false,
+    units = 'kg',
     onclick,
+    onretry,
   }: {
     analysis: any
     accent?: string
     loading?: boolean
-    exerciseCount?: number
+    error?: boolean
+    units?: string
     onclick?: () => void
+    onretry?: () => void
   } = $props()
 </script>
 
 <div class="coach-scroll" data-component="CoachResultCard">
   <StatsGrid columns={3} variant="card">
-    <StatBlock value={exerciseCount} label="Ejercicios" {accent} />
-    <StatBlock value="—" label="Volumen" {accent} />
-    <StatBlock value={0} label="PRs" {accent} />
+    <StatBlock value={analysis?.streak_days ?? '—'} label="Racha" {accent} />
+    <StatBlock value={analysis?.total_volume ?? '—'} label="Volumen" unit={analysis ? units : undefined} {accent} />
+    <StatBlock value={analysis?.pr_count ?? '—'} label="PRs" {accent} />
   </StatsGrid>
   {#if loading}
     <GlowCard blobColor={accent} borderColor="{accent}2e" padding="18px">
       <LoadingSpinner text="Analizando tu entrenamiento…" {accent} />
+    </GlowCard>
+  {:else if error}
+    <GlowCard blobColor={accent} borderColor="{accent}2e" padding="18px">
+      <div id="coach-card-error" class="error-block">
+        <div class="error-text">No pudimos conectar con el coach. Revisa tu conexión e intenta de nuevo.</div>
+        <Button variant="secondary" size="sm" onclick={onretry}>Reintentar</Button>
+      </div>
     </GlowCard>
   {:else if analysis}
     <GlowCard blobColor={accent} borderColor="{accent}2e" padding="18px" {onclick}>
@@ -60,6 +72,8 @@
 
 <style>
   .coach-scroll { margin-top: 16px; }
+  .error-block { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 6px 0; }
+  .error-text { font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,0.7); font-family: var(--font-sans); }
   .coach-header { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 600; }
   .coach-header-icon { width: 22px; height: 22px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
   .analysis-text { margin-top: 12px; font-size: 14.5px; line-height: 1.55; color: rgba(255,255,255,0.9); font-family: var(--font-sans); letter-spacing: -0.1px; }

@@ -8,10 +8,10 @@
   } = $props()
 
   const efforts = [
-    ['easy', '💪', 'Fácil', 'Podía más, para subir peso'],
-    ['good', '👍', 'Justo', 'Peso correcto, lo planeado'],
-    ['heavy', '😮‍💨', 'Pesado', 'Me costó trabajo'],
-    ['failure', '🛑', 'Al fallo', 'Llegué al fallo muscular, no daba más']
+    ['Fácil', '💪', 'Podía más, para subir peso'],
+    ['Justo', '👍', 'Peso correcto, lo planeado'],
+    ['Pesado', '😮‍💨', 'Me costó trabajo'],
+    ['Al fallo', '🛑', 'Llegué al fallo muscular, no daba más']
   ] as const
 </script>
 
@@ -22,8 +22,8 @@
     <div class="dialog-desc">Esto ayuda a Pedro a darte mejor feedback</div>
   </div>
   <div class="stack">
-    {#each efforts as [eff, emoji, label, desc]}
-      <button class="effort-btn" data-effort={eff} onclick={() => onselect(eff)}>
+    {#each efforts as [label, emoji, desc]}
+      <button class="effort-btn" data-effort={label} onclick={() => onselect(label)}>
         <div class="effort-emoji" style="background:{accent}1a;border-color:{accent}33">{emoji}</div>
         <div>
           <div class="effort-label">{label}</div>

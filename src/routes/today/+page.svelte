@@ -40,6 +40,7 @@
   let coachCardMode = $state(false)
   let coachLoading = $state(false)
   let coachResult = $state<any>(null)
+  let coachError = $state(false)
   let showCoach = $state(false)
   let showWarmup = $state(false)
   let showStretch = $state(false)
@@ -243,7 +244,7 @@
 
       if (s.lastCoachAnalysis?.date === todayDate && s.lastCoachAnalysis?.weekIdx === weekIdx) {
         coachCardMode = true
-        coachEffort = s.lastCoachAnalysis.effort || 'good'
+        coachEffort = s.lastCoachAnalysis.effort || 'Justo'
         coachDay = day
         coachResult = s.lastCoachAnalysis
       }
@@ -375,24 +376,36 @@
     effortValue = effort
     coachLoading = true
     coachCardMode = true
+    coachError = false
+    coachResult = null
     coachDay = day
     try {
       const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx)
-      coachResult = result
       coachLoading = false
+      if (!result) {
+        coachError = true
+        return
+      }
+      coachResult = result
       const s = await Storage.getSettings()
       s.lastCoachAnalysis = { ...result, date: todayDate, effort: coachEffort, weekIdx }
       await Storage.saveCoachAnalysis(s.lastCoachAnalysis)
       settings.update({ lastCoachAnalysis: s.lastCoachAnalysis } as any)
     } catch {
       coachLoading = false
+      coachError = true
     }
+  }
+
+  function retryCoachAnalysis() {
+    if (effortValue) onEffort(effortValue)
   }
 
   function resetDay() {
     coachCardMode = false
     coachLoading = false
     coachResult = null
+    coachError = false
     coachDay = null
     coachEffort = null
     effortValue = null
@@ -602,7 +615,7 @@
 
     {#if showCoach || coachCardMode}
       <div class="coach-complete">
-        <CoachResultCard analysis={coachResult} {accent} loading={coachLoading} exerciseCount={day?.exercises?.length || 0} onclick={resetDay} />
+        <CoachResultCard analysis={coachResult} {accent} loading={coachLoading} error={coachError} {units} onclick={resetDay} onretry={retryCoachAnalysis} />
         <Button variant="ghost" fullWidth onclick={resetDay}>
           <Icon name="restart" size={14} color="rgba(255,255,255,0.6)" />
           Reiniciar día
