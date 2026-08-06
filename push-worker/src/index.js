@@ -25,51 +25,66 @@ const COACH_SCHEMA = {
   required: ['analysis', 'verdict', 'rotation_topic'],
 }
 
+const WEEKS_SCHEMA = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      tag: { type: 'string', enum: ['VOLUMEN', 'FUERZA', 'RESISTENCIA'] },
+      days: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            subtitle: { type: 'string' },
+            duration_min: { type: 'number' },
+            exercises: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  exercise_name: { type: 'string' },
+                  muscle: { type: 'string' },
+                  sets: { type: 'number' },
+                  reps: { type: 'string' },
+                  rest_sec: { type: 'number' },
+                  load_weight: { type: 'number' },
+                  units: { type: 'string', enum: ['kg', 'lb'] },
+                },
+                required: ['exercise_name', 'muscle', 'sets', 'reps', 'rest_sec'],
+              },
+            },
+          },
+          required: ['name', 'exercises'],
+        },
+      },
+    },
+    required: ['name', 'days'],
+  },
+}
+
 const IMPORT_SCHEMA = {
   type: 'object',
   properties: {
     program_name: { type: 'string' },
-    weeks: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          tag: { type: 'string', enum: ['VOLUMEN', 'FUERZA', 'RESISTENCIA'] },
-          days: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                name: { type: 'string' },
-                subtitle: { type: 'string' },
-                duration_min: { type: 'number' },
-                exercises: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      exercise_name: { type: 'string' },
-                      muscle: { type: 'string' },
-                      sets: { type: 'number' },
-                      reps: { type: 'string' },
-                      rest_sec: { type: 'number' },
-                      load_weight: { type: 'number' },
-                      units: { type: 'string', enum: ['kg', 'lb'] },
-                    },
-                    required: ['exercise_name', 'muscle', 'sets', 'reps', 'rest_sec'],
-                  },
-                },
-              },
-              required: ['name', 'exercises'],
-            },
-          },
-        },
-        required: ['name', 'days'],
-      },
-    },
+    weeks: WEEKS_SCHEMA,
   },
   required: ['program_name', 'weeks'],
+}
+
+// program-coach can answer with a full modified program OR a plain message;
+// "type" tells the client (and buildProgramFromAIResponse) which shape it got.
+const PROGRAM_COACH_SCHEMA = {
+  type: 'object',
+  properties: {
+    type: { type: 'string', enum: ['program', 'message'] },
+    program_name: { type: 'string' },
+    weeks: WEEKS_SCHEMA,
+    message: { type: 'string' },
+  },
+  required: ['type'],
 }
 
 async function callGemini(messages, apiKey, opts = {}) {
@@ -401,6 +416,7 @@ export default {
               + '\n\nPREGUNTA DEL USUARIO:\n' + body.text
               + '\n\nDICCIONARIO DE EJERCICIOS:\n' + JSON.stringify(body.dictionary || [])
           },
+          schema: PROGRAM_COACH_SCHEMA,
           model: 'gemini-2.5-flash',
           maxTokens: 16384,
         })

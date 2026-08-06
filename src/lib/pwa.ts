@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.12'
-const _VER_DESC = 'InstallGuide status bar visual, You page padding fix'
+const _VER_BASE = 'v2.13'
+const _VER_DESC = 'Coach IA aplica modificaciones de programa y duplica con fecha'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
