@@ -381,6 +381,7 @@
     {units}
     hasPrev={detailIdx > 0}
     hasNext={detailIdx < detailExercises.length - 1}
+    isToday={false}
     onNavigate={onDetailNavigate}
     onClose={onDetailClose}
     onLog={onDetailLog}

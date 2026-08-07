@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { logWeight, getSettings } from '$lib/storage'
+  import { logWeight, getSettings, findOrCreateExerciseByName, swapExerciseForToday, revertExerciseSwapForToday } from '$lib/storage'
   import { toast } from '$lib/stores/ui'
   import { settings } from '$lib/stores/settings'
   import { parseRepsDefault } from '$lib/exercise-utils'
@@ -11,6 +11,7 @@
   import ExerciseHero from './ExerciseHero.svelte'
   import WorkoutTab from './WorkoutTab.svelte'
   import HistoryTab from './HistoryTab.svelte'
+  import AlternativesTab from './AlternativesTab.svelte'
   import Icon from './Icon.svelte'
 
   function getToday(): string {
@@ -47,6 +48,8 @@
     rest: number
     logs?: ExerciseLog[]
     exerciseId?: string
+    originalExerciseId?: string
+    originalExerciseName?: string
   }
 
   let {
@@ -56,10 +59,13 @@
     units = 'kg',
     hasPrev = false,
     hasNext = false,
+    isToday = false,
     onNavigate = null,
     onClose = null,
     onLog = null,
-    onStartRest = null
+    onStartRest = null,
+    onSwap = null,
+    onRevert = null
   }: {
     exercise: ExerciseDetail
     open: boolean
@@ -67,17 +73,20 @@
     units?: string
     hasPrev?: boolean
     hasNext?: boolean
+    isToday?: boolean
     onNavigate?: ((dir: 'prev' | 'next') => void) | null
     onClose?: (() => void) | null
     onLog?: (() => void) | null
     onStartRest?: ((data: any) => void) | null
+    onSwap?: (() => void) | null
+    onRevert?: (() => void) | null
   } = $props()
 
   let todayStr = $derived(getToday())
   let todayLog = $derived(exercise.logs?.find(l => l.date === todayStr) || null)
   let lastLog = $derived(exercise.logs?.length ? exercise.logs[exercise.logs.length - 1] : null)
 
-  let tab = $state<'workout' | 'history'>('workout')
+  let tab = $state<'workout' | 'history' | 'alternatives'>('workout')
   let pendingWeight = $state(todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0))
   let loggedToday = $state(!!todayLog)
   let iniciarLoading = $state(false)
@@ -99,6 +108,10 @@
 
   let currentExerciseKey = $derived(exercise.exerciseId || exercise.id)
   let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
+  let isSwapped = $derived(!!exercise.originalExerciseId && exercise.originalExerciseId !== currentExerciseKey)
+  // Stays visible while swapped even if the swapped-in exercise has no curated
+  // alternatives of its own — otherwise there'd be no way back to the original.
+  let showAlternativesTab = $derived(isToday && (((exercise.alternatives?.length ?? 0) > 0) || isSwapped))
   $effect(() => {
     void currentExerciseKey
     const isBlockMode = !!todayLog?.blocks?.length
@@ -108,6 +121,7 @@
     advanced = isBlockMode
     blocks = seededBlocks
     savedKey = isBlockMode ? JSON.stringify(seededBlocks) : (loggedToday ? String(pendingWeight) : null)
+    if (tab === 'alternatives' && !showAlternativesTab) tab = 'workout'
   })
 
   function close() {
@@ -164,6 +178,22 @@
     advanced = false
     blocks = [{ sets: exercise.sets, reps: parseRepsDefault(exercise.reps), weight: lastLog ? lastLog.weight : 0 }]
     savedKey = null
+  }
+
+  async function selectAlternative(alt: Alternative) {
+    const originalId = exercise.originalExerciseId || currentExerciseKey
+    const newEx = await findOrCreateExerciseByName(alt.name, exercise.muscle)
+    await swapExerciseForToday(originalId, newEx.id)
+    tab = 'workout'
+    toast.show(`🔄 Cambiado a ${getExerciseDisplayName(newEx, $settings.language)} por hoy`)
+    onSwap?.()
+  }
+
+  async function revertAlternative() {
+    const originalId = exercise.originalExerciseId || currentExerciseKey
+    await revertExerciseSwapForToday(originalId)
+    toast.show(`↺ Vuelto a ${exercise.originalExerciseName || ''}`)
+    onRevert?.()
   }
 
   async function handleIniciar() {
@@ -256,7 +286,8 @@
         <SegmentedControl
           options={[
             { label: 'Registrar', value: 'workout' },
-            { label: 'Historial', value: 'history' }
+            { label: 'Historial', value: 'history' },
+            ...(showAlternativesTab ? [{ label: 'Alternativas', value: 'alternatives' }] : [])
           ]}
           bind:value={tab}
           {accent}
@@ -291,6 +322,18 @@
             {accent}
             {units}
             {todayStr}
+          />
+
+        <!-- Alternatives tab -->
+        {:else if tab === 'alternatives'}
+          <AlternativesTab
+            alternatives={exercise.alternatives || []}
+            {accent}
+            language={$settings.language}
+            {isSwapped}
+            originalName={exercise.originalExerciseName || ''}
+            onSelect={selectAlternative}
+            onRevert={revertAlternative}
           />
         {/if}
       </div>

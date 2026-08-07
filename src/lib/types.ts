@@ -74,6 +74,7 @@ export interface Settings {
   lastCoachAnalysis?: any
   streakShownDate?: string
   rescheduleWeekOrder?: Record<string, number | number[]>
+  todaySwaps?: { date: string; swaps: Record<string, string> } // originalExerciseId -> altExerciseId, valid only for `date`
   language?: string
   username?: string
   lastUpdate?: string

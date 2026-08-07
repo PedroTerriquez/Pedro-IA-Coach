@@ -22,6 +22,18 @@ export interface CoachAnalysisResult {
 
 const ROTATION_TOPICS = ['comparativa', 'racha', 'esfuerzo_volumen', 'recuperacion', 'progreso_global', 'retrospectiva_semanal']
 
+const KG_PER_LB = 0.45359237
+
+// Logs can carry different units (kg vs lb) if the user toggled the setting over time.
+// Every comparison/sum across logs must go through this so a unit switch never reads as a volume/PR spike.
+function toKg(weight: number, units?: string): number {
+  return units === 'lb' ? weight * KG_PER_LB : weight
+}
+
+function fromKg(weightKg: number, units?: string): number {
+  return units === 'lb' ? weightKg / KG_PER_LB : weightKg
+}
+
 function getMonday(date: Date): Date {
   const d = new Date(date)
   const monOffset = (d.getDay() + 6) % 7
@@ -36,13 +48,14 @@ function formatDateYMD(d: Date): string {
 
 function logVolume(log: ExerciseLog): number {
   if (Array.isArray(log.blocks) && log.blocks.length > 0) {
-    return log.blocks.reduce((a, b) => a + b.sets * b.reps * b.weight, 0)
+    // Blocks don't carry their own units; they inherit the log's unit.
+    return log.blocks.reduce((a, b) => a + b.sets * b.reps * toKg(b.weight, log.units), 0)
   }
   const reps = typeof log.reps === 'string' ? parseInt(log.reps) || 0 : (log.reps ?? 0)
-  return log.weight * (log.sets ?? 0) * reps
+  return toKg(log.weight, log.units) * (log.sets ?? 0) * reps
 }
 
-function computeWeeklyVolumeHistory(logs: ExerciseLog[], todayDate: string, weeks = 6): { week_start: string; volume: number }[] {
+function computeWeeklyVolumeHistory(logs: ExerciseLog[], todayDate: string, displayUnits: string, weeks = 6): { week_start: string; volume: number }[] {
   const today = new Date(todayDate + 'T12:00:00Z')
   const currentMonday = getMonday(today)
   const result: { week_start: string; volume: number }[] = []
@@ -57,12 +70,14 @@ function computeWeeklyVolumeHistory(logs: ExerciseLog[], todayDate: string, week
       const d = new Date(log.date + 'T12:00:00Z')
       if (d >= weekStart && d < weekEnd) volume += logVolume(log)
     }
-    result.push({ week_start: formatDateYMD(weekStart), volume: Math.round(volume) })
+    // logVolume returns kg-equivalent; convert back to the user's current display unit
+    // so this lines up with total_volume and what's shown on screen.
+    result.push({ week_start: formatDateYMD(weekStart), volume: Math.round(fromKg(volume, displayUnits)) })
   }
   return result
 }
 
-function computeMonthlyVolumeHistory(logs: ExerciseLog[], todayDate: string, months = 4): { month: string; volume: number }[] {
+function computeMonthlyVolumeHistory(logs: ExerciseLog[], todayDate: string, displayUnits: string, months = 4): { month: string; volume: number }[] {
   const today = new Date(todayDate + 'T12:00:00Z')
   const result: { month: string; volume: number }[] = []
   for (let m = months - 1; m >= 0; m--) {
@@ -74,7 +89,7 @@ function computeMonthlyVolumeHistory(logs: ExerciseLog[], todayDate: string, mon
       const d = new Date(log.date + 'T12:00:00Z')
       if (d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth()) volume += logVolume(log)
     }
-    result.push({ month: monthKey, volume: Math.round(volume) })
+    result.push({ month: monthKey, volume: Math.round(fromKg(volume, displayUnits)) })
   }
   return result
 }
@@ -118,6 +133,8 @@ export async function runCoachAnalysis(
   const exercisesById = Object.fromEntries(exercises.map(e => [e.id, e]))
   const todayLogs = await getLogsForDate(todayDate)
   const allLogs = await getAllLogs()
+  const settings = await getSettings()
+  const displayUnits = settings.units || 'kg'
 
   let volume = 0
   let prCount = 0
@@ -132,15 +149,18 @@ export async function runCoachAnalysis(
     if (typeof reps === 'string') reps = parseInt(reps) || 0
     const hasBlocks = Array.isArray(todayLog.blocks) && todayLog.blocks.length > 0
     volume += hasBlocks
-      ? todayLog.blocks!.reduce((a, b) => a + b.sets * b.reps * b.weight, 0)
-      : todayLog.weight * sets * reps
+      ? todayLog.blocks!.reduce((a, b) => a + b.sets * b.reps * toKg(b.weight, todayLog.units), 0)
+      : toKg(todayLog.weight, todayLog.units) * sets * reps
 
     const allExLogs = await getLogsForExercise(exId)
     const prevLogs = allExLogs.filter(l => l.date !== todayDate && l.weight > 0)
-    const previousBest = prevLogs.length > 0 ? Math.max(...prevLogs.map(l => l.weight)) : null
+    const previousBestKg = prevLogs.length > 0 ? Math.max(...prevLogs.map(l => toKg(l.weight, l.units))) : null
     // Strict >: matching (not beating) the previous best is a tie, not a new PR —
     // otherwise the same weight repeated across sessions gets counted as a PR every time.
-    const isPR = previousBest !== null && todayLog.weight > previousBest
+    // Compared in kg so a kg/lb toggle never masquerades as a new PR (or a spike).
+    const isPR = previousBestKg !== null && toKg(todayLog.weight, todayLog.units) > previousBestKg
+    // Shown to the user/AI next to today's weight, so display it back in today's unit, not kg.
+    const previousBest = previousBestKg !== null ? Math.round(fromKg(previousBestKg, todayLog.units) * 10) / 10 : null
     if (isPR) prCount++
 
     exerciseSummaries.push({
@@ -156,13 +176,14 @@ export async function runCoachAnalysis(
 
   const trainedDates = new Set(allLogs.filter(l => l.weight > 0).map(l => l.date))
   const rotationHint = ROTATION_TOPICS[trainedDates.size % ROTATION_TOPICS.length]
-  const roundedVolume = Math.round(volume)
+  // volume was accumulated in kg-equivalent across all logs regardless of their stored unit;
+  // convert once here to whatever unit the user currently displays (settings.units).
+  const roundedVolume = Math.round(fromKg(volume, displayUnits))
   const streakDays = computeStreakDays(allLogs, todayDate)
 
   try {
     if (!PUSH_SERVER_URL) throw new Error('PUSH_SERVER_URL not configured')
 
-    const settings = await getSettings()
     const userProfile = buildUserProfile(settings)
 
     const sessionData = {
@@ -177,8 +198,8 @@ export async function runCoachAnalysis(
       history: {
         streak_days: streakDays,
         total_workout_days: trainedDates.size,
-        weekly_volume_last_6_weeks: computeWeeklyVolumeHistory(allLogs, todayDate),
-        monthly_volume_last_4_months: computeMonthlyVolumeHistory(allLogs, todayDate),
+        weekly_volume_last_6_weeks: computeWeeklyVolumeHistory(allLogs, todayDate, displayUnits),
+        monthly_volume_last_4_months: computeMonthlyVolumeHistory(allLogs, todayDate, displayUnits),
       },
     }
 

@@ -64,6 +64,32 @@
   let showDetail = $state(false)
   let detailExercises = $state<any[]>([])
   let detailIdx = $state(0)
+  let todaySwapsMap = $state<Record<string, string>>({})
+
+  // originalExerciseId/originalExerciseName let ExerciseDetail's "Volver a B" action
+  // know what to revert even once the slot is already showing D.
+  function buildTodayExercises(currentDay: ProgramDay, currentExercises: Exercise[], currentLogs: ExerciseLog[]) {
+    const byId = Object.fromEntries(currentExercises.map(e => [e.id, e]))
+    return currentDay.exercises.map(ex => {
+      const displayId = todaySwapsMap[ex.exerciseId] || ex.exerciseId
+      return {
+        ...ex,
+        exerciseId: displayId,
+        originalExerciseId: ex.exerciseId,
+        originalExerciseName: byId[ex.exerciseId]?.name || '',
+        ...(byId[displayId] || {}),
+        logs: logsForExercise(displayId, currentLogs)
+      }
+    })
+  }
+
+  async function refreshAfterSwap() {
+    const [s, exs] = await Promise.all([Storage.getSettings(), Storage.getExercises()])
+    todaySwapsMap = (s.todaySwaps && s.todaySwaps.date === todayDate) ? s.todaySwaps.swaps : {}
+    exercises = exs
+    if (day) todayExercises = buildTodayExercises(day, exercises, allLogs)
+    detailExercises = todayExercises
+  }
 
   function openTrainingDetail() {
     if (hasWarmup && !warmupDone) return
@@ -197,6 +223,7 @@
       }
       todayDate = toLocal(new Date())
       sessionDate = todayDate
+      todaySwapsMap = (s.todaySwaps && s.todaySwaps.date === todayDate) ? s.todaySwaps.swaps : {}
 
       checkPendingRest()
       _checkRestTimer()
@@ -224,7 +251,8 @@
 
       const exercisesByIdMap = Object.fromEntries(exs.map(e => [e.id, e]))
       const warmupMuscles = day.exercises.map(ex => {
-        const resolved = { ...ex, ...(exercisesByIdMap[ex.exerciseId] || {}) }
+        const displayId = todaySwapsMap[ex.exerciseId] || ex.exerciseId
+        const resolved = { ...ex, ...(exercisesByIdMap[displayId] || {}) }
         return resolved.muscle
       }).filter(Boolean)
       warmupItems = resolvePanelItems(warmupMuscles, 'warmup')
@@ -253,11 +281,7 @@
 
       if (phase === 'loading') phase = hasWarmup ? 'warmup' : 'training'
 
-      todayExercises = day.exercises.map(ex => ({
-        ...ex,
-        ...(exercisesByIdMap[ex.exerciseId] || {}),
-        logs: logsForExercise(ex.exerciseId, logs)
-      }))
+      todayExercises = buildTodayExercises(day, exs, logs)
 
       loadTodayLogs()
 
@@ -639,7 +663,7 @@
 {/if}
 
 {#if showDetail && detailExercises.length > 0}
-  <ExerciseDetail exercise={detailExercises[detailIdx]} open={showDetail} {accent} {units} hasPrev={detailIdx > 0} hasNext={detailIdx < detailExercises.length - 1} onNavigate={onDetailNavigate} onClose={onDetailClose} onLog={onDetailLog} onStartRest={onStartRest} />
+  <ExerciseDetail exercise={detailExercises[detailIdx]} open={showDetail} {accent} {units} hasPrev={detailIdx > 0} hasNext={detailIdx < detailExercises.length - 1} isToday={true} onNavigate={onDetailNavigate} onClose={onDetailClose} onLog={onDetailLog} onStartRest={onStartRest} onSwap={refreshAfterSwap} onRevert={refreshAfterSwap} />
 {/if}
 
 <CenterDialog id="effort-overlay" open={effortModalShow} onclose={() => effortModalShow = false}>

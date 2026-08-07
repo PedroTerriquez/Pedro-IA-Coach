@@ -3,11 +3,24 @@
 // all behavior tests live here, against the real SvelteKit app (real routes,
 // real components, no hash-routing or window-exposed test hooks left over
 // from the pre-migration vanilla-JS app). Don't add new top-level test files
-// for app behavior; add a step to the main flow below, or a new `test()`
-// inside a `test.describe()` block in this same file.
+// for app behavior; add a step to the main flow below, or a new
+// `test.describe()` block containing exactly ONE `test()` in this same file.
 // Removing any step WILL break the guardrail assertion below.
-// Add new steps after step 15, or add your scenario as a SEPARATE test.
+// Add new steps after step 15, or add your scenario as its own
+// `test.describe()` block (one test per block — see rule below).
 // If you truly must remove a step, update the EXPECTED_STEPS array.
+//
+// E2E means the state carries through, not "everything in one function":
+// seed with seedIndexedDB() ONCE at the top of the test, then keep building
+// on that same state by acting through the real UI — click "Siguiente",
+// reload the page, navigate to another route — exactly like the numbered
+// steps above do. Do NOT call seedIndexedDB() a second time mid-test to
+// jump to the next assertion; that resets the world and turns "one flow"
+// into several disconnected scenarios that just happen to share a function
+// body. If a describe block ends up with more than one `test()`, that's the
+// tell that they don't actually share a journey — each is reseeding on its
+// own — so split them into their own `test.describe()` blocks instead of
+// forcing them together.
 
 const EXPECTED_STEPS = [
   'Step 1: Verify Profile',
@@ -1776,5 +1789,128 @@ test.describe('You — Datos export/import roundtrip', () => {
     await expect(page.locator('#user-name')).toContainText('RoundTripUser')
     await expect(page.locator('#height-input')).toHaveValue('175')
     await expect(page.locator('#weight-input')).toHaveValue('78')
+  })
+})
+
+test.describe('Today — Alternative exercise swap', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-alt', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  function getTodayStr() {
+    return new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  }
+
+  test('E2E: select an alternative, log/persist/revert it, then move on within the same seeded state', async ({ page }) => {
+    const today = getTodayStr()
+    const program = {
+      id: 'prog-alt', name: 'Programa Alt',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca · Press Militar', duration: 60,
+          exercises: [
+            { exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 },
+            { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 },
+          ],
+        }),
+      }],
+    }
+
+    // ── Step 1: Seed today's workout ONCE — Press Banca (has 2 curated
+    // alternatives) and Press Militar (has none) — everything from here on
+    // builds on this same state, no re-seeding mid-test ──
+    await page.goto('today')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [
+        SEED.exercises[0], // ex-bench, has 2 curated alternatives
+        { id: 'ex-military', name: 'Press Militar', muscle: 'Shoulders', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      ],
+      program,
+      // phase 2 = warmup already done, so the training card is tappable immediately.
+      settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0 } },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const trainingCard = page.locator('[data-phase="training"]').first()
+    await expect(trainingCard).toBeVisible()
+    await trainingCard.click()
+    await page.waitForTimeout(400)
+
+    const heroName = page.locator('.hero-name')
+    const altTab = page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Alternativas' })
+    const registrarTab = page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Registrar' })
+
+    // ── Step 2: Open Press Banca, see its curated alternatives ──
+    await expect(heroName).toContainText('Banca')
+    await expect(altTab).toBeVisible()
+    await altTab.click()
+    await page.waitForTimeout(300)
+
+    const altCards = page.locator('[data-component="AlternativesTab"] .alt-card')
+    await expect(altCards).toHaveCount(2)
+    const dumbbellCard = altCards.filter({ hasText: 'Mancuernas' })
+    await expect(dumbbellCard).toBeVisible()
+    await expect(page.locator('[data-component="AlternativesTab"]')).toContainText('activa estabilizadores')
+
+    // ── Step 3: Selecting one swaps the sheet's whole identity and jumps to Registrar ──
+    await dumbbellCard.click()
+    await page.waitForTimeout(500)
+    await expect(registrarTab).toHaveClass(/seg-active/)
+    await expect(heroName).toContainText('Mancuernas')
+
+    // ── Step 4: Log a weight for the alternative ──
+    const weightInput = page.locator('input[inputmode="decimal"]').first()
+    await weightInput.fill('45')
+    await page.getByRole('button', { name: /Registrar ·/ }).click()
+    await page.waitForTimeout(500)
+
+    // ── Step 5: Reload the app (closing/reopening) — the swap and the logged
+    // weight must both survive, proving they're persisted, not in-memory state ──
+    await page.reload()
+    await page.waitForTimeout(800)
+    await expect(trainingCard).toBeVisible()
+    await trainingCard.click()
+    await page.waitForTimeout(400)
+    await expect(heroName).toContainText('Mancuernas')
+    await expect(weightInput).toHaveValue('45')
+
+    // ── Step 6: Revert back to the original exercise for today ──
+    await altTab.click()
+    await page.waitForTimeout(300)
+    const revertBtn = page.locator('.revert-row')
+    await expect(revertBtn).toContainText('Volver a Press Banca')
+    await revertBtn.click()
+    await page.waitForTimeout(500)
+    await expect(heroName).toContainText('Banca')
+    await expect(heroName).not.toContainText('Mancuernas')
+
+    // ── Step 7: Move to Press Militar in the SAME sheet via Siguiente — it
+    // has no curated alternatives, so the tab must not be offered for it ──
+    await page.getByRole('button', { name: 'Siguiente' }).first().click()
+    await page.waitForTimeout(300)
+    await expect(heroName).toContainText('Militar')
+    await expect(altTab).toHaveCount(0)
+
+    // ── Step 8: Close the sheet and open the same day from Historial — the
+    // tab must stay hidden there too, even though Press Banca still has
+    // curated alternatives, because swapping only makes sense for "today" ──
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+    await page.waitForTimeout(300)
+    await page.goto('history')
+    await page.waitForTimeout(400)
+
+    const exerciseRow = page.locator('.cal-detail .exercise-row', { hasText: 'Banca' })
+    await expect(exerciseRow).toBeVisible({ timeout: 3000 })
+    await exerciseRow.click()
+    await page.waitForTimeout(400)
+
+    await expect(page.locator('.hero-google-btn')).toBeVisible()
+    await expect(altTab).toHaveCount(0)
   })
 })

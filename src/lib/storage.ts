@@ -227,6 +227,30 @@ export async function getCoachAnalysis(): Promise<any> {
   return s.lastCoachAnalysis || null
 }
 
+// ── Today's exercise swaps (alternatives) ──
+// Scoped to today's date only: once `date` no longer matches, the swap is treated as empty.
+// No cleanup job needed — it self-invalidates on read.
+export async function getTodaySwaps(): Promise<Record<string, string>> {
+  const s = await getSettings()
+  return (s.todaySwaps && s.todaySwaps.date === getToday()) ? s.todaySwaps.swaps : {}
+}
+
+export async function swapExerciseForToday(originalExerciseId: string, altExerciseId: string): Promise<Record<string, string>> {
+  const s = await getSettings()
+  const current = (s.todaySwaps && s.todaySwaps.date === getToday()) ? s.todaySwaps.swaps : {}
+  const swaps = { ...current, [originalExerciseId]: altExerciseId }
+  await saveSettings({ ...s, todaySwaps: { date: getToday(), swaps } })
+  return swaps
+}
+
+export async function revertExerciseSwapForToday(originalExerciseId: string): Promise<Record<string, string>> {
+  const s = await getSettings()
+  const current = (s.todaySwaps && s.todaySwaps.date === getToday()) ? s.todaySwaps.swaps : {}
+  const { [originalExerciseId]: _removed, ...swaps } = current
+  await saveSettings({ ...s, todaySwaps: { date: getToday(), swaps } })
+  return swaps
+}
+
 // ── Dictionary Migration ──
 export async function _assignDictIdsAndNormalize(exercises: Exercise[], force: boolean) {
   let migrated = 0, skipped = 0
