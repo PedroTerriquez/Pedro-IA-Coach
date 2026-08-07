@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.14'
-const _VER_DESC = 'Coach IA: insights reales sin repetir datos, deploy ahora corre desde main'
+const _VER_BASE = 'v2.15'
+const _VER_DESC = 'Idioma (es/en) solo traduce nombres de ejercicios; IA siempre en español'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

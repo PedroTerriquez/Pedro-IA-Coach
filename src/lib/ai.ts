@@ -7,9 +7,7 @@ import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionar
 import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 
-function resolveLanguage(settings: Settings): PromptLanguage {
-  return settings.language === 'en' ? 'en' : 'es'
-}
+const LANGUAGE: PromptLanguage = 'es'
 
 export function buildUserProfile(settings: Settings) {
   return {
@@ -78,7 +76,7 @@ async function buildProgramFromAIResponse(data: any, opts?: { noFuzzy?: boolean;
 export async function importWithAI(text: string, onProgress?: (current: number, total: number, name: string) => void): Promise<Program> {
   const dictionary = buildAIDictionary()
   const settings = await Storage.getSettings()
-  const language = resolveLanguage(settings)
+  const language = LANGUAGE
 
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/import`, {
     method: 'POST',
@@ -123,7 +121,7 @@ export interface ProgramOverrides {
 
 export async function generateProgramWithAI(overrides: ProgramOverrides = {}): Promise<Program> {
   const settings = await Storage.getSettings()
-  const language = resolveLanguage(settings)
+  const language = LANGUAGE
   const userProfile = buildUserProfile(settings)
 
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
@@ -177,7 +175,7 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
   }
 
   const settings = await Storage.getSettings()
-  const language = resolveLanguage(settings)
+  const language = LANGUAGE
   const userProfile = buildUserProfile(settings)
 
   const exerciseNames = program.weeks.flatMap(w =>

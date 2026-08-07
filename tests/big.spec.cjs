@@ -446,7 +446,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   })
   expect(stagedPush).not.toBeNull()
   expect(stagedPush.kind).toBe('start')
-  expect(stagedPush.exerciseData.name).toBe('Press Banca')
+  expect(stagedPush.exerciseData.name).toBe('Press de Banca con Barra')
   expect(stagedPush.exerciseData.restSec).toBe(180)
   expect(stagedPush.exerciseData.sets).toBe(5)
   expect(stagedPush.exerciseData.exerciseId).toBe('ex-bench')
@@ -717,7 +717,7 @@ test.describe('Warmup detail sheet rendering', () => {
   }
 
   function getTodayStr() {
-    return new Date().toISOString().slice(0, 10)
+    return new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
   }
 
   test('renders sectioned cards when item has posInicial/ejecucion/respiracion/duracion', async ({ page }) => {
@@ -1361,7 +1361,7 @@ test.describe('Exercise detail navigation', () => {
   }
 
   function getTodayStr() {
-    return new Date().toISOString().slice(0, 10)
+    return new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
   }
 
   // Fires synthetic touch events directly at the element (bypassing the need

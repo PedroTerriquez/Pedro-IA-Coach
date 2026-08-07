@@ -3,6 +3,7 @@
   import { toast } from '$lib/stores/ui'
   import { settings } from '$lib/stores/settings'
   import { parseRepsDefault } from '$lib/exercise-utils'
+  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import type { ExerciseLogBlock } from '$lib/types'
   import Sheet from './Sheet.svelte'
   import SegmentedControl from './SegmentedControl.svelte'
@@ -97,6 +98,7 @@
   let savedKey = $state<string | null>(advanced ? JSON.stringify(blocks) : (loggedToday ? String(pendingWeight) : null))
 
   let currentExerciseKey = $derived(exercise.exerciseId || exercise.id)
+  let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
   $effect(() => {
     void currentExerciseKey
     const isBlockMode = !!todayLog?.blocks?.length
@@ -170,7 +172,7 @@
     try {
       if (navigator.vibrate) navigator.vibrate(40)
       onStartRest?.({
-        name: exercise.name,
+        name: displayName,
         restSec: exercise.rest,
         tag: 'rest-' + Date.now(),
         sets: exercise.sets,

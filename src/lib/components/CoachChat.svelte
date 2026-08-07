@@ -1,5 +1,7 @@
 <script lang="ts">
   import { bodyPartsFor } from '$lib/data/body-parts'
+  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+  import { settings } from '$lib/stores/settings'
   import Icon from './Icon.svelte'
   import Button from './Button.svelte'
 
@@ -29,6 +31,7 @@
   let chatEl: HTMLDivElement
 
   let bodyParts = $derived(bodyPartsFor(exercise.muscle))
+  let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
 
   function initChat() {
     messages = []
@@ -92,7 +95,7 @@
       </div>
       <div class="coach-header-info">
         <div class="coach-header-name">Coach IA</div>
-        <div class="coach-header-ex-name">{exercise.name}</div>
+        <div class="coach-header-ex-name">{displayName}</div>
       </div>
       <button class="coach-close-btn" onclick={onclose}>
         <svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 1l11 11M12 1L1 12" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round"/></svg>
