@@ -8,6 +8,9 @@
   import { generateId, getAll, put } from '$lib/db'
   import SectionLabel from '$lib/components/SectionLabel.svelte'
   import Icon from '$lib/components/Icon.svelte'
+  import ActionRow from '$lib/components/ActionRow.svelte'
+  import { goto } from '$app/navigation'
+  import { ROUTES } from '$lib/routes'
 
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
@@ -770,6 +773,14 @@
         onforce={() => runDictMigration(true)}
         onshowskipped={() => showSkippedOverlay = true}
       />
+      <ActionRow
+        title="Revisar imágenes del diccionario"
+        description="Admin visual para previsualizar y corregir image/gif (solo npm run dev)"
+      >
+        {#snippet button()}
+          <Button id="go-media-admin" size="sm" {accent} onclick={() => goto(ROUTES.admin)}>Abrir</Button>
+        {/snippet}
+      </ActionRow>
     {/if}
   </div>
 </div>

@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.16'
-const _VER_DESC = 'Coach: análisis con unidades kg/lb normalizadas para volumen y PRs'
+const _VER_BASE = 'v2.17'
+const _VER_DESC = 'Admin media: lista compacta, paginación por letra, edición image/gif del diccionario'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

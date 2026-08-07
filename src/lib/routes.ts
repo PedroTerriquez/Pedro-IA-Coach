@@ -6,4 +6,5 @@ export const ROUTES = {
   history: `${base}/history`,
   friends: `${base}/friends`,
   you: `${base}/you`,
+  admin: `${base}/admin`,
 }
