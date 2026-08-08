@@ -1,14 +1,17 @@
 import { derived, get, writable } from 'svelte/store'
 import { toast } from '$lib/stores/ui'
-import type { LineKind } from './media-file'
+import type { ChangeRequest, LineKind } from './media-file'
 
-export interface PendingDraft { entryId: string; kind: LineKind; url: string }
+export interface PendingDraft { entryId: string; kind: Exclude<LineKind, 'aliases'>; url: string }
 
 const drafts = writable<PendingDraft[]>([])
+const pendingAliases = writable<Record<string, string[]>>({})
 
-export const draftCount = derived(drafts, (d) => d.length)
+export const draftCount = derived([drafts, pendingAliases], ([d, a]) => d.length + Object.keys(a).length)
 
-export function queueReplace(entryId: string, kind: LineKind, url: string) {
+export const pendingAliasesMap = derived(pendingAliases, (m) => m)
+
+export function queueReplace(entryId: string, kind: Exclude<LineKind, 'aliases'>, url: string) {
   const trimmed = url?.trim()
   if (!trimmed) {
     toast.show('URL vacía, no se guardó nada')
@@ -23,13 +26,29 @@ export function queueReplace(entryId: string, kind: LineKind, url: string) {
   })
 }
 
+export function queueSetAliases(entryId: string, aliases: string[]) {
+  pendingAliases.update((m) => {
+    if (aliases.length === 0) {
+      const { [entryId]: _, ...rest } = m
+      return rest
+    }
+    return { ...m, [entryId]: aliases }
+  })
+}
+
 export function resetDrafts() {
   drafts.set([])
+  pendingAliases.set({})
 }
 
 export async function saveDrafts(): Promise<boolean> {
-  const list = get(drafts)
-  if (!list.length) {
+  const media = get(drafts)
+  const aliases = get(pendingAliases)
+  const changes: ChangeRequest[] = [
+    ...media.map((d) => ({ entryId: d.entryId, kind: d.kind, url: d.url })),
+    ...Object.entries(aliases).map(([entryId, list]) => ({ entryId, kind: 'aliases' as const, aliases: list }))
+  ]
+  if (!changes.length) {
     toast.show('No hay cambios pendientes')
     return false
   }
@@ -38,7 +57,7 @@ export async function saveDrafts(): Promise<boolean> {
     const res = await fetch('/__admin/dictionary-save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ changes: list })
+      body: JSON.stringify({ changes })
     })
     json = await res.json()
     if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)

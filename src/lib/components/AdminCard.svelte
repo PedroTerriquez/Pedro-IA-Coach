@@ -4,6 +4,8 @@
   export interface AdminEntry {
     id: string
     name: string
+    en?: string
+    aliases?: string[]
     muscle?: string
     image?: string
     gif?: string
@@ -13,19 +15,24 @@
     entry,
     accent = 'var(--accent)',
     reviewed = false,
+    pendingAliases,
     onedit = () => {},
-    ontoggle = () => {}
+    ontoggle = () => {},
+    onaliases = () => {}
   }: {
     entry: AdminEntry
     accent?: string
     reviewed?: boolean
+    pendingAliases?: string[]
     onedit?: (entryId: string, kind: 'image' | 'gif') => void
     ontoggle?: (entryId: string) => void
+    onaliases?: (entryId: string, aliases: string[]) => void
   } = $props()
 
   let brokenImg = $state(false)
   let brokenGif = $state(false)
   let copied = $state<'image' | 'gif' | null>(null)
+  let aliasDraft = $state('')
   let copyTimer: ReturnType<typeof setTimeout> | undefined
   $effect(() => {
     brokenImg = false
@@ -33,12 +40,28 @@
     copied = null
   })
 
+  const aliases = $derived(pendingAliases ?? entry.aliases ?? [])
+
   function copy(kind: 'image' | 'gif', url?: string) {
     if (!url) return
     navigator.clipboard?.writeText(url).catch(() => {})
     copied = kind
     clearTimeout(copyTimer)
     copyTimer = setTimeout(() => (copied = null), 1200)
+  }
+
+  function addAlias() {
+    const a = aliasDraft.trim()
+    if (!a || aliases.includes(a)) {
+      aliasDraft = ''
+      return
+    }
+    onaliases(entry.id, [...aliases, a])
+    aliasDraft = ''
+  }
+
+  function removeAlias(i: number) {
+    onaliases(entry.id, aliases.filter((_, j) => j !== i))
   }
 </script>
 
@@ -90,7 +113,30 @@
   </div>
   <div class="info">
     <div class="name">{entry.name}</div>
+    {#if entry.en}<div class="en">{entry.en}</div>{/if}
     {#if entry.muscle}<div class="muscle">{entry.muscle}</div>{/if}
+    <div class="alias-row">
+      {#each aliases as a, i}
+        <span class="alias-chip" class:pending={pendingAliases !== undefined}>
+          <span class="alias-text">{a}</span>
+          <button class="rm" title="Quitar alias" onclick={() => removeAlias(i)}>×</button>
+        </span>
+      {/each}
+    </div>
+    <div class="alias-input">
+      <input
+        placeholder="añadir alias…"
+        value={aliasDraft}
+        oninput={(e) => (aliasDraft = e.currentTarget.value)}
+        onkeydown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            addAlias()
+          }
+        }}
+      />
+      <button class="add" title="Añadir alias" onclick={addAlias}>+</button>
+    </div>
   </div>
   <div class="actions">
     <Button id={`edit-img-${entry.id}`} size="sm" variant="secondary" {accent} onclick={() => onedit(entry.id, 'image')}>IMG</Button>
@@ -111,6 +157,18 @@
   .copy-btn { position: absolute; top: 5px; left: 5px; width: 24px; height: 24px; border-radius: 8px; border: none; background: rgba(10,10,10,0.65); color: #fff; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
   .info { flex: 1; min-width: 0; }
   .name { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .en { font-size: 11px; color: var(--accent); opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .muscle { font-family: var(--font-mono); font-size: 10px; opacity: 0.55; margin-top: 2px; }
+  .alias-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .alias-chip { display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 7px; padding: 1px 6px 1px 8px; font-size: 10px; opacity: 0.7; }
+  .alias-chip.pending { background: rgba(212,255,58,0.12); border-color: var(--accent); color: var(--accent); opacity: 1; }
+  .alias-text { white-space: nowrap; }
+  .rm { border: none; background: none; color: inherit; cursor: pointer; font-size: 12px; line-height: 1; padding: 0 2px; opacity: 0.6; }
+  .rm:hover { opacity: 1; }
+  .alias-input { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .alias-input input { flex: 1; min-width: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 11px; font-family: var(--font-sans); padding: 3px 8px; outline: none; }
+  .alias-input input:focus { border-color: var(--accent); }
+  .add { width: 22px; height: 22px; border-radius: 7px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--accent); font-size: 14px; cursor: pointer; line-height: 1; flex-shrink: 0; }
+  .add:hover { background: rgba(212,255,58,0.12); }
   .actions { display: flex; gap: 6px; flex-shrink: 0; }
 </style>

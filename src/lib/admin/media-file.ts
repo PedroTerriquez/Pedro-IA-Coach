@@ -1,13 +1,63 @@
 import { IMG_BASE, EX_GIF_BASE } from '../data/exercise-dictionary'
 
-export type LineKind = 'image' | 'gif'
-export interface ChangeRequest { entryId: string; kind: LineKind; url: string }
+export type LineKind = 'image' | 'gif' | 'aliases'
+export interface ChangeRequest {
+  entryId: string
+  kind: LineKind
+  url?: string
+  aliases?: string[]
+}
 
 export function serializedLine(line: string): LineKind | null {
   const trimmed = line.trim()
   if (/^image\s*:/.test(trimmed)) return 'image'
   if (/^gif\s*:/.test(trimmed)) return 'gif'
   return null
+}
+
+export function parseAliases(expr: string): string[] {
+  const arr: string[] = []
+  const re = /'((?:\\'|[^'])*)'/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(expr))) arr.push(m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'))
+  return arr
+}
+
+export function serializeAliases(aliases: string[]): string {
+  const items = aliases.map(
+    (a) => `'${a.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+  )
+  return `[${items.join(', ')}]`
+}
+
+export function getCurrentAliases(entryText: string): string[] | null {
+  for (const line of entryText.split('\n')) {
+    const t = line.trim()
+    if (/^aliases\s*:/.test(t)) {
+      const m = t.match(/:\s*(.+?)\s*,?\s*$/)
+      if (m) return parseAliases(m[1])
+    }
+  }
+  return null
+}
+
+export function setAliasesLine(entryText: string, aliases: string[]): string {
+  const next = serializeAliases(aliases)
+  const current = getCurrentAliases(entryText)
+  if (current !== null && serializeAliases(current) === next) return entryText
+  const lines = entryText.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim()
+    if (/^aliases\s*:/.test(t)) {
+      const m = lines[i].match(/^(\s*)aliases\s*:/)
+      const indent = m ? m[1] : '    '
+      const comma = lines[i].trim().endsWith(',') ? ',' : ''
+      lines[i] = `${indent}aliases: ${next}${comma}`
+      return lines.join('\n')
+    }
+  }
+  lines.push(`    aliases: ${next},`)
+  return lines.join('\n')
 }
 
 export function fromUrl(url: string): string {
@@ -149,7 +199,10 @@ export function applyFileText(src: string, changes: ChangeRequest[]): { text: st
     let entryText = text.slice(range.start, range.end)
     const before = entryText
     for (const c of changes) {
-      const next = replaceLineInEntry(entryText, c.kind, c.url)
+      const next =
+        c.kind === 'aliases'
+          ? setAliasesLine(entryText, c.aliases ?? [])
+          : replaceLineInEntry(entryText, c.kind, c.url ?? '')
       if (next !== entryText) {
         entryText = next
         applied++

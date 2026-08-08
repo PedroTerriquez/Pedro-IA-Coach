@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.20'
-const _VER_DESC = 'Admin media: checkbox revisado visible, contador y oculta de la lista'
+const _VER_BASE = 'v2.21'
+const _VER_DESC = 'Admin media: editar alias inline por ejercicio y guardar en diccionario'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
