@@ -146,7 +146,8 @@
 
 <style>
   .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; transition: opacity 0.15s; }
-  .admin-card.reviewed { opacity: 0.45; }
+  .admin-card.reviewed { opacity: 0.45; filter: grayscale(0.85); }
+  .admin-card.reviewed:hover { opacity: 0.85; filter: grayscale(0.3); }
   .check { width: 34px; height: 34px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.25); background: transparent; color: rgba(255,255,255,0.4); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .check.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
   .thumb { position: relative; width: 112px; height: 112px; border-radius: 12px; overflow: hidden; flex-shrink: 0; background: rgba(255,255,255,0.04); cursor: pointer; }

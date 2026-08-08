@@ -16,7 +16,6 @@
   let query = $state('')
   let muscle = $state('')
   let letter = $state('A')
-  let showReviewed = $state(false)
   let picker = $state<{ entryId: string; kind: 'image' | 'gif' } | null>(null)
   let saving = $state(false)
 
@@ -57,7 +56,6 @@
 
   const visibleEntries = $derived(
     adminEntries.filter((e) => {
-      if (!showReviewed && reviewedSet.has(e.id)) return false
       if (muscle && e.muscle !== muscle) return false
       if (letter && firstLetter(e) !== letter) return false
       if (!query.trim()) return true
@@ -133,21 +131,11 @@
         <button class:active={muscle === m} class="chip" onclick={() => (muscle = m)}>{m}</button>
       {/each}
     </div>
-    <div class="chips">
-      <button
-        id="toggle-reviewed"
-        class="chip"
-        class:active={showReviewed}
-        onclick={() => (showReviewed = !showReviewed)}
-      >
-        {showReviewed ? 'Ocultar revisados' : `Ver revisados (${reviewedCount})`}
-      </button>
-    </div>
   </div>
 
   <div class="count">
-    {visibleEntries.length} ejercicios
-    <span class="hint">· marca ✓ el checkbox para ocultarlo de la lista</span>
+    {visibleEntries.length} ejercicios · {reviewedCount} revisados
+    <span class="hint">· marca ✓ para revisarlo; quedará en gris en la lista</span>
   </div>
 
   <div class="list">
