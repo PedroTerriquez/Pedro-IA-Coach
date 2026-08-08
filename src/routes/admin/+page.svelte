@@ -24,11 +24,23 @@
   const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const firstLetter = (e: { name: string }) => norm(e.name.trim().charAt(0)).toUpperCase()
 
+  function buildTerms(en?: string, aliases: string[] = []): string[] {
+    const words = [...(en ? [en] : []), ...aliases]
+      .join(' ')
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length >= 3)
+    return [...new Set(words)].slice(0, 10)
+  }
+
   const adminEntries = $derived(
     EXERCISE_DICTIONARY.map((e) => ({
       id: e.id,
       name: e.es,
       muscle: e.muscle,
+      en: e.en as string | undefined,
+      aliases: (e.aliases as string[] | undefined) ?? [],
       image: e.image as string | undefined,
       gif: e.gif as string | undefined
     }))
@@ -81,6 +93,8 @@
       return adminEntries.find((e) => e.id === p.entryId) ?? null
     })()
   )
+
+  const pickerRelated = $derived(pickerEntry ? buildTerms(pickerEntry.en, pickerEntry.aliases) : [])
 </script>
 
 <svelte:head><title>Admin Media</title></svelte:head>
@@ -159,6 +173,8 @@
       kind={picker.kind}
       current={picker.kind === 'image' ? pickerEntry.image : pickerEntry.gif}
       accent="var(--accent)"
+      related={pickerRelated}
+      exerciseName={pickerEntry.name}
       onpick={onPick}
     />
   {/if}

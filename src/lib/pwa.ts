@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.18'
-const _VER_DESC = 'Admin media: marcar ejercicios revisados, copiar URL, sin test E2E (tool personal)'
+const _VER_BASE = 'v2.19'
+const _VER_DESC = 'Admin media: sugerencias relevantes al ejercicio en el picker (nombre EN + aliases)'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -83,3 +83,19 @@ export function searchCatalog(kind: CatalogKind, query: string, limit = 50): Cat
     return tokens.every((t) => n.includes(t))
   }).slice(0, limit)
 }
+
+export function rankCatalog(kind: CatalogKind, terms: string[], limit = 50): CatalogEntry[] {
+  const all = readCache(kind)
+  const toks = [...new Set(terms.map((t) => t.toLowerCase()).filter((t) => t.length >= 3))]
+  if (!toks.length) return all.slice(0, limit)
+  const scored = all.map((e) => {
+    const n = e.name.toLowerCase()
+    let score = 0
+    for (const t of toks) if (n.includes(t)) score++
+    return { e, score }
+  })
+  scored.sort((a, b) => b.score - a.score || a.e.name.localeCompare(b.e.name))
+  return [...scored.filter((x) => x.score > 0), ...scored.filter((x) => x.score === 0)]
+    .map((x) => x.e)
+    .slice(0, limit)
+}
