@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation'
   import { ROUTES } from '$lib/routes'
   import { EXERCISE_DICTIONARY } from '$lib/data/exercise-dictionary'
-  import { draftCount, saveDrafts, queueReplace, queueSetAliases, pendingAliasesMap } from '$lib/admin/editor'
+  import { draftCount, saveDrafts, queueReplace, queueSetAliases, queueSetName, pendingAliasesMap, pendingNamesMap } from '$lib/admin/editor'
   import { reviewed, toggleReviewed } from '$lib/admin/reviewed'
   import MediaPicker from '$lib/components/MediaPicker.svelte'
   import AdminCard from '$lib/components/AdminCard.svelte'
@@ -145,9 +145,11 @@
         entry={e}
         reviewed={reviewedSet.has(e.id)}
         pendingAliases={$pendingAliasesMap[e.id]}
+        pendingName={$pendingNamesMap[e.id]}
         onedit={onEdit}
         ontoggle={() => toggleReviewed(e.id)}
         onaliases={(id, list) => queueSetAliases(id, list)}
+        onrename={(id, name) => queueSetName(id, name)}
       />
     {/each}
   </div>

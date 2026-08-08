@@ -6,10 +6,12 @@ export interface PendingDraft { entryId: string; kind: Exclude<LineKind, 'aliase
 
 const drafts = writable<PendingDraft[]>([])
 const pendingAliases = writable<Record<string, string[]>>({})
+const pendingNames = writable<Record<string, string>>({})
 
-export const draftCount = derived([drafts, pendingAliases], ([d, a]) => d.length + Object.keys(a).length)
+export const draftCount = derived([drafts, pendingAliases, pendingNames], ([d, a, n]) => d.length + Object.keys(a).length + Object.keys(n).length)
 
 export const pendingAliasesMap = derived(pendingAliases, (m) => m)
+export const pendingNamesMap = derived(pendingNames, (m) => m)
 
 export function queueReplace(entryId: string, kind: Exclude<LineKind, 'aliases'>, url: string) {
   const trimmed = url?.trim()
@@ -36,17 +38,26 @@ export function queueSetAliases(entryId: string, aliases: string[]) {
   })
 }
 
+export function queueSetName(entryId: string, name: string) {
+  const trimmed = name?.trim()
+  if (!trimmed) return
+  pendingNames.update((m) => ({ ...m, [entryId]: trimmed }))
+}
+
 export function resetDrafts() {
   drafts.set([])
   pendingAliases.set({})
+  pendingNames.set({})
 }
 
 export async function saveDrafts(): Promise<boolean> {
   const media = get(drafts)
   const aliases = get(pendingAliases)
+  const names = get(pendingNames)
   const changes: ChangeRequest[] = [
     ...media.map((d) => ({ entryId: d.entryId, kind: d.kind, url: d.url })),
-    ...Object.entries(aliases).map(([entryId, list]) => ({ entryId, kind: 'aliases' as const, aliases: list }))
+    ...Object.entries(aliases).map(([entryId, list]) => ({ entryId, kind: 'aliases' as const, aliases: list })),
+    ...Object.entries(names).map(([entryId, name]) => ({ entryId, kind: 'name' as const, name }))
   ]
   if (!changes.length) {
     toast.show('No hay cambios pendientes')

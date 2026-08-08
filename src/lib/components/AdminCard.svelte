@@ -16,23 +16,29 @@
     accent = 'var(--accent)',
     reviewed = false,
     pendingAliases,
+    pendingName,
     onedit = () => {},
     ontoggle = () => {},
-    onaliases = () => {}
+    onaliases = () => {},
+    onrename = () => {}
   }: {
     entry: AdminEntry
     accent?: string
     reviewed?: boolean
     pendingAliases?: string[]
+    pendingName?: string
     onedit?: (entryId: string, kind: 'image' | 'gif') => void
     ontoggle?: (entryId: string) => void
     onaliases?: (entryId: string, aliases: string[]) => void
+    onrename?: (entryId: string, name: string) => void
   } = $props()
 
   let brokenImg = $state(false)
   let brokenGif = $state(false)
   let copied = $state<'image' | 'gif' | null>(null)
   let aliasDraft = $state('')
+  let editingName = $state(false)
+  let nameDraft = $state('')
   let copyTimer: ReturnType<typeof setTimeout> | undefined
   $effect(() => {
     brokenImg = false
@@ -41,6 +47,7 @@
   })
 
   const aliases = $derived(pendingAliases ?? entry.aliases ?? [])
+  const effectiveName = $derived(pendingName ?? entry.name)
 
   function copy(kind: 'image' | 'gif', url?: string) {
     if (!url) return
@@ -48,6 +55,21 @@
     copied = kind
     clearTimeout(copyTimer)
     copyTimer = setTimeout(() => (copied = null), 1200)
+  }
+
+  function startEditName() {
+    nameDraft = effectiveName
+    editingName = true
+  }
+
+  function commitName() {
+    const n = nameDraft.trim()
+    if (n && n !== effectiveName) onrename(entry.id, n)
+    editingName = false
+  }
+
+  function cancelName() {
+    editingName = false
   }
 
   function addAlias() {
@@ -112,7 +134,28 @@
     <span class="dot" class:bad={brokenGif}>{brokenGif ? '✕' : '✓'}</span>
   </div>
   <div class="info">
-    <div class="name">{entry.name}</div>
+    <div class="name-row">
+      {#if editingName}
+        <input
+          class="name-input"
+          autofocus
+          value={nameDraft}
+          oninput={(e) => (nameDraft = e.currentTarget.value)}
+          onkeydown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              commitName()
+            } else if (e.key === 'Escape') cancelName()
+          }}
+          onblur={commitName}
+        />
+      {:else}
+        <div class="name" class:pending={pendingName !== undefined}>{effectiveName}</div>
+        <button class="pencil" title="Cambiar nombre" onclick={startEditName}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        </button>
+      {/if}
+    </div>
     {#if entry.en}<div class="en">{entry.en}</div>{/if}
     {#if entry.muscle}<div class="muscle">{entry.muscle}</div>{/if}
     <div class="alias-row">
@@ -158,7 +201,12 @@
   .dot.bad { background: rgba(220,60,60,0.9); }
   .copy-btn { position: absolute; top: 5px; left: 5px; width: 24px; height: 24px; border-radius: 8px; border: none; background: rgba(10,10,10,0.65); color: #fff; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
   .info { flex: 1; min-width: 0; }
+  .name-row { display: flex; align-items: center; gap: 6px; }
   .name { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name.pending { color: var(--accent); }
+  .name-input { flex: 1; min-width: 0; background: rgba(255,255,255,0.06); border: 1px solid var(--accent); border-radius: 7px; color: var(--text); font-family: var(--font-sans); font-weight: 600; font-size: 13px; padding: 2px 8px; outline: none; }
+  .pencil { width: 22px; height: 22px; border-radius: 7px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pencil:hover { color: var(--accent); border-color: var(--accent); }
   .en { font-size: 11px; color: var(--accent); opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .muscle { font-family: var(--font-mono); font-size: 10px; opacity: 0.55; margin-top: 2px; }
   .alias-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }

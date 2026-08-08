@@ -1,11 +1,12 @@
 import { IMG_BASE, EX_GIF_BASE } from '../data/exercise-dictionary'
 
-export type LineKind = 'image' | 'gif' | 'aliases'
+export type LineKind = 'image' | 'gif' | 'aliases' | 'name'
 export interface ChangeRequest {
   entryId: string
   kind: LineKind
   url?: string
   aliases?: string[]
+  name?: string
 }
 
 export function serializedLine(line: string): LineKind | null {
@@ -58,6 +59,33 @@ export function setAliasesLine(entryText: string, aliases: string[]): string {
   }
   lines.push(`    aliases: ${next},`)
   return lines.join('\n')
+}
+
+function unquote(s: string): string {
+  return s.replace(/\\'/g, "'").replace(/\\\\/g, '\\')
+}
+
+export function getCurrentName(entryText: string): string | null {
+  for (const line of entryText.split('\n')) {
+    const m = line.trim().match(/^es\s*:\s*'((?:\\'|[^'])*)'/)
+    if (m) return unquote(m[1])
+  }
+  return null
+}
+
+export function setNameLine(entryText: string, name: string): string {
+  const next = `'${name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+  if (getCurrentName(entryText) === name) return entryText
+  const lines = entryText.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(\s*)es\s*:/)
+    if (m) {
+      const comma = lines[i].trim().endsWith(',') ? ',' : ''
+      lines[i] = `${m[1]}es: ${next}${comma}`
+      return lines.join('\n')
+    }
+  }
+  return entryText
 }
 
 export function fromUrl(url: string): string {
@@ -202,7 +230,9 @@ export function applyFileText(src: string, changes: ChangeRequest[]): { text: st
       const next =
         c.kind === 'aliases'
           ? setAliasesLine(entryText, c.aliases ?? [])
-          : replaceLineInEntry(entryText, c.kind, c.url ?? '')
+          : c.kind === 'name'
+            ? setNameLine(entryText, c.name ?? '')
+            : replaceLineInEntry(entryText, c.kind, c.url ?? '')
       if (next !== entryText) {
         entryText = next
         applied++
