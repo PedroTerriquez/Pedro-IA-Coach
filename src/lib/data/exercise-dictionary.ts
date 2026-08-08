@@ -1417,7 +1417,7 @@ export const EXERCISE_DICTIONARY = [
     es: 'Zancada Inversa con Mancuernas',
     en: 'Dumbbell Reverse Lunge',
     aliases: ['zancada inversa con mancuernas', 'zancada inversa con mancuernas (reverse lunge)', 'reverse lunge', 'dumbbell reverse lunge', 'zancadas inversas (reverse lunge)'],
-    image: _IMG('Dumbbell_Lunge'),
+    image: _IMG('Barbell_Walking_Lunge'),
     gif: _GIF('glutes/barbell-rear-lunge-v-2'),
     muscle: 'Glúteos',
     tips: ['Paso largo hacia atrás. Maximiza la flexión interna de la cadera, induciendo un gran estiramiento bajo tensión en las fibras del glúteo mayor.'],

@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.23'
-const _VER_DESC = 'Admin media: revisados no desaparecen, quedan en gris en la lista'
+const _VER_BASE = 'v2.24'
+const _VER_DESC = 'Admin media: campo de URL manual siempre visible en el picker'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

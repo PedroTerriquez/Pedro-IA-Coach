@@ -24,7 +24,6 @@
   let loading = $state(false)
   let refreshing = $state(false)
   let error = $state('')
-  let showManual = $state(false)
   let manualUrl = $state('')
   let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -77,6 +76,10 @@
 </script>
 
 <div class="picker" data-component="MediaPicker">
+  <div class="manual">
+    <input bind:value={manualUrl} type="url" placeholder="Pegar URL manual… https://…/ejercicio.jpg" />
+    <Button size="sm" {accent} onclick={() => pick(manualUrl)}>Usar esta URL</Button>
+  </div>
   {#if !query.trim() && related.length}
     <div class="related-hint">
       Sugerencias relacionadas con <span class="related-name">{exerciseName || related.join(' ')}</span> — busca más abajo o escribe para filtrar.
@@ -101,17 +104,6 @@
   {#if !entries.length && !loading && !error}
     <div class="picker-empty">Sin resultados</div>
   {/if}
-  <div class="manual-toggle">
-    <button class="manual-btn" type="button" style="color:{accent}" onclick={() => (showManual = !showManual)}>
-      {showManual ? 'Ocultar' : 'Pegar URL manual'}
-    </button>
-  </div>
-  {#if showManual}
-    <div class="manual">
-      <input bind:value={manualUrl} type="url" placeholder="https://…/ejercicio.jpg" />
-      <Button size="sm" {accent} onclick={() => pick(manualUrl)}>Usar esta URL</Button>
-    </div>
-  {/if}
   {#if current}
     <div class="picker-current">Actual: <span class="mono">{current}</span></div>
   {/if}
@@ -129,9 +121,8 @@
   .related-hint { font-size: 11px; color: var(--text); opacity: 0.6; line-height: 1.4; }
   .related-name { font-weight: 600; color: var(--accent); opacity: 1; }
   .picker-current { font-size: 11px; opacity: 0.6; word-break: break-all; }
-  .manual-toggle { text-align: center; }
-  .manual-btn { background: none; border: none; cursor: pointer; font-size: 12px; font-family: var(--font-sans); text-decoration: underline; }
   .manual { display: flex; gap: 8px; }
-  .manual input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--font-mono); font-size: 12px; }
+  .manual input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 0.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--font-mono); font-size: 12px; outline: none; }
+  .manual input:focus { border-color: var(--accent); }
   .mono { font-family: var(--font-mono); }
 </style>
