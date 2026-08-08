@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.19'
-const _VER_DESC = 'Admin media: sugerencias relevantes al ejercicio en el picker (nombre EN + aliases)'
+const _VER_BASE = 'v2.20'
+const _VER_DESC = 'Admin media: checkbox revisado visible, contador y oculta de la lista'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

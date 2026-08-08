@@ -42,7 +42,20 @@
   }
 </script>
 
-<div class="admin-card" data-component="AdminCard" data-entry-id={entry.id}>
+<div class="admin-card" class:reviewed data-component="AdminCard" data-entry-id={entry.id}>
+  <button
+    id={`mark-ok-${entry.id}`}
+    class="check"
+    class:on={reviewed}
+    title={reviewed ? 'Desmarcar revisado' : 'Marcar como revisado'}
+    onclick={() => ontoggle(entry.id)}
+  >
+    {#if reviewed}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    {:else}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    {/if}
+  </button>
   <div class="thumb" data-kind="image">
     {#if entry.image}
       <img class="thumb-img" data-entry={entry.id} data-kind="image" src={entry.image} alt={entry.name}
@@ -82,20 +95,14 @@
   <div class="actions">
     <Button id={`edit-img-${entry.id}`} size="sm" variant="secondary" {accent} onclick={() => onedit(entry.id, 'image')}>IMG</Button>
     <Button id={`edit-gif-${entry.id}`} size="sm" variant="secondary" {accent} onclick={() => onedit(entry.id, 'gif')}>GIF</Button>
-    <Button
-      id={`mark-ok-${entry.id}`}
-      size="sm"
-      variant={reviewed ? 'primary' : 'secondary'}
-      {accent}
-      onclick={() => ontoggle(entry.id)}
-    >
-      {reviewed ? '✓ ok' : 'marcar ok'}
-    </Button>
   </div>
 </div>
 
 <style>
-  .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
+  .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; transition: opacity 0.15s; }
+  .admin-card.reviewed { opacity: 0.45; }
+  .check { width: 34px; height: 34px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.25); background: transparent; color: rgba(255,255,255,0.4); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .check.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
   .thumb { position: relative; width: 112px; height: 112px; border-radius: 12px; overflow: hidden; flex-shrink: 0; background: rgba(255,255,255,0.04); }
   .thumb-img { width: 112px; height: 112px; object-fit: cover; display: block; }
   .none { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 11px; font-family: var(--font-mono); }

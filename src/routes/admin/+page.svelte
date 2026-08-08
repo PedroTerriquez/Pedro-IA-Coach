@@ -104,7 +104,9 @@
     <div>
       <button class="back" onclick={() => goto(ROUTES.you)}>← Tú</button>
       <h1 class="title">Diccionario · Media</h1>
-      <p class="subtitle">{EXERCISE_DICTIONARY.length} ejercicios — revisa y corrige image/gif</p>
+      <p class="subtitle">
+        {adminEntries.length} ejercicios · <strong>{reviewedCount} revisados</strong> · {adminEntries.length - reviewedCount} pendientes
+      </p>
     </div>
     {#if isDev}
       <Button id="save-dict" accent="var(--accent)" onclick={onSave} disabled={saving || count === 0}>
@@ -144,7 +146,10 @@
     </div>
   </div>
 
-  <div class="count">{visibleEntries.length} ejercicios</div>
+  <div class="count">
+    {visibleEntries.length} ejercicios
+    <span class="hint">· marca ✓ el checkbox para ocultarlo de la lista</span>
+  </div>
 
   <div class="list">
     {#each visibleEntries as e}
@@ -194,6 +199,7 @@
   .chip.letter { padding: 5px 9px; min-width: 26px; text-align: center; }
   .chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .count { font-size: 11px; opacity: 0.55; font-family: var(--font-mono); margin-bottom: 8px; }
+  .hint { opacity: 0.7; }
   .list { display: flex; flex-direction: column; gap: 6px; }
   .empty { text-align: center; opacity: 0.5; padding: 40px 0; }
   .picker-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
