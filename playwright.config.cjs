@@ -13,21 +13,12 @@ module.exports = defineConfig({
     viewport: { width: 390, height: 844 },
     browserName: 'chromium',
   },
-  webServer: [
-    {
-      // Plain static servers (e.g. http-server) don't know about SvelteKit's
-      // configured base path (/Pedro-IA-Coach) — only `vite preview` does,
-      // since it reads the same svelte.config.js used to build the app.
-      command: 'npm run build && npm run preview -- --port 8080 --strictPort',
-      url: 'http://localhost:8080/Pedro-IA-Coach',
-      reuseExistingServer: !process.env.CI,
-    },
-    {
-      // Dev server on a separate port: the media admin's save button and the
-      // /__admin/dictionary-save plugin only exist when import.meta.env.DEV.
-      command: 'npm run dev -- --port 5174 --strictPort',
-      url: 'http://localhost:5174/Pedro-IA-Coach/admin',
-      reuseExistingServer: !process.env.CI,
-    },
-  ],
+  webServer: {
+    // Plain static servers (e.g. http-server) don't know about SvelteKit's
+    // configured base path (/Pedro-IA-Coach) — only `vite preview` does,
+    // since it reads the same svelte.config.js used to build the app.
+    command: 'npm run build && npm run preview -- --port 8080 --strictPort',
+    url: 'http://localhost:8080/Pedro-IA-Coach',
+    reuseExistingServer: !process.env.CI,
+  },
 })

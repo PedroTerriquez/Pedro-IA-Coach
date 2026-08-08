@@ -4,6 +4,7 @@
   import { EXERCISE_DICTIONARY } from '$lib/data/exercise-dictionary'
   import { draftCount, saveDrafts } from '$lib/admin/editor'
   import { queueReplace } from '$lib/admin/editor'
+  import { reviewed, toggleReviewed } from '$lib/admin/reviewed'
   import MediaPicker from '$lib/components/MediaPicker.svelte'
   import AdminCard from '$lib/components/AdminCard.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
@@ -16,6 +17,7 @@
   let query = $state('')
   let muscle = $state('')
   let letter = $state('A')
+  let showReviewed = $state(false)
   let picker = $state<{ entryId: string; kind: 'image' | 'gif' } | null>(null)
   let saving = $state(false)
 
@@ -38,8 +40,13 @@
     [...new Set(adminEntries.map(firstLetter))].filter((c) => /[A-Z]/.test(c)).sort()
   )
 
+  const reviewedSet = $derived(new Set($reviewed))
+
+  const reviewedCount = $derived($reviewed.length)
+
   const visibleEntries = $derived(
     adminEntries.filter((e) => {
+      if (!showReviewed && reviewedSet.has(e.id)) return false
       if (muscle && e.muscle !== muscle) return false
       if (letter && firstLetter(e) !== letter) return false
       if (!query.trim()) return true
@@ -111,13 +118,29 @@
         <button class:active={muscle === m} class="chip" onclick={() => (muscle = m)}>{m}</button>
       {/each}
     </div>
+    <div class="chips">
+      <button
+        id="toggle-reviewed"
+        class="chip"
+        class:active={showReviewed}
+        onclick={() => (showReviewed = !showReviewed)}
+      >
+        {showReviewed ? 'Ocultar revisados' : `Ver revisados (${reviewedCount})`}
+      </button>
+    </div>
   </div>
 
   <div class="count">{visibleEntries.length} ejercicios</div>
 
   <div class="list">
     {#each visibleEntries as e}
-      <AdminCard accent="var(--accent)" entry={e} onedit={onEdit} />
+      <AdminCard
+        accent="var(--accent)"
+        entry={e}
+        reviewed={reviewedSet.has(e.id)}
+        onedit={onEdit}
+        ontoggle={() => toggleReviewed(e.id)}
+      />
     {/each}
   </div>
 

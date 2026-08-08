@@ -187,7 +187,7 @@ Sets, reps, rest LIVE on the program exercise instance, NOT on the exercise defi
 - **Flow**: edit-img/edit-gif → picker with GitHub tree catalogs (free-exercise-db images + ExerciseGymGifsDB gifs) cached in localStorage 24h (`admin_img_catalog`/`admin_gif_catalog`), plus a manual URL field → drafts queue in memory → "Guardar (n)" applies all
 - **Write path**: `src/lib/admin/media-file.ts` (pure: `findEntryRanges`, `applyFileText`, `fromUrl`/`toUrl`) serializes URLs back to `_IMG('<dir>')`/`_GIF('<path>')`; `mediaEditorPlugin()` in `vite.config.ts` serves `POST /__admin/dictionary-save` (dev-only) and rewrites `src/lib/data/exercise-dictionary.ts` on disk
 - **Read-only in prod**: save button and plugin exist only when `import.meta.env.DEV` — preview/prod builds show "solo lectura"
-- **E2E caveat**: the suite's prod preview server can't exercise the save flow, so `playwright.config.cjs` starts a SECOND webServer (`npm run dev` on :5174, dev-only features) and the admin test runs against it, then reverts the file byte-exactly
+- **Not covered by E2E**: the suite runs against the prod preview build, where the dev-only save flow can't run; the admin save path is verified manually with curl in dev instead
 
 ## Tests & Verification
 - **E2E**: `npx playwright test` — runs `tests/big.spec.cjs` (the single test file, with `EXPECTED_STEPS` guardrail). New scenarios = new `describe` block with exactly one `test()`. Never add a second test file; never remove steps from the guardrail.

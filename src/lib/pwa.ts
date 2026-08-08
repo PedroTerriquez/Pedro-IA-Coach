@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.17'
-const _VER_DESC = 'Admin media: lista compacta, paginación por letra, edición image/gif del diccionario'
+const _VER_BASE = 'v2.18'
+const _VER_DESC = 'Admin media: marcar ejercicios revisados, copiar URL, sin test E2E (tool personal)'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
