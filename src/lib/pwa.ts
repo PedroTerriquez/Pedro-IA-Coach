@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.21'
-const _VER_DESC = 'Admin media: editar alias inline por ejercicio y guardar en diccionario'
+const _VER_BASE = 'v2.22'
+const _VER_DESC = 'Admin media: click en miniatura copia la URL de image o gif'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

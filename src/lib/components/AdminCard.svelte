@@ -79,11 +79,11 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
     {/if}
   </button>
-  <div class="thumb" data-kind="image">
+  <div class="thumb" data-kind="image" role="button" title="Copiar URL de imagen" onclick={() => copy('image', entry.image)}>
     {#if entry.image}
       <img class="thumb-img" data-entry={entry.id} data-kind="image" src={entry.image} alt={entry.name}
         loading="lazy" onerror={() => (brokenImg = true)} />
-      <button class="copy-btn" title="Copiar URL" onclick={() => copy('image', entry.image)}>
+      <button class="copy-btn" title="Copiar URL" onclick={(e) => { e.stopPropagation(); copy('image', entry.image) }}>
         {#if copied === 'image'}
           <span>✓</span>
         {:else}
@@ -95,11 +95,11 @@
     {/if}
     <span class="dot" class:bad={brokenImg}>{brokenImg ? '✕' : '✓'}</span>
   </div>
-  <div class="thumb" data-kind="gif">
+  <div class="thumb" data-kind="gif" role="button" title="Copiar URL de gif" onclick={() => copy('gif', entry.gif)}>
     {#if entry.gif}
       <img class="thumb-img" data-entry={entry.id} data-kind="gif" src={entry.gif} alt={entry.name}
         loading="lazy" onerror={() => (brokenGif = true)} />
-      <button class="copy-btn" title="Copiar URL" onclick={() => copy('gif', entry.gif)}>
+      <button class="copy-btn" title="Copiar URL" onclick={(e) => { e.stopPropagation(); copy('gif', entry.gif) }}>
         {#if copied === 'gif'}
           <span>✓</span>
         {:else}
@@ -149,7 +149,8 @@
   .admin-card.reviewed { opacity: 0.45; }
   .check { width: 34px; height: 34px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.25); background: transparent; color: rgba(255,255,255,0.4); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .check.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-  .thumb { position: relative; width: 112px; height: 112px; border-radius: 12px; overflow: hidden; flex-shrink: 0; background: rgba(255,255,255,0.04); }
+  .thumb { position: relative; width: 112px; height: 112px; border-radius: 12px; overflow: hidden; flex-shrink: 0; background: rgba(255,255,255,0.04); cursor: pointer; }
+  .thumb:hover .thumb-img { filter: brightness(0.82); }
   .thumb-img { width: 112px; height: 112px; object-fit: cover; display: block; }
   .none { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 11px; font-family: var(--font-mono); }
   .dot { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; border-radius: 50%; background: rgba(36,150,70,0.85); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
