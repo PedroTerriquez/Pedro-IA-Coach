@@ -57,6 +57,12 @@ function mediaEditorPlugin(): Plugin {
           }
         })
       })
+    },
+    handleHotUpdate(ctx) {
+      if (ctx.file === path.resolve(process.cwd(), DICTIONARY_FILE)) {
+        // The admin page re-imports the dictionary after saving — suppress the full reload.
+        return []
+      }
     }
   }
 }

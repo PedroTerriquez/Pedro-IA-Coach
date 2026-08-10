@@ -1,4 +1,4 @@
-import { IMG_BASE, EX_GIF_BASE } from '../data/exercise-dictionary'
+import { IMG_BASE, EX_GIF_BASE } from '../data/media-bases'
 
 export type LineKind = 'image' | 'gif' | 'aliases' | 'name'
 export interface ChangeRequest {
@@ -57,7 +57,12 @@ export function setAliasesLine(entryText: string, aliases: string[]): string {
       return lines.join('\n')
     }
   }
-  lines.push(`    aliases: ${next},`)
+  const closeIdx = lines.findIndex((l) => l.trim().replace(/,$/, '') === '}')
+  if (closeIdx === -1) {
+    lines.push(`    aliases: ${next},`)
+  } else {
+    lines.splice(closeIdx, 0, `    aliases: ${next},`)
+  }
   return lines.join('\n')
 }
 
@@ -88,25 +93,47 @@ export function setNameLine(entryText: string, name: string): string {
   return entryText
 }
 
+const IMG_ALT_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/refs/heads/main/exercises/'
+const GIF_ALT_BASE = 'https://raw.githubusercontent.com/JahelCuadrado/ExerciseGymGifsDB/refs/tags/v1.1.0/'
+
 export function fromUrl(url: string): string {
   const s = url.trim()
-  if (s.startsWith(IMG_BASE)) {
-    const dir = s.slice(IMG_BASE.length)
-    if (dir.endsWith('/0.jpg')) return `_IMG('${dir.slice(0, -6)}')`
-    return `'${s}'`
+  const imgDir = imgDirFromUrl(s)
+  if (imgDir !== null) {
+    const suffix = s.endsWith('/1.jpg') ? ', 1' : ''
+    return `_IMG('${imgDir}'${suffix})`
   }
-  if (s.startsWith(EX_GIF_BASE)) {
-    const path = s.slice(EX_GIF_BASE.length)
-    if (path.endsWith('.gif')) return `_GIF('${path.slice(0, -4)}')`
-    return `'${s}'`
-  }
+  const gifPath = gifPathFromUrl(s)
+  if (gifPath !== null) return `_GIF('${gifPath}')`
   return `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+}
+
+function imgDirFromUrl(s: string): string | null {
+  for (const pre of [IMG_BASE, IMG_ALT_BASE]) {
+    if (!s.startsWith(pre)) continue
+    const m = s.slice(pre.length).match(/^([^/]+)\/(\d)\.jpg$/)
+    if (m) return m[1]
+  }
+  return null
+}
+
+function gifPathFromUrl(s: string): string | null {
+  if (s.startsWith(EX_GIF_BASE)) {
+    const rest = s.slice(EX_GIF_BASE.length)
+    if (rest.endsWith('.gif')) return rest.slice(0, -4)
+  }
+  if (s.startsWith(GIF_ALT_BASE)) {
+    const rest = s.slice(GIF_ALT_BASE.length)
+    if (rest.endsWith('.gif')) return rest.slice(0, -4)
+  }
+  if (!s.includes('://') && s.endsWith('.gif')) return s.slice(0, -4)
+  return null
 }
 
 export function toUrl(expression: string): string {
   const e = expression.trim()
-  const img = e.match(/^_IMG\('([^']+)'\)$/)
-  if (img) return IMG_BASE + img[1] + '/0.jpg'
+  const img = e.match(/^_IMG\('([^']+)'(?:\s*,\s*(\d+))?\)$/)
+  if (img) return IMG_BASE + img[1] + '/' + (img[2] ?? '0') + '.jpg'
   const gif = e.match(/^_GIF\('([^']+)'\)$/)
   if (gif) return EX_GIF_BASE + gif[1] + '.gif'
   if (e.startsWith("'") && e.endsWith("'") && e.length >= 2) return e.slice(1, -1).replace(/\\'/g, "'").replace(/\\\\/g, '\\')
@@ -141,7 +168,14 @@ export function replaceLineInEntry(entryText: string, kind: LineKind, url: strin
       out.push(line)
     }
   }
-  if (!replaced) out.push(`    ${kind}: ${fromUrl(trimmed)}`)
+  if (!replaced) {
+    const closeIdx = out.findIndex((l) => l.trim().replace(/,$/, '') === '}')
+    if (closeIdx === -1) {
+      out.push(`    ${kind}: ${fromUrl(trimmed)},`)
+    } else {
+      out.splice(closeIdx, 0, `    ${kind}: ${fromUrl(trimmed)},`)
+    }
+  }
   return out.join('\n')
 }
 

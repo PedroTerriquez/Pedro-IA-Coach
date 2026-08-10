@@ -13,6 +13,14 @@ export const draftCount = derived([drafts, pendingAliases, pendingNames], ([d, a
 export const pendingAliasesMap = derived(pendingAliases, (m) => m)
 export const pendingNamesMap = derived(pendingNames, (m) => m)
 
+export const pendingMediaMap = derived(drafts, (d) => {
+  const m: Record<string, { image?: string; gif?: string }> = {}
+  for (const item of d) {
+    m[item.entryId] = { ...(m[item.entryId] || {}), [item.kind]: item.url }
+  }
+  return m
+})
+
 export function queueReplace(entryId: string, kind: Exclude<LineKind, 'aliases'>, url: string) {
   const trimmed = url?.trim()
   if (!trimmed) {

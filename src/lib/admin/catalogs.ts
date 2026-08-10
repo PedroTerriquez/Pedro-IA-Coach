@@ -3,8 +3,8 @@ import { IMG_BASE, EX_GIF_BASE } from '../data/exercise-dictionary'
 export type CatalogKind = 'image' | 'gif'
 export interface CatalogEntry { url: string; name: string }
 
-const IMG_CATALOG_KEY = 'admin_img_catalog'
-const GIF_CATALOG_KEY = 'admin_gif_catalog'
+const IMG_CATALOG_KEY = 'admin_img_catalog_v2'
+const GIF_CATALOG_KEY = 'admin_gif_catalog_v2'
 const CATALOG_TTL = 24 * 60 * 60 * 1000
 
 interface CatalogCache { entries: CatalogEntry[]; fetchedAt: number }
@@ -59,9 +59,9 @@ export async function fetchCatalog(kind: CatalogKind): Promise<CatalogEntry[]> {
     const p: string = node.path
     if (!p.startsWith(r.sub)) continue
     if (kind === 'image') {
-      if (!p.endsWith('/0.jpg')) continue
-      const dir = p.slice(r.sub.length, p.length - '/0.jpg'.length)
-      entries.push({ url: base + dir + '/0.jpg', name: dir.replace(/-/g, ' ') })
+      if (!p.endsWith('/1.jpg')) continue
+      const dir = p.slice(r.sub.length, p.length - '/1.jpg'.length)
+      entries.push({ url: base + dir + '/1.jpg', name: dir.replace(/-/g, ' ') })
     } else {
       if (!p.endsWith('.gif')) continue
       const name = p.slice(0, p.length - '.gif'.length).split('/').pop() ?? p
@@ -81,7 +81,7 @@ export function searchCatalog(kind: CatalogKind, query: string, limit = 50): Cat
   return all.filter((e) => {
     const n = e.name.toLowerCase()
     return tokens.every((t) => n.includes(t))
-  }).slice(0, limit)
+  })
 }
 
 export function rankCatalog(kind: CatalogKind, terms: string[], limit = 50): CatalogEntry[] {

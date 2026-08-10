@@ -86,7 +86,7 @@
     </div>
   {/if}
   <div class="picker-actions">
-    <SearchInput value={query} oninput={onInput} placeholder="Buscar ejercicio…" />
+    <SearchInput value={query} oninput={(v) => { query = v; onInput() }} placeholder="Buscar ejercicio…" />
     <Button size="sm" variant="secondary" onclick={forceRefresh} disabled={refreshing}>
       {refreshing ? 'Actualizando…' : 'Actualizar catálogos'}
     </Button>
