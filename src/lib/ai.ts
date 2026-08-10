@@ -69,6 +69,7 @@ async function buildProgramFromAIResponse(data: any, opts?: { noFuzzy?: boolean;
     id: await generateId(),
     name: data.program_name || 'Programa IA',
     weeks,
+    createdAt: new Date().toISOString(),
   }
   return program
 }
@@ -119,7 +120,7 @@ export interface ProgramOverrides {
   limitations?: string[]
 }
 
-export async function generateProgramWithAI(overrides: ProgramOverrides = {}): Promise<Program> {
+export async function generateProgramWithAI(overrides: ProgramOverrides = {}, onProgress?: (current: number, total: number, name: string) => void): Promise<Program> {
   const settings = await Storage.getSettings()
   const language = LANGUAGE
   const userProfile = buildUserProfile(settings)
@@ -144,7 +145,7 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}): P
 
   const programName = data.program_name || 'Generado con IA'
 
-  const program = await buildProgramFromAIResponse(data, { noFuzzy: true })
+  const program = await buildProgramFromAIResponse(data, { noFuzzy: true, onProgress })
   program.name = programName
 
   await Storage.saveProgram(program)
@@ -157,7 +158,7 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}): P
   return program
 }
 
-export async function programCoach(text: string, program: Program): Promise<{ program?: Program; message?: string; _provider?: string }> {
+export async function programCoach(text: string, program: Program, onProgress?: (current: number, total: number, name: string) => void): Promise<{ program?: Program; message?: string; _provider?: string }> {
   const exercises = await Storage.getExercises()
   const exerciseMap = new Map(exercises.map(e => [e.id, e]))
 
@@ -200,7 +201,7 @@ export async function programCoach(text: string, program: Program): Promise<{ pr
   const data = await res.json()
 
   if (data.program && data.program.weeks && data.program.weeks.length) {
-    const newProgram = await buildProgramFromAIResponse(data.program, { noFuzzy: false })
+    const newProgram = await buildProgramFromAIResponse(data.program, { noFuzzy: false, onProgress })
 
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')

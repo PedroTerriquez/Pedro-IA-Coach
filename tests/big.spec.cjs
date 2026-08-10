@@ -536,7 +536,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // ── Step 9: Streak Celebration ──
   const streakOverlay = page.locator('#streak-overlay')
   await expect(streakOverlay).toBeVisible({ timeout: 5000 })
-  await expect(streakOverlay.locator('text=Días consecutivos')).toBeVisible()
+  await expect(streakOverlay.locator('text=Semanas consecutivas')).toBeVisible()
   // Wait for auto-dismiss
   await expect(streakOverlay).not.toBeVisible({ timeout: 5000 })
 
@@ -987,20 +987,22 @@ test.describe('You — Datos tab', () => {
     await page.getByRole('button', { name: 'IA Powered' }).click()
     await page.waitForTimeout(300)
 
-    // AI import
+    // AI import — now redirects to the Manual sub-tab, so the new program card appears
     await page.locator('.ai-textarea-wrap textarea').fill('Lunes: Press banca 4x8')
     await page.getByRole('button', { name: 'Importar con IA' }).click()
     await page.waitForTimeout(600)
-    await expect(page.locator('#ai-status')).toContainText('Importado "Programa IA"')
+    await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa IA' })).toBeVisible({ timeout: 5000 })
 
-    // Switch to Datos tab for dictionary migration + JSON import/export
-    await page.getByRole('button', { name: 'Datos' }).click()
+    // Dictionary migration now lives at the top of the Ejercicios tab
+    await page.getByRole('button', { name: 'Ejercicios' }).click()
     await page.waitForTimeout(300)
-
-    // Dictionary migration
-    await page.getByRole('button', { name: 'Aplicar' }).click()
+    await page.getByRole('button', { name: 'Completar' }).click()
     await page.waitForTimeout(500)
     await expect(page.locator('#dict-migrate-status')).toContainText('Actualizados')
+
+    // Switch to Datos tab for JSON import/export
+    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.waitForTimeout(300)
 
     // Export exercises JSON
     const [download1] = await Promise.all([
@@ -1039,7 +1041,7 @@ test.describe('You — Datos tab', () => {
     }
   })
 
-  // Merged from the former tests/dict-normalize.spec.cjs — same Datos tab,
+  // Merged from the former tests/dict-normalize.spec.cjs — same Ejercicios tab,
   // continuing the route with an exercise the dictionary can't resolve.
   test('shows ver más link + overlay for exercises with no dictionary match', async ({ page }) => {
     const exercises = [
@@ -1054,11 +1056,11 @@ test.describe('You — Datos tab', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Datos' }).click()
+    await page.getByRole('button', { name: 'Ejercicios' }).click()
     await page.waitForTimeout(300)
 
-    // "Forzar" re-runs the migration even if already applied this session
-    const forceBtn = page.getByRole('button', { name: 'Forzar' })
+    // "Sobrescribir" re-runs the migration even if already applied this session
+    const forceBtn = page.getByRole('button', { name: 'Sobrescribir' })
     await expect(forceBtn).toBeVisible()
     await forceBtn.click()
 

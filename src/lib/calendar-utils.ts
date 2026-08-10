@@ -1,4 +1,5 @@
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+import { computeStreakWeeks, computeBestStreakWeeks } from '$lib/streak'
 
 export function calStripTime(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -79,62 +80,14 @@ export function makeDayStatusFn(
   }
 }
 
-export function computeWeekStreak(today: Date, logsByDate: Map<number, any[]>): number {
-  const t = calStripTime(today)
-  const thisMonday = calMonday(t)
-  let count = 0
-
-  for (let w = 0; w < 200; w++) {
-    const weekStart = calAddDays(thisMonday, -w * 7)
-    const weekEnd = calAddDays(weekStart, 6)
-
-    if (weekStart > t) continue
-
-    const effectiveEnd = weekEnd > t ? t : weekEnd
-
-    let total = 0
-    for (let d = calStripTime(weekStart); d <= effectiveEnd; d = calAddDays(d, 1)) {
-      const logs = logsByDate.get(calKey(d)) || []
-      if (logs.some((l: any) => l.weight > 0 || l.exerciseId === '__day__')) total++
-    }
-
-    if (total >= 4) {
-      count++
-    } else if (weekEnd <= t) {
-      break
-    }
-  }
-
-  return count
+export function computeWeekStreak(today: Date, logsByDate: Map<number, any[]>, daysPerWeek = 4): number {
+  const logs: any[] = []
+  for (const group of logsByDate.values()) logs.push(...group)
+  return computeStreakWeeks(logs, daysPerWeek, toLocalDateStr(today))
 }
 
-export function computeBestWeekStreak(startDate: Date, today: Date, logsByDate: Map<number, any[]>): number {
-  const t = calStripTime(today)
-  const s = calStripTime(startDate)
-  const startMonday = calMonday(s)
-  const thisMonday = calMonday(t)
-  let best = 0, cur = 0
-
-  for (let w = 0; ; w++) {
-    const weekStart = calAddDays(startMonday, w * 7)
-    if (weekStart > thisMonday) break
-
-    const weekEnd = calAddDays(weekStart, 6)
-    const effectiveEnd = weekEnd > t ? t : weekEnd
-
-    let total = 0
-    for (let d = weekStart; d <= effectiveEnd; d = calAddDays(d, 1)) {
-      const logs = logsByDate.get(calKey(d)) || []
-      if (logs.some((l: any) => l.weight > 0 || l.exerciseId === '__day__')) total++
-    }
-
-    if (total >= 4) {
-      cur++
-      best = Math.max(best, cur)
-    } else if (weekEnd <= t) {
-      cur = 0
-    }
-  }
-
-  return best
+export function computeBestWeekStreak(today: Date, logsByDate: Map<number, any[]>, daysPerWeek = 4): number {
+  const logs: any[] = []
+  for (const group of logsByDate.values()) logs.push(...group)
+  return computeBestStreakWeeks(logs, daysPerWeek, toLocalDateStr(today))
 }

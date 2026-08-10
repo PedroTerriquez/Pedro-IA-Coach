@@ -2,7 +2,9 @@
   import { PUSH_SERVER_URL } from '$lib/config'
   import { onMount } from 'svelte'
   import { toast } from '$lib/stores/ui'
-  import { getAllLogs, getSettings, saveSettings } from '$lib/storage'
+  import { getAllLogs, getSettings, getPrograms, saveSettings } from '$lib/storage'
+  import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
+  import { toLocalDateStr } from '$lib/calendar-utils'
   import FriendCard from '$lib/components/FriendCard.svelte'
   import SearchResults from '$lib/components/SearchResults.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
@@ -22,25 +24,6 @@
   let myStreak = $state(0)
   let exercisedToday = $state(false)
 
-  function getPreviousDate(dateStr: string): string {
-    const d = new Date(dateStr + 'T12:00:00')
-    d.setDate(d.getDate() - 1)
-    return d.toISOString().slice(0, 10)
-  }
-
-  function computeStreak(allLogs: any[]): number {
-    const dates = [...new Set(allLogs.filter(l => l.weight > 0).map(l => l.date))]
-    dates.sort().reverse()
-    let streak = 0
-    const today = new Date().toISOString().slice(0, 10)
-    let expected = today
-    for (const d of dates) {
-      if (d === expected) { streak++; expected = getPreviousDate(expected) }
-      else break
-    }
-    return streak
-  }
-
   onMount(async () => {
     const s = await getSettings()
     username = s.username || ''
@@ -55,8 +38,11 @@
   async function loadFriends() {
     loading = true
     const allLogs = await getAllLogs()
-    myStreak = computeStreak(allLogs)
-    const today = new Date().toISOString().slice(0, 10)
+    const [s, progs] = await Promise.all([getSettings(), getPrograms()])
+    const activeProg = progs.find(p => p.id === s.activeProgramId)
+    const daysPerWeek = trainingDaysPerWeek(activeProg, s.currentWeekIdx || 0)
+    const today = toLocalDateStr(new Date())
+    myStreak = computeStreakWeeks(allLogs, daysPerWeek, today)
     exercisedToday = allLogs.some(l => l.date === today && l.weight > 0)
 
     try {
@@ -187,7 +173,7 @@
       <div class="friends-header">👥 Amigos</div>
     </div>
     <div class="friends-my-streak">
-      🔥 Tu racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'día' : 'días'} {exercisedToday ? '· Hoy ✅' : ''}
+      🔥 Tu racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'semana' : 'semanas'} {exercisedToday ? '· Hoy ✅' : ''}
     </div>
     <div class="friends-list" id="friends-list">
       {#if loading}

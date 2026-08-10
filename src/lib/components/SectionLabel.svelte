@@ -15,7 +15,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 20px;
+    padding: 0 10px;
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 1.6px;

@@ -8,9 +8,6 @@
   import { generateId, getAll, put } from '$lib/db'
   import SectionLabel from '$lib/components/SectionLabel.svelte'
   import Icon from '$lib/components/Icon.svelte'
-  import ActionRow from '$lib/components/ActionRow.svelte'
-  import { goto } from '$app/navigation'
-  import { ROUTES } from '$lib/routes'
 
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
@@ -24,13 +21,14 @@
   import ProgramEditor from '$lib/components/ProgramEditor.svelte'
   import ProgramEditorIACard from '$lib/components/ProgramEditorIACard.svelte'
   import ExerciseListItem from '$lib/components/ExerciseListItem.svelte'
-  import MaintenanceCard from '$lib/components/MaintenanceCard.svelte'
+  import NormalizeCard from '$lib/components/NormalizeCard.svelte'
   import NewExerciseForm from '$lib/components/NewExerciseForm.svelte'
   import ProgramCreateForm from '$lib/components/ProgramCreateForm.svelte'
   import Button from '$lib/components/Button.svelte'
   import TextArea from '$lib/components/TextArea.svelte'
   import DataImportSection from '$lib/components/DataImportSection.svelte'
   import DataExportSection from '$lib/components/DataExportSection.svelte'
+  import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -96,26 +94,12 @@
     if (!loaded || allLogs.length === 0) return { streak: 0, totalWorkouts: 0, weeks: 0, distinctExercises: 0 }
     const dates = [...new Set(allLogs.map(l => l.date))].sort()
     const distinctIds = new Set(allLogs.map(l => l.exerciseId))
-    let streakCount = 0
     const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
-    let checkDate = new Date(today)
-    for (let i = dates.length - 1; i >= 0; i--) {
-      const expected = checkDate.toISOString().slice(0, 10)
-      if (dates[i] === expected) {
-        streakCount++
-        checkDate.setDate(checkDate.getDate() - 1)
-      } else if (dates[i] < expected) {
-        if (i === dates.length - 1 && dates[i] === todayStr) {
-          checkDate.setDate(checkDate.getDate() - 1)
-          continue
-        }
-        break
-      }
-    }
+    const activeProgram = programs.find(p => p.id === $settings.activeProgramId)
+    const streak = computeStreakWeeks(allLogs, trainingDaysPerWeek(activeProgram, $settings.currentWeekIdx || 0), getToday())
     const firstDate = new Date(dates[0])
     const weeksDiff = Math.max(1, Math.floor((today.getTime() - firstDate.getTime()) / (7 * 86400000)))
-    return { streak: streakCount, totalWorkouts: dates.length, weeks: weeksDiff, distinctExercises: distinctIds.size }
+    return { streak, totalWorkouts: dates.length, weeks: weeksDiff, distinctExercises: distinctIds.size }
   })
 
   let filteredExercises = $derived(
@@ -228,7 +212,8 @@
             { name: 'Día 2', subtitle: '', duration: 60, exercises: [] },
             { name: 'Día 3', subtitle: '', duration: 60, exercises: [] }
           ]
-        }]
+        }],
+        createdAt: new Date().toISOString()
       }
       await Storage.saveProgram(program)
       newProgramName = ''
@@ -250,7 +235,8 @@
     const dup: Program = {
       id: await generateId(),
       name: p.name + ' (copia)',
-      weeks: JSON.parse(JSON.stringify(p.weeks))
+      weeks: JSON.parse(JSON.stringify(p.weeks)),
+      createdAt: new Date().toISOString()
     }
     await Storage.saveProgram(dup)
     toast.show('Programa duplicado')
@@ -278,12 +264,18 @@
     if (!text) { coachStatus = '⚠️ Escribe tu pregunta o petición'; return }
     const activeProgram = programs.find(p => p.id === $settings.activeProgramId)
     if (!activeProgram) { coachStatus = '⚠️ No hay un programa activo'; return }
-    coachStatus = '⏳ Consultando al coach…'
+    coachStatus = '⏳ Conectando con la IA…'
     coachResponseVisible = false
+    let progressStarted = false
+    const waitTimer = setTimeout(() => { if (!progressStarted) coachStatus = '⏳ Esperando la IA…' }, 3000)
     try {
-      const result = await programCoach(text, activeProgram)
+      const result = await programCoach(text, activeProgram, (cur, total) => {
+        progressStarted = true
+        coachStatus = `⚡ Generando ejercicios ${cur}/${total}`
+      })
       if (result.program) {
         coachStatus = `✅ Nuevo programa "${result.program.name}" creado y activado`
+        programSubTab = 'manual'
         refresh()
       } else {
         coachResponseText = result.message || 'Listo.'
@@ -294,12 +286,15 @@
     } catch (err: any) {
       coachStatus = `❌ ${err.message}`
     }
+    clearTimeout(waitTimer)
     coachInput = ''
   }
 
   async function submitGenerate() {
     generatingProgram = true
-    generateStatus = '⏳ Generando programa…'
+    generateStatus = '⏳ Conectando con la IA…'
+    let progressStarted = false
+    const waitTimer = setTimeout(() => { if (generatingProgram && !progressStarted) generateStatus = '⏳ Esperando la IA…' }, 3000)
     try {
       const overrides: ProgramOverrides = {}
       if (generateDaysPerWeek) overrides.daysPerWeek = generateDaysPerWeek
@@ -307,7 +302,10 @@
       if (generateFocus.length) overrides.focus = generateFocus
       if (generateLimitations.length) overrides.limitations = generateLimitations
 
-      const program = await generateProgramWithAI(overrides)
+      const program = await generateProgramWithAI(overrides, (cur, total) => {
+        progressStarted = true
+        generateStatus = `⚡ Generando ejercicios ${cur}/${total}`
+      })
       generateStatus = `✅ "${program.name}" generado con ${program.weeks.length} semana(s)`
       programSubTab = 'manual'
       refresh()
@@ -315,6 +313,7 @@
       generateStatus = `❌ ${err.message}`
     } finally {
       generatingProgram = false
+      clearTimeout(waitTimer)
     }
   }
 
@@ -392,16 +391,23 @@
     const text = aiInput.trim()
     if (!text) { aiStatus = '⚠️ Pega tu rutina primero'; return }
     importingAI = true
-    aiStatus = '⏳ Procesando…'
+    aiStatus = '⏳ Conectando con la IA…'
+    let progressStarted = false
+    const waitTimer = setTimeout(() => { if (importingAI && !progressStarted) aiStatus = '⏳ Esperando la IA…' }, 3000)
     try {
-      const program = await importWithAI(text)
+      const program = await importWithAI(text, (cur, total) => {
+        progressStarted = true
+        aiStatus = `⚡ Generando ejercicios ${cur}/${total}`
+      })
       aiStatus = `✅ Importado "${program.name}" con ${program.weeks.length} semana(s)`
       aiInput = ''
+      programSubTab = 'manual'
       refresh()
     } catch (err: any) {
       aiStatus = `❌ ${err.message}`
     } finally {
       importingAI = false
+      clearTimeout(waitTimer)
     }
   }
 
@@ -487,13 +493,13 @@
   }
 
   async function runDictMigration(force: boolean) {
-    dictMigrateStatus = '⏳ Aplicando…'
+    dictMigrateStatus = '⏳ Corrigiendo ejercicios…'
     try {
       const result = await Storage.migrateExercisesToDictionary({ force })
       if (result.dictMissing) {
-        dictMigrateStatus = '❌ Diccionario no cargado'
+        dictMigrateStatus = '❌ No se pudo cargar el diccionario'
       } else if (result.alreadyDone) {
-        dictMigrateStatus = '⚠️ Ya aplicado — usa Forzar para re-ejecutar'
+        dictMigrateStatus = '⚠️ Ya aplicado. Usa Forzar para re-ejecutar.'
       } else {
         dictMigrateStatus = `✅ Actualizados ${result.migrated} · fusionados ${result.merged} · sin match ${result.skipped}`
         dictSkippedNames = result.skippedNames || []
@@ -575,7 +581,7 @@
       {#if loaded}
         <div class="section-label-wrap"><SectionLabel {accent}>Estadísticas</SectionLabel></div>
           <StatsGrid columns={4} variant="card">
-            <StatBlock value={stats.streak} label="Racha" size="md" />
+            <StatBlock value={stats.streak} label="Racha" unit="sem" size="md" />
             <StatBlock value={stats.totalWorkouts} label="Entrenos" size="md" />
             <StatBlock value={stats.weeks} label="Semanas" size="md" />
             <StatBlock value={stats.distinctExercises} label="Ejercicios" size="md" />
@@ -610,6 +616,7 @@
                 program={p}
                 isActive={$settings.activeProgramId === p.id}
                 {accent}
+                lang={$settings.language || 'es'}
                 totalExercises={getTotalExercises(p)}
                 onactivate={activateProgram}
                 onedit={openEditor}
@@ -696,6 +703,17 @@
       {/if}
 
     {:else if activeTab === 'ejercicios'}
+      <div class="section-pad-sm">
+        <NormalizeCard
+          {accent}
+          migrateStatus={dictMigrateStatus}
+          skippedNames={dictSkippedNames}
+          onmigrate={() => runDictMigration(false)}
+          onforce={() => runDictMigration(true)}
+          onshowskipped={() => showSkippedOverlay = true}
+        />
+      </div>
+
       <div class="ex-header">
         <div id="ex-count" class="ex-count">{exercises.length} ejercicios</div>
         <Button variant="primary" {accent} onclick={() => showNewExercise = !showNewExercise}>+ Nuevo</Button>
@@ -763,24 +781,6 @@
           onlogsexport={onLogsExport}
         />
       </div>
-
-      <div class="section-label-wrap"><SectionLabel {accent}>Mantenimiento</SectionLabel></div>
-      <MaintenanceCard
-        {accent}
-        migrateStatus={dictMigrateStatus}
-        skippedNames={dictSkippedNames}
-        onmigrate={() => runDictMigration(false)}
-        onforce={() => runDictMigration(true)}
-        onshowskipped={() => showSkippedOverlay = true}
-      />
-      <ActionRow
-        title="Revisar imágenes del diccionario"
-        description="Admin visual para previsualizar y corregir image/gif (solo npm run dev)"
-      >
-        {#snippet button()}
-          <Button id="go-media-admin" size="sm" {accent} onclick={() => goto(ROUTES.admin)}>Abrir</Button>
-        {/snippet}
-      </ActionRow>
     {/if}
   </div>
 </div>

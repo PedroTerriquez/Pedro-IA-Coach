@@ -51,6 +51,7 @@ export interface Program {
   id: string
   name: string
   weeks: ProgramWeek[]
+  createdAt?: string
 }
 
 export interface Settings {

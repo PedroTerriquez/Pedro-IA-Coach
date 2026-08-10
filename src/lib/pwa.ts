@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.26'
-const _VER_DESC = 'Admin media: guardado compacto _IMG con sufijo y FAB sin recarga'
+const _VER_BASE = 'v2.27'
+const _VER_DESC = 'Rachas semanales unificadas, NormalizeCard, fecha de creación y progreso IA'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -12,7 +12,7 @@
   <div class="stack-center">
     <div class="streak-flame">🔥</div>
     <div class="streak-count">{count}</div>
-    <div class="streak-subtitle">Días consecutivos</div>
+    <div class="streak-subtitle">Semanas consecutivas</div>
     <div class="streak-encourage" style="color:{accent}">¡Sigue así!</div>
   </div>
 </div>

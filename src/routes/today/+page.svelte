@@ -9,6 +9,7 @@
   import { sendPushNotification, notifyWatch } from '$lib/push'
   import { storeRestPending, checkPendingRest, _checkRestTimer } from '$lib/rest-timer'
   import { runCoachAnalysis } from '$lib/coach-analysis'
+  import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { APP_VERSION } from '$lib/pwa'
   import Warmup from '$lib/components/Warmup.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
@@ -404,7 +405,7 @@
     coachResult = null
     coachDay = day
     try {
-      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx)
+      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx, trainingDaysPerWeek(program, weekIdx))
       coachLoading = false
       if (!result) {
         coachError = true
@@ -451,44 +452,9 @@
     settings.update({ lastCoachAnalysis: null, sessionState: null } as any)
   }
 
-  function getMonday(date: Date) {
-    const d = new Date(date)
-    const monOffset = (d.getDay() + 6) % 7
-    d.setDate(d.getDate() - monOffset)
-    d.setHours(12, 0, 0, 0)
-    return d
-  }
-
-  function formatDate(d: Date) { return d.toISOString().slice(0, 10) }
-
   async function computeStreak(todayDateStr: string) {
     const all = allLogs.length > 0 ? allLogs : await Storage.getAllLogs()
-    const trained = new Set<string>()
-    for (const log of all) {
-      if (log.weight && log.weight > 0) trained.add(log.date)
-    }
-    const today = new Date(todayDateStr + 'T12:00:00Z')
-    const currentMonday = getMonday(today)
-    let streak = 0
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(currentMonday)
-      d.setDate(currentMonday.getDate() + i)
-      if (d > today) break
-      if (trained.has(formatDate(d))) streak++
-    }
-    let weekStart = new Date(currentMonday)
-    weekStart.setDate(weekStart.getDate() - 7)
-    while (true) {
-      let count = 0
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(weekStart)
-        d.setDate(weekStart.getDate() + i)
-        if (trained.has(formatDate(d))) count++
-      }
-      if (count >= 4) { streak += 7; weekStart.setDate(weekStart.getDate() - 7) }
-      else break
-    }
-    return streak
+    return computeStreakWeeks(all, trainingDaysPerWeek(program, weekIdx), todayDateStr)
   }
 
   let timerInterval: ReturnType<typeof setInterval> | null = null

@@ -9,6 +9,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
   import Button from './Button.svelte'
   import { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr, makeDayStatusFn, computeWeekStreak, computeBestWeekStreak } from '$lib/calendar-utils'
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
+  import { trainingDaysPerWeek, streakThreshold } from '$lib/streak'
   import { startRestFromExercise } from '$lib/rest-timer'
 
   let {
@@ -49,9 +50,11 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
   const CAL_MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
   let dayStatusFn = $derived(makeDayStatusFn(today, logsByDate, program, weeks, weekIdx, exercisesMap, language))
-  let streak = $derived(computeWeekStreak(today, logsByDate))
+  let daysPerWeek = $derived(trainingDaysPerWeek(program, weekIdx))
+  let threshold = $derived(streakThreshold(daysPerWeek))
+  let streak = $derived(computeWeekStreak(today, logsByDate, daysPerWeek))
   let startDate = $derived(calAddDays(calMonday(today), -7 * 9))
-  let best = $derived(computeBestWeekStreak(startDate, today, logsByDate))
+  let best = $derived(computeBestWeekStreak(today, logsByDate, daysPerWeek))
 
   let monthStart = $derived(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1))
   let lead = $derived(calDowMon(monthStart))
@@ -190,7 +193,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
         {:else if streak > 0}
           Llevas <span style="color:{accent};font-weight:600">{streak} {streak === 1 ? 'semana' : 'semanas'}</span> cumpliendo. ¡Sigue así!
         {:else}
-          Arranca esta semana con 4 sesiones para comenzar tu racha.
+          Arranca esta semana con {threshold} sesiones para comenzar tu racha.
         {/if}
       </div>
     </div>

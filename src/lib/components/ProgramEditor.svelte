@@ -151,7 +151,8 @@
     const prog: Program = {
       id: program?.id || await generateId(),
       name,
-      weeks: resolvedWeeks
+      weeks: resolvedWeeks,
+      createdAt: program?.createdAt || new Date().toISOString()
     }
     await Storage.saveProgram(prog)
 

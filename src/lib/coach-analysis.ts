@@ -3,6 +3,7 @@ import { PUSH_SERVER_URL } from '$lib/config'
 import { buildCoachPrompt } from '$lib/brain/prompts'
 import { buildUserProfile } from '$lib/ai'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+import { computeStreakWeeks } from '$lib/streak'
 import type { Exercise, ExerciseLog, ProgramDay } from '$lib/types'
 
 export interface CoachAnalysisResult {
@@ -16,7 +17,7 @@ export interface CoachAnalysisResult {
   rotation_topic: string
   total_volume: number
   pr_count: number
-  streak_days: number
+  streak_weeks: number
   _provider?: string
 }
 
@@ -94,41 +95,13 @@ function computeMonthlyVolumeHistory(logs: ExerciseLog[], todayDate: string, dis
   return result
 }
 
-function computeStreakDays(logs: ExerciseLog[], todayDate: string): number {
-  const trained = new Set<string>()
-  for (const log of logs) {
-    if (log.weight > 0) trained.add(log.date)
-  }
-  const today = new Date(todayDate + 'T12:00:00Z')
-  const currentMonday = getMonday(today)
-  let streak = 0
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(currentMonday)
-    d.setDate(currentMonday.getDate() + i)
-    if (d > today) break
-    if (trained.has(formatDateYMD(d))) streak++
-  }
-  let weekStart = new Date(currentMonday)
-  weekStart.setDate(weekStart.getDate() - 7)
-  while (true) {
-    let count = 0
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(weekStart)
-      d.setDate(weekStart.getDate() + i)
-      if (trained.has(formatDateYMD(d))) count++
-    }
-    if (count >= 4) { streak += 7; weekStart.setDate(weekStart.getDate() - 7) }
-    else break
-  }
-  return streak
-}
-
 export async function runCoachAnalysis(
   day: ProgramDay,
   effort: string,
   exercises: Exercise[],
   todayDate: string,
-  weekIdx: number
+  weekIdx: number,
+  daysPerWeek: number
 ): Promise<CoachAnalysisResult | null> {
   const exercisesById = Object.fromEntries(exercises.map(e => [e.id, e]))
   const todayLogs = await getLogsForDate(todayDate)
@@ -179,7 +152,7 @@ export async function runCoachAnalysis(
   // volume was accumulated in kg-equivalent across all logs regardless of their stored unit;
   // convert once here to whatever unit the user currently displays (settings.units).
   const roundedVolume = Math.round(fromKg(volume, displayUnits))
-  const streakDays = computeStreakDays(allLogs, todayDate)
+  const streakWeeks = computeStreakWeeks(allLogs, daysPerWeek, todayDate)
 
   try {
     if (!PUSH_SERVER_URL) throw new Error('PUSH_SERVER_URL not configured')
@@ -196,7 +169,7 @@ export async function runCoachAnalysis(
       rotation_hint: rotationHint,
       user_profile: userProfile,
       history: {
-        streak_days: streakDays,
+        streak_weeks: streakWeeks,
         total_workout_days: trainedDates.size,
         weekly_volume_last_6_weeks: computeWeeklyVolumeHistory(allLogs, todayDate, displayUnits),
         monthly_volume_last_4_months: computeMonthlyVolumeHistory(allLogs, todayDate, displayUnits),
@@ -223,7 +196,7 @@ export async function runCoachAnalysis(
       rotation_topic: data.rotation_topic || rotationHint,
       total_volume: roundedVolume,
       pr_count: prCount,
-      streak_days: streakDays,
+      streak_weeks: streakWeeks,
       _provider: data._provider,
     }
   } catch {

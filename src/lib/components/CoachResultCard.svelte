@@ -27,7 +27,7 @@
 
 <div class="coach-scroll" data-component="CoachResultCard">
   <StatsGrid columns={3} variant="card">
-    <StatBlock value={analysis?.streak_days ?? '—'} label="Racha" {accent} />
+    <StatBlock value={analysis?.streak_weeks ?? '—'} label="Racha" {accent} />
     <StatBlock value={analysis?.total_volume ?? '—'} label="Volumen" unit={analysis ? units : undefined} {accent} />
     <StatBlock value={analysis?.pr_count ?? '—'} label="PRs" {accent} />
   </StatsGrid>
