@@ -7,6 +7,12 @@ import { applyFileText } from './src/lib/admin/media-file';
 const buildTime = new Date().toISOString().slice(0, 16).replace('T', ' ')
 
 const DICTIONARY_FILE = 'src/lib/data/exercise-dictionary.ts'
+const WARMUP_FILE = 'src/lib/data/exercise-warmup.ts'
+
+const SAVE_ROUTES: Record<string, { path: string; arrayName: string }> = {
+  '/__admin/dictionary-save': { path: DICTIONARY_FILE, arrayName: 'EXERCISE_DICTIONARY' },
+  '/__admin/warmup-save': { path: WARMUP_FILE, arrayName: 'EXERCISE_WARMUP' }
+}
 
 function mediaEditorPlugin(): Plugin {
   return {
@@ -15,7 +21,8 @@ function mediaEditorPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url || '').split('?')[0]
-        if (url !== '/__admin/dictionary-save') return next()
+        const route = SAVE_ROUTES[url]
+        if (!route) return next()
         if (req.method === 'GET') {
           res.statusCode = 404
           res.end('only POST')
@@ -37,9 +44,9 @@ function mediaEditorPlugin(): Plugin {
               res.end(JSON.stringify({ error: 'changes must be an array' }))
               return
             }
-            const file = path.resolve(process.cwd(), DICTIONARY_FILE)
+            const file = path.resolve(process.cwd(), route.path)
             const src = await fs.promises.readFile(file, 'utf8')
-            const result = applyFileText(src, payload.changes)
+            const result = applyFileText(src, payload.changes, route.arrayName)
             if (result.notFound.length) {
               res.statusCode = 422
               res.end(JSON.stringify({ error: 'entradas no encontradas', notFound: result.notFound }))
@@ -59,8 +66,9 @@ function mediaEditorPlugin(): Plugin {
       })
     },
     handleHotUpdate(ctx) {
-      if (ctx.file === path.resolve(process.cwd(), DICTIONARY_FILE)) {
-        // The admin page re-imports the dictionary after saving — suppress the full reload.
+      const target = Object.values(SAVE_ROUTES).find((f) => path.resolve(process.cwd(), f.path) === ctx.file)
+      if (target) {
+        // The admin page re-imports the data after saving — suppress the full reload.
         return []
       }
     }

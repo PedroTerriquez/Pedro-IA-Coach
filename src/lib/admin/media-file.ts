@@ -207,9 +207,9 @@ function scanDepth(src: string, from: number): number {
 
 interface EntryRange { id: string; start: number; end: number }
 
-export function findEntryRanges(src: string): EntryRange[] {
-  const start = src.indexOf('export const EXERCISE_DICTIONARY')
-  if (start === -1) throw new Error('EXERCISE_DICTIONARY not found')
+export function findEntryRanges(src: string, arrayName = 'EXERCISE_DICTIONARY'): EntryRange[] {
+  const start = src.indexOf(`export const ${arrayName}`)
+  if (start === -1) throw new Error(`${arrayName} not found`)
   const ranges: EntryRange[] = []
   let i = start
   let guard = 0
@@ -239,9 +239,9 @@ export function findEntryRanges(src: string): EntryRange[] {
   return ranges
 }
 
-export function applyFileText(src: string, changes: ChangeRequest[]): { text: string; applied: number; notFound: string[] } {
+export function applyFileText(src: string, changes: ChangeRequest[], arrayName = 'EXERCISE_DICTIONARY'): { text: string; applied: number; notFound: string[] } {
   if (!changes.length) return { text: src, applied: 0, notFound: [] }
-  const ranges = findEntryRanges(src)
+  const ranges = findEntryRanges(src, arrayName)
   const byId = new Map(ranges.map((r) => [r.id, r]))
   const byEntry = new Map<string, { range: EntryRange; changes: ChangeRequest[] }>()
   const notFound: string[] = []
