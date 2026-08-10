@@ -2,8 +2,6 @@
   import Sheet from './Sheet.svelte'
   import ProgressBar from './ProgressBar.svelte'
   import Button from './Button.svelte'
-  import { WARMUP_GIF_MAP } from '$lib/data/warmup-gifs'
-  import { EX_GIF_BASE } from '$lib/data/exercise-dictionary'
 
   let { items, mode, accent, onComplete }: {
     items: any[]
@@ -19,14 +17,9 @@
 
   let total = $derived(items.length)
 
-  function resolveGifUrl(name: string): string {
-    const path = WARMUP_GIF_MAP[name]
-    return path ? EX_GIF_BASE + path + '.gif' : ''
-  }
-
   let item = $derived(items[idx])
 
-  let gifUrl = $derived(resolveGifUrl(item?.name || ''))
+  let gifUrl = $derived(item?.gif || '')
 
   let sections = $derived([
     { id: 'posInicial', label: 'Posición Inicial', value: item?.posInicial },

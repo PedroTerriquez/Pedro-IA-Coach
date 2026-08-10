@@ -1,4 +1,5 @@
-import { getUniqueWarmupMuscles, WARMUP_DATA, IMG_MAP, MUSCLE_DISPLAY, img } from './warmup'
+import { getUniqueWarmupMuscles, MUSCLE_DISPLAY, img } from './warmup'
+import { EXERCISE_WARMUP } from './exercise-warmup'
 
 const GENERIC_WARMUP: { name: string; imgUrl: string; tag: string; desc: string }[] = [
   { name: 'Círculos de Brazos', imgUrl: img('Arm_Circles/0.jpg'), tag: 'calentar', desc: 'De pie con brazos extendidos. Haz círculos adelante 15 s, luego inverso.' },
@@ -23,10 +24,16 @@ export function resolvePanelItems(muscles: string[], mode: string) {
   const items: any[] = []
   if (keys.length > 0) {
     keys.forEach((key: string) => {
-      const data = WARMUP_DATA[key]
-      if (!data) return
-      const pool = mode === 'warmup' ? data.warmup : data.stretch
-      if (pool) pool.forEach((ex: any) => items.push({ ...ex, imgUrl: IMG_MAP[ex.name] || '', tag: MUSCLE_DISPLAY[key] || key }))
+      EXERCISE_WARMUP
+        .filter((ex) => ex.kind === mode && ex.muscle === key)
+        .forEach((ex) =>
+          items.push({
+            ...ex,
+            name: ex.es,
+            imgUrl: ex.image || '',
+            tag: MUSCLE_DISPLAY[key] || key,
+          })
+        )
     })
   }
   return items.length > 0 ? items : (mode === 'warmup' ? GENERIC_WARMUP_ONLY : GENERIC_STRETCH_ONLY)
