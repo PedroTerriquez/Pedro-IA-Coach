@@ -2,10 +2,13 @@
   import { goto } from '$app/navigation'
   import { ROUTES } from '$lib/routes'
   import { EXERCISE_DICTIONARY } from '$lib/data/exercise-dictionary'
+  import { EXERCISE_WARMUP, type WarmupEntry } from '$lib/data/exercise-warmup'
   import { draftCount, saveDrafts, queueReplace, queueSetAliases, queueSetName, pendingAliasesMap, pendingNamesMap, pendingMediaMap } from '$lib/admin/editor'
+  import { warmupDraftCount, saveWarmupDrafts, warmupPendingMediaMap, warmupPendingNamesMap } from '$lib/admin/warmup-editor'
   import { reviewed, toggleReviewed } from '$lib/admin/reviewed'
   import MediaPicker from '$lib/components/MediaPicker.svelte'
   import AdminCard from '$lib/components/AdminCard.svelte'
+  import WarmupAdminTab from '$lib/components/WarmupAdminTab.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
   import Chip from '$lib/components/Chip.svelte'
@@ -13,6 +16,9 @@
   const isDev = import.meta.env.DEV
 
   let dictionary = $state(EXERCISE_DICTIONARY)
+  let warmup = $state<WarmupEntry[]>(EXERCISE_WARMUP)
+
+  let tab = $state<'dict' | 'warmup' | 'stretch'>('dict')
 
   let query = $state('')
   let muscle = $state('')
@@ -33,7 +39,7 @@
     return [...new Set(words)].slice(0, 10)
   }
 
-  const adminEntries = $derived(
+  const dictEntries = $derived(
     dictionary.map((e) => {
       const pending = $pendingMediaMap[e.id]
       return {
@@ -48,25 +54,24 @@
     })
   )
 
-  const muscles = $derived([...new Set(adminEntries.map((e) => e.muscle).filter(Boolean))].sort())
+  const dictMuscles = $derived([...new Set(dictEntries.map((e) => e.muscle).filter(Boolean))].sort())
 
-  const letters = $derived(
-    [...new Set(adminEntries.map(firstLetter))].filter((c) => /[A-Z]/.test(c)).sort()
+  const dictLetters = $derived(
+    [...new Set(dictEntries.map(firstLetter))].filter((c) => /[A-Z]/.test(c)).sort()
   )
 
-  const reviewedSet = $derived(new Set($reviewed))
+  const dictReviewedSet = $derived(new Set($reviewed.dict ?? []))
+
+  const dictReviewedCount = $derived(dictReviewedSet.size)
 
   const letterPending = $derived(
     Object.fromEntries(
-      letters.map((l) => [l, adminEntries.filter((e) => firstLetter(e) === l).filter((e) => !reviewedSet.has(e.id)).length])
+      dictLetters.map((l) => [l, dictEntries.filter((e) => firstLetter(e) === l).filter((e) => !dictReviewedSet.has(e.id)).length])
     )
   )
 
-
-  const reviewedCount = $derived($reviewed.length)
-
-  const visibleEntries = $derived(
-    adminEntries.filter((e) => {
+  const dictVisible = $derived(
+    dictEntries.filter((e) => {
       if (muscle && e.muscle !== muscle) return false
       if (letter && firstLetter(e) !== letter) return false
       if (!query.trim()) return true
@@ -75,7 +80,13 @@
     })
   )
 
-  const count = $derived($draftCount)
+  const warmupScoped = $derived(warmup.filter((e) => e.kind === tab))
+  const warmupReviewedCount = $derived(
+    tab === 'dict' ? 0 : warmupScoped.filter((e) => (($reviewed.warmup) ?? []).includes(e.id)).length
+  )
+
+  const dictCount = $derived($draftCount)
+  const wCount = $derived($warmupDraftCount)
 
   async function onSave() {
     saving = true
@@ -84,10 +95,10 @@
     const names = $pendingNamesMap
     const ok = await saveDrafts()
     saving = false
-    if (ok) applySavedChanges(media, aliases, names)
+    if (ok) applyDictSaved(media, aliases, names)
   }
 
-  function applySavedChanges(media: Record<string, { image?: string; gif?: string }>, aliases: Record<string, string[]>, names: Record<string, string>) {
+  function applyDictSaved(media: Record<string, { image?: string; gif?: string }>, aliases: Record<string, string[]>, names: Record<string, string>) {
     dictionary = dictionary.map((e) => {
       const m = media[e.id]
       const a = aliases[e.id]
@@ -98,6 +109,29 @@
         ...(m?.image ? { image: m.image } : {}),
         ...(m?.gif ? { gif: m.gif } : {}),
         ...(a ? { aliases: a } : {}),
+        ...(n !== undefined ? { es: n } : {})
+      }
+    })
+  }
+
+  async function onWarmupSave() {
+    saving = true
+    const media = $warmupPendingMediaMap
+    const names = $warmupPendingNamesMap
+    const ok = await saveWarmupDrafts()
+    saving = false
+    if (ok) applyWarmupSaved(media, names)
+  }
+
+  function applyWarmupSaved(media: Record<string, { image?: string; gif?: string }>, names: Record<string, string>) {
+    warmup = warmup.map((e) => {
+      const m = media[e.id]
+      const n = names[e.id]
+      if (!m && n === undefined) return e
+      return {
+        ...e,
+        ...(m?.image ? { image: m.image } : {}),
+        ...(m?.gif ? { gif: m.gif } : {}),
         ...(n !== undefined ? { es: n } : {})
       }
     })
@@ -118,7 +152,7 @@
     (() => {
       const p = picker
       if (!p) return null
-      return adminEntries.find((e) => e.id === p.entryId) ?? null
+      return dictEntries.find((e) => e.id === p.entryId) ?? null
     })()
   )
 
@@ -131,10 +165,17 @@
   <div class="admin-header">
     <div>
       <button class="back" onclick={() => goto(ROUTES.you)}>← Tú</button>
-      <h1 class="title">Diccionario · Media · {reviewedCount}/{adminEntries.length}</h1>
-      <p class="subtitle">
-        {adminEntries.length} ejercicios · <strong>{reviewedCount} revisados</strong> · {adminEntries.length - reviewedCount} pendientes
-      </p>
+      {#if tab === 'dict'}
+        <h1 class="title">Diccionario · Media · {dictReviewedCount}/{dictEntries.length}</h1>
+        <p class="subtitle">
+          {dictEntries.length} ejercicios · <strong>{dictReviewedCount} revisados</strong> · {dictEntries.length - dictReviewedCount} pendientes
+        </p>
+      {:else}
+        <h1 class="title">{tab === 'warmup' ? 'Calentamiento' : 'Estiramiento'} · Media · {warmupReviewedCount}/{warmupScoped.length}</h1>
+        <p class="subtitle">
+          {warmupScoped.length} ejercicios · <strong>{warmupReviewedCount} revisados</strong> · {warmupScoped.length - warmupReviewedCount} pendientes
+        </p>
+      {/if}
     </div>
     {#if !isDev}
       <Chip>solo lectura</Chip>
@@ -145,50 +186,71 @@
     <div class="prod-note">El admin de media solo permite editar en local con <span class="mono">npm run dev</span>.</div>
   {/if}
 
-  <div class="filters">
-    <SearchInput value={query} oninput={(v) => (query = v)} placeholder="Buscar por nombre o id…" />
-    <div class="letters">
-      {#each letters as l}
-        <button class:active={letter === l} class:done={letterPending[l] === 0} class="chip letter" onclick={() => (letter = l)}>{l}{#if letterPending[l] > 0}<span class="pending">{letterPending[l]}</span>{/if}</button>
+  <div class="sub-tabs">
+    <button class:active={tab === 'dict'} class="sub-tab" onclick={() => (tab = 'dict')}>Ejercicios</button>
+    <button class:active={tab === 'warmup'} class="sub-tab" onclick={() => (tab = 'warmup')}>Calentamiento</button>
+    <button class:active={tab === 'stretch'} class="sub-tab" onclick={() => (tab = 'stretch')}>Estiramiento</button>
+  </div>
+
+  <div class="pane" style="display:{tab === 'dict' ? 'block' : 'none'}">
+    <div class="filters">
+      <SearchInput value={query} oninput={(v) => (query = v)} placeholder="Buscar por nombre o id…" />
+      <div class="letters">
+        {#each dictLetters as l}
+          <button class:active={letter === l} class:done={letterPending[l] === 0} class="chip letter" onclick={() => (letter = l)}>{l}{#if letterPending[l] > 0}<span class="pending">{letterPending[l]}</span>{/if}</button>
+        {/each}
+      </div>
+      <div class="chips">
+        <button class:active={!muscle} class="chip" onclick={() => (muscle = '')}>Todos</button>
+        {#each dictMuscles as m}
+          <button class:active={muscle === m} class="chip" onclick={() => (muscle = m)}>{m}</button>
+        {/each}
+      </div>
+    </div>
+
+    <div class="count">
+      {dictVisible.length} ejercicios · {dictReviewedCount} revisados
+      <span class="hint">· marca ✓ para revisarlo; quedará en gris en la lista</span>
+    </div>
+
+    <div class="list">
+      {#each dictVisible as e}
+        <AdminCard
+          accent="var(--accent)"
+          entry={e}
+          reviewed={dictReviewedSet.has(e.id)}
+          pendingAliases={$pendingAliasesMap[e.id]}
+          pendingName={$pendingNamesMap[e.id]}
+          onedit={onEdit}
+          ontoggle={() => toggleReviewed('dict', e.id)}
+          onaliases={(id, list) => queueSetAliases(id, list)}
+          onrename={(id, name) => queueSetName(id, name)}
+        />
       {/each}
     </div>
-    <div class="chips">
-      <button class:active={!muscle} class="chip" onclick={() => (muscle = '')}>Todos</button>
-      {#each muscles as m}
-        <button class:active={muscle === m} class="chip" onclick={() => (muscle = m)}>{m}</button>
-      {/each}
-    </div>
+
+    {#if !dictVisible.length}
+      <div class="empty">Sin resultados</div>
+    {/if}
   </div>
 
-  <div class="count">
-    {visibleEntries.length} ejercicios · {reviewedCount} revisados
-    <span class="hint">· marca ✓ para revisarlo; quedará en gris en la lista</span>
+  <div class="pane" style="display:{tab === 'warmup' ? 'block' : 'none'}">
+    <WarmupAdminTab mode="warmup" entries={warmup} accent="var(--accent)" />
   </div>
 
-  <div class="list">
-    {#each visibleEntries as e}
-      <AdminCard
-        accent="var(--accent)"
-        entry={e}
-        reviewed={reviewedSet.has(e.id)}
-        pendingAliases={$pendingAliasesMap[e.id]}
-        pendingName={$pendingNamesMap[e.id]}
-        onedit={onEdit}
-        ontoggle={() => toggleReviewed(e.id)}
-        onaliases={(id, list) => queueSetAliases(id, list)}
-        onrename={(id, name) => queueSetName(id, name)}
-      />
-    {/each}
+  <div class="pane" style="display:{tab === 'stretch' ? 'block' : 'none'}">
+    <WarmupAdminTab mode="stretch" entries={warmup} accent="var(--accent)" />
   </div>
-
-  {#if !visibleEntries.length}
-    <div class="empty">Sin resultados</div>
-  {/if}
 </div>
 
-{#if isDev}
-  <button id="save-dict" class="fab" onclick={onSave} disabled={saving || count === 0}>
-    {saving ? 'Guardando…' : `Guardar (${count})`}
+{#if isDev && tab === 'dict'}
+  <button id="save-dict" class="fab" onclick={onSave} disabled={saving || dictCount === 0}>
+    {saving ? 'Guardando…' : `Guardar (${dictCount})`}
+  </button>
+{/if}
+{#if isDev && tab !== 'dict'}
+  <button id="save-warmup" class="fab" onclick={onWarmupSave} disabled={saving || wCount === 0}>
+    {saving ? 'Guardando…' : `Guardar (${wCount})`}
   </button>
 {/if}
 
@@ -229,6 +291,10 @@
   .hint { opacity: 0.7; }
   .list { display: flex; flex-direction: column; gap: 6px; }
   .empty { text-align: center; opacity: 0.5; padding: 40px 0; }
+  .sub-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .sub-tab { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text); border-radius: 9999px; padding: 8px 16px; font-size: 12px; cursor: pointer; font-family: var(--font-sans); font-weight: 600; }
+  .sub-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .pane { width: 100%; }
   .picker-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
   .picker-title { font-family: var(--font-sans); font-weight: 700; color: var(--text); }
   .dialog-close { background: none; border: none; color: var(--text); cursor: pointer; font-size: 16px; }
