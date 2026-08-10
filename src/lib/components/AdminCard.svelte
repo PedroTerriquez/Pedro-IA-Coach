@@ -14,6 +14,7 @@
   let {
     entry,
     accent = 'var(--accent)',
+    showAliases = true,
     reviewed = false,
     pendingAliases,
     pendingName,
@@ -24,6 +25,7 @@
   }: {
     entry: AdminEntry
     accent?: string
+    showAliases?: boolean
     reviewed?: boolean
     pendingAliases?: string[]
     pendingName?: string
@@ -156,30 +158,32 @@
         </button>
       {/if}
     </div>
-    {#if entry.en}<div class="en">{entry.en}</div>{/if}
+    {#if showAliases && entry.en}<div class="en">{entry.en}</div>{/if}
     {#if entry.muscle}<div class="muscle">{entry.muscle}</div>{/if}
-    <div class="alias-row">
-      {#each aliases as a, i}
-        <span class="alias-chip" class:pending={pendingAliases !== undefined}>
-          <span class="alias-text">{a}</span>
-          <button class="rm" title="Quitar alias" onclick={() => removeAlias(i)}>×</button>
-        </span>
-      {/each}
-    </div>
-    <div class="alias-input">
-      <input
-        placeholder="añadir alias…"
-        value={aliasDraft}
-        oninput={(e) => (aliasDraft = e.currentTarget.value)}
-        onkeydown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            addAlias()
-          }
-        }}
-      />
-      <button class="add" title="Añadir alias" onclick={addAlias}>+</button>
-    </div>
+    {#if showAliases}
+      <div class="alias-row">
+        {#each aliases as a, i}
+          <span class="alias-chip" class:pending={pendingAliases !== undefined}>
+            <span class="alias-text">{a}</span>
+            <button class="rm" title="Quitar alias" onclick={() => removeAlias(i)}>×</button>
+          </span>
+        {/each}
+      </div>
+      <div class="alias-input">
+        <input
+          placeholder="añadir alias…"
+          value={aliasDraft}
+          oninput={(e) => (aliasDraft = e.currentTarget.value)}
+          onkeydown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addAlias()
+            }
+          }}
+        />
+        <button class="add" title="Añadir alias" onclick={addAlias}>+</button>
+      </div>
+    {/if}
   </div>
   <div class="actions">
     <Button id={`edit-img-${entry.id}`} size="sm" variant="secondary" {accent} onclick={() => onedit(entry.id, 'image')}>IMG</Button>
