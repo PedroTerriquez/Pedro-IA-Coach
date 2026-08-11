@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.27'
-const _VER_DESC = 'Rachas semanales unificadas, NormalizeCard, fecha de creación y progreso IA'
+const _VER_BASE = 'v2.28'
+const _VER_DESC = 'Admin media: subtabs calentamiento/estiramiento sobre exercise-warmup.ts'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
