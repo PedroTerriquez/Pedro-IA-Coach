@@ -28,7 +28,6 @@
     background: var(--surface);
     border-radius: 18px;
     padding: 16px 14px;
-    margin: 0 20px 20px;
     border: 0.5px solid var(--border);
   }
 </style>

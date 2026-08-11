@@ -178,8 +178,13 @@ export async function getProgram(id: string): Promise<Program | undefined> {
 }
 
 export async function saveProgram(program: Program): Promise<void> {
+  const existing = await get<Program>('programs', program.id)
   await put('programs', program)
-  backupAll()
+  if (!existing) {
+    await migrateExercisesToDictionary({ force: false })
+  } else {
+    backupAll()
+  }
 }
 
 export async function deleteProgram(id: string): Promise<void> {
@@ -383,8 +388,6 @@ export async function _deduplicateGroup(group: Exercise[]) {
 }
 
 export async function migrateExercisesToDictionary({ force = false } = {}) {
-  const FLAG = 'dict_migration_v2'
-  if (!force && localStorage.getItem(FLAG) === 'done') return { migrated: 0, merged: 0, skipped: 0, total: 0, alreadyDone: true }
   if (typeof findExerciseEntry !== 'function') return { migrated: 0, merged: 0, skipped: 0, total: 0, dictMissing: true }
 
   const exercises = await getAll<Exercise>('exercises')
@@ -397,7 +400,6 @@ export async function migrateExercisesToDictionary({ force = false } = {}) {
     merged += await _deduplicateGroup(group)
   }
 
-  localStorage.setItem(FLAG, 'done')
   await backupAll()
   return { migrated, merged, skipped, total: exercises.length, skippedNames }
 }

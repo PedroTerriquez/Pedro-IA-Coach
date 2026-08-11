@@ -996,7 +996,7 @@ test.describe('You — Datos tab', () => {
     // Dictionary migration now lives at the top of the Ejercicios tab
     await page.getByRole('button', { name: 'Ejercicios' }).click()
     await page.waitForTimeout(300)
-    await page.getByRole('button', { name: 'Completar' }).click()
+    await page.getByRole('button', { name: 'Sobrescribir' }).click()
     await page.waitForTimeout(500)
     await expect(page.locator('#dict-migrate-status')).toContainText('Actualizados')
 

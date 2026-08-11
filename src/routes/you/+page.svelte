@@ -498,8 +498,6 @@
       const result = await Storage.migrateExercisesToDictionary({ force })
       if (result.dictMissing) {
         dictMigrateStatus = '❌ No se pudo cargar el diccionario'
-      } else if (result.alreadyDone) {
-        dictMigrateStatus = '⚠️ Ya aplicado. Usa Forzar para re-ejecutar.'
       } else {
         dictMigrateStatus = `✅ Actualizados ${result.migrated} · fusionados ${result.merged} · sin match ${result.skipped}`
         dictSkippedNames = result.skippedNames || []
@@ -581,7 +579,7 @@
       {#if loaded}
         <div class="section-label-wrap"><SectionLabel {accent}>Estadísticas</SectionLabel></div>
           <StatsGrid columns={4} variant="card">
-            <StatBlock value={stats.streak} label="Racha" unit="sem" size="md" />
+            <StatBlock value={stats.streak} label="Racha" size="md" />
             <StatBlock value={stats.totalWorkouts} label="Entrenos" size="md" />
             <StatBlock value={stats.weeks} label="Semanas" size="md" />
             <StatBlock value={stats.distinctExercises} label="Ejercicios" size="md" />
@@ -708,7 +706,6 @@
           {accent}
           migrateStatus={dictMigrateStatus}
           skippedNames={dictSkippedNames}
-          onmigrate={() => runDictMigration(false)}
           onforce={() => runDictMigration(true)}
           onshowskipped={() => showSkippedOverlay = true}
         />

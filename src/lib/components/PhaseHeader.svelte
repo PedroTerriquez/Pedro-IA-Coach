@@ -1,5 +1,4 @@
 <script lang="ts">
-  import SectionLabel from './SectionLabel.svelte'
   import Chip from './Chip.svelte'
   import TimerRing from './TimerRing.svelte'
   import type { Snippet } from 'svelte'
@@ -33,10 +32,7 @@
   {#if showLiveDot}
     <div class="eyebrow-row">
       <span class="live-dot" style="background:{accent};box-shadow:0 0 8px {accent}"></span>
-      Hoy en el gimnasio
     </div>
-  {:else}
-    <SectionLabel {accent}>Hoy en el gimnasio</SectionLabel>
   {/if}
   <div class="hero-row">
     <div class="hero-title">{dayName}</div>

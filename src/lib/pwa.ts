@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.28'
-const _VER_DESC = 'Admin media: subtabs calentamiento/estiramiento sobre exercise-warmup.ts'
+const _VER_BASE = 'v2.29'
+const _VER_DESC = 'NormalizeCard→ActionRow, auto-normalización al crear programa, UI tweaks'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
