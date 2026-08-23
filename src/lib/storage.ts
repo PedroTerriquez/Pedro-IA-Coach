@@ -194,6 +194,25 @@ export async function deleteProgram(id: string): Promise<void> {
 // ── Settings ──
 export async function getSettings(): Promise<Settings> {
   const s = await get<Settings>('settings', 'settings')
+  // Self-heal: an all-identity override [0..6] is redundant by definition, and
+  // worse, it masks a week's intrinsic weekday placement forever. Older builds
+  // persisted one every time Reprogramar was confirmed without changes or after
+  // Restablecer — drop them so weekday fields control placement again.
+  if (s && s.rescheduleWeekOrder) {
+    const rs = { ...(s.rescheduleWeekOrder as Record<string, number[]>) }
+    let removed = false
+    for (const k of Object.keys(rs)) {
+      const v = rs[k]
+      if (Array.isArray(v) && v.length === 7 && v.every((x, i) => x === i)) {
+        delete rs[k]
+        removed = true
+      }
+    }
+    if (removed) {
+      s.rescheduleWeekOrder = rs
+      await put('settings', s)
+    }
+  }
   if (s && s.onboarded === undefined) {
     const programs = await getAll<Program>('programs')
     const hasProfile = s.age && s.age !== ''

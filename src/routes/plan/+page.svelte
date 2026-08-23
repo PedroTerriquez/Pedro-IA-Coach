@@ -10,7 +10,7 @@
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import Button from '$lib/components/Button.svelte'
   import { startRestFromExercise } from '$lib/rest-timer'
-  import { resolveWeekOrder, DEFAULT_ORDER } from '$lib/week-order'
+  import { resolveWeekOrder } from '$lib/week-order'
 
   const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
@@ -37,11 +37,14 @@
   let rescheduleKey = $derived(program ? `${program.id}-week-${planWeekIdx}` : '')
   let rescheduleOrders = $derived(($settings.rescheduleWeekOrder || {}) as Record<string, number[]>)
   let rawRescheduleOrder = $derived(rescheduleOrders[rescheduleKey])
+  // Intrinsic layout of the week (weekday fields or sequential fallback) — what
+  // the program means to show before any manual Reprogramar override.
+  let naturalOrder = $derived(resolveWeekOrder(week, null))
   let committedOrder = $derived(resolveWeekOrder(week, rawRescheduleOrder))
   let order = $derived(planEditing ? (planEditingOrder || committedOrder) : committedOrder)
-  let changes = $derived(committedOrder.reduce((n, v, i) => n + (v !== i ? 1 : 0), 0))
+  let changes = $derived(committedOrder.reduce((n, v, i) => n + (v !== naturalOrder[i] ? 1 : 0), 0))
   let editingChanges = $derived(
-    planEditingOrder ? planEditingOrder.reduce((n, v, i) => n + (v !== i ? 1 : 0), 0) : 0
+    planEditingOrder ? planEditingOrder.reduce((n, v, i) => n + (v !== naturalOrder[i] ? 1 : 0), 0) : 0
   )
   let exercisesById = $derived(Object.fromEntries(exercises.map(e => [e.id, e])))
   let noProgram = $derived(!program)
@@ -145,6 +148,17 @@
     const rs = (stored.rescheduleWeekOrder || {}) as Record<string, number[]>
     // newOrder is a Svelte $state array — IndexedDB's structured clone can't
     // serialize the reactive proxy, so persist a plain-array copy.
+    // If the order equals the week's intrinsic layout, DROP any stored override:
+    // the program's own weekday fields must keep controlling placement. Persisting
+    // a redundant override here used to mask weekdays forever (e.g. after
+    // Reprogramar → Restablecer).
+    if (newOrder.length === naturalOrder.length && newOrder.every((v, i) => v === naturalOrder[i])) {
+      if (key in rs) {
+        delete rs[key]
+        await settings.update({ rescheduleWeekOrder: rs as any })
+      }
+      return
+    }
     rs[key] = [...newOrder]
     await settings.update({ rescheduleWeekOrder: rs as any })
   }
@@ -166,7 +180,9 @@
 
   function handleReset() {
     if (editingChanges === 0) return
-    planEditingOrder = [...DEFAULT_ORDER]
+    // Reset = back to the week's INTRINSIC layout (weekday placement), not
+    // blind sequential order — resetting to [0..6] used to clobber weekdays.
+    planEditingOrder = [...naturalOrder]
     planSelectedSwapIdx = null
   }
 

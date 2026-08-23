@@ -1272,6 +1272,33 @@ test.describe('Plan — weekday mapping (Mar-Vie + Dom)', () => {
     await page.goto('today')
     await page.waitForTimeout(1000)
     await expect(page.locator('.hero-title', { hasText: 'Descanso' })).toBeVisible()
+
+    // ── Regression: Reprogramar + Listo WITHOUT changes must NOT persist an
+    // identity override — that used to mask the intrinsic weekdays forever and
+    // snap the routine back to Mon–Fri. Back to Plan (clock still Monday).
+    await page.goto('plan')
+    await page.waitForTimeout(600)
+    await expect(page.locator('#plan-changes-banner')).toHaveCount(0)
+    await page.locator('#plan-reprogram-btn').click()
+    await page.waitForTimeout(300)
+    await page.locator('#plan-reprogram-btn').click() // "Listo" with zero edits
+    await page.waitForTimeout(400)
+    const rs = await page.evaluate(() => new Promise((resolve) => {
+      const rq = indexedDB.open('coach-pedro-ai', 1)
+      rq.onsuccess = () => {
+        const db = rq.result
+        const g = db.transaction('settings', 'readonly').objectStore('settings').get('settings')
+        g.onsuccess = () => { db.close(); resolve(g.result?.rescheduleWeekOrder || {}) }
+      }
+    }))
+    expect(Object.keys(rs)).toHaveLength(0)
+
+    // Placement survives the reload — weekdays keep controlling, not overrides
+    await page.reload()
+    await page.waitForTimeout(800)
+    await expect(page.locator('#plan-changes-banner')).toHaveCount(0)
+    await expect(slotCard('Mar').locator('.day-title')).toHaveText('Pecho · Tríceps')
+    await expect(slotCard('Dom').locator('.day-title')).toHaveText('Full Body')
   })
 })
 

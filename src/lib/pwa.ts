@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.32'
-const _VER_DESC = 'Debug IA con botón en cada superficie (importar, generar, coach programa y ejercicio)'
+const _VER_BASE = 'v2.33'
+const _VER_DESC = 'fix: días de la rutina son permanentes — Reprogramar ya no pisa los weekdays'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
