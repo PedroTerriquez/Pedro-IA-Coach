@@ -10,9 +10,9 @@
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import Button from '$lib/components/Button.svelte'
   import { startRestFromExercise } from '$lib/rest-timer'
+  import { resolveWeekOrder, DEFAULT_ORDER } from '$lib/week-order'
 
   const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-  const DEFAULT_ORDER = [0, 1, 2, 3, 4, 5, 6]
 
   let programs = $state<Program[]>([])
   let exercises = $state<Exercise[]>([])
@@ -37,9 +37,7 @@
   let rescheduleKey = $derived(program ? `${program.id}-week-${planWeekIdx}` : '')
   let rescheduleOrders = $derived(($settings.rescheduleWeekOrder || {}) as Record<string, number[]>)
   let rawRescheduleOrder = $derived(rescheduleOrders[rescheduleKey])
-  let committedOrder = $derived(
-    rawRescheduleOrder && rawRescheduleOrder.length === 7 ? rawRescheduleOrder : DEFAULT_ORDER
-  )
+  let committedOrder = $derived(resolveWeekOrder(week, rawRescheduleOrder))
   let order = $derived(planEditing ? (planEditingOrder || committedOrder) : committedOrder)
   let changes = $derived(committedOrder.reduce((n, v, i) => n + (v !== i ? 1 : 0), 0))
   let editingChanges = $derived(
@@ -329,7 +327,7 @@
             {@const day = originalIdx < week.days.length ? week.days[originalIdx] : null}
             {@const hasWorkout = day !== null}
             {@const isTodayDay = calIdx === todayIdx && planWeekIdx === $settings.currentWeekIdx}
-            {@const isMoved = hasWorkout && originalIdx !== calIdx}
+          {@const isMoved = hasWorkout && !!rawRescheduleOrder && originalIdx !== calIdx}
             {@const isRest = !hasWorkout || day?.name === 'Rest' || day?.name === 'Descanso'}
             {@const isExpanded = planExpandedDayIdx === calIdx}
             {@const isWorkoutDay = hasWorkout && !isRest}

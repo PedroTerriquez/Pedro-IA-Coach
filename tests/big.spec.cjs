@@ -1220,6 +1220,61 @@ test.describe('Plan — Reprogramar mode', () => {
   })
 })
 
+test.describe('Plan — weekday mapping (Mar-Vie + Dom)', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-weekday', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+  // Rutina importada con días reales Mar–Vie + Dom. `weekday`: 1=Lun … 7=Dom.
+  // Fixed day names (not buildDayArray) so slot placement is deterministic
+  // regardless of the date the suite runs on.
+  const PROGRAM = {
+    id: 'prog-weekday', name: 'Rutina Mar-Vie+Dom',
+    weeks: [{
+      name: 'Semana 1', subtitle: '', tag: 'BUILD',
+      days: [
+        { name: 'Pecho · Tríceps', subtitle: '', duration: 60, exercises: [], weekday: 2 },
+        { name: 'Espalda · Bíceps', subtitle: '', duration: 60, exercises: [], weekday: 3 },
+        { name: 'Pierna', subtitle: '', duration: 60, exercises: [], weekday: 4 },
+        { name: 'Hombro · Core', subtitle: '', duration: 60, exercises: [], weekday: 5 },
+        { name: 'Full Body', subtitle: '', duration: 60, exercises: [], weekday: 7 },
+      ],
+    }],
+  }
+
+  test('places days on their real weekday slots; Mon and Sat stay free', async ({ page }) => {
+    test.setTimeout(60000)
+
+    await page.goto('plan')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], program: PROGRAM, settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const slotCard = (day) => page.locator('#plan-days-grid .day-card')
+      .filter({ has: page.locator('.badge-day', { hasText: day }) })
+
+    await expect(slotCard('Lun').locator('.day-empty')).toContainText('Sin entrenamiento')
+    await expect(slotCard('Mar').locator('.day-title')).toHaveText('Pecho · Tríceps')
+    await expect(slotCard('Mié').locator('.day-title')).toHaveText('Espalda · Bíceps')
+    await expect(slotCard('Jue').locator('.day-title')).toHaveText('Pierna')
+    await expect(slotCard('Vie').locator('.day-title')).toHaveText('Hombro · Core')
+    await expect(slotCard('Sáb').locator('.day-empty')).toContainText('Sin entrenamiento')
+    await expect(slotCard('Dom').locator('.day-title')).toHaveText('Full Body')
+
+    // No "moved" chips in view mode: weekday placement is intrinsic, not an override
+    await expect(page.locator('#plan-days-grid .moved-chip')).toHaveCount(0)
+
+    // Today respects the same mapping: a fixed Monday (2026-08-17) is a rest day
+    await page.clock.setFixedTime(new Date('2026-08-17T10:00:00'))
+    await page.goto('today')
+    await page.waitForTimeout(1000)
+    await expect(page.locator('.hero-title', { hasText: 'Descanso' })).toBeVisible()
+  })
+})
+
 test.describe('Plan — exercise detail sheet', () => {
   const SETTINGS = {
     id: 'settings', activeProgramId: 'prog-detail', currentWeekIdx: 0, units: 'kg',

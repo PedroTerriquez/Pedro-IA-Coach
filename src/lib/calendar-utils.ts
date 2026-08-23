@@ -1,5 +1,6 @@
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 import { computeStreakWeeks, computeBestStreakWeeks } from '$lib/streak'
+import { resolveWeekOrder } from '$lib/week-order'
 
 export function calStripTime(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -41,21 +42,31 @@ export function makeDayStatusFn(
   weeks: number,
   weekIdx: number,
   exercisesMap?: Record<string, any>,
-  language?: string
+  language?: string,
+  rescheduleOrders?: Record<string, number[]>
 ): (date: Date) => any {
   const t = calStripTime(today)
   const todayMonday = calMonday(t)
   const startDate = calAddDays(todayMonday, -7 * 9)
+
+  const orderCache = new Map<number, number[]>()
+  const orderFor = (wi: number): number[] => {
+    if (!orderCache.has(wi)) {
+      const key = program?.id ? `${program.id}-week-${wi}` : ''
+      orderCache.set(wi, resolveWeekOrder(program?.weeks?.[wi], key ? rescheduleOrders?.[key] : undefined))
+    }
+    return orderCache.get(wi)!
+  }
 
   return function (date: Date) {
     date = calStripTime(date)
     const dow = calDowMon(date)
     const weekDiff = Math.round((calMonday(date).getTime() - todayMonday.getTime()) / (7 * 86400000))
     const wi = ((weekIdx + weekDiff) % weeks + weeks) % weeks
-    const day = program.weeks[wi]?.days[dow]
+    const day = program.weeks[wi]?.days?.[orderFor(wi)[dow]]
     const isRest = !day || day.name === 'Descanso'
     let raw: any[] = (day && day.exercises && day.exercises.length) ? day.exercises : []
-    if (!isRest && !raw.length) raw = program.weeks[0]?.days[dow]?.exercises || []
+    if (!isRest && !raw.length) raw = program.weeks[0]?.days?.[orderFor(0)[dow]]?.exercises || []
     const exercises = raw.map((e: any) => {
       if (e.name) return e
       const resolved = exercisesMap?.[e.exerciseId]

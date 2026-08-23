@@ -38,6 +38,7 @@ export interface ProgramDay {
   subtitle: string
   duration: number
   exercises: ProgramExercise[]
+  weekday?: number // 1=Lunes … 7=Domingo; undefined = secuencial desde lunes
 }
 
 export interface ProgramWeek {
@@ -82,6 +83,7 @@ export interface Settings {
   fontScale?: number
   onboarded?: boolean
   onboardingStep?: number
+  debugAI?: boolean
 }
 
 export interface BackupData {

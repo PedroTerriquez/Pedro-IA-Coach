@@ -29,6 +29,7 @@
   import DataImportSection from '$lib/components/DataImportSection.svelte'
   import DataExportSection from '$lib/components/DataExportSection.svelte'
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
+  import { lastAIExchange, DEBUG_PASSWORD, type AIExchange } from '$lib/stores/debug'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -86,6 +87,20 @@
   let showSkippedOverlay = $state(false)
   let exercisesImportStatus = $state('')
   let exercisesExportStatus = $state('')
+
+  // Debug IA state
+  let debugPass = $state('')
+  let debugShow = $state(false)
+  let debugExchange: AIExchange | null = $derived($lastAIExchange)
+  let debugText = $derived.by(() => {
+    if (!debugExchange) return 'Aún no hay intercambios con la IA. Usa Importar, Generar o algún Coach y vuelve aquí.'
+    const fmt = (v: unknown) => {
+      let s = typeof v === 'string' ? v : JSON.stringify(v, null, 2)
+      if (s && s.length > 100000) s = s.slice(0, 100000) + '\n…[truncado]'
+      return s || '(vacío)'
+    }
+    return `[${debugExchange.ts}] ${debugExchange.label} → ${debugExchange.endpoint}\n\n── REQUEST ──\n${fmt(debugExchange.request)}\n\n── RESPONSE ──\n${fmt(debugExchange.response)}`
+  })
 
   let accent = $derived($settings.accentColor || '#d4ff3a')
   let units = $derived($settings.units || 'kg')
@@ -386,6 +401,23 @@
   }
 
   // ── Datos tab ──
+
+  // ── Debug IA ──
+  async function activateDebug() {
+    if (debugPass.trim() !== DEBUG_PASSWORD) {
+      toast.show('Contraseña incorrecta', true)
+      return
+    }
+    await settings.update({ debugAI: true })
+    debugPass = ''
+    toast.show('Debug IA activado')
+  }
+
+  async function deactivateDebug() {
+    await settings.update({ debugAI: false })
+    debugShow = false
+    toast.show('Debug IA desactivado')
+  }
 
   async function submitAIImport() {
     const text = aiInput.trim()
@@ -778,6 +810,40 @@
           onlogsexport={onLogsExport}
         />
       </div>
+
+      <div id="debug-ai-section" class="section-label-wrap"><SectionLabel {accent}>Debug IA</SectionLabel></div>
+      <div class="card section-card">
+        {#if !$settings.debugAI}
+          <div class="card-content">
+            <div class="card-subtitle">Activa el modo debug para inspeccionar el prompt enviado y la respuesta cruda de la IA en cada conexión.</div>
+            <div class="debug-pass-row">
+              <input
+                id="debug-pass-input"
+                type="password"
+                placeholder="Contraseña"
+                autocomplete="off"
+                bind:value={debugPass}
+                onkeydown={(e) => { if (e.key === 'Enter') activateDebug() }}
+              />
+              <Button variant="secondary" {accent} onclick={activateDebug}>Activar</Button>
+            </div>
+          </div>
+        {:else}
+          <div class="debug-active-row">
+            <div class="flex-1">
+              <div class="debug-status"><span class="debug-dot"></span>Debug IA activo</div>
+              <div class="card-subtitle">{debugExchange ? `Último intercambio: ${debugExchange.label} · ${debugExchange.ts}` : 'Esperando la primera conexión con la IA…'}</div>
+            </div>
+            {#if debugExchange}
+              <Button variant="secondary" {accent} onclick={() => debugShow = !debugShow}>{debugShow ? 'Ocultar' : 'Mostrar'}</Button>
+            {/if}
+            <Button variant="ghost" onclick={deactivateDebug}>Desactivar</Button>
+          </div>
+          {#if debugShow}
+            <textarea id="debug-ai-output" readonly spellcheck="false" value={debugText}></textarea>
+          {/if}
+        {/if}
+      </div>
     {/if}
   </div>
 </div>
@@ -858,5 +924,58 @@
     background: linear-gradient(135deg, rgba(0,220,130,0.22) 0%, rgba(0,180,255,0.15) 100%);
     color: #00e88a;
     border: 1px solid rgba(0,232,138,0.3);
+  }
+
+  .debug-pass-row { display: flex; gap: 8px; margin-top: 12px; }
+  .debug-pass-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 0.5px solid rgba(255,255,255,0.08);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--font-mono);
+    outline: none;
+    box-sizing: border-box;
+  }
+  .debug-active-row { display: flex; align-items: center; gap: 8px; padding: 14px 16px 4px; }
+  .debug-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: #00e88a;
+    margin-bottom: 4px;
+  }
+  .debug-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: #00e88a;
+    box-shadow: 0 0 6px #00e88a;
+    flex-shrink: 0;
+  }
+  #debug-ai-output {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 10px 16px 14px;
+    height: 320px;
+    resize: vertical;
+    border-radius: 10px;
+    border: 0.5px solid rgba(255,255,255,0.08);
+    background: var(--bg);
+    color: rgba(255,255,255,0.75);
+    font-size: 10px;
+    line-height: 1.5;
+    font-family: var(--font-mono);
+    padding: 10px;
+    box-sizing: border-box;
+    outline: none;
+    white-space: pre;
+    overflow: auto;
   }
 </style>

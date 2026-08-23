@@ -6,8 +6,25 @@ import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionary'
 import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+import { lastAIExchange } from '$lib/stores/debug'
 
 const LANGUAGE: PromptLanguage = 'es'
+
+async function recordIfDebug(label: string, url: string, reqBody: unknown, parsed: unknown) {
+  try {
+    const s = await Storage.getSettings()
+    if (!s.debugAI) return
+    lastAIExchange.set({
+      label,
+      endpoint: PUSH_SERVER_URL ? url.replace(PUSH_SERVER_URL, '') : url,
+      request: reqBody,
+      response: parsed,
+      ts: new Date().toLocaleTimeString('es-MX'),
+    })
+  } catch {
+    // debugging must never break the AI flow
+  }
+}
 
 export function buildUserProfile(settings: Settings) {
   return {
@@ -55,6 +72,7 @@ async function buildProgramFromAIResponse(data: any, opts?: { noFuzzy?: boolean;
         subtitle: d.subtitle || '',
         duration: d.duration_min || d.duration || 60,
         exercises,
+        ...(typeof d.weekday === 'number' && d.weekday >= 1 && d.weekday <= 7 ? { weekday: Math.round(d.weekday) } : {}),
       })
     }
     weeks.push({
@@ -79,21 +97,27 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
   const settings = await Storage.getSettings()
   const language = LANGUAGE
 
+  const reqBody = {
+    text,
+    systemPrompt: buildImportPrompt(language),
+    language,
+    userProfile: buildUserProfile(settings),
+    dictionary
+  }
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text,
-      systemPrompt: buildImportPrompt(language),
-      language,
-      userProfile: buildUserProfile(settings),
-      dictionary
-    })
+    body: JSON.stringify(reqBody)
   })
 
-  if (!res.ok) throw new Error(`AI import failed: ${res.status}`)
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '')
+    await recordIfDebug('Importar con IA', `${PUSH_SERVER_URL}/api/ai/import`, reqBody, { error: true, status: res.status, raw })
+    throw new Error(`AI import failed: ${res.status}`)
+  }
 
   const data = await res.json()
+  await recordIfDebug('Importar con IA', `${PUSH_SERVER_URL}/api/ai/import`, reqBody, data)
   if (!data.weeks || data.weeks.length === 0) {
     throw new Error('La IA no pudo interpretar la rutina')
   }
@@ -124,21 +148,26 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}, on
   const settings = await Storage.getSettings()
   const language = LANGUAGE
   const userProfile = buildUserProfile(settings)
-
+  const reqBody = {
+    userProfile,
+    overrides,
+    language,
+    systemPrompt: buildGeneratePrompt(language),
+  }
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userProfile,
-      overrides,
-      language,
-      systemPrompt: buildGeneratePrompt(language),
-    })
+    body: JSON.stringify(reqBody)
   })
 
-  if (!res.ok) throw new Error(`AI generation failed: ${res.status}`)
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '')
+    await recordIfDebug('Generar programa', `${PUSH_SERVER_URL}/api/ai/generate-program`, reqBody, { error: true, status: res.status, raw })
+    throw new Error(`AI generation failed: ${res.status}`)
+  }
 
   const data = await res.json()
+  await recordIfDebug('Generar programa', `${PUSH_SERVER_URL}/api/ai/generate-program`, reqBody, data)
   if (!data.weeks || data.weeks.length === 0) {
     throw new Error('La IA no pudo generar un programa válido')
   }
@@ -184,21 +213,27 @@ export async function programCoach(text: string, program: Program, onProgress?: 
   )
   const filteredDictionary = buildFilteredDictionary(exerciseNames)
 
+  const reqBody = {
+    text,
+    currentProgram: programWithNames,
+    userProfile,
+    language,
+    systemPrompt: buildProgramCoachPrompt(language),
+    dictionary: filteredDictionary,
+  }
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/program-coach`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text,
-      currentProgram: programWithNames,
-      userProfile,
-      language,
-      systemPrompt: buildProgramCoachPrompt(language),
-      dictionary: filteredDictionary,
-    })
+    body: JSON.stringify(reqBody)
   })
 
-  if (!res.ok) throw new Error(`Coach request failed: ${res.status}`)
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '')
+    await recordIfDebug('Coach de programa', `${PUSH_SERVER_URL}/api/ai/program-coach`, reqBody, { error: true, status: res.status, raw })
+    throw new Error(`Coach request failed: ${res.status}`)
+  }
   const data = await res.json()
+  await recordIfDebug('Coach de programa', `${PUSH_SERVER_URL}/api/ai/program-coach`, reqBody, data)
 
   if (data.program && data.program.weeks && data.program.weeks.length) {
     const newProgram = await buildProgramFromAIResponse(data.program, { noFuzzy: false, onProgress })
@@ -228,18 +263,24 @@ export async function exerciseCoachChat(exerciseName: string, muscle: string, al
     const settings = await Storage.getSettings()
     const userProfile = buildUserProfile(settings)
     const systemPrompt = buildExerciseCoachPrompt(exerciseName, muscle, alternatives, userProfile)
+    const reqBody = {
+      messages,
+      systemPrompt,
+    }
+    const url = `${PUSH_SERVER_URL}/api/ai/exercise-coach`
 
-    const res = await fetch(`${PUSH_SERVER_URL}/api/ai/exercise-coach`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages,
-        systemPrompt,
-      })
+      body: JSON.stringify(reqBody)
     })
 
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Error')
+    if (!res.ok) {
+      await recordIfDebug('Coach de ejercicio', url, reqBody, { error: true, status: res.status, raw: data })
+      throw new Error(data.error || 'Error')
+    }
+    await recordIfDebug('Coach de ejercicio', url, reqBody, data)
     return { reply: data.reply || 'No tengo respuesta ahora.', _provider: data._provider || 'llama' }
   } catch (err: any) {
     return { reply: 'Error al contactar al coach: ' + err.message }

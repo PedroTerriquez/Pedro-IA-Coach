@@ -23,8 +23,13 @@
   const isNew = $derived(!program)
 
   let progName = $state('')
-  let weeks = $state<{ name: string; tag: string; days: { name: string; duration: number; exercises: { name: string; sets: number; reps: string; rest: number }[] }[] }[]>([])
+  let weeks = $state<{ name: string; tag: string; days: { name: string; duration: number; weekday?: number; exercises: { name: string; sets: number; reps: string; rest: number }[] }[] }[]>([])
   let allExerciseNames = $state<string[]>([])
+
+  const WEEKDAY_OPTS = [
+    { v: 1, l: 'Lun' }, { v: 2, l: 'Mar' }, { v: 3, l: 'Mié' }, { v: 4, l: 'Jue' },
+    { v: 5, l: 'Vie' }, { v: 6, l: 'Sáb' }, { v: 7, l: 'Dom' },
+  ]
 
   $effect(() => {
     if (open) initEditor()
@@ -44,6 +49,7 @@
         days: w.days.map(d => ({
           name: d.name,
           duration: d.duration || 60,
+          ...(typeof (d as any).weekday === 'number' ? { weekday: (d as any).weekday } : {}),
           exercises: d.exercises.map(ex => ({
             name: idToName[ex.exerciseId] || '',
             sets: ex.sets,
@@ -104,7 +110,7 @@
     weeks = weeks.map((w, wi) => wi === weekIdx ? { ...w, ...patch } : w)
   }
 
-  function updateDay(weekIdx: number, dayIdx: number, patch: Partial<{ name: string; duration: number }>) {
+  function updateDay(weekIdx: number, dayIdx: number, patch: Partial<{ name: string; duration: number; weekday: number | undefined }>) {
     weeks = weeks.map((w, wi) => wi === weekIdx
       ? { ...w, days: w.days.map((d, di) => di === dayIdx ? { ...d, ...patch } : d) }
       : w
@@ -143,7 +149,13 @@
           }
           exercises.push({ exerciseId: exId, sets: ex.sets, reps: ex.reps, rest: ex.rest })
         }
-        days.push({ name: d.name, subtitle: '', duration: d.duration, exercises })
+        days.push({
+          name: d.name,
+          subtitle: '',
+          duration: d.duration,
+          exercises,
+          ...(typeof d.weekday === 'number' && d.weekday >= 1 && d.weekday <= 7 ? { weekday: d.weekday } : {}),
+        })
       }
       resolvedWeeks.push({ name: w.name, subtitle: '', tag: w.tag, days })
     }
@@ -187,6 +199,11 @@
           <div class="day-block">
             <div class="day-header">
               <TextInput bind:value={day.name} placeholder="Día" compact style="flex:1" />
+              <select class="weekday-select" value={day.weekday ?? ''} title="Día de la semana"
+                onchange={(e) => updateDay(wi, di, { weekday: e.currentTarget.value === '' ? undefined : Number(e.currentTarget.value) })}>
+                <option value="">Auto</option>
+                {#each WEEKDAY_OPTS as o}<option value={o.v}>{o.l}</option>{/each}
+              </select>
               <input class="ex-num-input" type="number" value={day.duration} placeholder="min" style="width:50px"
                 oninput={(e) => updateDay(wi, di, { duration: parseInt((e.target as HTMLInputElement).value) || 60 })} />
               <button class="icon-del sm" onclick={() => removeDay(wi, di)} aria-label="Eliminar día">✕</button>
@@ -270,6 +287,22 @@
     display: flex;
     gap: 6px;
     align-items: center;
+  }
+
+  .weekday-select {
+    width: 52px;
+    padding: 8px 2px;
+    border-radius: 8px;
+    border: 0.5px solid rgba(255,255,255,0.08);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-align: center;
+    outline: none;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   .ex-row {

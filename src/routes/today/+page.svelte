@@ -10,6 +10,7 @@
   import { storeRestPending, checkPendingRest, _checkRestTimer } from '$lib/rest-timer'
   import { runCoachAnalysis } from '$lib/coach-analysis'
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
+  import { resolveWeekOrder } from '$lib/week-order'
   import { APP_VERSION } from '$lib/pwa'
   import Warmup from '$lib/components/Warmup.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
@@ -240,9 +241,12 @@
         return
       }
 
-      const order = (s.rescheduleWeekOrder?.[`${program.id}-week-${weekIdx}`] as unknown as number[]) || [0, 1, 2, 3, 4, 5, 6]
-      const originalDayIdx = order[detectedDayIdx < order.length ? detectedDayIdx : 0]
-      day = weekObj.days[originalDayIdx] || null
+      const order = resolveWeekOrder(
+        weekObj,
+        (s.rescheduleWeekOrder as Record<string, number[]> | undefined)?.[`${program.id}-week-${weekIdx}`]
+      )
+      const originalDayIdx = order[detectedDayIdx]
+      day = weekObj.days?.[originalDayIdx] || null
 
       if (!day || day.name === 'Rest' || day.name === 'Descanso') {
         isRestDay

@@ -11,6 +11,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import { trainingDaysPerWeek, streakThreshold } from '$lib/streak'
   import { startRestFromExercise } from '$lib/rest-timer'
+  import { settings } from '$lib/stores/settings'
 
   let {
     accent,
@@ -49,7 +50,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
   const CAL_DOW_LONG = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
   const CAL_MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
-  let dayStatusFn = $derived(makeDayStatusFn(today, logsByDate, program, weeks, weekIdx, exercisesMap, language))
+  let dayStatusFn = $derived(makeDayStatusFn(today, logsByDate, program, weeks, weekIdx, exercisesMap, language, ($settings.rescheduleWeekOrder || {}) as Record<string, number[]>))
   let daysPerWeek = $derived(trainingDaysPerWeek(program, weekIdx))
   let threshold = $derived(streakThreshold(daysPerWeek))
   let streak = $derived(computeWeekStreak(today, logsByDate, daysPerWeek))
