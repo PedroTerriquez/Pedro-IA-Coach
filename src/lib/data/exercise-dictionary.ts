@@ -3,6 +3,12 @@
 
 import { IMG_BASE, EX_GIF_BASE } from './media-bases';
 export { IMG_BASE, EX_GIF_BASE };
+import { base } from '$app/paths';
+
+// Default placeholder shown when an exercise has neither a photo nor a gif.
+// Self-hosted in static/ so it works offline and on the PWA. B&W dumbbell,
+// Unsplash License (free use, no attribution required).
+export const DEFAULT_EXERCISE_IMG = `${base}/dumbbell-placeholder.jpg`
 
 // Fallback media for entries whose free-exercise-db/ExerciseGymGifsDB photo or gif is
 // wrong. Sourced from github.com/hasaneyldrm/exercises-dataset, pinned to a commit
@@ -2601,6 +2607,9 @@ export function resolveExerciseMedia(exercise: any) {
 
   // 4. GIF fallback — use GIF as static image when no valid photo
   if (!imgUrl && gifUrl) imgUrl = gifUrl
+
+  // 5. Default placeholder — no photo and no gif
+  if (!imgUrl) imgUrl = DEFAULT_EXERCISE_IMG
 
   return { imgUrl: imgUrl || '', gifUrl, attribution: usedGymvisual ? GYMVISUAL_ATTRIBUTION : null }
 }

@@ -33,7 +33,7 @@ export const EXERCISE_WARMUP: WarmupEntry[] = [
     ejecucion: 'Flexiona los codos lentamente tardando de 3 a 4 segundos en acercar tu pecho hacia la pared, manteniendo el abdomen firme. Una vez que estés muy cerca, empuja la pared de forma explosiva para regresar a la posición inicial.',
     respiracion: 'Inhala durante la fase de descenso controlado hacia la pared y exhala con fuerza al realizar el empuje dinámico.',
     duracion: 'Realiza de 12 a 15 repeticiones de manera continua y controlada.',
-    image: _IMG('Pushups'),
+    image: _IMG('Calf_Stretch_Hands_Against_Wall', 1),
     gif: _GIF('pectorals/push-up-wall'),
   },
   {
@@ -83,6 +83,7 @@ export const EXERCISE_WARMUP: WarmupEntry[] = [
     duracion: 'Mantén este estiramiento estático durante 25 a 30 segundos de manera controlada.',
     stallbar: true,
     gif: _GIF('pectorals/behind-head-chest-stretch'),
+    image: _IMG('Behind_Head_Chest_Stretch', 1),
   },
   // ── Hombros ───────────────────────────────────
   {
@@ -155,7 +156,7 @@ export const EXERCISE_WARMUP: WarmupEntry[] = [
     ejecucion: 'Manteniendo el cuerpo rígido como una tabla, flexiona los codos hacia afuera y abajo para acercar tu esternón hacia las manos en un recorrido controlado de 2 segundos. Empuja dinámicamente la pared para regresar extendiendo los brazos por completo.',
     respiracion: 'Inhala mientras desciendes controladamente hacia la pared y exhala al realizar el empuje dinámico final.',
     duracion: 'Completa de 12 a 15 repeticiones enfocadas en la musculatura del tríceps.',
-    image: _IMG('Pushups'),
+    image: _IMG('Calf_Stretch_Elbows_Against_Wall', 1),
     gif: _GIF('pectorals/push-up-wall'),
   },
   {
@@ -216,6 +217,7 @@ export const EXERCISE_WARMUP: WarmupEntry[] = [
     respiracion: 'Exhala al flexionar los codos hacia arriba contrayendo el músculo e inhala al extender los brazos por completo.',
     duracion: 'Realiza de 15 a 20 repeticiones con ritmo continuo.',
     image: _IMG('Dumbbell_Alternate_Bicep_Curl'),
+    gif: _GIF('biceps/dumbbell-biceps-curl'),
   },
   {
     id: 'warmup-biceps-rotaciones-de-brazo-completo-tornillo',

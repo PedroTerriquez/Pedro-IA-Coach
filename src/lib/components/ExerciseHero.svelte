@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+  import { getExerciseDisplayName, DEFAULT_EXERCISE_IMG } from '$lib/data/exercise-dictionary'
   import { settings } from '$lib/stores/settings'
 
   let { exercise, accent = 'var(--accent)', loggedToday = false, showGif = $bindable(false) }: {
@@ -29,6 +29,9 @@
       {/if}
       {#if exercise.imgUrl && !showGif}
         <div class="hero-img-layer" style="background-image:url({exercise.imgUrl})"></div>
+      {/if}
+      {#if !exercise.imgUrl && !exercise.gifUrl}
+        <div class="hero-img-layer hero-placeholder-layer" style="background-image:url({DEFAULT_EXERCISE_IMG})"></div>
       {/if}
     </div>
     {#if exercise.imgUrl && exercise.gifUrl && exercise.imgUrl !== exercise.gifUrl}
@@ -103,6 +106,10 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+  }
+  .hero-placeholder-layer {
+    opacity: 0.5;
+    filter: grayscale(1) brightness(0.7);
   }
   .hero-gif-img {
     width: 100%;
