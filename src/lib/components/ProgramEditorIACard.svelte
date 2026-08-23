@@ -3,6 +3,7 @@
   import TextArea from './TextArea.svelte'
   import CoachResponseCard from './CoachResponseCard.svelte'
   import SectionLabel from './SectionLabel.svelte'
+  import DebugAIToggle from './DebugAIToggle.svelte'
 
   let {
     accent = 'var(--accent)',
@@ -32,6 +33,7 @@
       <div class="card-subtitle">Pregunta o pide cambios en tu rutina.</div>
       <TextArea value={coachInput} placeholder='Ej: "Cambia press banca por press inclinado", "¿Está balanceada mi rutina?"' {oninput} />
       <div id="prog-coach-status" class="status-text">{coachStatus}</div>
+      <DebugAIToggle {accent} />
     </div>
     <div class="submit-wrap">
       <Button variant="primary" fullWidth onclick={onsubmit}>Enviar al coach</Button>

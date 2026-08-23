@@ -4,6 +4,7 @@
   import { settings } from '$lib/stores/settings'
   import Icon from './Icon.svelte'
   import Button from './Button.svelte'
+  import DebugAIToggle from './DebugAIToggle.svelte'
 
   interface ExerciseCoach {
     name: string
@@ -100,6 +101,10 @@
       <button class="coach-close-btn" onclick={onclose}>
         <svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 1l11 11M12 1L1 12" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
+    </div>
+
+    <div class="coach-debug-wrap">
+      <DebugAIToggle {accent} />
     </div>
 
     <div class="coach-msgs" bind:this={chatEl}>
@@ -267,6 +272,14 @@
     overflow-y: auto;
     padding: 18px 16px 8px;
     scroll-behavior: smooth;
+  }
+  .coach-debug-wrap {
+    flex-shrink: 0;
+    padding: 0 16px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .coach-debug-wrap:empty {
+    display: none;
   }
   .coach-bubbles {
     display: flex;

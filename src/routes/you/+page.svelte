@@ -29,7 +29,8 @@
   import DataImportSection from '$lib/components/DataImportSection.svelte'
   import DataExportSection from '$lib/components/DataExportSection.svelte'
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
-  import { lastAIExchange, DEBUG_PASSWORD, type AIExchange } from '$lib/stores/debug'
+  import { lastAIExchange, DEBUG_PASSWORD, formatExchange, type AIExchange } from '$lib/stores/debug'
+  import DebugAIToggle from '$lib/components/DebugAIToggle.svelte'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -92,15 +93,7 @@
   let debugPass = $state('')
   let debugShow = $state(false)
   let debugExchange: AIExchange | null = $derived($lastAIExchange)
-  let debugText = $derived.by(() => {
-    if (!debugExchange) return 'Aún no hay intercambios con la IA. Usa Importar, Generar o algún Coach y vuelve aquí.'
-    const fmt = (v: unknown) => {
-      let s = typeof v === 'string' ? v : JSON.stringify(v, null, 2)
-      if (s && s.length > 100000) s = s.slice(0, 100000) + '\n…[truncado]'
-      return s || '(vacío)'
-    }
-    return `[${debugExchange.ts}] ${debugExchange.label} → ${debugExchange.endpoint}\n\n── REQUEST ──\n${fmt(debugExchange.request)}\n\n── RESPONSE ──\n${fmt(debugExchange.response)}`
-  })
+  let debugText = $derived(formatExchange(debugExchange))
 
   let accent = $derived($settings.accentColor || '#d4ff3a')
   let units = $derived($settings.units || 'kg')
@@ -671,6 +664,9 @@
             </div>
             <div id="ai-status" class="status-text">{aiStatus}</div>
           </div>
+          <div style="padding: 0 16px;">
+            <DebugAIToggle {accent} />
+          </div>
           <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
         </div>
 
@@ -716,6 +712,9 @@
             </div>
 
             <div class="status-text">{generateStatus}</div>
+          </div>
+          <div style="padding: 0 16px;">
+            <DebugAIToggle {accent} />
           </div>
           <Button variant="primary" {accent} fullWidth onclick={submitGenerate} disabled={generatingProgram}>{generatingProgram ? '⏳ Generando…' : 'Generar programa con IA'}</Button>
         </div>

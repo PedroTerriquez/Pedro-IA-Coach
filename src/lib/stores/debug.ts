@@ -10,3 +10,16 @@ export interface AIExchange {
 
 export const DEBUG_PASSWORD = 'patitofeo'
 export const lastAIExchange = writable<AIExchange | null>(null)
+
+const MAX_CHARS = 100000
+
+function fmt(v: unknown): string {
+  let s = typeof v === 'string' ? v : JSON.stringify(v, null, 2)
+  if (s && s.length > MAX_CHARS) s = s.slice(0, MAX_CHARS) + '\n…[truncado]'
+  return s || '(vacío)'
+}
+
+export function formatExchange(ex: AIExchange | null): string {
+  if (!ex) return 'Aún no hay intercambios con la IA. Usa Importar, Generar o algún Coach y vuelve aquí.'
+  return `[${ex.ts}] ${ex.label} → ${ex.endpoint}\n\n── REQUEST ──\n${fmt(ex.request)}\n\n── RESPONSE ──\n${fmt(ex.response)}`
+}

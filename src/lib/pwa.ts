@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.31'
-const _VER_DESC = 'placeholder de dumbbell para ejercicios sin media + fixes de imágenes warmup'
+const _VER_BASE = 'v2.32'
+const _VER_DESC = 'Debug IA con botón en cada superficie (importar, generar, coach programa y ejercicio)'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
