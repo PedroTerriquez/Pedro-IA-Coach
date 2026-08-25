@@ -2015,3 +2015,69 @@ test.describe('Today — Alternative exercise swap', () => {
   })
 })
 
+// ── Hoy: ejercicios completados marcados en verde ──
+// Un ejercicio del día cuenta como hecho cuando existe exerciseLog de hoy
+// con peso > 0 (misma fuente que todayExDone). La TrainingCard debe marcar
+// cada fila con data-done="true|false" y badge verde en las hechas.
+test.describe('Hoy — ejercicios completados marcados', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-done', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  function getTodayStr() {
+    return new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  }
+
+  test('marks rows of logged exercises as done and persists after reload', async ({ page }) => {
+    const today = getTodayStr()
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    await seedIndexedDB(page, {
+      exercises: SEED.exercises,
+      program: {
+        id: 'prog-done',
+        name: 'Programa Done',
+        weeks: [{
+          name: 'Semana 1', subtitle: '', tag: 'BUILD',
+          days: buildDayArray({
+            name: 'Empuje',
+            subtitle: 'Press Banca · Press Militar',
+            duration: 60,
+            exercises: [
+              { exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 },
+              { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 },
+            ],
+          }),
+        }],
+      },
+      // Log real de hoy para ex-bench: es la fuente de verdad del marcado.
+      exerciseLogs: [{ id: 'log-bench-done', exerciseId: 'ex-bench', date: today, weight: 60, units: 'kg' }],
+      // phase 2 = calentamiento hecho → la TrainingCard muestra las rows
+      // directamente en el tab Hoy (sin interactuar con overlays).
+      settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 1 } },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(1000)
+
+    const benchRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Press de Banca con Barra' })
+    const militaryRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Press Militar' })
+
+    // Press Banca tiene log de hoy → marcado. Press Militar no → sin marcar.
+    await expect(benchRow).toHaveAttribute('data-done', 'true')
+    await expect(benchRow).toHaveClass(/row-done/)
+    await expect(militaryRow).toHaveAttribute('data-done', 'false')
+
+    // Badge verde solo en el thumbnail de la fila hecha.
+    await expect(benchRow.locator('.ex-done-badge')).toBeVisible()
+    await expect(militaryRow.locator('.ex-done-badge')).toHaveCount(0)
+
+    // El marcado se recalcula desde IndexedDB en cada carga — sobrevive reload.
+    await page.reload()
+    await page.waitForTimeout(1000)
+    await expect(page.locator('[data-component="ExerciseRow"]', { hasText: 'Press de Banca con Barra' })).toHaveAttribute('data-done', 'true')
+  })
+})
+

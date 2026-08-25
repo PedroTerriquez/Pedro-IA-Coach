@@ -37,6 +37,7 @@
   let program = $state<Program | null>(null)
   let weekInfo = $state<any>(null)
   let todayExDone = $state(0)
+  let doneIds = $state<Record<string, true>>({})
   let startedAt = $state<number | null>(null)
   let endedAt = $state<number | null>(null)
   let coachCardMode = $state(false)
@@ -298,9 +299,13 @@
 
   async function loadTodayLogs() {
     const logs = await getLogsForDate(todayDate)
-    const count = day ? day.exercises.filter(ex =>
-      logs.some(l => l.exerciseId === ex.exerciseId && l.weight > 0)
-    ).length : 0
+    const nextDone: Record<string, true> = {}
+    const count = day ? day.exercises.filter(ex => {
+      const isDone = logs.some(l => l.exerciseId === ex.exerciseId && l.weight > 0)
+      if (isDone) nextDone[ex.exerciseId] = true
+      return isDone
+    }).length : 0
+    doneIds = nextDone
     if (count !== todayExDone) {
       todayExDone = count
       persistPhase()
@@ -442,6 +447,7 @@
     warmupDone = false
     stretchDone = false
     todayExDone = 0
+    doneIds = {}
     showCoach = false
     showWarmup = false
     showStretch = false
@@ -533,6 +539,7 @@
               {todayExDone}
               {exercisesTotal}
               {exercisesById}
+              {doneIds}
               onclick={openTrainingDetail}
               onExerciseClick={openExerciseDetailAt}
             />

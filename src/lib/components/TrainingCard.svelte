@@ -11,6 +11,7 @@
     todayExDone = 0,
     exercisesTotal = 0,
     exercisesById = {},
+    doneIds = null,
     onclick = () => {},
     onExerciseClick = null
   }: {
@@ -21,6 +22,7 @@
     todayExDone?: number
     exercisesTotal?: number
     exercisesById?: Record<string, any>
+    doneIds?: Record<string, true> | null
     onclick?: () => void
     onExerciseClick?: ((idx: number) => void) | null
   } = $props()
@@ -62,6 +64,7 @@
           sets={ex.sets}
           reps={ex.reps}
           {accent}
+          done={!!doneIds?.[ex.exerciseId]}
           onclick={onExerciseClick ? (e?: MouseEvent) => { e?.stopPropagation(); onExerciseClick!(i) } : undefined}
         />
       {/each}

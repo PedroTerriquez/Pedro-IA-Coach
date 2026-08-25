@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { name, muscle, imgUrl, sets, reps, weight, units = 'kg', accent = 'var(--accent)', weightIsTarget = false, selectable = false, selected = false, onclick, actions }: {
+  let { name, muscle, imgUrl, sets, reps, weight, units = 'kg', accent = 'var(--accent)', weightIsTarget = false, selectable = false, selected = false, done = false, onclick, actions }: {
     name: string
     muscle: string
     imgUrl?: string
@@ -11,17 +11,23 @@
     weightIsTarget?: boolean
     selectable?: boolean
     selected?: boolean
+    done?: boolean
     onclick?: (e?: MouseEvent) => void
     actions?: import('svelte').Snippet
   } = $props()
 </script>
 
-<button class="exercise-row" class:selected data-component="ExerciseRow" {onclick} type="button">
+<button class="exercise-row" class:selected class:row-done={done} data-component="ExerciseRow" data-done={done ? 'true' : 'false'} {onclick} type="button">
   <div class="ex-thumb">
     {#if imgUrl}
       <img src={imgUrl} alt="" />
     {:else}
       <div class="ex-placeholder"></div>
+    {/if}
+    {#if done}
+      <div class="ex-done-badge">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+      </div>
     {/if}
   </div>
   <div class="ex-info">
@@ -74,6 +80,7 @@
   }
 
   .ex-thumb {
+    position: relative;
     width: 44px;
     height: 44px;
     flex-shrink: 0;
@@ -173,5 +180,26 @@
     display: flex;
     align-items: center;
     gap: 4px;
+  }
+
+  .exercise-row.row-done .ex-thumb {
+    box-shadow: inset 0 0 0 1.5px #34c759;
+  }
+
+  .exercise-row.row-done .ex-name {
+    opacity: 0.55;
+  }
+
+  .ex-done-badge {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #34c759;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 </style>
