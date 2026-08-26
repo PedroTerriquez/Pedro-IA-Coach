@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.38'
-const _VER_DESC = 'fix(history): add Space key handler for exercise card a11y'
+const _VER_BASE = 'v2.41'
+const _VER_DESC = 'fix: friends search debounce + Worker batch KV reads'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
