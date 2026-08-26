@@ -205,7 +205,12 @@
             role="button"
             tabindex="0"
             onclick={() => openDetail(e)}
-            onkeydown={(ev) => ev.key === 'Enter' && openDetail(e)}
+            onkeydown={(ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault()
+                openDetail(e)
+              }
+            }}
           >
             <div class="ex-info">
               <div class="ex-name-row">
