@@ -46,7 +46,10 @@
     pts.forEach((p, i) => {
       const isLast = i === pts.length - 1
       svg += `<circle cx="${p.x}" cy="${p.y}" r="${isLast ? 4 : 2.5}" fill="${isLast ? c : '#0a0a0a'}" stroke="${c}" stroke-width="1.5"/>`
-      svg += `<text x="${p.x}" y="${height - 10}" fill="rgba(255,255,255,0.4)" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">${p.label}</text>`
+      if (i === 0 || isLast) {
+        const anchor = i === 0 ? 'start' : 'end'
+        svg += `<text x="${p.x}" y="${height - 10}" fill="rgba(255,255,255,0.4)" font-size="9" text-anchor="${anchor}" font-family="JetBrains Mono,monospace">${p.label}</text>`
+      }
     })
 
     return svg

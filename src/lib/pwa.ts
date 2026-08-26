@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.35'
-const _VER_DESC = 'feat: regresa timer de sesión, Estira bb y momento smart watch'
+const _VER_BASE = 'v2.36'
+const _VER_DESC = 'fix(chart): show only first and last x-axis date labels'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
