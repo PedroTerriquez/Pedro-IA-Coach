@@ -72,7 +72,7 @@ export interface Settings {
   occupation?: string
   pushSubscribed?: boolean
   pushServerUrl?: string
-  sessionState?: any
+  sessionState?: { date: string; phase: number; todayExDone: number; startedAt?: number | null; endedAt?: number | null } | any
   lastCoachAnalysis?: any
   streakShownDate?: string
   rescheduleWeekOrder?: Record<string, number | number[]>

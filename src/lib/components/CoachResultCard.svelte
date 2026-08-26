@@ -23,13 +23,19 @@
     onclick?: () => void
     onretry?: () => void
   } = $props()
+
+  function formatDuration(sec?: number): string {
+    if (sec == null || sec < 0) return '—'
+    return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`
+  }
 </script>
 
 <div class="coach-scroll" data-component="CoachResultCard">
-  <StatsGrid columns={3} variant="card">
+  <StatsGrid columns={4} variant="card">
     <StatBlock value={analysis?.streak_weeks ?? '—'} label="Racha" {accent} />
     <StatBlock value={analysis?.total_volume ?? '—'} label="Volumen" unit={analysis ? units : undefined} {accent} />
     <StatBlock value={analysis?.pr_count ?? '—'} label="PRs" {accent} />
+    <StatBlock value={formatDuration(analysis?.sessionDurationSec)} label="Duración" {accent} />
   </StatsGrid>
   {#if loading}
     <GlowCard blobColor={accent} borderColor="{accent}2e" padding="18px">

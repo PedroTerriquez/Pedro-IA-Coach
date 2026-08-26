@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.34'
-const _VER_DESC = 'feat: ejercicios completados se marcan en verde en Hoy'
+const _VER_BASE = 'v2.35'
+const _VER_DESC = 'feat: regresa timer de sesión, Estira bb y momento smart watch'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { resolvePanelItems } from '$lib/data/warmup-components'
-
+  import { base } from '$app/paths'
   import { onMount } from 'svelte'
   import * as Storage from '$lib/storage'
   import { settings } from '$lib/stores/settings'
@@ -28,6 +28,7 @@
   import Button from '$lib/components/Button.svelte'
   import StreakOverlay from '$lib/components/StreakOverlay.svelte'
   import TrainingCard from '$lib/components/TrainingCard.svelte'
+  import CenterToast from '$lib/components/CenterToast.svelte'
   import type { Exercise, ExerciseLog, Program, ProgramDay, ProgramExercise, Settings } from '$lib/types'
 
   let phase = $state<'loading' | 'warmup' | 'training' | 'stretch' | 'complete'>('loading')
@@ -40,6 +41,7 @@
   let doneIds = $state<Record<string, true>>({})
   let startedAt = $state<number | null>(null)
   let endedAt = $state<number | null>(null)
+  let centerToast = $state<CenterToastData | null>(null)
   let coachCardMode = $state(false)
   let coachLoading = $state(false)
   let coachResult = $state<any>(null)
@@ -97,6 +99,7 @@
   function openTrainingDetail() {
     if (hasWarmup && !warmupDone) return
     if (todayExercises.length === 0) return
+    startSessionTimer()
     detailExercises = todayExercises
     detailIdx = 0
     showDetail = true
@@ -105,6 +108,7 @@
   function openExerciseDetailAt(idx: number) {
     if (hasWarmup && !warmupDone) return
     if (todayExercises.length === 0) return
+    startSessionTimer()
     detailExercises = todayExercises
     detailIdx = idx
     showDetail = true
@@ -169,6 +173,18 @@
   const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
   const dateStr = `${monthNames[now.getMonth()]} ${now.getDate()} · ${now.getFullYear()}`
   const weekDayName = dayNames[jsDay]
+
+  // Port literal del TOAST_SVG_WATCH del legacy (components/ui.js pre-migración)
+  const WATCH_SVG = `<svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect x="14" y="6" width="44" height="60" rx="13" stroke="currentColor" stroke-width="2.5" fill="none"/><rect x="20" y="16" width="32" height="30" rx="6" fill="currentColor" fill-opacity="0.06"/><circle cx="36" cy="30" r="5" fill="currentColor" fill-opacity="0.2"/><path d="M30 28h12v2H30z" fill="currentColor"/><path d="M30 32h8v2H30z" fill="currentColor" fill-opacity="0.5"/><circle cx="36" cy="54" r="3" fill="currentColor" fill-opacity="0.15"/><rect x="28" y="3" width="16" height="4" rx="2" fill="currentColor" fill-opacity="0.12"/></svg>`
+
+  type CenterToastData = {
+    imageSrc?: string
+    iconSvg?: string
+    message: string
+    subtext?: string
+    timeLabel?: string
+    duration: number
+  }
 
   let programs: Program[] = $state([])
   let weekIdx = $state(0)
@@ -268,6 +284,8 @@
         const p = s.sessionState.phase || 1
         const exDone = s.sessionState.todayExDone || 0
         todayExDone = exDone
+        if ((s.sessionState as any).startedAt) startedAt = (s.sessionState as any).startedAt
+        if ((s.sessionState as any).endedAt) endedAt = (s.sessionState as any).endedAt
         if (p >= 2) warmupDone = true
         if (p >= 3) phase = 'training'
         if (p >= 4) { stretchDone = true; phase = 'stretch' }
@@ -320,12 +338,35 @@
       phase = 'stretch'
       stretchDone = false
       if (!hasStretch) {
+        if (!endedAt) endedAt = Date.now()
         phase = 'complete'
         showCoach = true
         showEffortAfterStreak()
+      } else {
+        centerToast = {
+          imageSrc: `${base}/images/pedro.png`,
+          message: 'Estira bb',
+          subtext: 'Ya no tienes 20 añitos',
+          timeLabel: startedAt ? formatElapsed(startedAt, Date.now()) : '',
+          duration: 3000,
+        }
       }
       persistPhase()
     }
+  }
+
+  function startSessionTimer() {
+    if (!startedAt) {
+      startedAt = Date.now()
+      persistPhase()
+    }
+  }
+
+  function formatElapsed(startMs: number, endMs: number): string {
+    const sec = Math.max(0, Math.floor((endMs - startMs) / 1000))
+    const mm = Math.floor(sec / 60)
+    const ss = sec % 60
+    return mm > 0 ? `${mm} min ${ss} seg` : `${ss} seg`
   }
 
   function persistPhase() {
@@ -335,9 +376,9 @@
     if (todayExDone >= exercisesTotal && warmupDone) p = 3
     if (stretchDone) p = 4
     if (showCoach) p = 5
-    const s = { ...$settings, sessionState: { date: todayDate, phase: p, todayExDone } }
-    Storage.saveSettings(s)
-    settings.update({ sessionState: { date: todayDate, phase: p, todayExDone } } as any)
+    const sessionState = { date: todayDate, phase: p, todayExDone, startedAt, endedAt }
+    Storage.saveSettings({ ...$settings, sessionState })
+    settings.update({ sessionState } as any)
   }
 
   function onWarmupComplete() {
@@ -346,7 +387,7 @@
     showWarmup = false
     persistPhase()
     if ($settings.hasWatch) {
-      toast.show('Inicia tu Smart Watch')
+      centerToast = { iconSvg: WATCH_SVG, message: 'Inicia tu Smart Watch', duration: 2000 }
     }
   }
 
@@ -355,6 +396,7 @@
     phase = 'complete'
     showStretch = false
     showCoach = true
+    if (!endedAt) endedAt = Date.now()
     persistPhase()
     showEffortAfterStreak()
   }
@@ -422,9 +464,16 @@
       }
       coachResult = result
       const s = await Storage.getSettings()
-      s.lastCoachAnalysis = { ...result, date: todayDate, effort: coachEffort, weekIdx }
+      s.lastCoachAnalysis = {
+        ...result,
+        date: todayDate,
+        effort: coachEffort,
+        weekIdx,
+        sessionDurationSec: startedAt ? Math.round(((endedAt ?? Date.now()) - startedAt) / 1000) : undefined,
+      }
       await Storage.saveCoachAnalysis(s.lastCoachAnalysis)
       settings.update({ lastCoachAnalysis: s.lastCoachAnalysis } as any)
+      coachResult = s.lastCoachAnalysis
     } catch {
       coachLoading = false
       coachError = true
@@ -454,6 +503,7 @@
     startedAt = null
     endedAt = null
     completionToastShown = false
+    centerToast = null
     weightInputs = {}
     const s = { ...$settings }
     delete s.lastCoachAnalysis
@@ -527,7 +577,7 @@
             status={warmupDone ? 'completed' : 'active'}
             {accent}
             dataPhase="warmup"
-            onclick={() => showWarmup = true}
+            onclick={() => { startSessionTimer(); showWarmup = true }}
           />
         {/if}
 
@@ -649,6 +699,19 @@
 
 {#if streakModalShow}
   <StreakOverlay count={streakCount} {accent} />
+{/if}
+
+{#if centerToast}
+  <CenterToast
+    imageSrc={centerToast.imageSrc}
+    iconSvg={centerToast.iconSvg}
+    message={centerToast.message}
+    subtext={centerToast.subtext}
+    timeLabel={centerToast.timeLabel}
+    duration={centerToast.duration}
+    {accent}
+    onclose={() => centerToast = null}
+  />
 {/if}
 
 <style>

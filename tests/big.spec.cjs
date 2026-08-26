@@ -2081,3 +2081,105 @@ test.describe('Hoy — ejercicios completados marcados', () => {
   })
 })
 
+// ── Hoy: timer de sesión y momentos centrados ──
+// Revival del legado: overlay "Inicia tu Smart Watch" al terminar warmup
+// (si hasWatch), overlay "Estira bb" con tiempo al completar ejercicios, y
+// duración total en la card del coach.
+test.describe('Hoy — timer de sesión y momentos', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-timer', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: true, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('watch moment tras warmup, Estira bb al completar, duración en coach card', async ({ page }) => {
+    test.setTimeout(90000)
+    await mockApiRoutes(page)
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    await seedIndexedDB(page, {
+      exercises: SEED.exercises,
+      program: {
+        id: 'prog-timer',
+        name: 'Programa Timer',
+        weeks: [{
+          name: 'Semana 1', subtitle: '', tag: 'BUILD',
+          days: buildDayArray({
+            name: 'Empuje',
+            subtitle: 'Press Banca · Press Militar',
+            duration: 60,
+            exercises: [
+              { exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 },
+              { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 },
+            ],
+          }),
+        }],
+      },
+      settings: { ...SETTINGS },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(1000)
+
+    // ── Warmup → momento watch ──
+    await page.locator('[data-phase="warmup"]').click()
+    await page.waitForTimeout(500)
+    const hechoBtn = page.getByRole('button', { name: 'Hecho' })
+    await expect(hechoBtn).toBeVisible({ timeout: 3000 })
+    await hechoBtn.click()
+
+    const watchToast = page.locator('[data-component="CenterToast"]', { hasText: 'Inicia tu Smart Watch' })
+    await expect(watchToast).toBeVisible({ timeout: 2000 })
+    await expect(watchToast).not.toBeVisible({ timeout: 4000 })
+
+    // ── Loguear ambos ejercicios ──
+    await page.locator('[data-phase="training"]').click()
+    await page.waitForTimeout(500)
+
+    const stepperInc = page.locator('.stepper-inc').first()
+    await expect(stepperInc).toBeVisible()
+    await stepperInc.click()
+    await page.waitForTimeout(100)
+    await page.getByRole('button', { name: /Registrar ·/ }).click()
+    await page.waitForTimeout(600)
+
+    // Si aparece el botón Iniciar (prompt de descanso), ignorarlo: Siguiente navega igual.
+    await page.getByRole('button', { name: 'Siguiente' }).first().click()
+    await page.waitForTimeout(400)
+
+    await page.locator('.stepper-inc').first().click()
+    await page.waitForTimeout(100)
+    await page.getByRole('button', { name: /Registrar ·/ }).click()
+    await page.waitForTimeout(600)
+
+    // Cerrar sheet → la rama de completado dispara el overlay Estira bb
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+
+    const stretchToast = page.locator('[data-component="CenterToast"]', { hasText: 'Estira bb' })
+    await expect(stretchToast).toBeVisible({ timeout: 3000 })
+    await expect(stretchToast).toContainText(/seg|min/)
+    await expect(stretchToast).not.toBeVisible({ timeout: 5000 })
+
+    // ── Stretch → esfuerzo → coach card con Duración ──
+    await page.locator('[data-phase="stretch"]').click()
+    await page.waitForTimeout(500)
+    const stretchHecho = page.getByRole('button', { name: 'Hecho' })
+    await expect(stretchHecho).toBeVisible({ timeout: 3000 })
+    await stretchHecho.click()
+    await page.waitForTimeout(600)
+
+    // Streak se auto-descarta (~2.6s) y abre el selector de esfuerzo
+    await expect(page.locator('#streak-overlay')).not.toBeVisible({ timeout: 6000 })
+    const effortOverlay = page.locator('#effort-overlay')
+    await expect(effortOverlay).toBeVisible({ timeout: 5000 })
+    await effortOverlay.locator('[data-effort="Justo"]').click()
+
+    const coachCard = page.locator('#coach-card-regen')
+    await expect(coachCard).toBeVisible({ timeout: 10000 })
+    const duracionStat = page.locator('[data-component="StatBlock"]', { hasText: 'Duración' })
+    await expect(duracionStat).toBeVisible({ timeout: 5000 })
+    await expect(duracionStat).toContainText(/\d{1,3}:\d{2}/)
+  })
+})
+
