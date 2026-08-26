@@ -22,7 +22,7 @@
 
   async function confirm() {
     const val = draft.trim()
-    if (val.length < 2 || val === username) {
+    if (val.length < 2 || val.length > 20 || val === username) {
       editing = false
       return
     }
@@ -65,21 +65,21 @@
         {onkeydown}
         style="caret-color:{accent}"
       />
-      <button class="icon-btn" onclick={confirm} disabled={saving || draft.trim().length < 2} aria-label="Guardar">
+      <button type="button" class="icon-btn" onclick={confirm} disabled={saving || draft.trim().length < 2} aria-label="Guardar">
         {#if saving}
           <span class="spinner"></span>
         {:else}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={accent} stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
         {/if}
       </button>
-      <button class="icon-btn cancel" onclick={cancel} aria-label="Cancelar">
+      <button type="button" class="icon-btn cancel" onclick={cancel} aria-label="Cancelar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
   {:else}
     <div class="display-row">
       <span class="name-text">{username}</span>
-      <button class="icon-btn" onclick={startEdit} aria-label="Editar nombre">
+      <button type="button" class="icon-btn" onclick={startEdit} aria-label="Editar nombre">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
       </button>
     </div>
