@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.42'
-const _VER_DESC = 'cyberpunk AI cards, Coach IA repositioned, Sheet padding, chart fix'
+const _VER_BASE = 'v2.43'
+const _VER_DESC = 'add UsernameEditor component for inline name editing'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
