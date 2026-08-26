@@ -8,6 +8,8 @@
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
   import Chip from '$lib/components/Chip.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
+  import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
+  import Icon from '$lib/components/Icon.svelte'
   import type { Exercise, ExerciseLog } from '$lib/types'
 
   let historyFilter = $state('Todos')
@@ -21,6 +23,15 @@
   let activeProgram: any = $state(null)
   let weekIdx = $state(0)
   let loaded = $state(false)
+
+  let detailExercise: (Exercise & { logs: ExerciseLog[] }) | null = $state(null)
+  let showDetail = $state(false)
+
+  let expandedId: string | null = $state(null)
+  let editingId: string | null = $state(null)
+  let editName = $state('')
+  let editMuscle = $state('')
+  let editImgUrl = $state('')
 
   let enriched: (Exercise & { logs: ExerciseLog[] })[] = $derived(
     exercises.map(e => ({
@@ -74,8 +85,44 @@
     load()
   }
 
-  function onOpenExercise(ex: Exercise) {
-    console.log('Open exercise:', ex.name)
+  function openDetail(ex: Exercise & { logs: ExerciseLog[] }) {
+    detailExercise = ex
+    showDetail = true
+  }
+
+  function onDetailClose() {
+    showDetail = false
+    detailExercise = null
+  }
+
+  function toggleEdit(ex: Exercise & { logs: ExerciseLog[] }) {
+    if (expandedId === ex.id) {
+      expandedId = null
+      editingId = null
+    } else {
+      expandedId = ex.id
+      editingId = ex.id
+      editName = getExerciseDisplayName(ex, $settings.language)
+      editMuscle = ex.muscle
+      editImgUrl = ex.imgUrl || ''
+    }
+  }
+
+  function cancelEdit() {
+    expandedId = null
+    editingId = null
+  }
+
+  async function saveEdit(ex: Exercise) {
+    await storage.saveExercise({
+      ...ex,
+      name: editName,
+      muscle: editMuscle,
+      imgUrl: editImgUrl
+    })
+    expandedId = null
+    editingId = null
+    await refresh()
   }
 
   function getLastWeight(logs: ExerciseLog[]): number {
@@ -153,9 +200,24 @@
         {#each filtered as e}
           {@const last = getLastWeight(e.logs)}
           {@const delta = getDelta(e.logs)}
-          <button class="card ex-card" onclick={() => onOpenExercise(e)}>
+          <div
+            class="card ex-card"
+            role="button"
+            tabindex="0"
+            onclick={() => openDetail(e)}
+            onkeydown={(ev) => ev.key === 'Enter' && openDetail(e)}
+          >
             <div class="ex-info">
-              <div class="ex-name">{getExerciseDisplayName(e, $settings.language)}</div>
+              <div class="ex-name-row">
+                <span class="ex-name">{getExerciseDisplayName(e, $settings.language)}</span>
+                <button
+                  class="ex-edit-btn"
+                  onclick={(ev) => { ev.stopPropagation(); toggleEdit(e) }}
+                  aria-label="Editar ejercicio"
+                >
+                  <Icon name="pencil" size={16} color="rgba(255,255,255,0.4)" />
+                </button>
+              </div>
               <div class="ex-muscle">{e.muscle}</div>
             </div>
             {#if e.logs.length > 0}
@@ -169,12 +231,61 @@
               <div class="ex-last">{last}<span class="ex-unit">{units}</span></div>
               <div class="ex-delta" style="color:{delta >= 0 ? accent : '#ff6b6b'}">{delta >= 0 ? '+' : ''}{delta.toFixed(1)}</div>
             </div>
-          </button>
+          </div>
+
+          {#if expandedId === e.id}
+            <div class="ex-edit-form">
+              <input
+                type="text"
+                value={editName}
+                oninput={(ev) => editName = (ev.target as HTMLInputElement).value}
+                placeholder="Nombre"
+                class="ex-edit-input"
+              />
+              <input
+                type="text"
+                value={editMuscle}
+                oninput={(ev) => editMuscle = (ev.target as HTMLInputElement).value}
+                placeholder="Músculo"
+                class="ex-edit-input"
+              />
+              <input
+                type="text"
+                value={editImgUrl}
+                oninput={(ev) => editImgUrl = (ev.target as HTMLInputElement).value}
+                placeholder="URL imagen (opcional)"
+                class="ex-edit-input"
+              />
+              <div class="ex-edit-actions">
+                <button class="btn-cancel" onclick={cancelEdit}>Cancelar</button>
+                <button class="btn-save" onclick={() => saveEdit(e)}>Guardar</button>
+              </div>
+            </div>
+          {/if}
         {/each}
       </div>
     {/if}
   {/if}
 </div>
+
+{#if detailExercise}
+  <ExerciseDetail
+    exercise={{
+      ...detailExercise,
+      sets: 0,
+      reps: '',
+      rest: 0,
+      logs: detailExercise.logs
+    }}
+    open={showDetail}
+    {accent}
+    {units}
+    hasPrev={false}
+    hasNext={false}
+    isToday={false}
+    onClose={onDetailClose}
+  />
+{/if}
 
 <style>
   .page {
@@ -269,5 +380,77 @@
     font-size: 9px;
     letter-spacing: 0.6px;
     margin-top: 1px;
+  }
+  .ex-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .ex-edit-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+  .ex-edit-btn:active {
+    opacity: 1;
+  }
+
+  .ex-edit-form {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .ex-edit-input {
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #fafafa;
+    font-size: 14px;
+    font-family: 'Space Grotesk', sans-serif;
+    outline: none;
+  }
+  .ex-edit-input:focus {
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  .ex-edit-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+  .btn-cancel {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 8px 16px;
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .btn-save {
+    background: var(--accent, #d4ff3a);
+    border: none;
+    border-radius: 10px;
+    padding: 8px 16px;
+    color: #0a0a0a;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
   }
 </style>
