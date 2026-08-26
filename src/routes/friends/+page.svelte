@@ -23,6 +23,7 @@
   let addingFriend = $state<string | null>(null)
   let myStreak = $state(0)
   let exercisedToday = $state(false)
+  let searchSeq = 0
 
   onMount(async () => {
     const s = await getSettings()
@@ -90,30 +91,38 @@
     }
   }
 
+  let searchTimer: ReturnType<typeof setTimeout> | null = null
+
   $effect(() => {
     const q = searchQuery
+    if (searchTimer) clearTimeout(searchTimer)
     if (q.length < 1) {
       searchResults = []
       searching = false
       return
     }
-    loadSearchResults(q)
+    searching = true
+    searchTimer = setTimeout(() => loadSearchResults(q), 250)
+    return () => { if (searchTimer) clearTimeout(searchTimer) }
   })
 
   async function loadSearchResults(q: string) {
-    searching = true
+    const seq = ++searchSeq
     try {
       if (!PUSH_SERVER_URL) {
         searchResults = []
         return
       }
       const res = await fetch(`${PUSH_SERVER_URL}/api/friends/search?q=${encodeURIComponent(q)}`)
+      if (seq !== searchSeq) return
       const data = await res.json()
+      if (seq !== searchSeq) return
       searchResults = (data.results || []).filter((r: any) => r.username !== username)
     } catch {
+      if (seq !== searchSeq) return
       searchResults = []
     } finally {
-      searching = false
+      if (seq === searchSeq) searching = false
     }
   }
 

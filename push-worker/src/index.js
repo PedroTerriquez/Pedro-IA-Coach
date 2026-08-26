@@ -488,16 +488,18 @@ export default {
       try {
         const q = url.searchParams.get('q') || ''
         if (q.length < 1) return respond({ results: [] })
-        const all = await env.PUSH_KV.list({ prefix: 'user_' })
-        const results = []
-        for (const key of all.keys) {
-          const raw = await env.PUSH_KV.get(key.name)
-          if (!raw) continue
-          const u = JSON.parse(raw)
-          if (u.username.toLowerCase().includes(q.toLowerCase())) {
-            results.push({ username: u.username, streak: u.streak, exercisedToday: u.exercisedToday })
-          }
-        }
+        let keys = []
+        let cursor = undefined
+        do {
+          const page = await env.PUSH_KV.list({ prefix: 'user_', cursor, limit: 1000 })
+          keys = keys.concat(page.keys)
+          cursor = page.list_complete ? undefined : page.cursor
+        } while (cursor)
+        const users = await Promise.all(keys.map(k => env.PUSH_KV.get(k.name).then(r => r ? JSON.parse(r) : null)))
+        const ql = q.toLowerCase()
+        const results = users
+          .filter(u => u && u.username && u.username.toLowerCase().includes(ql))
+          .map(u => ({ username: u.username, streak: u.streak, exercisedToday: u.exercisedToday }))
         return respond({ results })
       } catch (err) {
         return respond({ error: err.message }, 500)
