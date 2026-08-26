@@ -524,6 +524,22 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/friends/remove') {
+      try {
+        const { username, friendUsername } = await req.json()
+        if (!username || !friendUsername) return respond({ error: 'username and friendUsername required' }, 400)
+        const existingRaw = await env.PUSH_KV.get(`friends_${username}`)
+        const friends = existingRaw ? JSON.parse(existingRaw) : []
+        const idx = friends.findIndex(f => f.friendUsername === friendUsername)
+        if (idx === -1) return respond({ error: 'No es tu amigo' }, 404)
+        friends.splice(idx, 1)
+        await env.PUSH_KV.put(`friends_${username}`, JSON.stringify(friends))
+        return respond({ status: 'ok' })
+      } catch (err) {
+        return respond({ error: err.message }, 500)
+      }
+    }
+
     if (url.pathname === '/api/friends/list') {
       try {
         const username = url.searchParams.get('username')
