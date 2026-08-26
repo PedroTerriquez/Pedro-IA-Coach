@@ -31,6 +31,7 @@
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { lastAIExchange, DEBUG_PASSWORD, formatExchange, type AIExchange } from '$lib/stores/debug'
   import DebugAIToggle from '$lib/components/DebugAIToggle.svelte'
+  import CyberpunkCard from '$lib/components/CyberpunkCard.svelte'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -655,69 +656,75 @@
           Gratis por tiempo limitado
         </div>
 
-        <div class="card section-card">
-          <div class="card-content">
-            <div class="fieldset-heading"><span class="heading-bar" style="background:{accent}"></span>Pega tu rutina en texto</div>
-            <div class="card-subtitle">Describe tu rutina como se la dirías a un entrenador. La IA creará el programa y los ejercicios automáticamente.</div>
-            <div class="ai-textarea-wrap">
-              <TextArea value={aiInput} rows={8} placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" oninput={(val) => aiInput = val} />
+        <CyberpunkCard label="ROUTINE_IMPORT v1.0" {accent}>
+          <div class="coach-top-row">
+            <div class="coach-badge">
+              <span class="badge-dot" style="background:{accent}"></span>
+              {importingAI ? 'PROCESSING' : 'IMPORT READY'}
             </div>
-            <div id="ai-status" class="status-text">{aiStatus}</div>
+            <DebugAIToggle label="Import IA" {accent} />
           </div>
-          <div style="padding: 0 16px;">
-            <DebugAIToggle {accent} />
+          <div class="card-subtitle">Describe tu rutina como se la dirías a un entrenador. La IA creará el programa y los ejercicios automáticamente.</div>
+          <div class="ai-textarea-wrap">
+            <TextArea value={aiInput} rows={8} placeholder="Ejemplo:&#10;Lunes - Pecho y Triceps&#10;Press banca 4x8-10&#10;Press inclinado 3x10&#10;Aperturas 3x12&#10;Fondos 3x10&#10;Patada triceps 3x12" oninput={(val) => aiInput = val} />
           </div>
-          <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
-        </div>
-
-        <div class="card section-card">
-          <div class="card-content">
-            <div class="fieldset-heading"><span class="heading-bar" style="background:{accent}"></span>Generar programa desde cero</div>
-            <div class="card-subtitle">La IA crea un programa completo basado en tu perfil y preferencias.</div>
-
-            <div class="chip-group">
-              <div class="chip-group-label">Días por semana</div>
-              <div class="chip-row">
-                {#each [3, 4, 5, 6] as d}
-                  <button class="chip-btn" class:chip-active={generateDaysPerWeek === d} onclick={() => generateDaysPerWeek = generateDaysPerWeek === d ? null : d}>{d}d</button>
-                {/each}
-              </div>
-            </div>
-
-            <div class="chip-group">
-              <div class="chip-group-label">Equipo</div>
-              <div class="chip-row">
-                {#each [{ v: 'gym', l: 'Gimnasio' }, { v: 'mancuernas', l: 'Mancuernas' }, { v: 'calistenia', l: 'Calistenia' }] as e}
-                  <button class="chip-btn" class:chip-active={generateEquipment === e.v} onclick={() => generateEquipment = generateEquipment === e.v ? null : e.v}>{e.l}</button>
-                {/each}
-              </div>
-            </div>
-
-            <div class="chip-group">
-              <div class="chip-group-label">Enfoque</div>
-              <div class="chip-row">
-                {#each [{ v: 'full', l: 'Cuerpo completo' }, { v: 'chest', l: 'Pecho' }, { v: 'back', l: 'Espalda' }, { v: 'legs', l: 'Piernas' }, { v: 'shoulders', l: 'Hombros' }, { v: 'arms', l: 'Brazos' }, { v: 'core', l: 'Abdomen' }] as f}
-                  <button class="chip-btn" class:chip-active={generateFocus.includes(f.v)} onclick={() => { generateFocus = generateFocus.includes(f.v) ? generateFocus.filter(v => v !== f.v) : [...generateFocus, f.v] }}>{f.l}</button>
-                {/each}
-              </div>
-            </div>
-
-            <div class="chip-group">
-              <div class="chip-group-label">Zonas con molestia</div>
-              <div class="chip-row">
-                {#each ['Espalda', 'Hombro', 'Rodilla', 'Cadera', 'Cuello', 'Muñeca', 'Codo', 'Tobillo'] as part}
-                  <button class="chip-btn" class:chip-active={generateLimitations.includes(part)} onclick={() => { generateLimitations = generateLimitations.includes(part) ? generateLimitations.filter(p => p !== part) : [...generateLimitations, part] }}>{part}</button>
-                {/each}
-              </div>
-            </div>
-
-            <div class="status-text">{generateStatus}</div>
+          <div id="ai-status" class="status-text">{aiStatus}</div>
+          <div class="submit-wrap-ia">
+            <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
           </div>
-          <div style="padding: 0 16px;">
-            <DebugAIToggle {accent} />
+        </CyberpunkCard>
+
+        <CyberpunkCard label="PROGRAM_GENERATOR v1.0" {accent}>
+          <div class="coach-top-row">
+            <div class="coach-badge">
+              <span class="badge-dot" style="background:{accent}"></span>
+              {generatingProgram ? 'GENERATING' : 'GENERATOR READY'}
+            </div>
+            <DebugAIToggle label="Program Creator IA" {accent} />
           </div>
-          <Button variant="primary" {accent} fullWidth onclick={submitGenerate} disabled={generatingProgram}>{generatingProgram ? '⏳ Generando…' : 'Generar programa con IA'}</Button>
-        </div>
+          <div class="card-subtitle">La IA crea un programa completo basado en tu perfil y preferencias.</div>
+
+          <div class="chip-group">
+            <div class="chip-group-label">Días por semana</div>
+            <div class="chip-row">
+              {#each [3, 4, 5, 6] as d}
+                <button class="chip-btn" class:chip-active={generateDaysPerWeek === d} onclick={() => generateDaysPerWeek = generateDaysPerWeek === d ? null : d}>{d}d</button>
+              {/each}
+            </div>
+          </div>
+
+          <div class="chip-group">
+            <div class="chip-group-label">Equipo</div>
+            <div class="chip-row">
+              {#each [{ v: 'gym', l: 'Gimnasio' }, { v: 'mancuernas', l: 'Mancuernas' }, { v: 'calistenia', l: 'Calistenia' }] as e}
+                <button class="chip-btn" class:chip-active={generateEquipment === e.v} onclick={() => generateEquipment = generateEquipment === e.v ? null : e.v}>{e.l}</button>
+              {/each}
+            </div>
+          </div>
+
+          <div class="chip-group">
+            <div class="chip-group-label">Enfoque</div>
+            <div class="chip-row">
+              {#each [{ v: 'full', l: 'Cuerpo completo' }, { v: 'chest', l: 'Pecho' }, { v: 'back', l: 'Espalda' }, { v: 'legs', l: 'Piernas' }, { v: 'shoulders', l: 'Hombros' }, { v: 'arms', l: 'Brazos' }, { v: 'core', l: 'Abdomen' }] as f}
+                <button class="chip-btn" class:chip-active={generateFocus.includes(f.v)} onclick={() => { generateFocus = generateFocus.includes(f.v) ? generateFocus.filter(v => v !== f.v) : [...generateFocus, f.v] }}>{f.l}</button>
+              {/each}
+            </div>
+          </div>
+
+          <div class="chip-group">
+            <div class="chip-group-label">Zonas con molestia</div>
+            <div class="chip-row">
+              {#each ['Espalda', 'Hombro', 'Rodilla', 'Cadera', 'Cuello', 'Muñeca', 'Codo', 'Tobillo'] as part}
+                <button class="chip-btn" class:chip-active={generateLimitations.includes(part)} onclick={() => { generateLimitations = generateLimitations.includes(part) ? generateLimitations.filter(p => p !== part) : [...generateLimitations, part] }}>{part}</button>
+              {/each}
+            </div>
+          </div>
+
+          <div class="status-text">{generateStatus}</div>
+          <div class="submit-wrap-ia">
+            <Button variant="primary" {accent} fullWidth onclick={submitGenerate} disabled={generatingProgram}>{generatingProgram ? '⏳ Generando…' : 'Generar programa con IA'}</Button>
+          </div>
+        </CyberpunkCard>
 
         <ProgramEditorIACard
           {accent}
@@ -872,8 +879,6 @@
   .section-label-wrap:first-child { margin-top: 0; }
   .section-card { margin: 0 0 20px; }
   .card-content { padding: 14px 16px; }
-  .fieldset-heading { display: flex; align-items: center; gap: 10px; font-family: var(--font-sans); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
-  .heading-bar { width: 3px; height: 16px; border-radius: 2px; flex-shrink: 0; }
   .page-header-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .username-field { outline: none; border: 0; display: inline-block; min-width: 50px; }
   .edit-btn { background: none; border: 0; cursor: pointer; flex-shrink: 0; margin-top: 6px; padding: 0; }
@@ -924,6 +929,35 @@
     color: #00e88a;
     border: 1px solid rgba(0,232,138,0.3);
   }
+
+  .coach-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .coach-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+  }
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: dot-blink 1s step-end infinite;
+  }
+  @keyframes dot-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .submit-wrap-ia { margin-top: 12px; }
 
   .debug-pass-row { display: flex; gap: 8px; margin-top: 12px; }
   .debug-pass-row input {

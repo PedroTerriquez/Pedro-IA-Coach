@@ -237,7 +237,7 @@
 
 <style>
   .tab-content {
-    padding: 14px 20px 30px;
+    padding: 14px 0 30px;
   }
   .workout-card {
     background: var(--surface);

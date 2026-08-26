@@ -27,7 +27,7 @@
   .stats-grid.card {
     background: var(--surface);
     border-radius: 18px;
-    padding: 16px 14px;
+    padding: 16px 0;
     border: 0.5px solid var(--border);
   }
 </style>

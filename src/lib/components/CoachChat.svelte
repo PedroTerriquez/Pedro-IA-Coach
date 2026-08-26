@@ -30,6 +30,13 @@
   let chatThread = $state<{ role: string; content: string }[]>([])
   let showBodyParts = $state(false)
   let chatEl: HTMLDivElement
+  let textareaEl: HTMLTextAreaElement
+
+  function autoResize() {
+    if (!textareaEl) return
+    textareaEl.style.height = 'auto'
+    textareaEl.style.height = Math.min(textareaEl.scrollHeight, 120) + 'px'
+  }
 
   let bodyParts = $derived(bodyPartsFor(exercise.muscle))
   let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
@@ -56,6 +63,7 @@
     if (!msg || loading) return
     input = ''
     showBodyParts = false
+    if (textareaEl) { textareaEl.style.height = 'auto' }
 
     chatThread.push({ role: 'user', content: msg })
     messages = [...messages, { role: 'user', content: msg }]
@@ -76,7 +84,7 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
     }
@@ -117,19 +125,21 @@
               </div>
             </div>
           {:else}
-            <div class="bubble-row ai-row">
-              <div class="ai-avatar-sm" style="background:{accent}1c;border-color:{accent}3a">
-                <Icon name="coach" size={13} color={accent} />
-              </div>
-              <div>
-                <div class="bubble ai-bubble">
-                  {msg.content}
+            {#each msg.content.split(/\n+/) as part, pi}
+              <div class="bubble-row ai-row">
+                <div class="ai-avatar-sm" style="background:{accent}1c;border-color:{accent}3a">
+                  <Icon name="coach" size={13} color={accent} />
                 </div>
-                {#if msg._provider}
-                  <div class="provider-badge">{msg._provider}</div>
-                {/if}
+                <div>
+                  <div class="bubble ai-bubble">
+                    {part.replace(/^\n+|\n+$/g, '')}
+                  </div>
+                  {#if pi === 0 && msg._provider}
+                    <div class="provider-badge">{msg._provider}</div>
+                  {/if}
+                </div>
               </div>
-            </div>
+            {/each}
           {/if}
         {/each}
         {#if loading}
@@ -172,21 +182,23 @@
         <button class="chip-btn" onclick={() => handleQuickChip('¿Cómo sé si estoy usando demasiado peso?')}>
           ¿Voy muy pesado?
         </button>
-        <button class="chip-btn" onclick={() => handleQuickChip('Dame una variante más fácil de este ejercicio.')}>
-          Variante fácil
+        <button class="chip-btn" onclick={() => handleQuickChip('Dame 2-3 alternativas reales para este ejercicio. Dame el nombre en inglés y en español.')}>
+          Variante
         </button>
       </div>
     {/if}
 
     <div class="coach-input-row">
       <div class="coach-input-wrap">
-        <input
-          type="text"
+        <textarea
           placeholder="Escribe tu pregunta…"
           class="coach-input"
+          rows="1"
           bind:value={input}
+          bind:this={textareaEl}
+          oninput={autoResize}
           onkeydown={handleKeydown}
-        >
+        ></textarea>
       </div>
       <button class="coach-send-btn" style="background:{accent}" onclick={() => sendMessage()} disabled={loading}>
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 15V3M9 3l-5 5M9 3l5 5" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -428,7 +440,7 @@
     border-radius: 22px;
     padding: 4px 6px 4px 16px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
   }
   .coach-input {
     flex: 1;
@@ -440,6 +452,9 @@
     font-size: 16px;
     padding: 8px 0;
     min-width: 0;
+    resize: none;
+    overflow-y: hidden;
+    line-height: 1.4;
   }
   .coach-send-btn {
     width: 44px;

@@ -6,6 +6,13 @@
     color?: string
   } = $props()
 
+  function fmtDate(raw: string): string {
+    if (!raw) return ''
+    const [y, m, d] = raw.split('-')
+    if (!y || !m) return raw
+    return `${parseInt(m)}/${y.slice(2)}`
+  }
+
   let svgContent = $derived.by(() => {
     if (!data || data.length === 0) return ''
     const vals = data.map((d) => d.weight !== undefined ? d.weight : d.top!)
@@ -22,7 +29,7 @@
       const v = d.weight !== undefined ? d.weight : d.top!
       const x = pad.l + (i / (data.length - 1)) * w
       const y = pad.t + h - ((v - yMin) / yRange) * h
-      return { x, y, label: d.date || '' }
+      return { x, y, label: fmtDate(d.date || '') }
     })
     const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
     const lastPt = pts[pts.length - 1]
@@ -46,8 +53,9 @@
     pts.forEach((p, i) => {
       const isLast = i === pts.length - 1
       svg += `<circle cx="${p.x}" cy="${p.y}" r="${isLast ? 4 : 2.5}" fill="${isLast ? c : '#0a0a0a'}" stroke="${c}" stroke-width="1.5"/>`
-      if (i === 0 || isLast) {
-        const anchor = i === 0 ? 'start' : 'end'
+      const showLabel = i === 0 || isLast || pts.length <= 6
+      if (showLabel) {
+        const anchor = i === 0 ? 'start' : isLast ? 'end' : 'middle'
         svg += `<text x="${p.x}" y="${height - 10}" fill="rgba(255,255,255,0.4)" font-size="9" text-anchor="${anchor}" font-family="JetBrains Mono,monospace">${p.label}</text>`
       }
     })

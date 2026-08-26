@@ -13,6 +13,9 @@
   import HistoryTab from './HistoryTab.svelte'
   import AlternativesTab from './AlternativesTab.svelte'
   import Icon from './Icon.svelte'
+  import StatsGrid from './StatsGrid.svelte'
+  import StatBlock from './StatBlock.svelte'
+  import DebugAIToggle from './DebugAIToggle.svelte'
 
   function getToday(): string {
     const d = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
@@ -260,38 +263,39 @@
         <!-- Hero -->
         <ExerciseHero {exercise} {accent} {loggedToday} bind:showGif={showGif} />
 
-        <!-- Prescription strip -->
-        <div class="strip-wrap">
-          <div class="strip-grid">
-            <div class="strip-cell">
-              <div class="strip-label">series</div>
-              <div class="strip-value">{exercise.sets}</div>
+        <!-- Coach IA button -->
+          <div class="coach-bar" data-component="CoachBar">
+          <button class="coach-cyber-btn" style="border-color:color-mix(in srgb, {accent} 20%, transparent);background:color-mix(in srgb, {accent} 5%, var(--surface))" onclick={() => chatOpen = true}>
+            <span class="coach-cyber-scanline" style="background:{accent}"></span>
+            <div class="coach-cyber-inner">
+              <span class="coach-badge-dot" style="background:{accent}"></span>
+              <span class="coach-cyber-label">Coach IA</span>
+              <span class="coach-cyber-sub">Técnica · Variantes · Dolor</span>
             </div>
-            <div class="strip-cell">
-              <div class="strip-label">reps</div>
-              <div class="strip-value">{exercise.reps}</div>
-            </div>
-            <div class="strip-cell">
-              <div class="strip-label">desc.</div>
-              <div class="strip-value">{exercise.rest}s</div>
-            </div>
-            <div class="strip-cell">
-              <div class="strip-label">última</div>
-              <div class="strip-value" style="color:{lastLog && lastLog.weight > 0 ? accent : '#fafafa'}">{lastLog && lastLog.weight > 0 ? `${lastLog.weight}${units}` : '—'}</div>
-            </div>
-          </div>
+          </button>
+          <DebugAIToggle label="Exercise Coach IA" {accent} />
         </div>
 
+        <!-- Prescription strip -->
+        <StatsGrid columns={4} variant="card">
+          <StatBlock value={exercise.sets} label="series" {accent} size="md" />
+          <StatBlock value={exercise.reps} label="reps" {accent} size="md" />
+          <StatBlock value={`${exercise.rest}s`} label="desc." {accent} size="md" />
+          <StatBlock value={lastLog && lastLog.weight > 0 ? `${lastLog.weight}${units}` : '—'} label="última" accent={lastLog && lastLog.weight > 0 ? accent : '#fafafa'} size="md" />
+        </StatsGrid>
+
         <!-- Tab selector -->
-        <SegmentedControl
-          options={[
-            { label: 'Registrar', value: 'workout' },
-            { label: 'Historial', value: 'history' },
-            ...(showAlternativesTab ? [{ label: 'Alternativas', value: 'alternatives' }] : [])
-          ]}
-          bind:value={tab}
-          {accent}
-        />
+        <div class="tab-selector-wrap">
+          <SegmentedControl
+            options={[
+              { label: 'Registrar', value: 'workout' },
+              { label: 'Historial', value: 'history' },
+              ...(showAlternativesTab ? [{ label: 'Alternativas', value: 'alternatives' }] : [])
+            ]}
+            bind:value={tab}
+            {accent}
+          />
+        </div>
 
         <!-- Workout tab -->
         {#if tab === 'workout'}
@@ -338,12 +342,6 @@
         {/if}
       </div>
 
-      <!-- Coach FAB -->
-      <button id="coach-fab" class="coach-fab" style="border-color:{accent}3a;background:{accent}1a;color:{accent}" onclick={() => chatOpen = true}>
-        <Icon name="coach" size={17} />
-        Coach IA
-      </button>
-
     {#if chatOpen}
       <CoachChat {exercise} {accent} onclose={() => chatOpen = false} />
     {/if}
@@ -354,10 +352,13 @@
   .detail-scroll {
     overflow-y: auto;
     color: var(--text);
-    padding-bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 0 0 14px;
   }
   .nav-pills {
-    padding: 10px 14px 0;
+    padding: 0;
   }
   .nav-pill-row {
     display: flex;
@@ -461,63 +462,65 @@
     font-size: 15px;
     line-height: 1;
   }
-  .strip-wrap {
-    padding: 14px 20px 0;
-  }
-  .strip-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    background: var(--surface);
-    border-radius: 14px;
-    border: 0.5px solid var(--border);
-    overflow: hidden;
-  }
-  .strip-cell {
-    padding: 11px 6px;
-    text-align: center;
-    border-right: 0.5px solid rgba(255,255,255,0.05);
-  }
-  .strip-cell:last-child {
-    border-right: none;
-  }
-  .strip-label {
-    font-family: var(--font-mono);
-    font-size: 8.5px;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.4);
-    font-weight: 600;
-  }
-  .strip-value {
-    margin-top: 4px;
-    font-family: var(--font-mono);
-    font-size: 17px;
-    font-weight: 500;
-    color: var(--text);
-    letter-spacing: -0.5px;
-    line-height: 1;
+  .tab-selector-wrap {
+    padding: 0;
   }
 
-  /* Coach FAB */
-  .coach-fab {
-    position: absolute;
-    bottom: 14px;
-    left: 14px;
-    padding: 0 16px 0 13px;
-    height: 40px;
-    border-radius: 9999px;
-    border: 0.5px solid;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    cursor: pointer;
+  /* Coach IA cyberpunk button */
+  .coach-bar {
     display: flex;
     align-items: center;
-    gap: 7px;
-    z-index: 200;
+  }
+  .coach-cyber-btn {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    border: 0.5px solid;
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    cursor: pointer;
+    overflow: hidden;
+    text-align: left;
+  }
+  .coach-cyber-scanline {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .coach-cyber-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .coach-badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: coach-dot-blink 1s step-end infinite;
+  }
+  @keyframes coach-dot-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .coach-cyber-label {
     font-family: var(--font-sans);
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: -0.2px;
+    color: var(--text);
+    letter-spacing: -0.1px;
+  }
+  .coach-cyber-sub {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.6px;
+    color: var(--text-tertiary);
+    margin-left: auto;
+    white-space: nowrap;
   }
 
 </style>

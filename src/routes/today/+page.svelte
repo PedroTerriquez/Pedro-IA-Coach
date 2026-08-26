@@ -129,7 +129,7 @@
   function logsForExercise(exerciseId: string, source: ExerciseLog[]): ExerciseLog[] {
     return source
       .filter(l => l.exerciseId === exerciseId)
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
   }
 
   async function refreshExerciseLogs() {

@@ -6,7 +6,7 @@ import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionary'
 import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
-import { lastAIExchange } from '$lib/stores/debug'
+import { lastAIExchange, aiExchanges } from '$lib/stores/debug'
 
 const LANGUAGE: PromptLanguage = 'es'
 
@@ -14,13 +14,15 @@ async function recordIfDebug(label: string, url: string, reqBody: unknown, parse
   try {
     const s = await Storage.getSettings()
     if (!s.debugAI) return
-    lastAIExchange.set({
+    const exchange = {
       label,
       endpoint: PUSH_SERVER_URL ? url.replace(PUSH_SERVER_URL, '') : url,
       request: reqBody,
       response: parsed,
       ts: new Date().toLocaleTimeString('es-MX'),
-    })
+    }
+    lastAIExchange.set(exchange)
+    aiExchanges.record(label, exchange)
   } catch {
     // debugging must never break the AI flow
   }

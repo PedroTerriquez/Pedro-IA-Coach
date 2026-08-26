@@ -1,62 +1,94 @@
 <script lang="ts">
   import { settings } from '$lib/stores/settings'
-  import { lastAIExchange, formatExchange } from '$lib/stores/debug'
+  import { aiExchanges, formatExchange } from '$lib/stores/debug'
 
-  let { accent = 'var(--accent)' }: { accent?: string } = $props()
+  let {
+    label = '',
+    accent = 'var(--accent)'
+  }: {
+    label?: string
+    accent?: string
+  } = $props()
 
   let show = $state(false)
-  let ex = $derived($lastAIExchange)
+  let ex = $derived(label ? $aiExchanges.get(label) ?? null : null)
   let text = $derived(formatExchange(ex))
 </script>
 
 {#if $settings.debugAI}
-  <div class="debug-ai" data-component="DebugAIToggle">
-    <button class="debug-chip" style="color:{accent};border-color:{accent}3a;background:{accent}0f" onclick={() => show = !show}>
-      Debug IA {ex ? `· ${ex.label}` : '· sin intercambios aún'}
+  <div class="debug-toggle" data-component="DebugAIToggle">
+    <button class="debug-btn" onclick={() => show = !show}>
+      <span class="debug-dot"></span>
+      DBG
     </button>
     {#if show}
-      <textarea class="debug-out" readonly spellcheck="false" value={text}></textarea>
+      <div class="debug-panel">
+        <div class="debug-panel-label">{label || 'AI'}</div>
+        <textarea class="debug-textarea" readonly spellcheck="false" value={text}></textarea>
+      </div>
     {/if}
   </div>
 {/if}
 
 <style>
-  .debug-ai {
+  .debug-toggle {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
   }
-  .debug-chip {
-    align-self: flex-start;
-    padding: 5px 12px;
-    border-radius: 9999px;
-    border: 0.5px solid;
-    background: transparent;
+  .debug-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 0.5px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.4);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.6px;
     text-transform: uppercase;
     cursor: pointer;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s;
+    align-self: flex-start;
   }
-  .debug-out {
-    width: 100%;
-    height: 240px;
-    resize: vertical;
-    border-radius: 10px;
-    border: 0.5px solid rgba(255,255,255,0.08);
-    background: var(--bg);
-    color: rgba(255,255,255,0.75);
-    font-size: 10px;
-    line-height: 1.5;
+  .debug-btn:hover {
+    border-color: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.6);
+  }
+  .debug-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+  }
+  .debug-panel {
+    background: #111;
+    border: 0.5px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 8px;
+    margin-top: 4px;
+  }
+  .debug-panel-label {
     font-family: var(--font-mono);
-    padding: 10px;
-    box-sizing: border-box;
+    font-size: 8px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 6px;
+  }
+  .debug-textarea {
+    width: 100%;
+    height: 180px;
+    resize: vertical;
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,0.65);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    line-height: 1.5;
     outline: none;
     white-space: pre;
     overflow: auto;
