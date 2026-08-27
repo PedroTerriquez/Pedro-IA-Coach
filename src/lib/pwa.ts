@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.47'
-const _VER_DESC = 'fix: Leaderboard reactive derived + empty username guard'
+const _VER_BASE = 'v2.49'
+const _VER_DESC = 'feat: improve SearchInput with icon, clear button, focus styles'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
