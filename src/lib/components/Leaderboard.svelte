@@ -15,10 +15,11 @@
     onremove?: (username: string) => void
   } = $props()
 
-  const sorted = $derived(() => {
+  const sorted = $derived.by(() => {
     const me = { username: myUsername, streak: myStreak, exercisedToday: false, lastUpdate: new Date().toISOString(), isMe: true }
     const all = [me, ...friends.map(f => ({ ...f, isMe: f.username === myUsername }))]
     const unique = all.filter((item, idx, arr) => arr.findIndex(x => x.username === item.username) === idx)
+    if (!myUsername) return unique.filter(x => !x.isMe)
     return unique.sort((a, b) => b.streak - a.streak || new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime())
   })
 </script>
@@ -29,7 +30,7 @@
   {:else if friends.length === 0}
     <div class="empty">Aún no tienes amigos. Busca y agrega arriba. 👆</div>
   {:else}
-    {#each sorted() as item, i (item.username)}
+    {#each sorted as item, i (item.username)}
       <FriendCard
         username={item.username}
         streak={item.streak}
