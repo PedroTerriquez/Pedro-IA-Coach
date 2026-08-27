@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.53'
-const _VER_DESC = 'AI debug logging + cyberpunk coach button redesign'
-const _VER_TIME = '2026-08-26 22:15'
+const _VER_BASE = 'v2.54'
+const _VER_DESC = 'green border on logged exercise images'
+const _VER_TIME = '2026-08-26 22:22'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

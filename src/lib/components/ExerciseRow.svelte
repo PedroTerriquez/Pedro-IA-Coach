@@ -187,6 +187,12 @@
     border: 2px solid #34c759;
   }
 
+  .exercise-row.row-done .ex-thumb img {
+    border: 2px solid #34c759;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
   .exercise-row.row-done .ex-name {
     opacity: 0.55;
   }
