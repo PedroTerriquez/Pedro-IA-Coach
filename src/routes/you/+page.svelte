@@ -549,17 +549,8 @@
 
 <div class="page">
   <div class="page-header">
-    <div class="page-header-eyebrow">Perfil</div>
-    <div class="page-header-title">
-      <span id="user-name" class="username-field" contenteditable role="textbox" aria-multiline="false" tabindex="0" style="caret-color:{accent}"
-        onblur={async (e) => { const v = (e.target as HTMLElement).textContent?.trim() || 'Pedro'; userName = v; await saveProfileField('userName', v) }}
-        onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur() } }}
-      >{userName}</span>
-      <button id="user-edit-btn" class="edit-btn" aria-label="Editar nombre"
-        onclick={() => { const el = document.getElementById('user-name'); if (el) { el.focus(); const sel = window.getSelection(); const range = document.createRange(); range.selectNodeContents(el); range.collapse(false); sel?.removeAllRanges(); sel?.addRange(range) } }}>
-        <Icon name="pencil" size={22} color="rgba(255,255,255,0.3)" />
-      </button>
-    </div>
+    <div class="page-header-eyebrow">Tú</div>
+    <div class="page-header-title">Tú</div>
   </div>
 
   <div class="section-pad">
