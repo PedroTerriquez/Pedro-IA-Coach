@@ -5,11 +5,13 @@
   import { getAllLogs, getSettings, getPrograms, saveSettings } from '$lib/storage'
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { toLocalDateStr } from '$lib/calendar-utils'
-  import FriendCard from '$lib/components/FriendCard.svelte'
-  import SearchResults from '$lib/components/SearchResults.svelte'
+  import UsernameEditor from '$lib/components/UsernameEditor.svelte'
+  import Leaderboard from '$lib/components/Leaderboard.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
+  import SearchResults from '$lib/components/SearchResults.svelte'
   import TextInput from '$lib/components/TextInput.svelte'
   import Button from '$lib/components/Button.svelte'
+  import SectionLabel from '$lib/components/SectionLabel.svelte'
 
   let username = $state('')
   let inputUsername = $state('')
@@ -24,10 +26,21 @@
   let myStreak = $state(0)
   let exercisedToday = $state(false)
   let searchSeq = 0
+  let searchTimer: ReturnType<typeof setTimeout> | null = null
+  let accent = $state('var(--accent)')
+  let settingsLoaded = $state(false)
 
   onMount(async () => {
     const s = await getSettings()
+    accent = s.accentColor || 'var(--accent)'
+
+    if (s.userName && !s.username) {
+      s.username = s.userName
+      await saveSettings(s)
+    }
+
     username = s.username || ''
+    settingsLoaded = true
     initialLoading = false
     if (username) {
       await loadFriends()
@@ -91,25 +104,21 @@
     }
   }
 
-  async function removeFriend(friendUsername: string) {
-    try {
-      const res = await fetch(`${PUSH_SERVER_URL}/api/friends/remove`, {
+  async function handleUsernameSave(newName: string) {
+    const s = await getSettings()
+    const oldName = s.username
+    s.username = newName
+    await saveSettings(s)
+    if (PUSH_SERVER_URL) {
+      fetch(`${PUSH_SERVER_URL}/api/user/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, friendUsername }),
-      })
-      if (res.ok) {
-        toast.show('Amigo eliminado')
-        await loadFriends()
-      } else {
-        toast.show('Error al eliminar', true)
-      }
-    } catch {
-      toast.show('Error al eliminar', true)
+        body: JSON.stringify({ username: newName }),
+      }).catch(() => {})
     }
+    username = newName
+    toast.show('Username actualizado')
   }
-
-  let searchTimer: ReturnType<typeof setTimeout> | null = null
 
   $effect(() => {
     const q = searchQuery
@@ -155,6 +164,7 @@
       if (res.ok) {
         searchQuery = ''
         searchResults = []
+        toast.show(`${friendUsername} agregado`)
         await loadFriends()
       } else {
         const data = await res.json()
@@ -164,6 +174,25 @@
       toast.show('Error al agregar amigo', true)
     } finally {
       addingFriend = null
+    }
+  }
+
+  async function removeFriend(friendUsername: string) {
+    try {
+      const res = await fetch(`${PUSH_SERVER_URL}/api/friends/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, friendUsername }),
+      })
+      if (res.ok) {
+        friends = friends.filter(f => f.username !== friendUsername)
+        toast.show(`${friendUsername} eliminado`)
+      } else {
+        const data = await res.json()
+        toast.show(data.error || 'Error', true)
+      }
+    } catch {
+      toast.show('Error al eliminar amigo', true)
     }
   }
 </script>
@@ -199,46 +228,43 @@
     <div class="page-header">
       <div class="friends-header">👥 Amigos</div>
     </div>
+
     <div class="friends-my-streak">
-      🔥 Tu racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'semana' : 'semanas'} {exercisedToday ? '· Hoy ✅' : ''}
+      🔥 Racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'semana' : 'semanas'} {exercisedToday ? '· Hoy ✅' : ''}
     </div>
-    <div class="friends-list" id="friends-list">
+
+    <div class="section-label-wrap">
+      <SectionLabel {accent}>Mi Perfil</SectionLabel>
+    </div>
+    <div class="section-pad">
+      <UsernameEditor {username} {accent} onsave={handleUsernameSave} />
+    </div>
+
+    <div class="section-label-wrap">
+      <SectionLabel {accent}>Ranking</SectionLabel>
+    </div>
+    <div class="section-pad" id="friends-list">
       {#if loading}
         <div class="friends-empty">Cargando amigos...</div>
-      {:else if friends.length === 0}
-        <div class="friends-empty">Aún no tienes amigos. Busca y agrega amigos arriba. 👆</div>
       {:else}
-        <FriendCard
-          username={username}
-          streak={myStreak}
-          exercisedToday={exercisedToday}
-          lastUpdate=""
-          position={0}
-          isMe={true}
-        />
-        {#each [...friends].sort((a, b) => b.streak - a.streak) as f, i (f.username)}
-          <FriendCard
-            username={f.username}
-            streak={f.streak}
-            exercisedToday={f.exercisedToday}
-            lastUpdate={f.lastUpdate}
-            position={i + 1}
-            isMe={false}
-            onremove={removeFriend}
-          />
-        {/each}
+        <Leaderboard {friends} {myStreak} myUsername={username} {accent} onremove={removeFriend} />
       {/if}
     </div>
-    <div class="friend-search">
-      <SearchInput id="friend-search-input" value={searchQuery} placeholder="🔍 Buscar usuario..." oninput={(val) => searchQuery = val} />
+
+    <div class="section-label-wrap">
+      <SectionLabel {accent}>Buscar</SectionLabel>
     </div>
-    <SearchResults
-      query={searchQuery}
-      {searching}
-      results={searchResults}
-      {addingFriend}
-      onadd={addFriend}
-    />
+    <div class="section-pad">
+      <SearchInput id="friend-search-input" value={searchQuery} placeholder="🔍 Buscar usuario..." oninput={(val) => searchQuery = val} />
+      <SearchResults
+        query={searchQuery}
+        {searching}
+        results={searchResults}
+        {addingFriend}
+        {accent}
+        onadd={addFriend}
+      />
+    </div>
   </div>
 {/if}
 
@@ -246,5 +272,11 @@
   .username-input-wrap {
     max-width: 280px;
     margin: 0 auto 16px;
+  }
+  .section-pad {
+    padding: 0 16px 16px;
+  }
+  .section-label-wrap {
+    padding: 0 16px;
   }
 </style>

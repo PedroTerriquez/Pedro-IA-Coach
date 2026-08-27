@@ -6,12 +6,14 @@
     searching = false,
     results = [],
     addingFriend = null,
+    accent = 'var(--accent)',
     onadd = undefined
   }: {
     query: string
     searching: boolean
     results: { username: string; streak: number }[]
     addingFriend: string | null
+    accent?: string
     onadd?: (username: string) => void
   } = $props()
 
@@ -27,13 +29,14 @@
     {:else}
       {#each results as r (r.username)}
         <div class="sr-item">
-          <div class="sr-avatar">{r.username.charAt(0).toUpperCase()}</div>
+          <div class="sr-avatar" style="background:{accent}22; color:{accent}">{r.username.charAt(0).toUpperCase()}</div>
           <div class="sr-info">
             <span class="sr-name">{r.username}</span>
             <span class="sr-streak">{r.streak} {r.streak === 1 ? 'día' : 'días'}</span>
           </div>
           <button
             class="sr-add"
+            style="background:{accent}"
             onclick={() => onadd?.(r.username)}
             disabled={addingFriend === r.username}
             aria-label="Agregar {r.username}"
