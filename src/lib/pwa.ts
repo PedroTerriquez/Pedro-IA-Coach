@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.44'
-const _VER_DESC = 'fix: add max-length guard and type=button to UsernameEditor'
+const _VER_BASE = 'v2.45'
+const _VER_DESC = 'fix: use local timezone for build timestamp'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

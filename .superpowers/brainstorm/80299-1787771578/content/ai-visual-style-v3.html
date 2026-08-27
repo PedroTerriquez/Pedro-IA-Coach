@@ -1,0 +1,620 @@
+<h2>AI Feature Visual Direction — Full Collection</h2>
+<p class="subtitle">8 more styles. All designed to pop on the dark theme. Pick your favorites.</p>
+
+<style>
+  .dark-app {
+    background: #0a0a0a;
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .dark-surface {
+    background: #141414;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .dark-text { color: #fafafa; font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .dark-muted { color: #86868b; font-size: 0.8rem; }
+  .row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+  .section-label {
+    font-size: 0.7rem;
+    color: #86868b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  .mock-button-ai {
+    background: linear-gradient(135deg, #d4ff3a, #c8f520);
+    color: #0a0a0a;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    width: 100%;
+  }
+  .mock-chat-bubble {
+    background: #1a1a1a;
+    border-radius: 14px 14px 14px 4px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    color: #ccc;
+    margin-top: 0.5rem;
+  }
+
+  /* F: Holographic Shimmer */
+  .holo-card {
+    position: relative;
+    background: #141414;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+  .holo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 20%,
+      rgba(212,255,58,0.06) 30%,
+      rgba(0,212,255,0.06) 40%,
+      rgba(255,107,157,0.06) 50%,
+      rgba(212,255,58,0.06) 60%,
+      transparent 70%
+    );
+    background-size: 200% 100%;
+    animation: holo-shimmer 3s linear infinite;
+    pointer-events: none;
+    border-radius: 14px;
+  }
+  @keyframes holo-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .holo-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: linear-gradient(135deg, rgba(212,255,58,0.1), rgba(0,212,255,0.1));
+    border: 1px solid rgba(212,255,58,0.2);
+    color: #d4ff3a;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* G: Cyberpunk Terminal */
+  .cyber-card {
+    position: relative;
+    background: #0a0f0a;
+    border: 1px solid rgba(0,255,65,0.2);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cyber-card::before {
+    content: '> AI_MODULE v2.1';
+    display: block;
+    font-size: 0.55rem;
+    color: rgba(0,255,65,0.4);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+  .cyber-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(0,255,65,0.08);
+    border: 1px solid rgba(0,255,65,0.25);
+    color: #00ff41;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cyber-badge::before {
+    content: '█';
+    animation: blink-block 1s step-end infinite;
+  }
+  @keyframes blink-block {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .cyber-scanline {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: rgba(0,255,65,0.3);
+    animation: scanline 2s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes scanline {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+  .cyber-button {
+    background: rgba(0,255,65,0.1);
+    border: 1px solid rgba(0,255,65,0.3);
+    color: #00ff41;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* H: Aurora Gradient Background */
+  .aurora-card {
+    position: relative;
+    background: linear-gradient(135deg, #0f1a0a 0%, #0a0f1a 50%, #1a0a1a 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+  .aurora-card::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(
+      from 0deg,
+      rgba(212,255,58,0.05),
+      rgba(0,200,255,0.05),
+      rgba(180,100,255,0.05),
+      rgba(212,255,58,0.05)
+    );
+    animation: aurora-rotate 8s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes aurora-rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .aurora-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: linear-gradient(135deg, rgba(212,255,58,0.12), rgba(0,200,255,0.12));
+    border: none;
+    color: #d4ff3a;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* I: Glowing Orb Indicator */
+  .orb-card {
+    position: relative;
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .orb-indicator {
+    width: 10px; height: 10px;
+    background: #d4ff3a;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #d4ff3a, 0 0 16px rgba(212,255,58,0.4);
+    animation: orb-glow 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes orb-glow {
+    0%, 100% { box-shadow: 0 0 6px #d4ff3a, 0 0 12px rgba(212,255,58,0.3); }
+    50% { box-shadow: 0 0 12px #d4ff3a, 0 0 28px rgba(212,255,58,0.5); }
+  }
+  .orb-label {
+    font-size: 0.6rem;
+    color: rgba(212,255,58,0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  /* J: Top Light Strip */
+  .lightstrip-card {
+    position: relative;
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+  .lightstrip-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #d4ff3a, transparent);
+    border-radius: 0 0 4px 4px;
+  }
+  .lightstrip-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(212,255,58,0.06);
+    border: 1px solid rgba(212,255,58,0.12);
+    color: #d4ff3a;
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* K: Neon Outline (no fill) */
+  .neon-outline-card {
+    position: relative;
+    background: transparent;
+    border: 1px solid rgba(212,255,58,0.25);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 0 10px rgba(212,255,58,0.05), inset 0 0 10px rgba(212,255,58,0.02);
+  }
+  .neon-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid rgba(212,255,58,0.4);
+    color: #d4ff3a;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 6px rgba(212,255,58,0.5);
+  }
+
+  /* L: Chrome / Metallic */
+  .chrome-card {
+    position: relative;
+    background: linear-gradient(145deg, #1a1a1a, #111111);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .chrome-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #e0e0e0;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .chrome-badge .accent-dot {
+    width: 6px; height: 6px;
+    background: #d4ff3a;
+    border-radius: 50%;
+  }
+  .chrome-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    margin: 0.75rem 0;
+  }
+
+  /* M: Pulsing Ring / Halo */
+  .halo-card {
+    position: relative;
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .halo-icon {
+    position: relative;
+    width: 32px; height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .halo-icon::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 2px solid rgba(212,255,58,0.3);
+    border-radius: 50%;
+    animation: halo-pulse 2s ease-out infinite;
+  }
+  .halo-icon::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border: 1px solid rgba(212,255,58,0.1);
+    border-radius: 50%;
+    animation: halo-pulse 2s ease-out 0.5s infinite;
+  }
+  @keyframes halo-pulse {
+    0% { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+  .halo-icon .inner {
+    width: 32px; height: 32px;
+    background: rgba(212,255,58,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    position: relative;
+    z-index: 1;
+  }
+  .halo-label {
+    font-size: 0.6rem;
+    color: rgba(212,255,58,0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+</style>
+
+<div class="options">
+  <!-- F: Holographic Shimmer -->
+  <div class="option" data-choice="f" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">F</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Holographic Shimmer</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="holo-card">
+          <div class="row">
+            <div class="holo-chip">✦ IA</div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin-bottom:0.5rem;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai" style="position:relative;z-index:1;">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="holo-card">
+          <div class="row">
+            <div class="holo-chip">✦ IA</div>
+            <span class="dark-text" style="font-size:0.85rem;font-weight:600;position:relative;z-index:1;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Rainbow shimmer sweeps across the card continuously. Feels futuristic and premium. Very subtle color play.</p>
+    </div>
+  </div>
+
+  <!-- G: Cyberpunk Terminal -->
+  <div class="option" data-choice="g" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">G</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Cyberpunk Terminal</h3>
+      <div class="dark-app" style="background:#050a05;">
+        <div class="section-label" style="color:rgba(0,255,65,0.5);">Program Editor IA</div>
+        <div class="cyber-card">
+          <div class="cyber-scanline"></div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+          </div>
+          <p style="font-size:0.8rem;margin:0.5rem 0;color:#a0ffa0;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="cyber-button" style="position:relative;z-index:1;">► EXECUTE</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;color:rgba(0,255,65,0.5);">Exercise Coach IA</div>
+        <div class="cyber-card">
+          <div class="cyber-scanline"></div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+            <span style="font-size:0.8rem;font-weight:600;color:#a0ffa0;position:relative;z-index:1;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="background:#0a120a;border:1px solid rgba(0,255,65,0.15);color:#80cc80;position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Green-on-black terminal aesthetic. Blinking cursor, scanline animation, monospace font. Feels like a hacking tool. Very distinctive.</p>
+    </div>
+  </div>
+
+  <!-- H: Aurora Gradient -->
+  <div class="option" data-choice="h" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">H</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Aurora Gradient</h3>
+      <div class="dark-app" style="background:#080810;">
+        <div class="section-label">Program Editor IA</div>
+        <div class="aurora-card">
+          <div class="row" style="position:relative;z-index:1;">
+            <div class="aurora-chip">✦ IA</div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai" style="position:relative;z-index:1;">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="aurora-card">
+          <div class="row" style="position:relative;z-index:1;">
+            <div class="aurora-chip">✦ IA</div>
+            <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Slowly rotating conic gradient behind the card. Deep dark background with subtle green/blue/purple aurora shift. Elegant and hypnotic.</p>
+    </div>
+  </div>
+
+  <!-- I: Glowing Orb -->
+  <div class="option" data-choice="i" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">I</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Glowing Orb Indicator</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="orb-card">
+          <div class="row">
+            <div class="orb-indicator"></div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Program Editor</span>
+              <br><span class="orb-label">IA Active</span>
+            </div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="orb-card">
+          <div class="row">
+            <div class="orb-indicator"></div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Exercise Coach</span>
+              <br><span class="orb-label">IA Active</span>
+            </div>
+          </div>
+          <div class="mock-chat-bubble">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Pulsing glowing dot next to the title. Minimal but impossible to miss. The glow draws the eye naturally without heavy borders.</p>
+    </div>
+  </div>
+
+  <!-- J: Top Light Strip -->
+  <div class="option" data-choice="j" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">J</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Top Light Strip</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="lightstrip-card">
+          <div class="row">
+            <div class="lightstrip-pill">✦ Powered by IA</div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="lightstrip-card">
+          <div class="row">
+            <div class="lightstrip-pill">✦ Powered by IA</div>
+            <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Focused light strip at the top edge of the card. Clean, minimal, modern. The light "caps" the card like a premium label.</p>
+    </div>
+  </div>
+
+  <!-- K: Neon Outline -->
+  <div class="option" data-choice="k" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">K</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Neon Outline</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="neon-outline-card">
+          <div class="row">
+            <div class="neon-tag">IA</div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="neon-outline-card">
+          <div class="row">
+            <div class="neon-tag">IA</div>
+            <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">No background — just a glowing neon border around the card with text-shadow. Raw, striking, and unique. Very different from typical card UIs.</p>
+    </div>
+  </div>
+
+  <!-- L: Chrome Metallic -->
+  <div class="option" data-choice="l" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">L</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Chrome Metallic</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="chrome-card">
+          <div class="row">
+            <div class="chrome-badge"><span class="accent-dot"></span> Program Editor</div>
+          </div>
+          <div class="chrome-divider"></div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="chrome-card">
+          <div class="row">
+            <div class="chrome-badge"><span class="accent-dot"></span> Exercise Coach</div>
+          </div>
+          <div class="chrome-divider"></div>
+          <div class="mock-chat-bubble">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Subtle metallic gradient background + chrome-styled badge with accent dot. Premium, understated luxury. The divider adds structure.</p>
+    </div>
+  </div>
+
+  <!-- M: Pulsing Ring / Halo -->
+  <div class="option" data-choice="m" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">M</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Pulsing Ring / Halo</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="halo-card">
+          <div class="row">
+            <div class="halo-icon"><div class="inner">✦</div></div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Program Editor</span>
+              <br><span class="halo-label">Powered by IA</span>
+            </div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="halo-card">
+          <div class="row">
+            <div class="halo-icon"><div class="inner">✦</div></div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Exercise Coach</span>
+              <br><span class="halo-label">Powered by IA</span>
+            </div>
+          </div>
+          <div class="mock-chat-bubble">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Expanding rings pulse outward from the AI icon like a sonar ping. Dynamic, attention-grabbing, and uniquely sci-fi. The rings create depth.</p>
+    </div>
+  </div>
+</div>

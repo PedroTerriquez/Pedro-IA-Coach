@@ -1,0 +1,258 @@
+<h2>AI Feature Visual Direction</h2>
+<p class="subtitle">How should AI-powered elements look in the app? Pick the style that feels right.</p>
+
+<style>
+  .dark-app {
+    background: #0a0a0a;
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .dark-surface {
+    background: #141414;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .dark-text { color: #fafafa; font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .dark-muted { color: #86868b; font-size: 0.8rem; }
+  .accent { color: #d4ff3a; }
+
+  /* Style A: Neon glow */
+  .glow-card {
+    background: #141414;
+    border: 1px solid rgba(212,255,58,0.3);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 0 20px rgba(212,255,58,0.08), inset 0 0 20px rgba(212,255,58,0.03);
+    position: relative;
+    overflow: hidden;
+  }
+  .glow-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #d4ff3a, transparent);
+  }
+  .glow-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(212,255,58,0.12);
+    border: 1px solid rgba(212,255,58,0.25);
+    color: #d4ff3a;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(212,255,58,0.15); }
+    50% { box-shadow: 0 0 20px rgba(212,255,58,0.3); }
+  }
+
+  /* Style B: Clean badge + accent border */
+  .clean-card {
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-left: 3px solid #d4ff3a;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .clean-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(212,255,58,0.08);
+    color: #d4ff3a;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  /* Style C: Sparkle icon + gradient accent */
+  .sparkle-card {
+    background: linear-gradient(135deg, #141414 0%, rgba(212,255,58,0.04) 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+  }
+  .sparkle-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #d4ff3a, #a8e600);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    animation: sparkle-spin 3s linear infinite;
+  }
+  @keyframes sparkle-spin {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(5deg) scale(1.05); }
+    50% { transform: rotate(0deg) scale(1); }
+    75% { transform: rotate(-5deg) scale(1.05); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+  .sparkle-label {
+    font-size: 0.6rem;
+    color: #d4ff3a;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+  .mock-textarea {
+    background: #0a0a0a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 0.6rem;
+    color: #fafafa;
+    font-size: 0.8rem;
+    width: 100%;
+    min-height: 48px;
+    resize: none;
+  }
+  .mock-button-ai {
+    background: linear-gradient(135deg, #d4ff3a, #c8f520);
+    color: #0a0a0a;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    width: 100%;
+  }
+  .mock-button-outline {
+    background: transparent;
+    color: #d4ff3a;
+    border: 1px solid rgba(212,255,58,0.3);
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    width: 100%;
+  }
+  .section-label {
+    font-size: 0.7rem;
+    color: #86868b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+</style>
+
+<div class="options">
+  <!-- Option A: Neon Glow -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">A</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Neon Glow</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="glow-card glow-pulse">
+          <div class="row">
+            <div class="glow-badge">⚡ IA</div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin-bottom:0.5rem;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA (reemplaza FAB)</div>
+        <div class="glow-card">
+          <div class="row">
+            <div class="glow-badge">⚡ IA</div>
+            <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Coach IA</span>
+          </div>
+          <div class="dark-surface" style="margin-top:0.5rem;">
+            <p class="dark-muted" style="font-size:0.75rem;">¿Cómo mejorar la técnica del Press Banca?</p>
+          </div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Premium, techy feel. Glow borders + pulsing accent. Very eye-catching but may feel heavy.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Clean Badge + Accent -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">B</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Badge + Accent Border</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="clean-card">
+          <div class="row">
+            <div class="clean-badge">✦ IA</div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin-bottom:0.5rem;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA (reemplaza FAB)</div>
+        <div class="clean-card" style="border-left-color:#d4ff3a;">
+          <div class="row">
+            <div class="clean-badge">✦ IA</div>
+            <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Coach IA</span>
+          </div>
+          <div class="dark-surface" style="margin-top:0.5rem;">
+            <p class="dark-muted" style="font-size:0.75rem;">¿Cómo mejorar la técnica del Press Banca?</p>
+          </div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Clean, modern. Left accent border + small badge. Subtle but clearly marks AI features. Feels native.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Sparkle Icon -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">C</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Sparkle Icon + Gradient</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="sparkle-card">
+          <div class="row">
+            <div class="sparkle-icon">✦</div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Program Editor</span>
+              <br><span class="sparkle-label">Impulsado por IA</span>
+            </div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA (reemplaza FAB)</div>
+        <div class="sparkle-card">
+          <div class="row">
+            <div class="sparkle-icon">✦</div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Exercise Coach</span>
+              <br><span class="sparkle-label">Impulsado por IA</span>
+            </div>
+          </div>
+          <div class="dark-surface" style="margin-top:0.5rem;">
+            <p class="dark-muted" style="font-size:0.75rem;">¿Cómo mejorar la técnica del Press Banca?</p>
+          </div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Playful, inviting. Animated sparkle icon + gradient card background. Friendly and draws the eye naturally.</p>
+    </div>
+  </div>
+</div>

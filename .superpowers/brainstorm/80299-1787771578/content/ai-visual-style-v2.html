@@ -1,0 +1,205 @@
+<h2>AI Feature Visual Direction — More Options</h2>
+<p class="subtitle">Two more styles. Compare with the previous3.</p>
+
+<style>
+  .dark-app {
+    background: #0a0a0a;
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .dark-surface {
+    background: #141414;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .dark-text { color: #fafafa; font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .dark-muted { color: #86868b; font-size: 0.8rem; }
+  .row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+  .section-label {
+    font-size: 0.7rem;
+    color: #86868b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  .mock-button-ai {
+    background: linear-gradient(135deg, #d4ff3a, #c8f520);
+    color: #0a0a0a;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  /* Option D: Animated gradient border */
+  .gradient-border-card {
+    position: relative;
+    background: #141414;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .gradient-border-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 15px;
+    padding: 1px;
+    background: linear-gradient(135deg, #d4ff3a, #00d4ff, #d4ff3a, #ff6b9d);
+    background-size: 300% 300%;
+    animation: gradient-shift 4s ease infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .gradient-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(212,255,58,0.06);
+    border: 1px solid rgba(212,255,58,0.15);
+    color: #d4ff3a;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .gradient-chip::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: #d4ff3a;
+    border-radius: 50%;
+    animation: dot-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes dot-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* Option E: Frosted glass + orb */
+  .frosted-card {
+    background: rgba(20,20,20,0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .frosted-card::after {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(212,255,58,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: orb-float 5s ease-in-out infinite;
+  }
+  @keyframes orb-float {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(-8px, 8px); }
+    66% { transform: translate(4px, -4px); }
+  }
+  .frosted-icon {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, rgba(212,255,58,0.2), rgba(212,255,58,0.05));
+    border: 1px solid rgba(212,255,58,0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .frosted-label {
+    font-size: 0.6rem;
+    color: rgba(212,255,58,0.7);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+</style>
+
+<div class="options">
+  <!-- Option D: Animated Gradient Border -->
+  <div class="option" data-choice="d" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">D</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Animated Gradient Border</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="gradient-border-card">
+          <div class="row">
+            <div class="gradient-chip">IA Activa</div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin-bottom:0.5rem;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA (reemplaza FAB)</div>
+        <div class="gradient-border-card">
+          <div class="row">
+            <div class="gradient-chip">IA Activa</div>
+            <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Coach IA</span>
+          </div>
+          <div class="dark-surface" style="margin-top:0.5rem;">
+            <p class="dark-muted" style="font-size:0.75rem;">¿Cómo mejorar la técnica del Press Banca?</p>
+          </div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Animated gradient border cycles colors (accent → cyan → pink). Pulsing dot on the chip. Feels alive and premium without being overwhelming.</p>
+    </div>
+  </div>
+
+  <!-- Option E: Frosted Glass + Orb -->
+  <div class="option" data-choice="e" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">E</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Frosted Glass + Floating Orb</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="frosted-card">
+          <div class="row">
+            <div class="frosted-icon">✦</div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Program Editor</span>
+              <br><span class="frosted-label">POWERED BY IA</span>
+            </div>
+          </div>
+          <p class="dark-text" style="font-size:0.85rem;margin:0.5rem 0;">Cambia press banca por press inclinado</p>
+          <div class="mock-button-ai">Enviar al coach</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA (reemplaza FAB)</div>
+        <div class="frosted-card">
+          <div class="row">
+            <div class="frosted-icon">✦</div>
+            <div>
+              <span class="dark-text" style="font-size:0.85rem;font-weight:600;">Exercise Coach</span>
+              <br><span class="frosted-label">POWERED BY IA</span>
+            </div>
+          </div>
+          <div class="dark-surface" style="margin-top:0.5rem;">
+            <p class="dark-muted" style="font-size:0.75rem;">¿Cómo mejorar la técnica del Press Banca?</p>
+          </div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Glassmorphism card with backdrop blur + floating accent orb in the corner. Elegant, feels like a layer on top. "POWERED BY IA" label is understated.</p>
+    </div>
+  </div>
+</div>

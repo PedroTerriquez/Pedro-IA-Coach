@@ -87,6 +87,7 @@
     border-radius: 10px;
     background: var(--bg);
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   .ex-thumb img {
@@ -183,7 +184,7 @@
   }
 
   .exercise-row.row-done .ex-thumb {
-    box-shadow: inset 0 0 0 1.5px #34c759;
+    border: 2px solid #34c759;
   }
 
   .exercise-row.row-done .ex-name {

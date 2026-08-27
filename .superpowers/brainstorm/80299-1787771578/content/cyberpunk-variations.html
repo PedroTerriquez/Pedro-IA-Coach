@@ -1,0 +1,366 @@
+<h2>Cyberpunk Variations — Non-Green</h2>
+<p class="subtitle">Same techy/terminal energy, different color palettes. Which direction feels right?</p>
+
+<style>
+  .dark-app {
+    background: #0a0a0a;
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .dark-surface {
+    background: #141414;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .dark-text { color: #fafafa; font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .dark-muted { color: #86868b; font-size: 0.8rem; }
+  .row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+  .section-label {
+    font-size: 0.7rem;
+    color: #86868b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  .mock-chat-bubble {
+    border-radius: 14px 14px 14px 4px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  /* ===== SHARED CYBER ELEMENTS ===== */
+  .cyber-card {
+    position: relative;
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+  .cyber-scanline {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    animation: scanline 2.5s linear infinite;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  @keyframes scanline {
+    0% { top: -2px; }
+    100% { top: 100%; }
+  }
+  .cyber-header {
+    font-size: 0.55rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.06em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cyber-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cyber-badge::before {
+    content: '█';
+    animation: blink-block 1s step-end infinite;
+  }
+  @keyframes blink-block {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .cyber-button {
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* G1: Accent (d4ff3a) — warm, energetic */
+  .g1-card {
+    background: #0a0a05;
+    border: 1px solid rgba(212,255,58,0.2);
+  }
+  .g1-card .cyber-scanline { background: rgba(212,255,58,0.3); }
+  .g1-card .cyber-header { color: rgba(212,255,58,0.4); }
+  .g1-card .cyber-badge {
+    background: rgba(212,255,58,0.08);
+    border: 1px solid rgba(212,255,58,0.25);
+    color: #d4ff3a;
+  }
+  .g1-card .cyber-button {
+    background: rgba(212,255,58,0.1);
+    border: 1px solid rgba(212,255,58,0.3);
+    color: #d4ff3a;
+  }
+  .g1-card .mock-chat-bubble {
+    background: #0f0f08;
+    border: 1px solid rgba(212,255,58,0.12);
+    color: #c8d4a0;
+  }
+
+  /* G2: Cyan / Ice — cool, clean tech */
+  .g2-card {
+    background: #050a0f;
+    border: 1px solid rgba(0,200,255,0.2);
+  }
+  .g2-card .cyber-scanline { background: rgba(0,200,255,0.3); }
+  .g2-card .cyber-header { color: rgba(0,200,255,0.4); }
+  .g2-card .cyber-badge {
+    background: rgba(0,200,255,0.08);
+    border: 1px solid rgba(0,200,255,0.25);
+    color: #00c8ff;
+  }
+  .g2-card .cyber-button {
+    background: rgba(0,200,255,0.1);
+    border: 1px solid rgba(0,200,255,0.3);
+    color: #00c8ff;
+  }
+  .g2-card .mock-chat-bubble {
+    background: #060d12;
+    border: 1px solid rgba(0,200,255,0.12);
+    color: #a0d8ef;
+  }
+
+  /* G3: Violet / Purple — futuristic, mysterious */
+  .g3-card {
+    background: #0a050f;
+    border: 1px solid rgba(160,100,255,0.2);
+  }
+  .g3-card .cyber-scanline { background: rgba(160,100,255,0.3); }
+  .g3-card .cyber-header { color: rgba(160,100,255,0.4); }
+  .g3-card .cyber-badge {
+    background: rgba(160,100,255,0.08);
+    border: 1px solid rgba(160,100,255,0.25);
+    color: #a064ff;
+  }
+  .g3-card .cyber-button {
+    background: rgba(160,100,255,0.1);
+    border: 1px solid rgba(160,100,255,0.3);
+    color: #a064ff;
+  }
+  .g3-card .mock-chat-bubble {
+    background: #0c0812;
+    border: 1px solid rgba(160,100,255,0.12);
+    color: #c8a8f0;
+  }
+
+  /* G4: Silver / White — minimal tech, like a HUD */
+  .g4-card {
+    background: #0a0a0a;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .g4-card .cyber-scanline { background: rgba(255,255,255,0.15); }
+  .g4-card .cyber-header { color: rgba(255,255,255,0.3); }
+  .g4-card .cyber-badge {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #e0e0e0;
+  }
+  .g4-card .cyber-button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #e0e0e0;
+  }
+  .g4-card .mock-chat-bubble {
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #bbb;
+  }
+
+  /* G5: Dual-tone accent + cyan — hybrid, dynamic */
+  .g5-card {
+    background: #080808;
+    border: 1px solid rgba(212,255,58,0.15);
+  }
+  .g5-card .cyber-scanline { background: linear-gradient(90deg, rgba(212,255,58,0.3), rgba(0,200,255,0.3)); }
+  .g5-card .cyber-header { color: rgba(212,255,58,0.35); }
+  .g5-card .cyber-badge {
+    background: linear-gradient(135deg, rgba(212,255,58,0.1), rgba(0,200,255,0.1));
+    border: 1px solid rgba(212,255,58,0.2);
+    color: #d4ff3a;
+  }
+  .g5-card .cyber-button {
+    background: linear-gradient(135deg, rgba(212,255,58,0.12), rgba(0,200,255,0.08));
+    border: 1px solid rgba(212,255,58,0.25);
+    color: #d4ff3a;
+  }
+  .g5-card .mock-chat-bubble {
+    background: #0e0e0e;
+    border: 1px solid rgba(212,255,58,0.1);
+    color: #b8c8a0;
+  }
+</style>
+
+<div class="options">
+  <!-- G1: Accent Yellow -->
+  <div class="option" data-choice="g1" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">G1</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Accent (d4ff3a)</h3>
+      <div class="dark-app" style="background:#080805;">
+        <div class="section-label">Program Editor IA</div>
+        <div class="cyber-card g1-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} AI_MODULE v2.1</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+          </div>
+          <p style="font-size:0.8rem;margin:0.5rem 0;color:#c8d4a0;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="cyber-button" style="position:relative;z-index:1;">► EXECUTE</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="cyber-card g1-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} EXERCISE_COACH v1.3</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+            <span style="font-size:0.8rem;font-weight:600;color:#c8d4a0;position:relative;z-index:1;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Same cyberpunk structure but using the app's accent color. Warm, energetic, matches the existing brand. Feels like a premium version of the original.</p>
+    </div>
+  </div>
+
+  <!-- G2: Cyan / Ice -->
+  <div class="option" data-choice="g2" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">G2</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Cyan / Ice</h3>
+      <div class="dark-app" style="background:#040810;">
+        <div class="section-label">Program Editor IA</div>
+        <div class="cyber-card g2-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} AI_MODULE v2.1</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+          </div>
+          <p style="font-size:0.8rem;margin:0.5rem 0;color:#a0d8ef;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="cyber-button" style="position:relative;z-index:1;">► EXECUTE</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="cyber-card g2-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} EXERCISE_COACH v1.3</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+            <span style="font-size:0.8rem;font-weight:600;color:#a0d8ef;position:relative;z-index:1;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Ice-blue terminal. Cool, clean, feels like a HUD display. Very different from green but equally techy. Great contrast on dark backgrounds.</p>
+    </div>
+  </div>
+
+  <!-- G3: Violet / Purple -->
+  <div class="option" data-choice="g3" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">G3</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Violet / Purple</h3>
+      <div class="dark-app" style="background:#080510;">
+        <div class="section-label">Program Editor IA</div>
+        <div class="cyber-card g3-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} AI_MODULE v2.1</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+          </div>
+          <p style="font-size:0.8rem;margin:0.5rem 0;color:#c8a8f0;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="cyber-button" style="position:relative;z-index:1;">► EXECUTE</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="cyber-card g3-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} EXERCISE_COACH v1.3</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+            <span style="font-size:0.8rem;font-weight:600;color:#c8a8f0;position:relative;z-index:1;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Purple/violet terminal. Futuristic, mysterious, feels like sci-fi UI. Unique and stands out from typical fitness app colors.</p>
+    </div>
+  </div>
+
+  <!-- G4: Silver / White HUD -->
+  <div class="option" data-choice="g4" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">G4</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Silver / White HUD</h3>
+      <div class="dark-app">
+        <div class="section-label">Program Editor IA</div>
+        <div class="cyber-card g4-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} AI_MODULE v2.1</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+          </div>
+          <p style="font-size:0.8rem;margin:0.5rem 0;color:#bbb;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="cyber-button" style="position:relative;z-index:1;">► EXECUTE</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="cyber-card g4-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} EXERCISE_COACH v1.3</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+            <span style="font-size:0.8rem;font-weight:600;color:#bbb;position:relative;z-index:1;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">White/silver on dark. Minimal HUD feel. Most subtle of the cyberpunk options. Clean, professional, still very techy without color distraction.</p>
+    </div>
+  </div>
+
+  <!-- G5: Dual-tone Accent + Cyan -->
+  <div class="option" data-choice="g5" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-color:rgba(255,255,255,0.1);">
+    <div class="letter">G5</div>
+    <div style="padding:1rem;flex:1;">
+      <h3 style="margin-bottom:0.75rem;">Dual-Tone (Accent + Cyan)</h3>
+      <div class="dark-app" style="background:#060808;">
+        <div class="section-label">Program Editor IA</div>
+        <div class="cyber-card g5-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} AI_MODULE v2.1</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+          </div>
+          <p style="font-size:0.8rem;margin:0.5rem 0;color:#b8c8a0;position:relative;z-index:1;">Cambia press banca por press inclinado</p>
+          <div class="cyber-button" style="position:relative;z-index:1;">► EXECUTE</div>
+        </div>
+        <div class="section-label" style="margin-top:0.75rem;">Exercise Coach IA</div>
+        <div class="cyber-card g5-card">
+          <div class="cyber-scanline"></div>
+          <div class="cyber-header">{'>'} EXERCISE_COACH v1.3</div>
+          <div class="row">
+            <div class="cyber-badge">ONLINE</div>
+            <span style="font-size:0.8rem;font-weight:600;color:#b8c8a0;position:relative;z-index:1;">Coach IA</span>
+          </div>
+          <div class="mock-chat-bubble" style="position:relative;z-index:1;">¿Cómo mejorar la técnica del Press Banca?</div>
+        </div>
+      </div>
+      <p class="subtitle" style="margin:0;">Gradient scanline shifts between accent and cyan. Badge uses both colors. Dynamic, layered feel. The most visually rich cyberpunk option.</p>
+    </div>
+  </div>
+</div>
