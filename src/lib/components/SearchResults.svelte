@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Button from './Button.svelte'
   import EmptyState from './EmptyState.svelte'
 
   let {
@@ -28,18 +27,19 @@
     {:else}
       {#each results as r (r.username)}
         <div class="sr-item">
+          <div class="sr-avatar">{r.username.charAt(0).toUpperCase()}</div>
           <div class="sr-info">
             <span class="sr-name">{r.username}</span>
             <span class="sr-streak">{r.streak} {r.streak === 1 ? 'día' : 'días'}</span>
           </div>
-          <Button
-            variant="primary"
-            size="sm"
+          <button
+            class="sr-add"
             onclick={() => onadd?.(r.username)}
             disabled={addingFriend === r.username}
+            aria-label="Agregar {r.username}"
           >
-            {addingFriend === r.username ? '...' : 'Agregar'}
-          </Button>
+            {addingFriend === r.username ? '…' : '+'}
+          </button>
         </div>
       {/each}
     {/if}
@@ -56,13 +56,51 @@
   .sr-item {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
     padding: 12px 16px;
     background: var(--surface);
     border-radius: var(--radius-md);
     border: 0.5px solid var(--border);
   }
-  .sr-info { display: flex; flex-direction: column; gap: 2px; }
+  .sr-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sr-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .sr-name { font-size: 14px; font-weight: 600; color: var(--text); }
-  .sr-streak { font-size: 12px; color: var(--text-muted); }
+  .sr-streak {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .sr-add {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #000;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+  }
+  .sr-add:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 </style>

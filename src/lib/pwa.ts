@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.49'
-const _VER_DESC = 'feat: improve SearchInput with icon, clear button, focus styles'
+const _VER_BASE = 'v2.50'
+const _VER_DESC = 'feat: improve SearchResults with avatar, mono streak, circular add button'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
