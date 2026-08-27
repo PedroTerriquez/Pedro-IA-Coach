@@ -1,6 +1,7 @@
 const _VER_BASE = 'v2.53'
 const _VER_DESC = 'AI debug logging + cyberpunk coach button redesign'
-export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
+const _VER_TIME = '2026-08-26 22:15'
+export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
 let installed = false

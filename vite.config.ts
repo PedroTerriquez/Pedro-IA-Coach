@@ -4,8 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { applyFileText } from './src/lib/admin/media-file';
 
-const now = new Date()
-const buildTime = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+const buildTime = ''
 
 const DICTIONARY_FILE = 'src/lib/data/exercise-dictionary.ts'
 const WARMUP_FILE = 'src/lib/data/exercise-warmup.ts'
@@ -78,7 +77,4 @@ function mediaEditorPlugin(): Plugin {
 
 export default defineConfig({
 	plugins: [mediaEditorPlugin(), sveltekit()],
-	define: {
-		__BUILD_TIME__: JSON.stringify(buildTime)
-	}
 });

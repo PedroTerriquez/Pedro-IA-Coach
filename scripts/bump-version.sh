@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bump APP_VERSION in src/lib/pwa.ts
 FILE="src/lib/pwa.ts"
-NOW=$(date "+%Y-%m-%d %H:%M")
+NOW=$(TZ=America/Mexico_City date "+%Y-%m-%d %H:%M")
 # Read current version number (e.g. v2.10)
 VER=$(grep "^const _VER_BASE" "$FILE" | grep -o "v[0-9]\+\.[0-9]\+")
 if [ -z "$VER" ]; then echo "Cannot find version"; exit 1; fi
@@ -17,4 +17,5 @@ if [ -z "$DESC" ]; then
 fi
 sed -i '' "s|^const _VER_BASE = '.*'|const _VER_BASE = '$NEWVER'|" "$FILE"
 sed -i '' "s|^const _VER_DESC = '.*'|const _VER_DESC = '$DESC'|" "$FILE"
+sed -i '' "s|^const _VER_TIME = '.*'|const _VER_TIME = '$NOW'|" "$FILE"
 echo "→ $NEWVER · $NOW · $DESC"
