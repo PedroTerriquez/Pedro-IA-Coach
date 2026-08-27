@@ -202,7 +202,14 @@ async function handleAIEndpoint(req, env, { buildPrompt, schema, model, maxToken
         { role: 'user', content: buildPrompt(body) },
       ]
 
+  const promptLen = messages.reduce((n, m) => n + (m.content?.length || 0), 0)
+  const modelId = model || 'llama-3.1-8b-instruct-fast'
+  console.log(`[AI_WORKER] → model=${modelId} msgs=${messages.length} chars=${promptLen}`)
+
   const { text, provider } = await callAI(messages, env, aiOpts)
+
+  console.log(`[AI_WORKER] ← provider=${provider} chars=${text?.length || 0}`)
+  if (text) console.log(`[AI_WORKER] response preview:`, text.slice(0, 300))
 
   const parsed = schema ? parseAIResponse(text) : null
   return { parsed, text, provider }

@@ -10,21 +10,42 @@ import { lastAIExchange, aiExchanges } from '$lib/stores/debug'
 
 const LANGUAGE: PromptLanguage = 'es'
 
+/** Strip large fields (systemPrompt, dictionary) from captured request for readability */
+function leanBody(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(raw)) {
+    if (k === 'systemPrompt') {
+      out[k] = `(prompt ${typeof v === 'string' ? v.length : '?'} chars)`
+    } else if (k === 'dictionary' && Array.isArray(v)) {
+      out[k] = `(${v.length} entries)`
+    } else {
+      out[k] = v
+    }
+  }
+  return out
+}
+
 async function recordIfDebug(label: string, url: string, reqBody: unknown, parsed: unknown) {
+  const ts = new Date().toLocaleTimeString('es-MX')
+  const endpoint = PUSH_SERVER_URL ? url.replace(PUSH_SERVER_URL, '') : url
+  const lean = reqBody && typeof reqBody === 'object' && !Array.isArray(reqBody)
+    ? leanBody(reqBody as Record<string, unknown>)
+    : reqBody
+  const exchange = { label, endpoint, request: lean, response: parsed, ts }
+
+  if (import.meta.env.DEV) {
+    console.log(`%c[AI DEBUG] ${label} → ${endpoint}`, 'color:#d4ff3a;font-weight:bold', ts)
+    console.log('[AI DEBUG] request:', lean)
+    console.log('[AI DEBUG] response:', parsed)
+  }
+
   try {
     const s = await Storage.getSettings()
     if (!s.debugAI) return
-    const exchange = {
-      label,
-      endpoint: PUSH_SERVER_URL ? url.replace(PUSH_SERVER_URL, '') : url,
-      request: reqBody,
-      response: parsed,
-      ts: new Date().toLocaleTimeString('es-MX'),
-    }
     lastAIExchange.set(exchange)
     aiExchanges.record(label, exchange)
-  } catch {
-    // debugging must never break the AI flow
+  } catch (err) {
+    console.warn('[AI DEBUG] store write failed:', err)
   }
 }
 
@@ -106,6 +127,7 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
     userProfile: buildUserProfile(settings),
     dictionary
   }
+  if (import.meta.env.DEV) console.log('[AI] importWithAI → sending', text.length, 'chars, dict', dictionary.length)
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -114,11 +136,13 @@ export async function importWithAI(text: string, onProgress?: (current: number, 
 
   if (!res.ok) {
     const raw = await res.text().catch(() => '')
+    console.error('[AI] importWithAI ERROR', res.status, raw.slice(0, 500))
     await recordIfDebug('Importar con IA', `${PUSH_SERVER_URL}/api/ai/import`, reqBody, { error: true, status: res.status, raw })
     throw new Error(`AI import failed: ${res.status}`)
   }
 
   const data = await res.json()
+  if (import.meta.env.DEV) console.log('[AI] importWithAI ✓', data)
   await recordIfDebug('Importar con IA', `${PUSH_SERVER_URL}/api/ai/import`, reqBody, data)
   if (!data.weeks || data.weeks.length === 0) {
     throw new Error('La IA no pudo interpretar la rutina')
@@ -156,6 +180,7 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}, on
     language,
     systemPrompt: buildGeneratePrompt(language),
   }
+  if (import.meta.env.DEV) console.log('[AI] generateProgramWithAI → sending', JSON.stringify(overrides).length, 'chars overrides')
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -164,11 +189,13 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}, on
 
   if (!res.ok) {
     const raw = await res.text().catch(() => '')
+    console.error('[AI] generateProgramWithAI ERROR', res.status, raw.slice(0, 500))
     await recordIfDebug('Generar programa', `${PUSH_SERVER_URL}/api/ai/generate-program`, reqBody, { error: true, status: res.status, raw })
     throw new Error(`AI generation failed: ${res.status}`)
   }
 
   const data = await res.json()
+  if (import.meta.env.DEV) console.log('[AI] generateProgramWithAI ✓', data)
   await recordIfDebug('Generar programa', `${PUSH_SERVER_URL}/api/ai/generate-program`, reqBody, data)
   if (!data.weeks || data.weeks.length === 0) {
     throw new Error('La IA no pudo generar un programa válido')
@@ -223,6 +250,7 @@ export async function programCoach(text: string, program: Program, onProgress?: 
     systemPrompt: buildProgramCoachPrompt(language),
     dictionary: filteredDictionary,
   }
+  if (import.meta.env.DEV) console.log('[AI] programCoach → sending', text.length, 'chars, dict', filteredDictionary.length)
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/program-coach`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -231,10 +259,12 @@ export async function programCoach(text: string, program: Program, onProgress?: 
 
   if (!res.ok) {
     const raw = await res.text().catch(() => '')
+    console.error('[AI] programCoach ERROR', res.status, raw.slice(0, 500))
     await recordIfDebug('Coach de programa', `${PUSH_SERVER_URL}/api/ai/program-coach`, reqBody, { error: true, status: res.status, raw })
     throw new Error(`Coach request failed: ${res.status}`)
   }
   const data = await res.json()
+  if (import.meta.env.DEV) console.log('[AI] programCoach ✓', data)
   await recordIfDebug('Coach de programa', `${PUSH_SERVER_URL}/api/ai/program-coach`, reqBody, data)
 
   if (data.program && data.program.weeks && data.program.weeks.length) {
@@ -270,7 +300,7 @@ export async function exerciseCoachChat(exerciseName: string, muscle: string, al
       systemPrompt,
     }
     const url = `${PUSH_SERVER_URL}/api/ai/exercise-coach`
-
+    if (import.meta.env.DEV) console.log('[AI] exerciseCoachChat → sending', messages.length, 'messages')
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -279,9 +309,11 @@ export async function exerciseCoachChat(exerciseName: string, muscle: string, al
 
     const data = await res.json()
     if (!res.ok) {
+      console.error('[AI] exerciseCoachChat ERROR', res.status, data)
       await recordIfDebug('Coach de ejercicio', url, reqBody, { error: true, status: res.status, raw: data })
       throw new Error(data.error || 'Error')
     }
+    if (import.meta.env.DEV) console.log('[AI] exerciseCoachChat ✓', data)
     await recordIfDebug('Coach de ejercicio', url, reqBody, data)
     return { reply: data.reply || 'No tengo respuesta ahora.', _provider: data._provider || 'llama' }
   } catch (err: any) {

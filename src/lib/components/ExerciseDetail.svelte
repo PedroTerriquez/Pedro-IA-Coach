@@ -264,13 +264,19 @@
         <ExerciseHero {exercise} {accent} {loggedToday} bind:showGif={showGif} />
 
         <!-- Coach IA button -->
-          <div class="coach-bar" data-component="CoachBar">
-          <button class="coach-cyber-btn" style="border-color:color-mix(in srgb, {accent} 20%, transparent);background:color-mix(in srgb, {accent} 5%, var(--surface))" onclick={() => chatOpen = true}>
-            <span class="coach-cyber-scanline" style="background:{accent}"></span>
+        <div class="coach-bar" data-component="CoachBar">
+          <button class="coach-cyber-btn" style="--cyber-accent:{accent};border-color:color-mix(in srgb, {accent} 22%, transparent);background:color-mix(in srgb, {accent} 6%, var(--surface))" onclick={() => chatOpen = true}>
+            <span class="coach-cyber-scanline"></span>
+            <span class="coach-cyber-topline"></span>
             <div class="coach-cyber-inner">
-              <span class="coach-badge-dot" style="background:{accent}"></span>
-              <span class="coach-cyber-label">Coach IA</span>
-              <span class="coach-cyber-sub">Técnica · Variantes · Dolor</span>
+              <span class="coach-cyber-icon" style="color:{accent}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>
+              </span>
+              <div class="coach-cyber-text">
+                <span class="coach-cyber-label">{'>'} Preguntar al coach</span>
+                <span class="coach-cyber-sub">Técnica · Variantes · Dolor</span>
+              </div>
+              <span class="coach-cyber-arrow" style="color:{accent}">›</span>
             </div>
           </button>
           <DebugAIToggle label="Exercise Coach IA" {accent} />
@@ -467,6 +473,7 @@
   }
 
   /* Coach IA cyberpunk button */
+  /* Coach IA cyberpunk button */
   .coach-bar {
     display: flex;
     align-items: center;
@@ -476,51 +483,88 @@
     flex: 1;
     min-width: 0;
     border: 0.5px solid;
-    border-radius: var(--radius-md);
-    padding: 10px 14px;
+    border-radius: var(--radius-full);
+    padding: 11px 14px;
     cursor: pointer;
     overflow: hidden;
     text-align: left;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .coach-cyber-btn:hover {
+    transform: scale(1.01);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--cyber-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--cyber-accent) 35%, transparent);
+  }
+  .coach-cyber-btn:active {
+    transform: scale(0.98);
+    opacity: 0.85;
+  }
+  .coach-cyber-topline {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyber-accent), transparent);
+    opacity: 0.4;
+    pointer-events: none;
   }
   .coach-cyber-scanline {
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 1px;
-    opacity: 0.3;
+    height: 2px;
+    background: var(--cyber-accent);
+    opacity: 0.12;
+    animation: coach-scanline 1.8s linear infinite;
     pointer-events: none;
+  }
+  @keyframes coach-scanline {
+    0% { top: -2px; }
+    100% { top: calc(100% + 2px); }
   }
   .coach-cyber-inner {
     position: relative;
     z-index: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
-  .coach-badge-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
+  .coach-cyber-icon {
     flex-shrink: 0;
-    animation: coach-dot-blink 1s step-end infinite;
+    display: flex;
+    align-items: center;
+    opacity: 0.85;
   }
-  @keyframes coach-dot-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+  .coach-cyber-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
   }
   .coach-cyber-label {
-    font-family: var(--font-sans);
-    font-size: 13px;
+    font-family: var(--font-mono);
+    font-size: 11px;
     font-weight: 600;
     color: var(--text);
-    letter-spacing: -0.1px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
   }
   .coach-cyber-sub {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 8.5px;
     letter-spacing: 0.6px;
     color: var(--text-tertiary);
-    margin-left: auto;
     white-space: nowrap;
+  }
+  .coach-cyber-arrow {
+    flex-shrink: 0;
+    font-size: 18px;
+    font-weight: 300;
+    opacity: 0.4;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .coach-cyber-btn:hover .coach-cyber-arrow {
+    opacity: 0.8;
+    transform: translateX(2px);
   }
 
 </style>

@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.52'
-const _VER_DESC = 'feat: redesigned friends tab with profile, leaderboard, remove'
+const _VER_BASE = 'v2.53'
+const _VER_DESC = 'AI debug logging + cyberpunk coach button redesign'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
