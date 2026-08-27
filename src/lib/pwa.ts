@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.45'
-const _VER_DESC = 'fix: use local timezone for build timestamp'
+const _VER_BASE = 'v2.46'
+const _VER_DESC = 'feat: redesign FriendCard with position, streak, remove'
 export const APP_VERSION = `${_VER_BASE} · ${__BUILD_TIME__} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -91,6 +91,24 @@
     }
   }
 
+  async function removeFriend(friendUsername: string) {
+    try {
+      const res = await fetch(`${PUSH_SERVER_URL}/api/friends/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, friendUsername }),
+      })
+      if (res.ok) {
+        toast.show('Amigo eliminado')
+        await loadFriends()
+      } else {
+        toast.show('Error al eliminar', true)
+      }
+    } catch {
+      toast.show('Error al eliminar', true)
+    }
+  }
+
   let searchTimer: ReturnType<typeof setTimeout> | null = null
 
   $effect(() => {
@@ -190,12 +208,23 @@
       {:else if friends.length === 0}
         <div class="friends-empty">Aún no tienes amigos. Busca y agrega amigos arriba. 👆</div>
       {:else}
-        {#each friends as f (f.username)}
+        <FriendCard
+          username={username}
+          streak={myStreak}
+          exercisedToday={exercisedToday}
+          lastUpdate=""
+          position={0}
+          isMe={true}
+        />
+        {#each [...friends].sort((a, b) => b.streak - a.streak) as f, i (f.username)}
           <FriendCard
             username={f.username}
             streak={f.streak}
             exercisedToday={f.exercisedToday}
             lastUpdate={f.lastUpdate}
+            position={i + 1}
+            isMe={false}
+            onremove={removeFriend}
           />
         {/each}
       {/if}
