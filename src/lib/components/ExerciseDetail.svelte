@@ -217,7 +217,9 @@
     }
   }
 
-  let allLogData = $derived(exercise.logs || [])
+  let allLogData = $derived(
+    (exercise.logs || []).slice().sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+  )
   let maxWeight = $derived(allLogData.length ? Math.max(...allLogData.map(l => l.weight)) : 0)
   let weightCount = $derived(allLogData.filter(l => l.weight > 0).length)
   let firstLog = $derived(allLogData.length ? allLogData[0] : null)

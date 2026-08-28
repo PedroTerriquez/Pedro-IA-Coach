@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.54'
-const _VER_DESC = 'green border on logged exercise images'
-const _VER_TIME = '2026-08-26 22:22'
+const _VER_BASE = 'v2.55'
+const _VER_DESC = 'fix E2E stale selectors + test-gated version bump'
+const _VER_TIME = '2026-08-28 08:02'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -301,10 +301,11 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   })
 
   // ── Step 1: Verify Profile ──
+  // Nota: el username se muestra ahora en Friends (header simplificado en 5d134e8),
+  // por eso se verifica en Step 12. Aquí solo se verifican los campos de perfil,
+  // que viven en ProfileCard bajo la tab Perfil (default).
   await page.goto('you')
-  await page.waitForSelector('#user-name')
 
-  await expect(page.locator('#user-name')).toHaveText('TestUser')
   await expect(page.locator('#height-input')).toHaveValue('180')
   await expect(page.locator('#weight-input')).toHaveValue('80')
   await expect(page.locator('#sex-input')).toHaveValue('Masculino')
@@ -408,23 +409,27 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await trainingCard.click()
   await page.waitForTimeout(500)
 
-  // Verify Google + TikTok exercise-search links (video search is intentional —
-  // exercise demo videos, not a plain web search)
+  // Verify Google + TikTok exercise-search buttons (video search is intentional —
+  // exercise demo videos, not a plain web search). Los search links ya no son
+  // anchors <a href>: ahora son <button onclick={location.href=...}> en
+  // ExerciseHero, así que verificamos presencia + aria-label en vez del href.
   const googleBtn = page.locator('.hero-google-btn').first()
   const tiktokBtn = page.locator('.hero-tiktok-btn').first()
   await expect(googleBtn).toBeVisible()
   await expect(tiktokBtn).toBeVisible()
-  const googleHref = await googleBtn.getAttribute('href')
-  expect(googleHref).toContain('google.com/search')
-  expect(googleHref).toContain('tbm=video')
+  await expect(googleBtn).toHaveAttribute('aria-label', 'Buscar en Google')
+  await expect(tiktokBtn).toHaveAttribute('aria-label', 'Buscar en TikTok')
 
-  // ── Step 7: Coach IA FAB ──
-  const coachFab = page.locator('#coach-fab')
-  await expect(coachFab).toBeVisible({ timeout: 3000 })
-  await expect(coachFab).toContainText('Coach IA')
+  // ── Step 7: Coach IA (botón cyberpunk) ──
+  // El acceso al coach IA ya no es un FAB global (#coach-fab, eliminado en
+  // a334f38): ahora es el botón cyberpunk dentro del ExerciseDetail, que ya
+  // está abierto tras el click a la trainingCard del Step 6.
+  const coachBtn = page.locator('.coach-cyber-btn')
+  await expect(coachBtn).toBeVisible({ timeout: 3000 })
+  await expect(coachBtn).toContainText('Preguntar al coach')
 
   // Click to open Coach IA overlay
-  await coachFab.click()
+  await coachBtn.click()
   await page.waitForTimeout(400)
 
   // Verify overlay shows close button + exercise-specific greeting
@@ -545,9 +550,10 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(effortOverlay).toBeVisible({ timeout: 5000 })
   await effortOverlay.locator('[data-effort="Justo"]').click()
 
-  const coachCard = page.locator('#coach-card-regen')
+  const coachCard = page.locator('[data-component="CoachResultCard"]')
   await expect(coachCard).toBeVisible({ timeout: 10000 })
-  await expect(coachCard).toContainText('Resumen del coach')
+  // La card post-workout se renombró (a334f38: CyberpunkCard label WORKOUT_ANALYSIS).
+  await expect(coachCard).toContainText('WORKOUT_ANALYSIS')
 
   // Regression guard: the post-workout coach card must show the *real*
   // /api/ai/coach response, not a static canned string keyed only by effort
@@ -562,7 +568,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // today, not fall back to just the bare "Racha/Volumen/PRs" stat grid.
   await page.reload()
   await page.waitForTimeout(1000)
-  const coachCardAfterReload = page.locator('#coach-card-regen')
+  const coachCardAfterReload = page.locator('[data-component="CoachResultCard"]')
   await expect(coachCardAfterReload).toBeVisible({ timeout: 10000 })
   await expect(coachCardAfterReload).toContainText('Buen trabajo hoy, TestUser.')
 
@@ -589,23 +595,14 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.goto('friends')
   await page.waitForTimeout(500)
 
-  // First visit shows username prompt
-  await expect(page.locator('#username-prompt')).toBeVisible()
-  await expect(page.locator('#username-prompt')).toContainText('Bienvenido')
+  // El prompt #username-prompt solo aparece si el usuario NO tiene nombre.
+  // Como este flujo ya seedea settings.userName = 'TestUser', Friends renderiza
+  // directo la vista principal; el nombre se verifica abajo en el UsernameEditor.
+  await expect(page.locator('.friends-my-streak')).toContainText('Racha')
 
-  // Set username
-  const usernameInput = page.locator('#username-input')
-  await expect(usernameInput).toBeVisible()
-  await usernameInput.fill('TestUser')
-
-  const listoBtn = page.locator('#username-btn')
-  await expect(listoBtn).toBeEnabled()
-  await listoBtn.click()
-  await page.waitForTimeout(2000)
-
-  // Prompt disappears, main view shows
-  await expect(page.locator('#username-prompt')).not.toBeVisible()
-  await expect(page.locator('.friends-my-streak')).toContainText('racha')
+  // El username ahora vive aquí (en Mi Perfil / UsernameEditor), no en el header
+  // de You (se movió en 5d134e8). Es el nuevo lugar de verificación del nombre.
+  await expect(page.locator('.username-editor .name-text')).toContainText('TestUser')
 
   // Search for friend
   const searchInput = page.locator('#friend-search-input')
@@ -624,12 +621,12 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await addBtn.click()
   await page.waitForTimeout(500)
 
-  // Verify friend appears in list with streak
-  const friendCard = page.locator('.friend-card')
+  // Verify friend appears in list with streak (leaderboard grid — Ana es una card).
+  const friendCard = page.locator('.friend-card', { hasText: 'Ana' })
   await expect(friendCard).toBeVisible()
   await expect(friendCard).toContainText('Ana')
   await expect(friendCard).toContainText('12')
-  await expect(friendCard).toContainText('Hoy')
+  await expect(friendCard).toContainText('✅')
 
   // ── Step 13: Language Toggle — Exercise Names ──
   await page.goto('you')
@@ -1883,12 +1880,18 @@ test.describe('You — Datos export/import roundtrip', () => {
     await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Banca' })).toBeVisible()
     await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Muerto' })).toBeVisible()
 
-    // Verify settings survived roundtrip
+    // Verify settings survived roundtrip (perfil en You — ProfileCard)
     await page.goto('you')
     await page.waitForTimeout(500)
-    await expect(page.locator('#user-name')).toContainText('RoundTripUser')
     await expect(page.locator('#height-input')).toHaveValue('175')
     await expect(page.locator('#weight-input')).toHaveValue('78')
+
+    // El username ya no vive en el header de You (se movió a Friends en 5d134e8):
+    // comprobar que 'RoundTripUser' sobrevivió el roundtrip navegando a Friends,
+    // donde ahora se muestra en el UsernameEditor (Mi Perfil).
+    await page.goto('friends')
+    await page.waitForTimeout(800)
+    await expect(page.locator('.username-editor .name-text')).toContainText('RoundTripUser')
   })
 })
 
@@ -2035,7 +2038,9 @@ test.describe('Hoy — ejercicios completados marcados', () => {
     await page.goto('today')
     await page.waitForTimeout(600)
     await seedIndexedDB(page, {
-      exercises: SEED.exercises,
+      // ex-bench con imgUrl para que el thumb renderice un <img> y así poder
+      // verificar el borde verde sobre la imagen (regla d0f6a55).
+      exercises: SEED.exercises.map(e => e.id === 'ex-bench' ? { ...e, imgUrl: 'https://example.com/bench.jpg' } : e),
       program: {
         id: 'prog-done',
         name: 'Programa Done',
@@ -2073,6 +2078,16 @@ test.describe('Hoy — ejercicios completados marcados', () => {
     // Badge verde solo en el thumbnail de la fila hecha.
     await expect(benchRow.locator('.ex-done-badge')).toBeVisible()
     await expect(militaryRow.locator('.ex-done-badge')).toHaveCount(0)
+
+    // Borde verde sobre la imagen del thumb (regla .ex-thumb img de d0f6a55):
+    // la fila hecha muestra el <img> con borde verde; la no-hecha también tiene
+    // <img> (resuelto del diccionario) pero SIN el borde verde.
+    const benchImg = benchRow.locator('.ex-thumb img')
+    await expect(benchImg).toBeVisible()
+    await expect(benchImg).toHaveCSS('border-color', 'rgb(52, 199, 89)')
+    const militaryImg = militaryRow.locator('.ex-thumb img')
+    await expect(militaryImg).toBeVisible()
+    await expect(militaryImg).not.toHaveCSS('border-color', 'rgb(52, 199, 89)')
 
     // El marcado se recalcula desde IndexedDB en cada carga — sobrevive reload.
     await page.reload()
@@ -2175,11 +2190,149 @@ test.describe('Hoy — timer de sesión y momentos', () => {
     await expect(effortOverlay).toBeVisible({ timeout: 5000 })
     await effortOverlay.locator('[data-effort="Justo"]').click()
 
-    const coachCard = page.locator('#coach-card-regen')
+    const coachCard = page.locator('[data-component="CoachResultCard"]')
     await expect(coachCard).toBeVisible({ timeout: 10000 })
     const duracionStat = page.locator('[data-component="StatBlock"]', { hasText: 'Duración' })
     await expect(duracionStat).toBeVisible({ timeout: 5000 })
     await expect(duracionStat).toContainText(/\d{1,3}:\d{2}/)
+  })
+})
+
+// ── ExerciseDetail — botón coach cyberpunk ──
+// Antes el coach se abría desde un FAB global (#coach-fab); tras el redesign
+// (a334f38 → cdf71cb) vive dentro del ExerciseDetail como .coach-cyber-btn
+// ("Preguntar al coach"). Esta suite ataca el botón REAL, no el selector viejo.
+test.describe('ExerciseDetail — botón coach cyberpunk', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-coach-btn', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  test('renders the cyberpunk coach button and opens the coach chat', async ({ page }) => {
+    test.setTimeout(90000)
+    const program = {
+      id: 'prog-coach-btn', name: 'Programa Coach',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+
+    await page.goto('plan')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: SETTINGS,
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const exerciseRow = page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })
+    await expect(exerciseRow).toBeVisible({ timeout: 3000 })
+    await exerciseRow.click()
+    await page.waitForTimeout(400)
+
+    // El botón cyberpunk real (no el #coach-fab eliminado) debe renderizar
+    // dentro del ExerciseDetail con su etiqueta + subtexto.
+    const coachBtn = page.locator('.coach-cyber-btn')
+    await expect(coachBtn).toBeVisible()
+    await expect(coachBtn).toContainText('Preguntar al coach')
+    await expect(coachBtn).toContainText('Técnica · Variantes · Dolor')
+
+    // Click → abre el overlay real con su close button y chips.
+    await coachBtn.click()
+    await page.waitForTimeout(400)
+    await expect(page.locator('.coach-close-btn')).toBeVisible()
+    await expect(page.locator('text=Mejorar técnica')).toBeVisible()
+  })
+})
+
+// ── Friends — ranking, username y eliminar amigo ──
+// Cubre la rediseñada pantalla de Amigos: Leaderboard con medallas + badge
+// "Yo", edición inline del username (UsernameEditor), y el flujo de eliminar
+// amigo con confirmación en 2 pasos (usa /api/friends/remove).
+test.describe('Friends — ranking, username y eliminar amigo', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: '', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+    username: 'TestUser',
+  }
+
+  test('renders rank with medals + Yo badge, edits username, removes friend with 2-step confirm', async ({ page }) => {
+    test.setTimeout(90000)
+    await page.goto('friends')
+    await page.waitForTimeout(500)
+    await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(500)
+
+    // username ya presente → sin prompt, se muestra el my-streak
+    await expect(page.locator('#username-prompt')).not.toBeVisible()
+    await expect(page.locator('.friends-my-streak')).toContainText('Racha')
+
+    // Estado vacío: sin amigos listados → Leaderboard muestra el mensaje.
+    await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends: [] }) }))
+    await page.route(/\/api\/friends\/remove/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
+    await page.route(/\/api\/user\/register/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
+    await page.reload()
+    await page.waitForTimeout(800)
+    await expect(page.locator('.leaderboard .empty')).toContainText('Aún no tienes amigos')
+
+    // Con amigos: medallas, orden por racha y badge "Yo".
+    const friends = [
+      { username: 'Luis', streak: 20, exercisedToday: true, lastUpdate: new Date().toISOString() },
+      { username: 'Ana', streak: 12, exercisedToday: false, lastUpdate: new Date(Date.now() - 86400000).toISOString() },
+    ]
+    await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends }) }))
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const cards = page.locator('.friend-card')
+    await expect(cards).toHaveCount(3) // Luis, Ana + yo (TestUser)
+    // Orden por racha: Luis (20) primero con 🥇, Ana (12) con 🥈, yo (0) al final.
+    await expect(cards.nth(0)).toContainText('Luis')
+    await expect(cards.nth(0)).toContainText('🥇')
+    await expect(cards.nth(0)).toContainText('20')
+    await expect(cards.nth(1)).toContainText('Ana')
+    await expect(cards.nth(1)).toContainText('🥈')
+    await expect(cards.nth(1)).toContainText('12')
+    await expect(cards.nth(2)).toContainText('🥉')
+
+    // Badge "Yo" sobre mi propia card.
+    const myCard = page.locator('.friend-card', { hasText: 'TestUser' })
+    await expect(myCard).toContainText('Yo')
+
+    // Editar username inline (UsernameEditor en "Mi Perfil").
+    const editBtn = page.getByRole('button', { name: 'Editar nombre' })
+    await expect(editBtn).toBeVisible()
+    await editBtn.click()
+    await page.waitForTimeout(200)
+    const nameInput = page.locator('.name-input')
+    await expect(nameInput).toBeVisible()
+    await nameInput.fill('Pedro')
+    await page.getByRole('button', { name: 'Guardar' }).click()
+    await page.waitForTimeout(600)
+    await expect(page.locator('.name-text')).toContainText('Pedro')
+
+    // Eliminar amigo: 2 pasos (confirmación) → desaparece de la lista.
+    const anaCard = page.locator('.friend-card', { hasText: 'Ana' })
+    const removeBtn = anaCard.getByRole('button', { name: 'Eliminar amigo' })
+    await expect(removeBtn).toBeVisible()
+    await removeBtn.click()
+    await page.waitForTimeout(200)
+    // Primera pulsación: cambia a estado de confirmación.
+    await expect(anaCard.getByRole('button', { name: 'Confirmar eliminar' })).toBeVisible()
+    await anaCard.getByRole('button', { name: 'Confirmar eliminar' }).click()
+    await page.waitForTimeout(600)
+    await expect(page.locator('.friend-card', { hasText: 'Ana' })).toHaveCount(0)
   })
 })
 
