@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.57'
-const _VER_DESC = 'alternativas siempre visibles + fix sobreescribir peso'
-const _VER_TIME = '2026-08-29 20:39'
+const _VER_BASE = 'v2.58'
+const _VER_DESC = 'Plan: reordena días con arrastre (Mover) en vez de tap-swap'
+const _VER_TIME = '2026-08-30 11:24'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
