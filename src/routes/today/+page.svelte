@@ -6,8 +6,7 @@
   import { settings } from '$lib/stores/settings'
   import { toast } from '$lib/stores/ui'
   import { getLogsForDate, logWeight } from '$lib/storage'
-  import { sendPushNotification, notifyWatch } from '$lib/push'
-  import { storeRestPending, checkPendingRest, _checkRestTimer } from '$lib/rest-timer'
+  import { startRestFromExercise, checkPendingRest, _checkRestTimer } from '$lib/rest-timer'
   import { runCoachAnalysis } from '$lib/coach-analysis'
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { resolveWeekOrder } from '$lib/week-order'
@@ -114,16 +113,8 @@
     showDetail = true
   }
 
-  async function onStartRest(data: { name: string; restSec: number; tag: string; sets: number; reps: string; exerciseId: string }) {
-    const { name, restSec, tag, sets, reps, exerciseId } = data
-    await storeRestPending({ name, restSec, tag, exerciseId, sets, reps })
-    const pushCache = await caches.open('push-pending')
-    await pushCache.put('/pending', new Response(JSON.stringify({
-      kind: 'start',
-      exerciseData: { name, restSec, sets, reps, exerciseId }
-    })))
-    const ok = await sendPushNotification(name, `${sets}×${reps} · Tap para iniciar descanso`, tag, { exerciseId })
-    if (!ok) await notifyWatch(name, `${sets}×${reps} · Tap para iniciar descanso`, tag)
+  function onStartRest(data: { name: string; restSec: number; tag: string; sets: number; reps: string; exerciseId: string }) {
+    return startRestFromExercise(data)
   }
 
   function logsForExercise(exerciseId: string, source: ExerciseLog[]): ExerciseLog[] {

@@ -147,9 +147,18 @@ export async function _checkRestTimer() {
   } catch {}
 }
 
+async function stagePushSpec(kind: 'start' | 'done', exerciseData: { name: string; restSec: number; sets: number; reps: string; exerciseId: string }): Promise<void> {
+  try {
+    const cache = await caches.open('push-pending')
+    await cache.put('/pending', new Response(JSON.stringify({ kind, exerciseData })))
+  } catch {}
+}
+
 export async function scheduleRestTimer(name: string, restSec: number, tag: string, sets: number, reps: string, exerciseId: string): Promise<void> {
   const endTime = Date.now() + restSec * 1000
   await storeRestTimer({ endTime, name, restSec, tag, sets, reps, exerciseId })
+
+  await stagePushSpec('done', { name, restSec, sets, reps, exerciseId })
 
   try {
     await fetch(`${PUSH_SERVER_URL}/api/rest-timer/start`, {
@@ -197,11 +206,8 @@ export async function completeRest(name: string, tag: string): Promise<void> {
 export async function startRestFromExercise(data: { name: string; restSec: number; tag: string; sets: number; reps: string; exerciseId: string }): Promise<void> {
   const { name, restSec, tag, sets, reps, exerciseId } = data
   await storeRestPending({ name, restSec, tag, exerciseId, sets, reps })
-  const pushCache = await caches.open('push-pending')
-  await pushCache.put('/pending', new Response(JSON.stringify({
-    kind: 'start',
-    exerciseData: { name, restSec, sets, reps, exerciseId }
-  })))
+  await stagePushSpec('start', { name, restSec, sets, reps, exerciseId })
+  await new Promise((r) => setTimeout(r, 2000))
   const ok = await sendPushNotification(name, `${sets}×${reps} · Tap para iniciar descanso`, tag, { exerciseId })
   if (!ok) await notifyWatch(name, `${sets}×${reps} · Tap para iniciar descanso`, tag)
 }

@@ -204,7 +204,7 @@ Web Push replaces local-only notifications so they appear in iOS Notification Ce
 ```
 today.js → sendPushNotification()
                   ↓
-           fetch(POST /api/push/send)
+           fetch(POST /api/push/start)
                   ↓
         Cloudflare Worker + KV store
                   ↓
@@ -221,7 +221,7 @@ today.js → sendPushNotification()
 | `src/lib/push.ts` | `subscribePush()`, `unsubscribePush()`, `sendPushNotification()`, `notifyWatch()` (local fallback) |
 | `src/lib/rest-timer.ts` | `scheduleRestTimer()`, `completeRest()`, `cancelRestTimer()`, `checkPendingRest()` (Cache API + Worker queue) |
 | `src/service-worker.js` | `push` event → `showNotification()`; `notificationclick` → opens app + `from-notification` flag |
-| `push-worker/src/index.js` | Endpoints: `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/send`, `/api/rest-timer/start`, `/api/rest-timer/cancel`; `queue()` handler |
+| `push-worker/src/index.js` | Endpoints: `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/start`, `/api/rest-timer/start`, `/api/rest-timer/cancel`; `queue()` handler |
 | `src/lib/config.ts` | `PUSH_SERVER_URL` + `VAPID_PUBLIC_KEY` (both public by design) |
 | `push-worker/wrangler.toml` | KV `PUSH_KV`, Queue `rest-timers`, `[ai]` binding, VAPID vars |
 

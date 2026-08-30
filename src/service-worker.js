@@ -43,6 +43,14 @@ self.addEventListener('message', (e) => {
     self.skipWaiting()
     return
   }
+  if (e.data?.type === 'notify') {
+    self.registration.showNotification(e.data.title || 'Coach Pedro AI', {
+      body: e.data.body || '',
+      icon: 'icons/icon-192.png',
+      tag: e.data.tag || 'local-notify',
+      data: { url: './' },
+    })
+  }
 })
 
 function _repsLabel(ex) {

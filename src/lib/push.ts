@@ -73,7 +73,7 @@ export async function unsubscribePush(): Promise<void> {
 export async function sendPushNotification(title: string, body: string, tag?: string, data?: any): Promise<boolean> {
   if (!PUSH_SERVER_URL) return false
   try {
-    const res = await fetch(`${PUSH_SERVER_URL}/api/push/send`, {
+    const res = await fetch(`${PUSH_SERVER_URL}/api/push/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, body, tag, data, deviceId: getDeviceId() })
