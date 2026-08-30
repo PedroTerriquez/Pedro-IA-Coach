@@ -1170,7 +1170,7 @@ test.describe('Plan — Reprogramar mode', () => {
     }],
   }
 
-  test('swap days, reset, shift, and persist a reschedule', async ({ page }) => {
+  test('drag days, cancel on release outside, reset, shift, and persist a reschedule', async ({ page }) => {
     test.setTimeout(60000)
 
     await page.goto('plan')
@@ -1184,15 +1184,50 @@ test.describe('Plan — Reprogramar mode', () => {
     await page.waitForTimeout(300)
     await expect(page.getByText('Reprogramando esta semana')).toBeVisible()
 
-    // Swap Empuje (Mon) and Tirón (Wed)
-    await page.locator('.day-card', { hasText: 'Empuje' }).locator('.day-header').click()
-    await page.waitForTimeout(200)
-    await page.locator('.day-card', { hasText: 'Tirón' }).locator('.day-header').click()
+    // Enter drag mode via the "Mover" button; every day (including Rest days)
+    // shows a handle ⠿
+    await page.locator('#plan-move-btn').click()
     await page.waitForTimeout(300)
-    await expect(page.locator('.day-card', { hasText: 'Tirón' }).locator('.moved-chip')).toContainText('desde Mié')
-    await expect(page.locator('.day-card', { hasText: 'Empuje' }).locator('.moved-chip')).toContainText('desde Lun')
+    await expect(page.locator('.drag-handle')).toHaveCount(7)
 
-    // Reset clears the swap
+    // Swap Empuje (Mon, slot 0) and Tirón (Wed, slot 2) by dragging the handle
+    const slots = page.locator('.drag-slot')
+    await expect(slots).toHaveCount(7)
+    const box0 = await slots.nth(0).boundingBox()
+    const box1 = await slots.nth(1).boundingBox()
+    const step = box1.y - box0.y
+    await expect(page.locator('.drag-handle').first()).toBeVisible()
+    const handle = page.locator('.drag-handle').first()
+    const hb = await handle.boundingBox()
+    const grabOffset = hb.y - box0.y
+    const cx = hb.x + hb.width / 2
+    const cy = hb.y + hb.height / 2
+    const targetY = box0.y + 2 * step + grabOffset
+    await page.mouse.move(cx, cy)
+    await page.mouse.down()
+    await page.mouse.move(cx, targetY, { steps: 12 })
+    await page.mouse.up()
+    await page.waitForTimeout(300)
+    await expect(slots.nth(2).getByText('Empuje')).toBeVisible()
+    await expect(slots.nth(2).locator('.moved-chip')).toContainText('desde Lun')
+    await expect(slots.nth(0).getByText('Tirón')).toBeVisible()
+    await expect(slots.nth(0).locator('.moved-chip')).toContainText('desde Mié')
+
+    // Releasing outside the list cancels: Empuje stays where it is
+    const empHandle = page.locator('.drag-slot', { hasText: 'Empuje' }).locator('.drag-handle')
+    const ehb = await empHandle.boundingBox()
+    const ecy = ehb.y + ehb.height / 2
+    const ecx = ehb.x + ehb.width / 2
+    await page.mouse.move(ecx, ecy)
+    await page.mouse.down()
+    await page.mouse.move(ecx, ecy + step, { steps: 5 })
+    await page.mouse.move(5, 5)
+    await page.mouse.up()
+    await page.waitForTimeout(300)
+    await expect(slots.nth(2).getByText('Empuje')).toBeVisible()
+    await expect(page.locator('.moved-chip')).toHaveCount(2)
+
+    // Reset clears the reorder
     await page.locator('#plan-reset-btn').click()
     await page.waitForTimeout(300)
     await expect(page.locator('.moved-chip')).toHaveCount(0)
@@ -1200,8 +1235,8 @@ test.describe('Plan — Reprogramar mode', () => {
     // "Me salté un día" rotates every workout forward by one day
     await page.locator('#plan-shift-btn').click()
     await page.waitForTimeout(300)
-    await expect(page.locator('.day-card', { hasText: 'Empuje' }).locator('.moved-chip')).toContainText('desde Lun')
-    await expect(page.locator('.day-card', { hasText: 'Tirón' }).locator('.moved-chip')).toContainText('desde Mié')
+    await expect(page.locator('.drag-slot', { hasText: 'Empuje' }).locator('.moved-chip')).toContainText('desde Lun')
+    await expect(page.locator('.drag-slot', { hasText: 'Tirón' }).locator('.moved-chip')).toContainText('desde Mié')
 
     // Save — a persistent "changes" banner should appear outside edit mode
     await page.locator('#plan-reprogram-btn').click()
@@ -1214,6 +1249,75 @@ test.describe('Plan — Reprogramar mode', () => {
     await page.reload()
     await page.waitForTimeout(800)
     await expect(page.locator('#plan-changes-banner')).toBeVisible()
+  })
+})
+
+test.describe('Plan — drag onto a free slot', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-free', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+  // 5-day program with real weekdays → Lun and Sáb free. weekday: 1=Lun … 7=Dom.
+  const PROGRAM = {
+    id: 'prog-free', name: 'Rutina Libre',
+    weeks: [{
+      name: 'Semana 1', subtitle: '', tag: 'BUILD',
+      days: [
+        { name: 'Pecho · Tríceps', subtitle: '', duration: 60, exercises: [], weekday: 2 },
+        { name: 'Espalda · Bíceps', subtitle: '', duration: 60, exercises: [], weekday: 3 },
+        { name: 'Pierna', subtitle: '', duration: 60, exercises: [], weekday: 4 },
+        { name: 'Hombro · Core', subtitle: '', duration: 60, exercises: [], weekday: 5 },
+        { name: 'Full Body', subtitle: '', duration: 60, exercises: [], weekday: 7 },
+      ],
+    }],
+  }
+
+  test('dragging a workout onto a free slot repositions it', async ({ page }) => {
+    test.setTimeout(60000)
+    await page.goto('plan')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], program: PROGRAM, settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.locator('#plan-reprogram-btn').click()
+    await page.waitForTimeout(300)
+    await page.locator('#plan-move-btn').click()
+    await page.waitForTimeout(300)
+
+    // natural order = [Lun libre, Mar Pecho, Mié Espalda, Jue Pierna, Vie Hombro, Sáb libre, Dom Full Body]
+    const slots = page.locator('.drag-slot')
+    await expect(slots).toHaveCount(7)
+    await expect(page.locator('.drag-handle')).toHaveCount(5)
+    await expect(slots.nth(0).getByText('Sin entrenamiento')).toBeVisible()
+
+    const box0 = await slots.nth(0).boundingBox()
+    const box1 = await slots.nth(1).boundingBox()
+    const step = box1.y - box0.y
+    const box3 = await slots.nth(3).boundingBox()
+    const hb = await slots.nth(3).locator('.drag-handle').boundingBox()
+    const grabOffset = hb.y - box3.y
+    const cx = hb.x + hb.width / 2
+    const cy = hb.y + hb.height / 2
+    const targetY = box0.y + grabOffset
+    await page.mouse.move(cx, cy)
+    await page.mouse.down()
+    await page.mouse.move(cx, targetY, { steps: 12 })
+    await page.mouse.up()
+    await page.waitForTimeout(300)
+
+    // Pierna (Jue) lands on free Lun; the vacated free slot moves to its spot
+    await expect(slots.nth(0).getByText('Pierna')).toBeVisible()
+    await expect(slots.nth(0).locator('.moved-chip')).toContainText('desde Jue')
+    await expect(slots.nth(1).getByText('Sin entrenamiento')).toBeVisible()
+
+    // Listo → persists as a temporary reschedule
+    await page.locator('#plan-reprogram-btn').click()
+    await page.waitForTimeout(400)
+    await expect(page.locator('#plan-changes-banner')).toBeVisible()
+    await expect(page.locator('#plan-changes-banner')).toContainText('1 cambio')
   })
 })
 
