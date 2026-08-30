@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
+
   let {
     dayName,
     dayNumber,
@@ -13,7 +15,8 @@
     isExpanded = false,
     accent = 'var(--accent)',
     onclick,
-    children
+    children,
+    dragHandle
   }: {
     dayName: string
     dayNumber: number
@@ -29,11 +32,12 @@
     accent?: string
     onclick?: () => void
     children?: any
+    dragHandle?: Snippet
   } = $props()
 </script>
 
 <div class="day-card" class:today={isToday} data-component="DayCard" style="--accent:{accent}">
-  <button class="day-header" onclick={onclick} disabled={!onclick}>
+  {#snippet headerInner()}
     <div class="day-badge" class:today-badge={isToday} class:rest-badge={isRest}>
       <div class="badge-day">{dayName}</div>
       <div class="badge-num">{dayNumber}</div>
@@ -64,7 +68,20 @@
         <div class="meta-rest">{isRest ? 'DESC' : '—'}</div>
       {/if}
     </div>
-  </button>
+    {#if dragHandle}
+      {@render dragHandle()}
+    {/if}
+  {/snippet}
+
+  {#if onclick}
+    <button class="day-header" onclick={onclick}>
+      {@render headerInner()}
+    </button>
+  {:else}
+    <div class="day-header">
+      {@render headerInner()}
+    </div>
+  {/if}
 
   {#if isExpanded && children}
     <div class="day-body">
@@ -98,6 +115,9 @@
     text-align: left;
     color: inherit;
     font-family: inherit;
+  }
+  .day-header:not(button) {
+    cursor: default;
   }
 
   .day-badge {
