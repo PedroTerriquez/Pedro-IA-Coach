@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.56'
-const _VER_DESC = 'fix rest timer: push endpoint + done spec + SW notify fallback'
-const _VER_TIME = '2026-08-29 20:11'
+const _VER_BASE = 'v2.57'
+const _VER_DESC = 'alternativas siempre visibles + fix sobreescribir peso'
+const _VER_TIME = '2026-08-29 20:39'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

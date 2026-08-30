@@ -112,9 +112,11 @@
   let currentExerciseKey = $derived(exercise.exerciseId || exercise.id)
   let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
   let isSwapped = $derived(!!exercise.originalExerciseId && exercise.originalExerciseId !== currentExerciseKey)
+  // The alternatives tab always shows when the exercise has curated alternatives
+  // (regardless of whether the detail is opened from Today, Plan or History).
   // Stays visible while swapped even if the swapped-in exercise has no curated
   // alternatives of its own — otherwise there'd be no way back to the original.
-  let showAlternativesTab = $derived(isToday && (((exercise.alternatives?.length ?? 0) > 0) || isSwapped))
+  let showAlternativesTab = $derived(((exercise.alternatives?.length ?? 0) > 0) || isSwapped)
   $effect(() => {
     void currentExerciseKey
     const isBlockMode = !!todayLog?.blocks?.length
@@ -123,7 +125,12 @@
     pendingWeight = todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0)
     advanced = isBlockMode
     blocks = seededBlocks
-    savedKey = isBlockMode ? JSON.stringify(seededBlocks) : (loggedToday ? String(pendingWeight) : null)
+    // savedKey must only reflect the *persisted* value (todayLog/lastLog), NOT
+    // the live pendingWeight. Reading pendingWeight here would make this effect
+    // re-run on every keystroke, snapping the input back to the saved weight and
+    // keeping isDirty=false (button stuck on "Guardado") — the "can't overwrite
+    // after registering" bug.
+    savedKey = isBlockMode ? JSON.stringify(seededBlocks) : (loggedToday ? String(todayLog?.weight ?? pendingWeight) : null)
     if (tab === 'alternatives' && !showAlternativesTab) tab = 'workout'
   })
 

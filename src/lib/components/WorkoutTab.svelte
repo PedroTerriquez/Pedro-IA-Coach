@@ -203,6 +203,7 @@
             inputmode="decimal"
             value={weightInput}
             oninput={handleWeightInput}
+            onfocus={(e) => (e.target as HTMLInputElement).select()}
             placeholder="0"
             class="weight-input"
             style="color:{loggedToday ? accent : '#fafafa'}"

@@ -2001,8 +2001,8 @@ test.describe('Today — Alternative exercise swap', () => {
     await expect(altTab).toHaveCount(0)
 
     // ── Step 8: Close the sheet and open the same day from Historial — the
-    // tab must stay hidden there too, even though Press Banca still has
-    // curated alternatives, because swapping only makes sense for "today" ──
+    // tab must ALSO show there: the detail always offers curated alternatives
+    // regardless of where it's opened from (no isToday gating) ──
     await page.getByRole('button', { name: 'Cerrar' }).first().click()
     await page.waitForTimeout(300)
     await page.goto('history')
@@ -2014,7 +2014,8 @@ test.describe('Today — Alternative exercise swap', () => {
     await page.waitForTimeout(400)
 
     await expect(page.locator('.hero-google-btn')).toBeVisible()
-    await expect(altTab).toHaveCount(0)
+    await expect(altTab).toBeVisible()
+    await expect(altTab).toHaveCount(1)
   })
 })
 
@@ -2333,6 +2334,90 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await anaCard.getByRole('button', { name: 'Confirmar eliminar' }).click()
     await page.waitForTimeout(600)
     await expect(page.locator('.friend-card', { hasText: 'Ana' })).toHaveCount(0)
+  })
+})
+
+// ── Hoy: sobreescribir el peso registrado tras guardar ──
+// Regression guard: tras registrar un peso hoy, teclear otro valor se había
+// revertido al peso guardado (el $effect de ExerciseDetail re-leía pendingWeight
+// y reseteaba el input en cada tecla), clava el botón en "Guardado" y no permitía
+// corregir el valor. Sobreescribir = el peso anterior se borra y solo queda el nuevo.
+test.describe('Hoy — sobreescribir peso tras registrar', () => {
+  function getTodayStr() {
+    return new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  }
+
+  test('el peso nuevo reemplaza al anterior y persiste tras recargar', async ({ page }) => {
+    const today = getTodayStr()
+    const program = {
+      id: 'prog-overwrite', name: 'Programa Overwrite',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+    const baseSettings = {
+      id: 'settings', activeProgramId: 'prog-overwrite', currentWeekIdx: 0, units: 'kg',
+      accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+      sessionState: { date: today, phase: 2, todayExDone: 0 }, lastCoachAnalysis: null,
+      rescheduleWeekOrder: {}, language: 'es',
+    }
+
+    await page.goto('today')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      exerciseLogs: [{ id: 'log-overwrite', exerciseId: 'ex-bench', date: today, weight: 41, units: 'kg' }],
+      program,
+      settings: baseSettings,
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const trainingCard = page.locator('[data-phase="training"]').first()
+    await expect(trainingCard).toBeVisible()
+    await trainingCard.click()
+    await page.waitForTimeout(400)
+
+    const weightInput = page.locator('input[inputmode="decimal"]').first()
+    await expect(weightInput).toHaveValue('41')
+
+    // 1) Sobreescribir 41 → 40: el input debe reemplazar el valor (no "410",
+    //    no revertirse al guardado) y el botón pasar a "Actualizar".
+    await weightInput.click()
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.keyboard.type('40')
+    await page.waitForTimeout(500)
+    await expect(weightInput).toHaveValue('40')
+    await expect(page.getByRole('button', { name: /Actualizar · 40kg/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Guardado/ })).toHaveCount(0)
+
+    // 2) Corregir a 41 (el peso correcto): el 40 se borra y solo queda el nuevo
+    //    41. Como 41 coincide con el log de hoy, el botón vuelve a "Guardado".
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.keyboard.type('41')
+    await page.waitForTimeout(500)
+    await expect(weightInput).toHaveValue('41')
+    await expect(page.getByRole('button', { name: /Guardado · 41kg/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Actualizar/ })).toHaveCount(0)
+
+    // 3) Dejar 40 (sobreescribiendo) y guardar: verificar que 40 persiste.
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.keyboard.type('40')
+    await page.waitForTimeout(500)
+    await expect(weightInput).toHaveValue('40')
+    await page.getByRole('button', { name: /Actualizar · 40kg/ }).click()
+    await page.waitForTimeout(600)
+    await page.reload()
+    await page.waitForTimeout(800)
+    await expect(trainingCard).toBeVisible()
+    await trainingCard.click()
+    await page.waitForTimeout(400)
+    await expect(weightInput).toHaveValue('40')
   })
 })
 
