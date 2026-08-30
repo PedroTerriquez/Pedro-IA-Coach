@@ -6,6 +6,7 @@
   import * as Storage from '$lib/storage'
   import ExerciseRow from '$lib/components/ExerciseRow.svelte'
   import DayCard from '$lib/components/DayCard.svelte'
+  import PlanReorder from '$lib/components/PlanReorder.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import Button from '$lib/components/Button.svelte'
@@ -20,7 +21,7 @@
   let planExpandedDayIdx = $state<number | null>(null)
   let planAutoExpanded = $state(false)
   let planEditing = $state(false)
-  let planSelectedSwapIdx = $state<number | null>(null)
+  let planDragMode = $state(false)
   let planEditingOrder = $state<number[] | null>(null)
   let exerciseWeights = $state<Record<string, number>>({})
 
@@ -132,13 +133,17 @@
         saveRescheduleOrder(planEditingOrder)
       }
       planEditing = false
-      planSelectedSwapIdx = null
+      planDragMode = false
       planEditingOrder = null
     } else {
       planEditing = true
+      planDragMode = false
       planEditingOrder = [...committedOrder]
-      planSelectedSwapIdx = null
     }
+  }
+
+  function handleMoveToggle() {
+    planDragMode = !planDragMode
   }
 
   async function saveRescheduleOrder(newOrder: number[]) {
@@ -163,39 +168,21 @@
     await settings.update({ rescheduleWeekOrder: rs as any })
   }
 
-  function handleSwap(calIdx: number) {
-    if (planSelectedSwapIdx === null) {
-      planSelectedSwapIdx = calIdx
-    } else if (planSelectedSwapIdx === calIdx) {
-      planSelectedSwapIdx = null
-    } else {
-      const newOrder = [...(planEditingOrder || committedOrder)]
-      const tmp = newOrder[planSelectedSwapIdx]
-      newOrder[planSelectedSwapIdx] = newOrder[calIdx]
-      newOrder[calIdx] = tmp
-      planEditingOrder = newOrder
-      planSelectedSwapIdx = null
-    }
-  }
-
   function handleReset() {
     if (editingChanges === 0) return
     // Reset = back to the week's INTRINSIC layout (weekday placement), not
     // blind sequential order — resetting to [0..6] used to clobber weekdays.
     planEditingOrder = [...naturalOrder]
-    planSelectedSwapIdx = null
   }
 
   function handleShift() {
     const editOrder = planEditingOrder || committedOrder
     planEditingOrder = editOrder.map((_, i) => editOrder[(i - 1 + 7) % 7])
-    planSelectedSwapIdx = null
   }
 
   function handleBannerEdit() {
     planEditing = true
     planEditingOrder = [...committedOrder]
-    planSelectedSwapIdx = null
   }
 
   async function openExerciseDetailAt(dayExercises: ProgramExercise[], idx: number) {
@@ -267,51 +254,57 @@
           </div>
           <div class="flex-1">
             <div class="banner-title">Reprogramando esta semana</div>
-            <div class="banner-subtitle">Los 7 días de la semana. Intercambia con espacios libres.</div>
+            <div class="banner-subtitle">{planDragMode
+              ? 'Arrastra el asa ⠿ de un día y suéltalo en su posición.'
+              : 'Los 7 días de la semana. Usa «Mover» para arrastrar.'}</div>
           </div>
-          <Button id="plan-reset-btn" variant="ghost" disabled={editingChanges === 0} onclick={handleReset}>Restablecer</Button>
+          <Button id="plan-reset-btn" variant="primary" {accent} disabled={editingChanges === 0} onclick={handleReset}>Restablecer</Button>
         </div>
       </div>
 
       <div class="section-pad-md">
-        <button id="plan-shift-btn" class="shift-btn" onclick={handleShift}>
-          <div class="shift-icon" style="color:{accent}">→</div>
-          <div class="flex-1">
-            <div class="shift-title">Me salté un día</div>
-            <div class="shift-desc">Corre cada entrenamiento un día hacia adelante (Lun→Mar, Mar→Mié…).</div>
-          </div>
-          <div class="shift-cta" style="background:{accent};color:var(--bg)">Desplazar</div>
-        </button>
+        <div class="edit-actions">
+          <button id="plan-shift-btn" class="shift-btn" onclick={handleShift}>
+            <div class="shift-icon" style="color:{accent}">→</div>
+            <div class="flex-1">
+              <div class="shift-title">Me salté un día</div>
+              <div class="shift-desc">Corre cada entrenamiento un día hacia adelante (Lun→Mar, Mar→Mié…).</div>
+            </div>
+            <div class="shift-cta" style="background:{accent};color:var(--bg)">Desplazar</div>
+          </button>
+          <button
+            id="plan-move-btn"
+            class="shift-btn"
+            style="border:{planDragMode ? `0.5px solid ${accent}66` : ''}"
+            onclick={handleMoveToggle}>
+            <div class="shift-icon" style="color:{accent}">⠿</div>
+            <div class="flex-1">
+              <div class="shift-title">{planDragMode ? 'Detener arrastre' : 'Mueve un día'}</div>
+              <div class="shift-desc">Arrastra el asa para reordenar la semana como quieras.</div>
+            </div>
+            <div class="shift-cta" style="background:{planDragMode ? 'transparent' : accent};color:{planDragMode ? accent : 'var(--bg)'};border:{planDragMode ? `0.5px solid ${accent}` : '0'}">Arrastrar</div>
+          </button>
+        </div>
       </div>
 
       <div class="hint-row">
         <span class="hint-dot" style="background:{accent}"></span>
-        <span>Toca dos días para intercambiarlos (incluye espacios libres)</span>
+        <span>{planDragMode
+          ? 'Arrastra el asa de un día para moverlo'
+          : 'Toca «Arrastrar» para mover los días libremente'}</span>
       </div>
 
-      <div class="day-list">
-        {#each order as originalIdx, calIdx (calIdx)}
-          {@const day = originalIdx < week.days.length ? week.days[originalIdx] : null}
-          {@const hasWorkout = day !== null}
-          {@const isTodayCal = calIdx === todayIdx && planWeekIdx === $settings.currentWeekIdx}
-          {@const isMoved = hasWorkout && originalIdx !== calIdx}
-          {@const isSelected = planSelectedSwapIdx === calIdx}
-          <DayCard
-            dayName={DAY_NAMES_SHORT[calIdx]}
-            dayNumber={calIdx + 1}
-            title={day?.name || ''}
-            subtitle={isTodayCal ? (day?.subtitle ? `Hoy · ${day.subtitle}` : 'Hoy') : (day?.subtitle || '')}
-            isToday={isTodayCal}
-            {isMoved}
-            movedFrom={DAY_NAMES_SHORT[originalIdx]}
-            exerciseCount={(day?.exercises || []).length}
-            duration={day?.duration ? String(day.duration) : undefined}
-            isRest={!hasWorkout}
-            accent={isSelected ? accent : undefined}
-            onclick={() => handleSwap(calIdx)}
-          />
-        {/each}
-      </div>
+      <PlanReorder
+        {order}
+        days={week.days}
+        dayNames={DAY_NAMES_SHORT}
+        {accent}
+        dragMode={planDragMode}
+        todayCalIdx={todayIdx}
+        weekIdx={planWeekIdx}
+        currentWeekIdx={$settings.currentWeekIdx}
+        onorder={(o) => { planEditingOrder = o }}
+      />
     {:else}
       {#if changes > 0}
         <div class="section-pad-xs">
@@ -423,7 +416,7 @@
   .shift-cta { flex-shrink: 0; padding: 8px 12px; border-radius: 10px; font-family: var(--font-sans); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
   .hint-row { padding: 0 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.42); font-weight: 600; }
   .hint-dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
-  .day-list { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+  .edit-actions { display: flex; flex-direction: column; gap: 10px; }
   .changes-banner { width: 100%; text-align: left; cursor: pointer; border: 0.5px solid; border-radius: 14px; padding: 11px 14px; display: flex; align-items: center; gap: 10px; color: inherit; }
   .active-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .changes-title { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
