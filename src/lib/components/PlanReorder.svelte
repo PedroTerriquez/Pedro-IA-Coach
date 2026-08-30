@@ -29,7 +29,6 @@
 
   let dragging = $state(false)
   let dragIdx = $state(0)
-  let dragValue = $state(0)
   let hoverIdx = $state(0)
   let rects = $state<{ top: number; left: number; width: number }[]>([])
   let grabX = $state(0)
@@ -44,7 +43,6 @@
     el.setPointerCapture(e.pointerId)
     dragging = true
     dragIdx = calIdx
-    dragValue = order[calIdx]
     hoverIdx = calIdx
     const r = slotEls[calIdx].getBoundingClientRect()
     grabX = e.clientX - r.left
@@ -55,29 +53,28 @@
       const b = s.getBoundingClientRect()
       return { top: b.top, left: b.left, width: b.width }
     })
-    cardStep = rects.length > 1 ? rects[1].top - rects[0].top : r.height
+    cardStep = rects.length > 1 ? Math.max(rects[1].top - rects[0].top, 1) : Math.max(r.height, 1)
   }
 
   function moveDrag(e: PointerEvent) {
     if (!dragging) return
     dragX = e.clientX - grabX - rects[dragIdx].left
     dragY = e.clientY - grabY - rects[dragIdx].top
-    const topY = e.clientY - grabY
-    let p = Math.round((topY - rects[0].top) / cardStep)
-    p = Math.max(0, Math.min(6, p))
-    if (p !== hoverIdx) hoverIdx = p
+    let j = Math.floor((e.clientY - rects[0].top) / cardStep)
+    j = Math.max(0, Math.min(order.length - 1, j))
+    if (j !== hoverIdx) hoverIdx = j
   }
 
   function endDrag(e: PointerEvent) {
     if (!dragging) return
-    const r = containerEl?.getBoundingClientRect()
-    const inside = r
-      ? e.clientX >= r.left - 20 &&
-        e.clientX <= r.right + 20 &&
-        e.clientY >= r.top - 40 &&
-        e.clientY <= r.bottom + 40
+    const bounds = containerEl?.getBoundingClientRect()
+    const inside = bounds
+      ? e.clientX >= bounds.left - 20 &&
+        e.clientX <= bounds.right + 20 &&
+        e.clientY >= bounds.top - 40 &&
+        e.clientY <= bounds.bottom + 40
       : false
-    if (inside) commit(hoverIdx)
+    if (inside && hoverIdx !== dragIdx) commit(hoverIdx)
     resetDrag()
   }
 
@@ -85,18 +82,17 @@
     if (dragging) resetDrag()
   }
 
-  function commit(p: number) {
-    const arr = order.filter((_, i) => i !== dragIdx)
-    const ins = p > dragIdx ? p - 1 : p
-    arr.splice(ins, 0, dragValue)
-    const same = order.length === arr.length && order.every((v, i) => v === arr[i])
-    if (!same) onorder(arr)
+  function commit(j: number) {
+    const arr = [...order]
+    const tmp = arr[dragIdx]
+    arr[dragIdx] = arr[j]
+    arr[j] = tmp
+    onorder(arr)
   }
 
   function resetDrag() {
     dragging = false
     dragIdx = 0
-    dragValue = 0
     hoverIdx = 0
     rects = []
     grabX = 0
@@ -104,13 +100,6 @@
     dragX = 0
     dragY = 0
     cardStep = 0
-  }
-
-  function shiftFor(i: number): number {
-    if (!dragging || i === dragIdx) return 0
-    if (hoverIdx > dragIdx && i > dragIdx && i <= hoverIdx) return -cardStep
-    if (hoverIdx < dragIdx && i >= hoverIdx && i < dragIdx) return cardStep
-    return 0
   }
 </script>
 
@@ -126,9 +115,7 @@
     {@const isTargetSlot = dragging && calIdx !== dragIdx && calIdx === hoverIdx}
     {@const transform = isDraggingSlot
       ? `translate(${dragX}px, ${dragY}px) scale(1.03)`
-      : dragging
-        ? `translateY(${shiftFor(calIdx)}px)`
-        : ''}
+      : ''}
     <div
       class="drag-slot"
       class:dragging-slot={isDraggingSlot}
@@ -177,8 +164,9 @@
 
 <style>
   .reorder-list { display: flex; flex-direction: column; gap: 10px; padding: 0 20px; }
-  .drag-slot { position: relative; transition: transform 0.18s ease; }
-  .drag-slot.dragging-slot { transition: none; border-radius: 18px; }
+  .drag-slot { position: relative; }
+  .drag-slot.dragging-slot,
+  .drag-slot.target-slot { border-radius: 18px; }
   .drag-handle {
     flex-shrink: 0;
     width: 30px;
@@ -191,6 +179,8 @@
     border: 0.5px solid rgba(255,255,255,0.08);
     cursor: grab;
     touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
     font-size: 15px;
     line-height: 1;
   }

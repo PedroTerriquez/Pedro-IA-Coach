@@ -1288,6 +1288,7 @@ test.describe('Plan — drag onto a free slot', () => {
     await page.waitForTimeout(300)
 
     // natural order = [Lun libre, Mar Pecho, Mié Espalda, Jue Pierna, Vie Hombro, Sáb libre, Dom Full Body]
+    // drags SWAP slots: dragging a day onto another slot exchanges their positions
     const slots = page.locator('.drag-slot')
     await expect(slots).toHaveCount(7)
     await expect(page.locator('.drag-handle')).toHaveCount(5)
@@ -1308,16 +1309,16 @@ test.describe('Plan — drag onto a free slot', () => {
     await page.mouse.up()
     await page.waitForTimeout(300)
 
-    // Pierna (Jue) lands on free Lun; the vacated free slot moves to its spot
+    // Pierna (Jue) swaps with the free Lun slot
     await expect(slots.nth(0).getByText('Pierna')).toBeVisible()
     await expect(slots.nth(0).locator('.moved-chip')).toContainText('desde Jue')
-    await expect(slots.nth(1).getByText('Sin entrenamiento')).toBeVisible()
+    await expect(slots.nth(3).getByText('Sin entrenamiento')).toBeVisible()
 
     // Listo → persists as a temporary reschedule
     await page.locator('#plan-reprogram-btn').click()
     await page.waitForTimeout(400)
     await expect(page.locator('#plan-changes-banner')).toBeVisible()
-    await expect(page.locator('#plan-changes-banner')).toContainText('1 cambio')
+    await expect(page.locator('#plan-changes-banner')).toContainText('2 cambios')
   })
 })
 
