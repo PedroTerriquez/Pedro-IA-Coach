@@ -303,6 +303,7 @@
         todayCalIdx={todayIdx}
         weekIdx={planWeekIdx}
         currentWeekIdx={$settings.currentWeekIdx}
+        {naturalOrder}
         onorder={(o) => { planEditingOrder = o }}
       />
     {:else}
@@ -336,7 +337,8 @@
             {@const day = originalIdx < week.days.length ? week.days[originalIdx] : null}
             {@const hasWorkout = day !== null}
             {@const isTodayDay = calIdx === todayIdx && planWeekIdx === $settings.currentWeekIdx}
-          {@const isMoved = hasWorkout && !!rawRescheduleOrder && originalIdx !== calIdx}
+          {@const naturalSlot = hasWorkout ? naturalOrder.indexOf(originalIdx) : -1}
+            {@const isMoved = hasWorkout && !!rawRescheduleOrder && naturalSlot !== -1 && naturalSlot !== calIdx}
             {@const isRest = !hasWorkout || day?.name === 'Rest' || day?.name === 'Descanso'}
             {@const isExpanded = planExpandedDayIdx === calIdx}
             {@const isWorkoutDay = hasWorkout && !isRest}
@@ -347,7 +349,7 @@
               subtitle={day?.subtitle || ''}
               isToday={isTodayDay}
               {isMoved}
-              movedFrom={DAY_NAMES_SHORT[originalIdx]}
+              movedFrom={DAY_NAMES_SHORT[naturalSlot]}
               exerciseCount={day?.exercises?.length || 0}
               {isRest}
               {isExpanded}

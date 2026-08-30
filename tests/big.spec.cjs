@@ -1294,6 +1294,17 @@ test.describe('Plan — drag onto a free slot', () => {
     await expect(page.locator('.drag-handle')).toHaveCount(5)
     await expect(slots.nth(0).getByText('Sin entrenamiento')).toBeVisible()
 
+    // Later slots sit partly under the fixed tab bar — bring slot 3's handle
+    // into the clear first, or elementFromPoint hits the "Plan" tab link and
+    // the pointerdown never reaches the handle.
+    await page.evaluate(() => {
+      const els = document.querySelectorAll('.drag-slot')
+      const h = els[3].querySelector('.drag-handle').getBoundingClientRect()
+      const safe = window.innerHeight - 110
+      if (h.bottom > safe) window.scrollBy(0, h.bottom - safe)
+    })
+    await page.waitForTimeout(100)
+
     const box0 = await slots.nth(0).boundingBox()
     const box1 = await slots.nth(1).boundingBox()
     const step = box1.y - box0.y

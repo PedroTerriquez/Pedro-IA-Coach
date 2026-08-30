@@ -11,6 +11,7 @@
     todayCalIdx,
     weekIdx,
     currentWeekIdx,
+    naturalOrder,
     onorder
   }: {
     order: number[]
@@ -21,6 +22,7 @@
     todayCalIdx: number
     weekIdx: number
     currentWeekIdx: number
+    naturalOrder: number[]
     onorder: (order: number[]) => void
   } = $props()
 
@@ -109,7 +111,8 @@
     {@const hasWorkout = day !== null}
     {@const isRest = !hasWorkout || day?.name === 'Rest' || day?.name === 'Descanso'}
     {@const isTodayCal = calIdx === todayCalIdx && weekIdx === currentWeekIdx}
-    {@const isMoved = hasWorkout && originalIdx !== calIdx}
+    {@const naturalSlot = hasWorkout ? naturalOrder.indexOf(originalIdx) : -1}
+    {@const isMoved = hasWorkout && naturalSlot !== -1 && naturalSlot !== calIdx}
     {@const showHandle = dragMode && hasWorkout}
     {@const isDraggingSlot = dragging && calIdx === dragIdx}
     {@const isTargetSlot = dragging && calIdx !== dragIdx && calIdx === hoverIdx}
@@ -136,8 +139,8 @@
         title={day?.name || ''}
         subtitle={isTodayCal ? (day?.subtitle ? `Hoy · ${day.subtitle}` : 'Hoy') : (day?.subtitle || '')}
         isToday={isTodayCal}
-        {isMoved}
-        movedFrom={dayNames[originalIdx]}
+        isMoved={hasWorkout && naturalSlot !== -1 && naturalSlot !== calIdx}
+        movedFrom={dayNames[naturalSlot]}
         exerciseCount={(day?.exercises || []).length}
         duration={day?.duration ? String(day.duration) : undefined}
         {isRest}
