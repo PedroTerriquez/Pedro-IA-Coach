@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.58'
-const _VER_DESC = 'Plan: reordena días con arrastre (Mover) en vez de tap-swap'
-const _VER_TIME = '2026-08-30 11:24'
+const _VER_BASE = 'v2.59'
+const _VER_DESC = 'Admin: corpus de nombres de ejercicios sin match desde Normalizar'
+const _VER_TIME = '2026-08-30 12:32'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

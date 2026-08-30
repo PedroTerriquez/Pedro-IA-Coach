@@ -5,6 +5,7 @@
   import { settings } from '$lib/stores/settings'
   import { toast } from '$lib/stores/ui'
   import * as Storage from '$lib/storage'
+  import { reportUnmatchedNames } from '$lib/unmatched'
   import { generateId, getAll, put } from '$lib/db'
   import SectionLabel from '$lib/components/SectionLabel.svelte'
   import Icon from '$lib/components/Icon.svelte'
@@ -527,7 +528,10 @@
       } else {
         dictMigrateStatus = `✅ Actualizados ${result.migrated} · fusionados ${result.merged} · sin match ${result.skipped}`
         dictSkippedNames = result.skippedNames || []
-        if (dictSkippedNames.length) dictMigrateStatus += `. ${dictSkippedNames.length} sin match en diccionario.`
+        if (dictSkippedNames.length) {
+          dictMigrateStatus += `. ${dictSkippedNames.length} sin match en diccionario.`
+          reportUnmatchedNames(dictSkippedNames)
+        }
       }
       refresh()
     } catch (err: any) {

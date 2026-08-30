@@ -6,6 +6,20 @@ const corsHeaders = {
 
 const AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast'
 
+// Same normalizer as src/lib/data/exercise-dictionary.ts (raw matching against
+// unmatched names). Lowercases, strips accents and noise, collapses spaces.
+function normalizeUnmatched(s) {
+  return (s || '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[-_/]/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 const GEMINI_SAFETY = [
   { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
   { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
@@ -562,6 +576,51 @@ export default {
           }
         }
         return respond({ friends })
+      } catch (err) {
+        return respond({ error: err.message }, 500)
+      }
+    }
+
+    // ── Unmatched exercise names (corpus for dictionary review) ──
+
+    if (url.pathname === '/api/unmatched/report') {
+      try {
+        if (!env.UNMATCHED_KV) return respond('Unmatched KV not configured', 501)
+        const { names } = await req.json()
+        if (!Array.isArray(names)) return respond({ error: 'names array required' }, 400)
+        if (names.length > 200) return respond({ error: 'Too many names (max 200)' }, 400)
+        let stored = 0, skipped = 0
+        const today = new Date().toISOString().slice(0, 10)
+        for (const raw of names) {
+          if (!raw || typeof raw !== 'string') { skipped++; continue }
+          const name = raw.trim()
+          const norm = normalizeUnmatched(name)
+          if (!norm || name.length > 64) { skipped++; continue }
+          const existing = await env.UNMATCHED_KV.get(norm)
+          const record = existing ? JSON.parse(existing) : { name, firstSeen: today }
+          if (!existing) stored++
+          await env.UNMATCHED_KV.put(norm, JSON.stringify(record))
+        }
+        return respond({ stored, skipped })
+      } catch (err) {
+        return respond({ error: err.message }, 500)
+      }
+    }
+
+    if (url.pathname === '/api/unmatched/list') {
+      try {
+        if (!env.UNMATCHED_KV) return respond('Unmatched KV not configured', 501)
+        let keys = []
+        let cursor = undefined
+        do {
+          const page = await env.UNMATCHED_KV.list({ cursor, limit: 1000 })
+          keys = keys.concat(page.keys)
+          cursor = page.list_complete ? undefined : page.cursor
+        } while (cursor)
+        const names = (await Promise.all(keys.map(k => env.UNMATCHED_KV.get(k.name).then(r => r ? JSON.parse(r) : null))))
+          .filter(Boolean)
+          .sort((a, b) => a.name.localeCompare(b.name))
+        return respond({ names })
       } catch (err) {
         return respond({ error: err.message }, 500)
       }

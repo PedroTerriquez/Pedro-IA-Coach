@@ -6,6 +6,7 @@
   import { draftCount, saveDrafts, queueReplace, queueSetAliases, queueSetName, pendingAliasesMap, pendingNamesMap, pendingMediaMap } from '$lib/admin/editor'
   import { warmupDraftCount, saveWarmupDrafts, warmupPendingMediaMap, warmupPendingNamesMap } from '$lib/admin/warmup-editor'
   import { reviewed, toggleReviewed } from '$lib/admin/reviewed'
+  import { PUSH_SERVER_URL } from '$lib/config'
   import MediaPicker from '$lib/components/MediaPicker.svelte'
   import AdminCard from '$lib/components/AdminCard.svelte'
   import WarmupAdminTab from '$lib/components/WarmupAdminTab.svelte'
@@ -18,7 +19,7 @@
   let dictionary = $state(EXERCISE_DICTIONARY)
   let warmup = $state<WarmupEntry[]>(EXERCISE_WARMUP)
 
-  let tab = $state<'dict' | 'warmup' | 'stretch'>('dict')
+  let tab = $state<'dict' | 'warmup' | 'stretch' | 'unmatched'>('dict')
 
   let query = $state('')
   let muscle = $state('')
@@ -157,6 +158,61 @@
   )
 
   const pickerRelated = $derived(pickerEntry ? buildTerms(pickerEntry.en, pickerEntry.aliases) : [])
+
+  // ── Unmatched exercise-name corpus ──
+  let unmatched = $state<{ name: string; firstSeen: string }[]>([])
+  let unmatchedQuery = $state('')
+  let unmatchedLoading = $state(false)
+  let unmatchedError = $state('')
+  let unmatchedLoaded = $state(false)
+
+  async function loadUnmatched() {
+    if (!PUSH_SERVER_URL) {
+      unmatchedError = 'Sin PUSH_SERVER_URL configurado'
+      return
+    }
+    unmatchedLoading = true
+    unmatchedError = ''
+    try {
+      const res = await fetch(`${PUSH_SERVER_URL}/api/unmatched/list`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      unmatched = data.names || []
+      unmatchedLoaded = true
+    } catch (err: any) {
+      unmatchedError = err?.message || 'Error de red'
+    } finally {
+      unmatchedLoading = false
+    }
+  }
+
+  $effect(() => {
+    if (tab === 'unmatched' && !unmatchedLoaded && !unmatchedLoading) loadUnmatched()
+  })
+
+  const unmatchedVisible = $derived(
+    unmatched.filter((n) => {
+      const q = unmatchedQuery.trim().toLowerCase()
+      return !q || n.name.toLowerCase().includes(q)
+    })
+  )
+
+  async function copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+    }
+  }
+
+  async function copyAll() {
+    await copyText(unmatchedVisible.map((n) => n.name).join('\n'))
+  }
 </script>
 
 <svelte:head><title>Admin Media</title></svelte:head>
@@ -169,6 +225,11 @@
         <h1 class="title">Diccionario · Media · {dictReviewedCount}/{dictEntries.length}</h1>
         <p class="subtitle">
           {dictEntries.length} ejercicios · <strong>{dictReviewedCount} revisados</strong> · {dictEntries.length - dictReviewedCount} pendientes
+        </p>
+      {:else if tab === 'unmatched'}
+        <h1 class="title">Nombres sin match</h1>
+        <p class="subtitle">
+          {unmatched.length} nombres que el diccionario no resolvió · reportados desde Normalizar
         </p>
       {:else}
         <h1 class="title">{tab === 'warmup' ? 'Calentamiento' : 'Estiramiento'} · Media · {warmupReviewedCount}/{warmupScoped.length}</h1>
@@ -190,6 +251,7 @@
     <button class:active={tab === 'dict'} class="sub-tab" onclick={() => (tab = 'dict')}>Ejercicios</button>
     <button class:active={tab === 'warmup'} class="sub-tab" onclick={() => (tab = 'warmup')}>Calentamiento</button>
     <button class:active={tab === 'stretch'} class="sub-tab" onclick={() => (tab = 'stretch')}>Estiramiento</button>
+    <button class:active={tab === 'unmatched'} class="sub-tab" onclick={() => (tab = 'unmatched')}>Nombres</button>
   </div>
 
   <div class="pane" style="display:{tab === 'dict' ? 'block' : 'none'}">
@@ -241,6 +303,39 @@
   <div class="pane" style="display:{tab === 'stretch' ? 'block' : 'none'}">
     <WarmupAdminTab mode="stretch" entries={warmup} accent="var(--accent)" />
   </div>
+
+  <div class="pane" style="display:{tab === 'unmatched' ? 'block' : 'none'}">
+    {#if unmatchedLoading}
+      <div class="empty">Cargando…</div>
+    {:else if unmatchedError}
+      <div class="empty">
+        Error: {unmatchedError}
+        <button class="chip" style="margin-left:8px" onclick={loadUnmatched}>Reintentar</button>
+      </div>
+    {:else}
+      <div class="filters">
+        <SearchInput value={unmatchedQuery} oninput={(v) => (unmatchedQuery = v)} placeholder="Buscar nombre…" />
+      </div>
+      <div class="count">
+        {unmatchedVisible.length} nombres sin match
+        {#if unmatchedVisible.length}
+          <button class="chip copy-all" onclick={copyAll}>copiar todos</button>
+        {/if}
+      </div>
+      <div class="list">
+        {#each unmatchedVisible as n}
+          <div class="unmatched-row">
+            <div class="unmatched-name">{n.name}</div>
+            <div class="unmatched-date">{n.firstSeen}</div>
+            <button class="chip" onclick={() => copyText(n.name)}>copiar</button>
+          </div>
+        {/each}
+      </div>
+      {#if !unmatchedVisible.length}
+        <div class="empty">Sin resultados</div>
+      {/if}
+    {/if}
+  </div>
 </div>
 
 {#if isDev && tab === 'dict'}
@@ -248,7 +343,7 @@
     {saving ? 'Guardando…' : `Guardar (${dictCount})`}
   </button>
 {/if}
-{#if isDev && tab !== 'dict'}
+{#if isDev && (tab === 'warmup' || tab === 'stretch')}
   <button id="save-warmup" class="fab" onclick={onWarmupSave} disabled={saving || wCount === 0}>
     {saving ? 'Guardando…' : `Guardar (${wCount})`}
   </button>
@@ -290,6 +385,10 @@
   .count { font-size: 11px; opacity: 0.55; font-family: var(--font-mono); margin-bottom: 8px; }
   .hint { opacity: 0.7; }
   .list { display: flex; flex-direction: column; gap: 6px; }
+  .copy-all { margin-left: 8px; }
+  .unmatched-row { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 8px 12px; }
+  .unmatched-name { flex: 1; font-size: 13px; color: var(--text); font-family: var(--font-sans); }
+  .unmatched-date { font-size: 10px; opacity: 0.5; font-family: var(--font-mono); white-space: nowrap; }
   .empty { text-align: center; opacity: 0.5; padding: 40px 0; }
   .sub-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
   .sub-tab { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text); border-radius: 9999px; padding: 8px 16px; font-size: 12px; cursor: pointer; font-family: var(--font-sans); font-weight: 600; }
