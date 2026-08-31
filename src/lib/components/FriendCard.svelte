@@ -4,6 +4,7 @@
     streak = 0,
     exercisedToday = false,
     lastUpdate = '',
+    gymTime = 0,
     position = 0,
     isMe = false,
     accent = 'var(--accent)',
@@ -13,6 +14,7 @@
     streak: number
     exercisedToday: boolean
     lastUpdate: string
+    gymTime: number
     position: number
     isMe: boolean
     accent?: string
@@ -22,8 +24,10 @@
   let confirmDelete = $state(false)
 
   const initial = $derived(username ? username[0].toUpperCase() : '?')
-  const posLabel = $derived(position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}`)
+  const posLabel = $derived(position === 1 ? '🏆' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}`)
   const posColor = $derived(position <= 3 ? accent : 'var(--text-muted)')
+  const gymMinutes = $derived(Math.floor((gymTime || 0) / 60))
+  const streakLabel = $derived(`${streak} ${streak === 1 ? 'semana' : 'semanas'}`)
 
   function handleRemove() {
     if (!confirmDelete) {
@@ -42,10 +46,11 @@
   <div class="info">
     <div class="name-row">
       <span class="name">{username}</span>
+      <span class="name-streak" style="color:{accent}">- {streakLabel}</span>
       {#if isMe}<span class="me-badge" style="background:{accent}18;color:{accent}">Yo</span>{/if}
     </div>
-    <div class="streak-row">
-      <span class="streak" style="color:{accent}">{streak} {streak === 1 ? 'sem' : 'sems'}</span>
+    <div class="gym-row">
+      <span class="gym">🏋️ {gymMinutes} {gymMinutes === 1 ? 'minuto' : 'minutos'} de gym esta semana</span>
     </div>
   </div>
   <div class="today-badge" class:active={exercisedToday}>
@@ -114,6 +119,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
   }
   .name {
     font-family: var(--font-sans);
@@ -122,6 +128,15 @@
     color: var(--text);
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .name-streak {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
     white-space: nowrap;
   }
   .me-badge {
@@ -132,13 +147,14 @@
     border-radius: var(--radius-full);
     flex-shrink: 0;
   }
-  .streak-row {
+  .gym-row {
     margin-top: 2px;
   }
-  .streak {
+  .gym {
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 600;
+    color: var(--text-muted);
   }
   .today-badge {
     font-size: 14px;

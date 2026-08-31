@@ -2,11 +2,17 @@
   let {
     username = '',
     accent = 'var(--accent)',
-    onsave = async () => {}
+    registered = true,
+    registering = false,
+    onsave = async () => {},
+    onregister = async () => {}
   }: {
     username: string
     accent?: string
+    registered?: boolean
+    registering?: boolean
     onsave?: (name: string) => Promise<void>
+    onregister?: () => Promise<void>
   } = $props()
 
   let editing = $state(false)
@@ -82,6 +88,22 @@
       <button type="button" class="icon-btn" onclick={startEdit} aria-label="Editar nombre">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
       </button>
+      {#if !registered}
+        <button
+          type="button"
+          class="icon-btn register"
+          onclick={onregister}
+          disabled={registering}
+          aria-label="Registrar usuario"
+          title="Registrar usuario"
+        >
+          {#if registering}
+            <span class="spinner"></span>
+          {:else}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={accent} stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          {/if}
+        </button>
+      {/if}
     </div>
   {/if}
 </div>
@@ -160,6 +182,10 @@
   }
   .icon-btn:active {
     background: rgba(255,255,255,0.08);
+  }
+  .icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   .spinner {
     width: 16px;

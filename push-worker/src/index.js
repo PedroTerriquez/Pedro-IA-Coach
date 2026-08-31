@@ -481,8 +481,19 @@ export default {
         if (!username || username.length < 2) return respond({ error: 'Username must be at least 2 characters' }, 400)
         const existing = await env.PUSH_KV.get(`user_${username}`)
         if (existing) return respond({ error: 'Nombre de usuario ya registrado' }, 409)
-        await env.PUSH_KV.put(`user_${username}`, JSON.stringify({ username, streak: 0, exercisedToday: false, lastExerciseDate: '', lastUpdate: new Date().toISOString() }))
+        await env.PUSH_KV.put(`user_${username}`, JSON.stringify({ username, streak: 0, exercisedToday: false, gymTime: 0, lastExerciseDate: '', lastUpdate: new Date().toISOString() }))
         return respond({ status: 'ok' })
+      } catch (err) {
+        return respond({ error: err.message }, 500)
+      }
+    }
+
+    if (url.pathname === '/api/user/check') {
+      try {
+        const username = url.searchParams.get('username') || ''
+        if (!username) return respond({ error: 'username required' }, 400)
+        const existing = await env.PUSH_KV.get(`user_${username}`)
+        return respond({ exists: !!existing })
       } catch (err) {
         return respond({ error: err.message }, 500)
       }
@@ -490,12 +501,13 @@ export default {
 
     if (url.pathname === '/api/user/sync') {
       try {
-        const { username, streak, exercisedToday } = await req.json()
+        const { username, streak, exercisedToday, gymTime } = await req.json()
         if (!username) return respond({ error: 'username required' }, 400)
         const raw = await env.PUSH_KV.get(`user_${username}`)
         const data = raw ? JSON.parse(raw) : { username }
         data.streak = streak ?? data.streak ?? 0
         data.exercisedToday = exercisedToday ?? data.exercisedToday ?? false
+        data.gymTime = gymTime ?? data.gymTime ?? 0
         data.lastExerciseDate = exercisedToday ? new Date().toISOString().slice(0, 10) : data.lastExerciseDate
         data.lastUpdate = new Date().toISOString()
         await env.PUSH_KV.put(`user_${username}`, JSON.stringify(data))
@@ -520,7 +532,7 @@ export default {
         const ql = q.toLowerCase()
         const results = users
           .filter(u => u && u.username && u.username.toLowerCase().includes(ql))
-          .map(u => ({ username: u.username, streak: u.streak, exercisedToday: u.exercisedToday }))
+          .map(u => ({ username: u.username, streak: u.streak, exercisedToday: u.exercisedToday, gymTime: u.gymTime }))
         return respond({ results })
       } catch (err) {
         return respond({ error: err.message }, 500)
@@ -572,7 +584,7 @@ export default {
           const raw = await env.PUSH_KV.get(`user_${f.friendUsername}`)
           if (raw) {
             const u = JSON.parse(raw)
-            friends.push({ username: u.username, streak: u.streak, exercisedToday: u.exercisedToday, lastUpdate: u.lastUpdate })
+            friends.push({ username: u.username, streak: u.streak, exercisedToday: u.exercisedToday, gymTime: u.gymTime, lastUpdate: u.lastUpdate })
           }
         }
         return respond({ friends })

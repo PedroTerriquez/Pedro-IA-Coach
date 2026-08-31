@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.59'
-const _VER_DESC = 'Admin: corpus de nombres de ejercicios sin match desde Normalizar'
-const _VER_TIME = '2026-08-30 12:32'
+const _VER_BASE = 'v2.61'
+const _VER_DESC = 'Amigos: ranking por tiempo en gym con copa oro/plata'
+const _VER_TIME = '2026-08-31 12:07'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

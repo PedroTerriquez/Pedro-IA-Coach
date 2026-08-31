@@ -20,6 +20,11 @@ export function calMonday(d: Date): Date {
   return m
 }
 
+export function mondayOf(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return toLocalDateStr(calMonday(new Date(y, m - 1, d)))
+}
+
 export function calAddDays(d: Date, n: number): Date {
   const x = calStripTime(d)
   x.setDate(x.getDate() + n)

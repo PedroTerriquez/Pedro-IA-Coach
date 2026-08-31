@@ -182,10 +182,10 @@ async function seedIndexedDB(page, data, retries = 3) {
     try {
       await page.evaluate((d) => {
         return new Promise((resolve, reject) => {
-          const req = indexedDB.open('coach-pedro-ai', 1)
+          const req = indexedDB.open('coach-pedro-ai', 2)
           req.onupgradeneeded = () => {
             const db = req.result
-            const stores = ['exercises', 'exerciseLogs', 'programs', 'settings']
+            const stores = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
             stores.forEach((s) => {
               if (db.objectStoreNames.contains(s)) return
               const store = db.createObjectStore(s, { keyPath: 'id' })
@@ -198,11 +198,12 @@ async function seedIndexedDB(page, data, retries = 3) {
           req.onsuccess = () => {
             try {
               const db = req.result
-              const tx = db.transaction(['exercises', 'exerciseLogs', 'programs', 'settings'], 'readwrite')
+              const tx = db.transaction(['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions'], 'readwrite')
               tx.objectStore('exercises').clear()
               tx.objectStore('exerciseLogs').clear()
               tx.objectStore('programs').clear()
               tx.objectStore('settings').clear()
+              tx.objectStore('gymSessions').clear()
               d.exercises.forEach(ex => tx.objectStore('exercises').put(ex))
               ;(d.exerciseLogs || []).forEach(log => tx.objectStore('exerciseLogs').put(log))
               if (d.program) tx.objectStore('programs').put(d.program)
@@ -274,6 +275,9 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
     }
     if (url.includes('/api/user/sync')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+    }
+    if (url.includes('/api/user/check')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true }) })
     }
     if (url.includes('/api/friends/search')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: [{ username: 'Ana', streak: 12, exercisedToday: true }] }) })
@@ -622,7 +626,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForTimeout(500)
 
   // Verify friend appears in list with streak (leaderboard grid — Ana es una card).
-  const friendCard = page.locator('.friend-card', { hasText: 'Ana' })
+  const friendCard = page.locator('.friend-card').filter({ has: page.locator('.name', { hasText: 'Ana' }) })
   await expect(friendCard).toBeVisible()
   await expect(friendCard).toContainText('Ana')
   await expect(friendCard).toContainText('12')
@@ -1397,7 +1401,7 @@ test.describe('Plan — weekday mapping (Mar-Vie + Dom)', () => {
     await page.locator('#plan-reprogram-btn').click() // "Listo" with zero edits
     await page.waitForTimeout(400)
     const rs = await page.evaluate(() => new Promise((resolve) => {
-      const rq = indexedDB.open('coach-pedro-ai', 1)
+      const rq = indexedDB.open('coach-pedro-ai', 2)
       rq.onsuccess = () => {
         const db = rq.result
         const g = db.transaction('settings', 'readonly').objectStore('settings').get('settings')
@@ -1954,16 +1958,17 @@ test.describe('You — Datos export/import roundtrip', () => {
 
     // Clear all stores
     await page.evaluate(async () => {
-      const req = indexedDB.open('coach-pedro-ai', 1)
+      const req = indexedDB.open('coach-pedro-ai', 2)
       const db = await new Promise((resolve, reject) => {
         req.onsuccess = () => resolve(req.result)
         req.onerror = () => reject(req.error)
       })
-      const tx = db.transaction(['exercises', 'exerciseLogs', 'programs', 'settings'], 'readwrite')
+      const tx = db.transaction(['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions'], 'readwrite')
       tx.objectStore('exercises').clear()
       tx.objectStore('exerciseLogs').clear()
       tx.objectStore('programs').clear()
       tx.objectStore('settings').clear()
+      tx.objectStore('gymSessions').clear()
       await new Promise((resolve, reject) => {
         tx.oncomplete = () => { db.close(); resolve() }
         tx.onerror = () => reject(tx.error)
@@ -2399,14 +2404,16 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends: [] }) }))
     await page.route(/\/api\/friends\/remove/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
     await page.route(/\/api\/user\/register/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
+    await page.route(/\/api\/user\/sync/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
+    await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) }))
     await page.reload()
     await page.waitForTimeout(800)
     await expect(page.locator('.leaderboard .empty')).toContainText('Aún no tienes amigos')
 
-    // Con amigos: medallas, orden por racha y badge "Yo".
+    // Con amigos: copas, orden por tiempo en el gym y badge "Yo".
     const friends = [
-      { username: 'Luis', streak: 20, exercisedToday: true, lastUpdate: new Date().toISOString() },
-      { username: 'Ana', streak: 12, exercisedToday: false, lastUpdate: new Date(Date.now() - 86400000).toISOString() },
+      { username: 'Luis', streak: 20, exercisedToday: true, gymTime: 5040, lastUpdate: new Date().toISOString() },
+      { username: 'Ana', streak: 12, exercisedToday: false, gymTime: 7800, lastUpdate: new Date(Date.now() - 86400000).toISOString() },
     ]
     await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends }) }))
     await page.reload()
@@ -2414,14 +2421,18 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
 
     const cards = page.locator('.friend-card')
     await expect(cards).toHaveCount(3) // Luis, Ana + yo (TestUser)
-    // Orden por racha: Luis (20) primero con 🥇, Ana (12) con 🥈, yo (0) al final.
-    await expect(cards.nth(0)).toContainText('Luis')
-    await expect(cards.nth(0)).toContainText('🥇')
-    await expect(cards.nth(0)).toContainText('20')
-    await expect(cards.nth(1)).toContainText('Ana')
+    // Orden por tiempo en el gym: Ana (7800s) primero con 🏆, Luis (5040s) con 🥈, yo (0) al final.
+    await expect(cards.nth(0)).toContainText('Ana')
+    await expect(cards.nth(0)).toContainText('🏆')
+    await expect(cards.nth(0)).toContainText('12')
+    await expect(cards.nth(1)).toContainText('Luis')
     await expect(cards.nth(1)).toContainText('🥈')
-    await expect(cards.nth(1)).toContainText('12')
+    await expect(cards.nth(1)).toContainText('20')
     await expect(cards.nth(2)).toContainText('🥉')
+
+    // Tiempo en el gym semanal (de cada amigo): streak junto al nombre y minutos abajo.
+    await expect(cards.nth(0)).toContainText('130 minutos de gym esta semana') // 7800s
+    await expect(cards.nth(1)).toContainText('84 minutos de gym esta semana') // 5040s
 
     // Badge "Yo" sobre mi propia card.
     const myCard = page.locator('.friend-card', { hasText: 'TestUser' })
@@ -2440,7 +2451,7 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await expect(page.locator('.name-text')).toContainText('Pedro')
 
     // Eliminar amigo: 2 pasos (confirmación) → desaparece de la lista.
-    const anaCard = page.locator('.friend-card', { hasText: 'Ana' })
+    const anaCard = page.locator('.friend-card').filter({ has: page.locator('.name', { hasText: 'Ana' }) })
     const removeBtn = anaCard.getByRole('button', { name: 'Eliminar amigo' })
     await expect(removeBtn).toBeVisible()
     await removeBtn.click()
@@ -2449,7 +2460,44 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await expect(anaCard.getByRole('button', { name: 'Confirmar eliminar' })).toBeVisible()
     await anaCard.getByRole('button', { name: 'Confirmar eliminar' }).click()
     await page.waitForTimeout(600)
-    await expect(page.locator('.friend-card', { hasText: 'Ana' })).toHaveCount(0)
+    await expect(page.locator('.friend-card').filter({ has: page.locator('.name', { hasText: 'Ana' }) })).toHaveCount(0)
+  })
+
+  test('registro manual: botón junto al lápiz aparece si el usuario no existe y avisa si ya existe', async ({ page }) => {
+    test.setTimeout(90000)
+    await page.goto('friends')
+    await page.waitForTimeout(500)
+    await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(500)
+
+    // No existe en el servidor → se muestra el botón junto al lápiz.
+    await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) }))
+    await page.route(/\/api\/user\/register/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
+    await page.route(/\/api\/user\/sync/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
+    await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends: [] }) }))
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    const registerBtn = page.getByRole('button', { name: 'Registrar usuario' })
+    await expect(registerBtn).toBeVisible()
+
+    // Al registrarlo se oculta el botón (ya registrado).
+    await registerBtn.click()
+    await page.waitForTimeout(600)
+    await expect(page.getByRole('button', { name: 'Registrar usuario' })).not.toBeVisible()
+
+    // Si el nombre ya existe en el servidor, el botón NO aparece (ya está registrado).
+    await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true }) }))
+    await page.goto('friends')
+    await page.waitForTimeout(500)
+    await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await expect(page.getByRole('button', { name: 'Registrar usuario' })).not.toBeVisible()
   })
 })
 

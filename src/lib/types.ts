@@ -55,6 +55,13 @@ export interface Program {
   createdAt?: string
 }
 
+export interface GymSession {
+  id: string
+  date: string
+  seconds: number
+  weekStart: string
+}
+
 export interface Settings {
   id: string
   activeProgramId: string | null

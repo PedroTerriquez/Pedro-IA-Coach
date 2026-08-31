@@ -2,9 +2,11 @@
   import { PUSH_SERVER_URL } from '$lib/config'
   import { onMount } from 'svelte'
   import { toast } from '$lib/stores/ui'
+  import { registerUser, syncUserToWorker, checkUserExists } from '$lib/push'
   import { getAllLogs, getSettings, getPrograms, saveSettings } from '$lib/storage'
+  import { getWeeklyGymSeconds } from '$lib/storage'
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
-  import { toLocalDateStr } from '$lib/calendar-utils'
+  import { toLocalDateStr, mondayOf } from '$lib/calendar-utils'
   import UsernameEditor from '$lib/components/UsernameEditor.svelte'
   import Leaderboard from '$lib/components/Leaderboard.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
@@ -21,9 +23,12 @@
   let loading = $state(true)
   let initialLoading = $state(true)
   let saving = $state(false)
+  let registered = $state(true)
+  let registering = $state(false)
   let searching = $state(false)
   let addingFriend = $state<string | null>(null)
   let myStreak = $state(0)
+  let myGymSeconds = $state(0)
   let exercisedToday = $state(false)
   let searchSeq = 0
   let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -43,11 +48,20 @@
     settingsLoaded = true
     initialLoading = false
     if (username) {
+      await refreshRegistered()
       await loadFriends()
     } else {
       loading = false
     }
   })
+
+  async function refreshRegistered() {
+    if (!username || !PUSH_SERVER_URL) {
+      registered = true
+      return
+    }
+    registered = await checkUserExists(username)
+  }
 
   async function loadFriends() {
     loading = true
@@ -58,6 +72,11 @@
     const today = toLocalDateStr(new Date())
     myStreak = computeStreakWeeks(allLogs, daysPerWeek, today)
     exercisedToday = allLogs.some(l => l.date === today && l.weight > 0)
+    const weekStart = mondayOf(today)
+    myGymSeconds = await getWeeklyGymSeconds(weekStart)
+
+    // Push our own streak/today/weekly gym time so friends see real data.
+    if (PUSH_SERVER_URL) syncUserToWorker(username, myStreak, exercisedToday, myGymSeconds).catch(() => {})
 
     try {
       if (!PUSH_SERVER_URL) {
@@ -82,14 +101,8 @@
       const s = await getSettings()
       s.username = val
       await saveSettings(s)
-      if (PUSH_SERVER_URL) {
-        fetch(`${PUSH_SERVER_URL}/api/user/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: val }),
-        }).catch(() => {})
-      }
       username = val
+      await refreshRegistered()
       await loadFriends()
     } catch {
       try {
@@ -97,6 +110,7 @@
         s.username = val
         await saveSettings(s)
         username = val
+        await refreshRegistered()
         await loadFriends()
       } catch {}
     } finally {
@@ -106,18 +120,35 @@
 
   async function handleUsernameSave(newName: string) {
     const s = await getSettings()
-    const oldName = s.username
     s.username = newName
     await saveSettings(s)
-    if (PUSH_SERVER_URL) {
-      fetch(`${PUSH_SERVER_URL}/api/user/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: newName }),
-      }).catch(() => {})
-    }
     username = newName
+    await refreshRegistered()
     toast.show('Username actualizado')
+  }
+
+  async function handleRegisterUser() {
+    if (!username || registering) return
+    registering = true
+    try {
+      if (!PUSH_SERVER_URL) {
+        registered = true
+        return
+      }
+      const exists = await checkUserExists(username)
+      if (exists) toast.show('Ese usuario ya existe en el servidor', true)
+      const ok = await registerUser(username)
+      if (ok) {
+        registered = true
+        if (!exists) toast.show('¡Usuario registrado!')
+      } else {
+        toast.show('No se pudo registrar', true)
+      }
+    } catch {
+      toast.show('Error al registrar', true)
+    } finally {
+      registering = false
+    }
   }
 
   $effect(() => {
@@ -231,13 +262,16 @@
 
     <div class="friends-my-streak">
       🔥 Racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'semana' : 'semanas'} {exercisedToday ? '· Hoy ✅' : ''}
+      {#if myGymSeconds > 0}
+        <div class="friends-my-gym">🏋️ {Math.floor(myGymSeconds / 60)} minutos de gym esta semana</div>
+      {/if}
     </div>
 
     <div class="section-label-wrap">
       <SectionLabel {accent}>Mi Perfil</SectionLabel>
     </div>
     <div class="section-pad">
-      <UsernameEditor {username} {accent} onsave={handleUsernameSave} />
+      <UsernameEditor {username} {accent} {registered} {registering} onsave={handleUsernameSave} onregister={handleRegisterUser} />
     </div>
 
     <div class="section-label-wrap">
@@ -247,7 +281,7 @@
       {#if loading}
         <div class="friends-empty">Cargando amigos...</div>
       {:else}
-        <Leaderboard {friends} {myStreak} myUsername={username} {accent} onremove={removeFriend} />
+        <Leaderboard {friends} {myStreak} {myGymSeconds} myUsername={username} {accent} onremove={removeFriend} />
       {/if}
     </div>
 

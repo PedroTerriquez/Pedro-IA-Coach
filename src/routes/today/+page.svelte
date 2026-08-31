@@ -6,10 +6,14 @@
   import { settings } from '$lib/stores/settings'
   import { toast } from '$lib/stores/ui'
   import { getLogsForDate, logWeight } from '$lib/storage'
+  import { recordGymSession, getWeeklyGymSeconds } from '$lib/storage'
+  import { mondayOf } from '$lib/calendar-utils'
   import { startRestFromExercise, checkPendingRest, _checkRestTimer } from '$lib/rest-timer'
   import { runCoachAnalysis } from '$lib/coach-analysis'
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { resolveWeekOrder } from '$lib/week-order'
+  import { syncUserToWorker } from '$lib/push'
+  import { PUSH_SERVER_URL } from '$lib/config'
   import { APP_VERSION } from '$lib/pwa'
   import Warmup from '$lib/components/Warmup.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
@@ -422,6 +426,20 @@
       streakModalShow = true
     } else {
       showEffortSelector()
+    }
+    // Session just completed: record today's gym time (startedAt → endedAt) into
+    // the weekly accumulator, then push fresh streak + weekly gym time to friends.
+    if (startedAt && endedAt) {
+      const seconds = Math.max(0, Math.round((endedAt - startedAt) / 1000))
+      await recordGymSession(todayDate, seconds)
+    }
+    if (PUSH_SERVER_URL && s.username) {
+      const all = allLogs.length > 0 ? allLogs : await Storage.getAllLogs()
+      const streak = await computeStreak(todayDate)
+      const exercisedToday = all.some(l => l.date === todayDate && l.weight > 0)
+      const weekStart = mondayOf(todayDate)
+      const gymTime = await getWeeklyGymSeconds(weekStart)
+      syncUserToWorker(s.username, streak, exercisedToday, gymTime).catch(() => {})
     }
   }
 

@@ -1,7 +1,7 @@
 const DB_NAME = 'coach-pedro-ai'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
-const STORES = ['exercises', 'exerciseLogs', 'programs', 'settings']
+const STORES = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

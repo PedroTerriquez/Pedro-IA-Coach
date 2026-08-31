@@ -13,8 +13,7 @@ id = "96139c40523448939c29acf202c4ff16"
 
 [[kv_namespaces]]
 binding = "UNMATCHED_KV"
-# TODO: pega aquí el id de `npx wrangler kv:namespace create UNMATCHED_KV`
-id = "00000000000000000000000000000000"
+id = "c75316ad7be84b9da8915454566129b0"
 
 [vars]
 VAPID_EMAIL = "mailto:pedro@example.com"

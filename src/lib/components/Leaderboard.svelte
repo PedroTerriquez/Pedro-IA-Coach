@@ -4,23 +4,25 @@
   let {
     friends = [],
     myStreak = 0,
+    myGymSeconds = 0,
     myUsername = '',
     accent = 'var(--accent)',
     onremove = () => {}
   }: {
-    friends: { username: string; streak: number; exercisedToday: boolean; lastUpdate: string }[]
+    friends: { username: string; streak: number; exercisedToday: boolean; lastUpdate: string; gymTime?: number }[]
     myStreak: number
+    myGymSeconds: number
     myUsername: string
     accent?: string
     onremove?: (username: string) => void
   } = $props()
 
   const sorted = $derived.by(() => {
-    const me = { username: myUsername, streak: myStreak, exercisedToday: false, lastUpdate: new Date().toISOString(), isMe: true }
+    const me = { username: myUsername, streak: myStreak, exercisedToday: false, lastUpdate: new Date().toISOString(), isMe: true, gymTime: myGymSeconds }
     const all = [me, ...friends.map(f => ({ ...f, isMe: f.username === myUsername }))]
     const unique = all.filter((item, idx, arr) => arr.findIndex(x => x.username === item.username) === idx)
     if (!myUsername) return unique.filter(x => !x.isMe)
-    return unique.sort((a, b) => b.streak - a.streak || new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime())
+    return unique.sort((a, b) => (b.gymTime || 0) - (a.gymTime || 0) || new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime())
   })
 </script>
 
@@ -36,6 +38,7 @@
         streak={item.streak}
         exercisedToday={item.exercisedToday}
         lastUpdate={item.lastUpdate}
+        gymTime={item.gymTime || 0}
         position={i + 1}
         isMe={item.isMe || false}
         {accent}

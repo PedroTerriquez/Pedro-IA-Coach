@@ -90,3 +90,52 @@ export async function notifyWatch(title: string, body: string, tag?: string): Pr
     reg.active?.postMessage({ type: 'notify', title, body, tag })
   } catch {}
 }
+
+async function postJSON(path: string, body: Record<string, unknown>, attempts = 1): Promise<Response | null> {
+  if (!PUSH_SERVER_URL) return null
+  for (let i = 0; i <= attempts; i++) {
+    try {
+      const res = await fetch(`${PUSH_SERVER_URL}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      return res
+    } catch {
+      if (i === attempts) return null
+    }
+  }
+  return null
+}
+
+// Registers the username with the Worker so the user is searchable and addable by
+// friends. Tolerates a 409 ("already registered") — that means it already exists,
+// which is a success for us. Returns true only if the user is confirmed registered.
+export async function registerUser(username: string): Promise<boolean> {
+  const res = await postJSON('/api/user/register', { username }, 1)
+  if (!res) return false
+  if (res.ok || res.status === 409) return true
+  return false
+}
+
+// Checks whether a username is already registered with the Worker, without
+// creating/modifying anything. Used to decide whether to show the register button.
+export async function checkUserExists(username: string): Promise<boolean> {
+  if (!username || !PUSH_SERVER_URL) return true
+  try {
+    const res = await fetch(`${PUSH_SERVER_URL}/api/user/check?username=${encodeURIComponent(username)}`)
+    if (!res.ok) return true
+    const data = await res.json()
+    return !!data.exists
+  } catch {
+    return true
+  }
+}
+
+// Pushes the user's current weekly streak, whether they trained today, and their
+// weekly gym time so friends see real data in the leaderboard. Best-effort;
+// failures are ignored silently.
+export async function syncUserToWorker(username: string, streak: number, exercisedToday: boolean, gymTime = 0): Promise<void> {
+  if (!username) return
+  await postJSON('/api/user/sync', { username, streak, exercisedToday, gymTime }, 0)
+}
