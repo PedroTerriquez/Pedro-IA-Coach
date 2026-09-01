@@ -49,7 +49,7 @@ src/
       session.ts           → session (today's date, current view)
     components/            → 58 Svelte components (TabBar, ExerciseDetail, WorkoutTab, HistoryTab, CoachChat, Calendar, Warmup, RestTimerBanner, MediaPicker, ...)
     data/
-      exercise-dictionary.ts → 166 entries + IMG_BASE/EX_GIF_BASE/_IMG/_GIF + resolveExerciseMedia
+      exercise-dictionary.ts → 171 entries + IMG_BASE/EX_GIF_BASE/_IMG/_GIF + resolveExerciseMedia
       warmup.ts              → warmup/stretch sequences by muscle group
       warmup-components.ts   → warmup movements
       warmup-gifs.ts         → warmup GIF paths
@@ -175,14 +175,14 @@ Sets, reps, rest LIVE on the program exercise instance, NOT on the exercise defi
 - The version shows in `src/routes/today/+page.svelte` (imports `APP_VERSION` from `$lib/pwa`)
 
 ## Exercise Dictionary & Media
-- `src/lib/data/exercise-dictionary.ts` — 166 entries. Bases:
+- `src/lib/data/exercise-dictionary.ts` — 171 entries. Bases:
   - `IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'`
   - `EX_GIF_BASE = 'https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/'`
   - `_IMG(dir)` → `IMG_BASE + dir + '/0.jpg'`; `_GIF(path)` → `EX_GIF_BASE + path + '.gif'`
 - `GYMVISUAL_OVERRIDES` exists as a per-exercise block but is intentionally unused — edit dictionary entries directly
 
 ## Media Admin (dev)
-`/admin` (desktop) lets you review and fix the dictionary's `image:`/`gif:` for all 166 entries. Opened from You → Datos → Mantenimiento → "Revisar imágenes del diccionario".
+`/admin` (desktop) lets you review and fix the dictionary's `image:`/`gif:` for all 171 entries. Opened from You → Datos → Mantenimiento → "Revisar imágenes del diccionario".
 
 - **List**: compact rows with 112px img+gif thumbnails and ok/✕ badges; letter chips (A-Z) paginate the list (default A, no "all" view), plus muscle chips and a name/id search
 - **Flow**: edit-img/edit-gif → picker with GitHub tree catalogs (free-exercise-db images + ExerciseGymGifsDB gifs) cached in localStorage 24h (`admin_img_catalog`/`admin_gif_catalog`), plus a manual URL field → drafts queue in memory → "Guardar (n)" applies all

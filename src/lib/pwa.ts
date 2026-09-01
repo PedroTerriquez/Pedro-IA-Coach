@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.61'
-const _VER_DESC = 'Amigos: ranking por tiempo en gym con copa oro/plata'
-const _VER_TIME = '2026-08-31 12:07'
+const _VER_BASE = 'v2.62'
+const _VER_DESC = 'Diccionario: +8 ejercicios y fix de imagen de Bicicleta'
+const _VER_TIME = '2026-08-31 21:27'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
