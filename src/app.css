@@ -229,15 +229,6 @@ a { color: inherit; text-decoration: none; }
 }
 
 
-.friends-header {
-  font-family: var(--font-sans);
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.8px;
-  margin-bottom: 8px;
-}
-
 .friends-my-streak {
   font-family: var(--font-sans);
   font-size: 15px;

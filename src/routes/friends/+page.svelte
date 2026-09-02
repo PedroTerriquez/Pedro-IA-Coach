@@ -2,6 +2,7 @@
   import { PUSH_SERVER_URL } from '$lib/config'
   import { onMount } from 'svelte'
   import { toast } from '$lib/stores/ui'
+  import { settings } from '$lib/stores/settings'
   import { registerUser, syncUserToWorker, checkUserExists } from '$lib/push'
   import { getAllLogs, getSettings, getPrograms, saveSettings } from '$lib/storage'
   import { getWeeklyGymSeconds } from '$lib/storage'
@@ -32,12 +33,11 @@
   let exercisedToday = $state(false)
   let searchSeq = 0
   let searchTimer: ReturnType<typeof setTimeout> | null = null
-  let accent = $state('var(--accent)')
+  let accent = $derived($settings.accentColor || '#d4ff3a')
   let settingsLoaded = $state(false)
 
   onMount(async () => {
     const s = await getSettings()
-    accent = s.accentColor || 'var(--accent)'
 
     if (s.userName && !s.username) {
       s.username = s.userName
@@ -257,7 +257,8 @@
 {:else}
   <div class="page">
     <div class="page-header">
-      <div class="friends-header">👥 Amigos</div>
+      <div class="page-header-eyebrow">Amigos</div>
+      <div class="page-header-title">Amigos.</div>
     </div>
 
     <div class="friends-my-streak">
@@ -308,9 +309,9 @@
     margin: 0 auto 16px;
   }
   .section-pad {
-    padding: 0 16px 16px;
+    padding: 0 20px 16px;
   }
   .section-label-wrap {
-    padding: 0 16px;
+    padding: 0 20px;
   }
 </style>
