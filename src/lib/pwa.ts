@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.62'
-const _VER_DESC = 'Diccionario: +8 ejercicios y fix de imagen de Bicicleta'
-const _VER_TIME = '2026-08-31 21:27'
+const _VER_BASE = 'v2.63'
+const _VER_DESC = 'Tras registrar peso se expande el editor de series/reps'
+const _VER_TIME = '2026-09-02 10:43'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

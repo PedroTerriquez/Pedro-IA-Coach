@@ -171,6 +171,8 @@
       if (pendingWeight === 0) return
       await logWeight(exercise.exerciseId || exercise.id, pendingWeight, units)
       toast.show(`✅ ${pendingWeight}${units} registrado`)
+      blocks = [{ sets: exercise.sets, reps: parseRepsDefault(exercise.reps), weight: pendingWeight }]
+      advanced = true
     }
     savedKey = currentKey
     loggedToday = true
