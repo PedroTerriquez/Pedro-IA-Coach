@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.63'
-const _VER_DESC = 'Tras registrar peso se expande el editor de series/reps'
-const _VER_TIME = '2026-09-02 10:43'
+const _VER_BASE = 'v2.64'
+const _VER_DESC = 'Fix push notifications: usa deviceId real en vez de default'
+const _VER_TIME = '2026-09-02 23:15'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

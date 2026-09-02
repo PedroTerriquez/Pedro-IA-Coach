@@ -7,7 +7,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...rawData].map(ch => ch.charCodeAt(0)))
 }
 
-function getDeviceId(): string {
+export function getDeviceId(): string {
   let id = localStorage.getItem('push_device_id')
   if (!id) {
     id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8)

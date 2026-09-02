@@ -1,6 +1,6 @@
 import { PUSH_SERVER_URL } from '$lib/config'
 import { writable } from 'svelte/store'
-import { sendPushNotification, notifyWatch } from '$lib/push'
+import { sendPushNotification, notifyWatch, getDeviceId } from '$lib/push'
 
 const REST_PENDING_CACHE = 'rest-pending'
 const REST_TIMER_CACHE = 'rest-timer'
@@ -166,7 +166,7 @@ export async function scheduleRestTimer(name: string, restSec: number, tag: stri
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         endTime: Math.max(endTime - 10000, Date.now() + 1000),
-        deviceId: 'default',
+        deviceId: getDeviceId(),
         tag,
         title: name,
         body: `${sets}×${reps}`,
@@ -221,7 +221,7 @@ export async function cancelRestTimer(tag: string): Promise<void> {
     await fetch(`${PUSH_SERVER_URL}/api/rest-timer/cancel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tag, deviceId: 'default' })
+      body: JSON.stringify({ tag, deviceId: getDeviceId() })
     })
   } catch {}
 }
