@@ -1,4 +1,5 @@
 <script lang="ts">
+  import EmptyState from './EmptyState.svelte'
   import FriendCard from './FriendCard.svelte'
 
   let {
@@ -28,9 +29,9 @@
 
 <div class="leaderboard">
   {#if friends.length === 0 && !myUsername}
-    <div class="empty">Registra tu username para empezar.</div>
+    <EmptyState message="Registra tu username para empezar." style="padding:24px 16px" />
   {:else if friends.length === 0}
-    <div class="empty">Aún no tienes amigos. Busca y agrega arriba. 👆</div>
+    <EmptyState message="Aún no tienes amigos. Busca y agrega arriba. 👆" style="padding:24px 16px" />
   {:else}
     {#each sorted as item, i (item.username)}
       <FriendCard
@@ -53,12 +54,5 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-  }
-  .empty {
-    text-align: center;
-    padding: 24px 16px;
-    color: var(--text-muted);
-    font-family: var(--font-sans);
-    font-size: 13px;
   }
 </style>

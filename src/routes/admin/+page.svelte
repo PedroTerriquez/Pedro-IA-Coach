@@ -7,12 +7,15 @@
   import { warmupDraftCount, saveWarmupDrafts, warmupPendingMediaMap, warmupPendingNamesMap } from '$lib/admin/warmup-editor'
   import { reviewed, toggleReviewed } from '$lib/admin/reviewed'
   import { PUSH_SERVER_URL } from '$lib/config'
-  import MediaPicker from '$lib/components/MediaPicker.svelte'
   import AdminCard from '$lib/components/AdminCard.svelte'
+  import AdminFilters from '$lib/components/AdminFilters.svelte'
   import WarmupAdminTab from '$lib/components/WarmupAdminTab.svelte'
-  import CenterDialog from '$lib/components/CenterDialog.svelte'
+  import MediaPickerDialog from '$lib/components/MediaPickerDialog.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
   import Chip from '$lib/components/Chip.svelte'
+  import ChipRow from '$lib/components/ChipRow.svelte'
+  import FilterChip from '$lib/components/FilterChip.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
 
   const isDev = import.meta.env.DEV
 
@@ -247,28 +250,34 @@
     <div class="prod-note">El admin de media solo permite editar en local con <span class="mono">npm run dev</span>.</div>
   {/if}
 
-  <div class="sub-tabs">
-    <button class:active={tab === 'dict'} class="sub-tab" onclick={() => (tab = 'dict')}>Ejercicios</button>
-    <button class:active={tab === 'warmup'} class="sub-tab" onclick={() => (tab = 'warmup')}>Calentamiento</button>
-    <button class:active={tab === 'stretch'} class="sub-tab" onclick={() => (tab = 'stretch')}>Estiramiento</button>
-    <button class:active={tab === 'unmatched'} class="sub-tab" onclick={() => (tab = 'unmatched')}>Nombres</button>
-  </div>
+  <ChipRow class="sub-tabs" gap={6}>
+    <FilterChip variant="sans" size="lg" active={tab === 'dict'} onclick={() => (tab = 'dict')}>Ejercicios</FilterChip>
+    <FilterChip variant="sans" size="lg" active={tab === 'warmup'} onclick={() => (tab = 'warmup')}>Calentamiento</FilterChip>
+    <FilterChip variant="sans" size="lg" active={tab === 'stretch'} onclick={() => (tab = 'stretch')}>Estiramiento</FilterChip>
+    <FilterChip variant="sans" size="lg" active={tab === 'unmatched'} onclick={() => (tab = 'unmatched')}>Nombres</FilterChip>
+  </ChipRow>
 
   <div class="pane" style="display:{tab === 'dict' ? 'block' : 'none'}">
-    <div class="filters">
-      <SearchInput value={query} oninput={(v) => (query = v)} placeholder="Buscar por nombre o id…" />
-      <div class="letters">
-        {#each dictLetters as l}
-          <button class:active={letter === l} class:done={letterPending[l] === 0} class="chip letter" onclick={() => (letter = l)}>{l}{#if letterPending[l] > 0}<span class="pending">{letterPending[l]}</span>{/if}</button>
-        {/each}
-      </div>
-      <div class="chips">
-        <button class:active={!muscle} class="chip" onclick={() => (muscle = '')}>Todos</button>
-        {#each dictMuscles as m}
-          <button class:active={muscle === m} class="chip" onclick={() => (muscle = m)}>{m}</button>
-        {/each}
-      </div>
-    </div>
+    <AdminFilters
+      {query}
+      {muscle}
+      muscles={dictMuscles}
+      onquery={(v) => (query = v)}
+      onmuscle={(v) => (muscle = v)}
+    >
+      {#snippet before()}
+        <ChipRow gap={4}>
+          {#each dictLetters as l}
+            <FilterChip
+              size="sm"
+              active={letter === l}
+              dimmed={letterPending[l] === 0}
+              onclick={() => (letter = l)}
+            >{l}{#if letterPending[l] > 0}<span class="pending">{letterPending[l]}</span>{/if}</FilterChip>
+          {/each}
+        </ChipRow>
+      {/snippet}
+    </AdminFilters>
 
     <div class="count">
       {dictVisible.length} ejercicios · {dictReviewedCount} revisados
@@ -292,7 +301,7 @@
     </div>
 
     {#if !dictVisible.length}
-      <div class="empty">Sin resultados</div>
+      <EmptyState message="Sin resultados" />
     {/if}
   </div>
 
@@ -306,11 +315,11 @@
 
   <div class="pane" style="display:{tab === 'unmatched' ? 'block' : 'none'}">
     {#if unmatchedLoading}
-      <div class="empty">Cargando…</div>
+      <EmptyState message="Cargando…" />
     {:else if unmatchedError}
-      <div class="empty">
+      <div class="unmatched-error">
         Error: {unmatchedError}
-        <button class="chip" style="margin-left:8px" onclick={loadUnmatched}>Reintentar</button>
+        <FilterChip style="margin-left:8px" onclick={loadUnmatched}>Reintentar</FilterChip>
       </div>
     {:else}
       <div class="filters">
@@ -319,7 +328,7 @@
       <div class="count">
         {unmatchedVisible.length} nombres sin match
         {#if unmatchedVisible.length}
-          <button class="chip copy-all" onclick={copyAll}>copiar todos</button>
+          <FilterChip onclick={copyAll}>copiar todos</FilterChip>
         {/if}
       </div>
       <div class="list">
@@ -327,12 +336,12 @@
           <div class="unmatched-row">
             <div class="unmatched-name">{n.name}</div>
             <div class="unmatched-date">{n.firstSeen}</div>
-            <button class="chip" onclick={() => copyText(n.name)}>copiar</button>
+            <FilterChip onclick={() => copyText(n.name)}>copiar</FilterChip>
           </div>
         {/each}
       </div>
       {#if !unmatchedVisible.length}
-        <div class="empty">Sin resultados</div>
+        <EmptyState message="Sin resultados" />
       {/if}
     {/if}
   </div>
@@ -349,22 +358,17 @@
   </button>
 {/if}
 
-<CenterDialog open={!!picker} onclose={() => (picker = null)}>
-  {#if picker && pickerEntry}
-    <div class="picker-head">
-      <div class="picker-title">{pickerEntry.name}</div>
-      <button class="dialog-close" onclick={() => (picker = null)}>✕</button>
-    </div>
-    <MediaPicker
-      kind={picker.kind}
-      current={picker.kind === 'image' ? pickerEntry.image : pickerEntry.gif}
-      accent="var(--accent)"
-      related={pickerRelated}
-      exerciseName={pickerEntry.name}
-      onpick={onPick}
-    />
-  {/if}
-</CenterDialog>
+{#if picker && pickerEntry}
+  <MediaPickerDialog
+    open
+    kind={picker.kind}
+    current={picker.kind === 'image' ? pickerEntry.image : pickerEntry.gif}
+    name={pickerEntry.name}
+    related={pickerRelated}
+    onpick={onPick}
+    onclose={() => (picker = null)}
+  />
+{/if}
 
 <style>
   .admin-page { padding: 16px 16px 96px; max-width: 720px; margin: 0 auto; }
@@ -373,30 +377,17 @@
   .title { font-family: var(--font-sans); font-size: 22px; font-weight: 700; color: var(--text); margin: 6px 0 2px; letter-spacing: -0.5px; }
   .subtitle { font-size: 12px; opacity: 0.6; margin: 0; }
   .prod-note { background: rgba(255,180,60,0.1); border: 1px solid rgba(255,180,60,0.3); color: #ffc266; border-radius: 12px; padding: 10px 14px; font-size: 12px; margin-bottom: 14px; }
-  .filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
-  .letters { display: flex; flex-wrap: wrap; gap: 4px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text); border-radius: 9999px; padding: 6px 12px; font-size: 11px; cursor: pointer; font-family: var(--font-mono); }
-  .chip.letter { padding: 5px 9px; min-width: 26px; text-align: center; }
-  .chip.done { opacity: 0.3; filter: grayscale(0.9); }
-  .chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .pending { margin-left: 5px; background: rgba(255,255,255,0.14); color: var(--text); border-radius: 9999px; padding: 1px 5px; font-size: 9px; line-height: 1.3; }
-  .chip.active .pending { background: var(--bg); color: var(--accent); }
   .count { font-size: 11px; opacity: 0.55; font-family: var(--font-mono); margin-bottom: 8px; }
   .hint { opacity: 0.7; }
   .list { display: flex; flex-direction: column; gap: 6px; }
-  .copy-all { margin-left: 8px; }
   .unmatched-row { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 8px 12px; }
   .unmatched-name { flex: 1; font-size: 13px; color: var(--text); font-family: var(--font-sans); }
   .unmatched-date { font-size: 10px; opacity: 0.5; font-family: var(--font-mono); white-space: nowrap; }
-  .empty { text-align: center; opacity: 0.5; padding: 40px 0; }
-  .sub-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
-  .sub-tab { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text); border-radius: 9999px; padding: 8px 16px; font-size: 12px; cursor: pointer; font-family: var(--font-sans); font-weight: 600; }
-  .sub-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+  :global(.sub-tabs) { margin-bottom: 14px; }
+  .unmatched-error { text-align: center; opacity: 0.5; padding: 40px 0; }
   .pane { width: 100%; }
-  .picker-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .picker-title { font-family: var(--font-sans); font-weight: 700; color: var(--text); }
-  .dialog-close { background: none; border: none; color: var(--text); cursor: pointer; font-size: 16px; }
   .mono { font-family: var(--font-mono); }
   .fab {
     position: fixed;

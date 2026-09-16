@@ -98,12 +98,12 @@
             <div class="alt-label">Alternativas</div>
             {#each localAlts as alt, i}
               <div class="alt-row">
-                <input value={alt.name} oninput={(e) => updateAltName(i, (e.target as HTMLInputElement).value)} placeholder="Nombre" class="input-sm">
-                <input value={alt.reason} oninput={(e) => updateAltReason(i, (e.target as HTMLInputElement).value)} placeholder="Razón" class="input-sm input-sm-alt">
-                <button onclick={() => removeAlt(i)} class="alt-remove">✕</button>
+                <TextInput value={alt.name} oninput={(v) => updateAltName(i, v)} placeholder="Nombre" compact />
+                <TextInput value={alt.reason} oninput={(v) => updateAltReason(i, v)} placeholder="Razón" compact style="color:rgba(255,255,255,0.6);font-size:12px" />
+                <Button variant="text" onclick={() => removeAlt(i)} style="color:#ff6b6b;font-size:16px">✕</Button>
               </div>
             {/each}
-            <button onclick={onaddalt} class="btn-dashed-add">+ Añadir alternativa</button>
+            <Button variant="dashed" onclick={onaddalt}>+ Añadir alternativa</Button>
           </div>
           <div class="row">
             <Button variant="primary" fullWidth onclick={onsaveedit}>Guardar</Button>
@@ -162,7 +162,5 @@
   .alt-item-reason { font-size: 11px; color: rgba(255,255,255,0.5); }
   .alt-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
   .alt-row { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
-  .input-sm { flex: 1; padding: 8px 10px; border-radius: 8px; border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a; color: #fafafa; font-size: 13px; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
-  .input-sm-alt { border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); font-size: 12px; }
-  .alt-remove { background: none; border: 0; color: #ff6b6b; cursor: pointer; font-size: 16px; padding: 4px; }
+  .alt-row :global(.input-field) { flex: 1; min-width: 0; }
 </style>

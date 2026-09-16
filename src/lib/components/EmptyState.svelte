@@ -1,12 +1,13 @@
 <script lang="ts">
-  let { message, style = '', class: className = '' }: {
+  let { message, style = '', class: className = '', id = undefined }: {
     message: string
     style?: string
     class?: string
+    id?: string
   } = $props()
 </script>
 
-<div class="empty-state {className}" data-component="EmptyState" {style}>
+<div {id} class="empty-state {className}" data-component="EmptyState" {style}>
   {message}
 </div>
 

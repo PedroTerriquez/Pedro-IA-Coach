@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.66'
-const _VER_DESC = 'Registro de peso y reps por serie en el timer de descanso'
-const _VER_TIME = '2026-09-09 18:31'
+const _VER_BASE = 'v2.67'
+const _VER_DESC = 'Reutilizacion de componentes: chips, steppers, dialogos y cabeceras'
+const _VER_TIME = '2026-09-16 17:04'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

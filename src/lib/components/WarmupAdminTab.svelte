@@ -1,8 +1,8 @@
 <script lang="ts">
-  import MediaPicker from './MediaPicker.svelte'
   import AdminCard from './AdminCard.svelte'
-  import CenterDialog from './CenterDialog.svelte'
-  import SearchInput from './SearchInput.svelte'
+  import AdminFilters from './AdminFilters.svelte'
+  import EmptyState from './EmptyState.svelte'
+  import MediaPickerDialog from './MediaPickerDialog.svelte'
   import { reviewed, toggleReviewed } from '$lib/admin/reviewed'
   import { queueWarmupReplace, queueWarmupSetName, warmupPendingMediaMap, warmupPendingNamesMap } from '$lib/admin/warmup-editor'
   import type { WarmupEntry } from '$lib/data/exercise-warmup'
@@ -71,15 +71,14 @@
   )
 </script>
 
-<div class="filters">
-  <SearchInput value={query} oninput={(v) => (query = v)} placeholder="Buscar por nombre o id…" />
-  <div class="chips">
-    <button class:active={!muscle} class="chip" onclick={() => (muscle = '')}>Todos</button>
-    {#each muscles as m}
-      <button class:active={muscle === m} class="chip" onclick={() => (muscle = m)}>{m}</button>
-    {/each}
-  </div>
-</div>
+<AdminFilters
+  {query}
+  {muscle}
+  {muscles}
+  {accent}
+  onquery={(v) => (query = v)}
+  onmuscle={(v) => (muscle = v)}
+/>
 
 <div class="count">
   {visibleEntries.length} ejercicios · {reviewedCount} revisados
@@ -101,35 +100,22 @@
 </div>
 
 {#if !visibleEntries.length}
-  <div class="empty">Sin resultados</div>
+  <EmptyState message="Sin resultados" />
 {/if}
 
-<CenterDialog open={!!picker} onclose={() => (picker = null)}>
-  {#if picker && pickerEntry}
-    <div class="picker-head">
-      <div class="picker-title">{pickerEntry.name}</div>
-      <button class="dialog-close" onclick={() => (picker = null)}>✕</button>
-    </div>
-    <MediaPicker
-      kind={picker.kind}
-      current={picker.kind === 'image' ? pickerEntry.image : pickerEntry.gif}
-      {accent}
-      related={[]}
-      exerciseName={pickerEntry.name}
-      onpick={onPick}
-    />
-  {/if}
-</CenterDialog>
+{#if picker && pickerEntry}
+  <MediaPickerDialog
+    open
+    kind={picker.kind}
+    current={picker.kind === 'image' ? pickerEntry.image : pickerEntry.gif}
+    name={pickerEntry.name}
+    {accent}
+    onpick={onPick}
+    onclose={() => (picker = null)}
+  />
+{/if}
 
 <style>
-  .filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text); border-radius: 9999px; padding: 6px 12px; font-size: 11px; cursor: pointer; font-family: var(--font-mono); }
-  .chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .count { font-size: 11px; opacity: 0.55; font-family: var(--font-mono); margin-bottom: 8px; }
   .list { display: flex; flex-direction: column; gap: 6px; }
-  .empty { text-align: center; opacity: 0.5; padding: 40px 0; }
-  .picker-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .picker-title { font-family: var(--font-sans); font-weight: 700; color: var(--text); }
-  .dialog-close { background: none; border: none; color: var(--text); cursor: pointer; font-size: 16px; }
 </style>

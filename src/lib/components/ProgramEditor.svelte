@@ -7,6 +7,7 @@
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
   import TextInput from './TextInput.svelte'
+  import DeleteButton from './DeleteButton.svelte'
 
   let {
     open = $bindable(false),
@@ -192,7 +193,7 @@
         <div class="week-header">
           <TextInput bind:value={week.name} placeholder="Nombre semana" compact style="flex:1" />
           <TextInput bind:value={week.tag} placeholder="ETIQUETA" compact style="width:70px;text-transform:uppercase;font-size:10px" />
-          <button class="icon-del" onclick={() => removeWeek(wi)} aria-label="Eliminar semana">✕</button>
+          <DeleteButton label="Eliminar semana" onclick={() => removeWeek(wi)} />
         </div>
 
         {#each week.days as day, di}
@@ -204,39 +205,40 @@
                 <option value="">Auto</option>
                 {#each WEEKDAY_OPTS as o}<option value={o.v}>{o.l}</option>{/each}
               </select>
-              <input class="ex-num-input" type="number" value={day.duration} placeholder="min" style="width:50px"
-                oninput={(e) => updateDay(wi, di, { duration: parseInt((e.target as HTMLInputElement).value) || 60 })} />
-              <button class="icon-del sm" onclick={() => removeDay(wi, di)} aria-label="Eliminar día">✕</button>
+              <TextInput type="number" mono compact value={String(day.duration)} placeholder="min" style="width:50px;text-align:center"
+                oninput={(v) => updateDay(wi, di, { duration: parseInt(v) || 60 })} />
+              <DeleteButton size="sm" label="Eliminar día" onclick={() => removeDay(wi, di)} />
             </div>
 
             {#each day.exercises as ex, ei}
               <div class="ex-row">
-                <input
-                  class="ex-name-input"
+                <TextInput
+                  compact
                   list="prog-ex-names"
                   value={ex.name}
                   placeholder="Nombre ej."
-                  oninput={(e) => updateExercise(wi, di, ei, { name: (e.target as HTMLInputElement).value })}
+                  style="flex:1;min-width:0;font-size:11px"
+                  oninput={(v) => updateExercise(wi, di, ei, { name: v })}
                 />
-                <input class="ex-num-input" type="number" value={ex.sets} placeholder="S"
-                  oninput={(e) => updateExercise(wi, di, ei, { sets: parseInt((e.target as HTMLInputElement).value) || 3 })} />
-                <input class="ex-num-input" value={ex.reps} placeholder="R"
-                  oninput={(e) => updateExercise(wi, di, ei, { reps: (e.target as HTMLInputElement).value })} />
-                <input class="ex-num-input" type="number" value={ex.rest} placeholder="Desc"
-                  oninput={(e) => updateExercise(wi, di, ei, { rest: parseInt((e.target as HTMLInputElement).value) || 60 })} />
-                <button class="icon-del sm" onclick={() => removeExercise(wi, di, ei)} aria-label="Eliminar ejercicio">✕</button>
+                <TextInput type="number" mono compact value={String(ex.sets)} placeholder="S" style="width:44px;text-align:center"
+                  oninput={(v) => updateExercise(wi, di, ei, { sets: parseInt(v) || 3 })} />
+                <TextInput mono compact value={ex.reps} placeholder="R" style="width:44px;text-align:center"
+                  oninput={(v) => updateExercise(wi, di, ei, { reps: v })} />
+                <TextInput type="number" mono compact value={String(ex.rest)} placeholder="Desc" style="width:44px;text-align:center"
+                  oninput={(v) => updateExercise(wi, di, ei, { rest: parseInt(v) || 60 })} />
+                <DeleteButton size="sm" label="Eliminar ejercicio" onclick={() => removeExercise(wi, di, ei)} />
               </div>
             {/each}
 
-            <button class="add-btn" onclick={() => addExercise(wi, di)}>+ Añadir ejercicio</button>
+            <Button variant="dashed" style="margin-top:4px" onclick={() => addExercise(wi, di)}>+ Añadir ejercicio</Button>
           </div>
         {/each}
 
-        <button class="add-btn" onclick={() => addDay(wi)}>+ Añadir día</button>
+        <Button variant="dashed" style="margin-top:4px" onclick={() => addDay(wi)}>+ Añadir día</Button>
       </div>
     {/each}
 
-    <button class="add-btn week-add" onclick={addWeek}>+ Añadir semana</button>
+    <Button variant="dashed" style="margin-top:12px" onclick={addWeek}>+ Añadir semana</Button>
 
     <datalist id="prog-ex-names">
       {#each allExerciseNames as name}
@@ -313,69 +315,11 @@
     border-bottom: 0.5px solid rgba(255,255,255,0.04);
   }
 
-  .ex-name-input {
-    flex: 1;
-    min-width: 0;
-    padding: 6px 8px;
-    border-radius: 6px;
-    border: 0.5px solid rgba(255,255,255,0.08);
-    background: var(--bg);
-    color: var(--text);
-    font-size: 11px;
-    font-family: var(--font-sans);
-    outline: none;
-    box-sizing: border-box;
-  }
 
-  .ex-num-input {
-    width: 44px;
-    padding: 8px 4px;
-    border-radius: 8px;
-    border: 0.5px solid rgba(255,255,255,0.08);
-    background: var(--bg);
-    color: var(--text);
-    font-size: 13px;
-    font-family: var(--font-mono);
-    text-align: center;
-    outline: none;
-    box-sizing: border-box;
-  }
 
-  .add-btn {
-    margin-top: 4px;
-    width: 100%;
-    padding: 8px;
-    border-radius: 8px;
-    border: 0.5px dashed rgba(255,255,255,0.12);
-    cursor: pointer;
-    background: transparent;
-    color: rgba(255,255,255,0.4);
-    font-size: 12px;
-    font-family: var(--font-sans);
-    touch-action: manipulation;
-  }
 
-  .week-add {
-    border-color: rgba(255,255,255,0.15);
-    color: rgba(255,255,255,0.5);
-    font-weight: 600;
-  }
 
-  .icon-del {
-    background: none;
-    border: 0;
-    color: #ff6b6b;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 4px;
-    flex-shrink: 0;
-    line-height: 1;
-  }
 
-  .icon-del.sm {
-    font-size: 12px;
-    padding: 2px 4px;
-  }
 
   .editor-actions {
     display: flex;

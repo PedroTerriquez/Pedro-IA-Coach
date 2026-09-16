@@ -451,7 +451,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // ── Step 8: Log Weights for Both Exercises ──
   // Exercise 1: Press Banca 5×5
-  const stepperInc = page.locator('.stepper-inc').first()
+  const stepperInc = page.getByRole('button', { name: 'Más peso' }).first()
   await expect(stepperInc).toBeVisible()
   await stepperInc.click()
   await page.waitForTimeout(100)
@@ -500,7 +500,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(page.locator('text=Sentadilla').first()).toBeVisible({ timeout: 2000 })
 
   // Increment stepper + register
-  const stepperInc2 = page.locator('.stepper-inc').first()
+  const stepperInc2 = page.getByRole('button', { name: 'Más peso' }).first()
   await stepperInc2.click()
   await page.waitForTimeout(100)
   const registerBtn2 = page.getByRole('button', { name: /Registrar ·/ })
@@ -2604,7 +2604,7 @@ test.describe('Hoy — timer de sesión y momentos', () => {
     await page.locator('[data-phase="training"]').click()
     await page.waitForTimeout(500)
 
-    const stepperInc = page.locator('.stepper-inc').first()
+    const stepperInc = page.getByRole('button', { name: 'Más peso' }).first()
     await expect(stepperInc).toBeVisible()
     await stepperInc.click()
     await page.waitForTimeout(100)
@@ -2615,7 +2615,7 @@ test.describe('Hoy — timer de sesión y momentos', () => {
     await page.getByRole('button', { name: 'Siguiente' }).first().click()
     await page.waitForTimeout(400)
 
-    await page.locator('.stepper-inc').first().click()
+    await page.getByRole('button', { name: 'Más peso' }).first().click()
     await page.waitForTimeout(100)
     await page.getByRole('button', { name: /Registrar ·/ }).click()
     await page.waitForTimeout(600)
@@ -2738,7 +2738,7 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) }))
     await page.reload()
     await page.waitForTimeout(800)
-    await expect(page.locator('.leaderboard .empty')).toContainText('Aún no tienes amigos')
+    await expect(page.locator('.leaderboard [data-component="EmptyState"]')).toContainText('Aún no tienes amigos')
 
     // Con amigos: copas, orden por tiempo en el gym y badge "Yo".
     const friends = [

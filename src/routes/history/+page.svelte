@@ -6,7 +6,10 @@
   import Calendar from '$lib/components/Calendar.svelte'
   import Sparkline from '$lib/components/Sparkline.svelte'
   import SegmentedControl from '$lib/components/SegmentedControl.svelte'
-  import Chip from '$lib/components/Chip.svelte'
+  import PageHeader from '$lib/components/PageHeader.svelte'
+  import ChipRow from '$lib/components/ChipRow.svelte'
+  import FilterChip from '$lib/components/FilterChip.svelte'
+  import Button from '$lib/components/Button.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import Icon from '$lib/components/Icon.svelte'
@@ -147,10 +150,7 @@
 </script>
 
 <div class="page">
-  <div class="page-header">
-    <div class="page-header-eyebrow">Historial</div>
-    <div class="page-header-title">Progreso.</div>
-  </div>
+  <PageHeader eyebrow="Historial" title="Progreso." />
 
   <div class="segment-wrap">
     <SegmentedControl
@@ -182,16 +182,11 @@
       />
     {/if}
   {:else}
-    <div class="chips-row">
+    <ChipRow class="chips-row" gap={8} scroll>
       {#each muscles as m}
-        <button onclick={() => setFilter(m)}>
-          <Chip
-            color={historyFilter === m ? accent : 'rgba(255,255,255,0.06)'}
-            textColor={historyFilter === m ? 'var(--bg)' : 'rgba(255,255,255,0.5)'}
-          >{m}</Chip>
-        </button>
+        <FilterChip size="sm" active={historyFilter === m} {accent} onclick={() => setFilter(m)}>{m}</FilterChip>
       {/each}
-    </div>
+    </ChipRow>
 
     {#if filtered.length === 0}
       <EmptyState message="No se encontraron ejercicios." />
@@ -262,8 +257,8 @@
                 class="ex-edit-input"
               />
               <div class="ex-edit-actions">
-                <button class="btn-cancel" onclick={cancelEdit}>Cancelar</button>
-                <button class="btn-save" onclick={() => saveEdit(e)}>Guardar</button>
+                <Button variant="secondary" onclick={cancelEdit}>Cancelar</Button>
+                <Button variant="primary" {accent} onclick={() => saveEdit(e)}>Guardar</Button>
               </div>
             </div>
           {/if}
@@ -302,22 +297,8 @@
     margin: 0 20px 16px;
   }
 
-  .chips-row {
-    display: flex;
-    gap: 8px;
+  :global(.chips-row) {
     padding: 0 20px 16px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .chips-row button {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-  }
-  .chips-row::-webkit-scrollbar {
-    display: none;
   }
 
   .ex-list {
@@ -436,26 +417,5 @@
     gap: 8px;
     justify-content: flex-end;
     margin-top: 4px;
-  }
-  .btn-cancel {
-    background: none;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 8px 16px;
-    color: rgba(255,255,255,0.5);
-    font-size: 13px;
-    cursor: pointer;
-    font-family: 'Space Grotesk', sans-serif;
-  }
-  .btn-save {
-    background: var(--accent, #d4ff3a);
-    border: none;
-    border-radius: 10px;
-    padding: 8px 16px;
-    color: #0a0a0a;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: 'Space Grotesk', sans-serif;
   }
 </style>

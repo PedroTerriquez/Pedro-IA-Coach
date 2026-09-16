@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NumberStepper from './NumberStepper.svelte'
   import Button from './Button.svelte'
   import { parseRepsDefault } from '$lib/exercise-utils'
   import type { ExerciseLogBlock } from '$lib/types'
@@ -95,23 +96,28 @@
 </script>
 
 {#snippet blockField(i: number, field: keyof ExerciseLogBlock, label: string, value: number, min: number, max: number, step: number, plan: string | undefined, unit: string | undefined, decimals: boolean)}
-  <div class="block-field">
-    <div class="block-field-label">{label}{#if unit}<span class="block-field-unit"> · {unit}</span>{/if}</div>
-    <input
-      class="block-field-input"
-      value={value === 0 ? '' : String(decimals ? +(+value).toFixed(1) : value)}
-      oninput={(e) => inputField(i, field, e, min, max, decimals)}
-      placeholder="0"
-      inputmode={decimals ? 'decimal' : 'numeric'}
-    >
-    {#if plan !== undefined}
-      <div class="block-field-plan">plan {plan}</div>
-    {/if}
-    <div class="block-field-steps">
-      <button class="block-step-btn" disabled={value <= min} onclick={() => stepField(i, field, value, -step, min, max, decimals)}>−</button>
-      <button class="block-step-btn block-step-inc" style="color:{accent};background:{accent}18;border-color:{accent}44" disabled={value >= max} onclick={() => stepField(i, field, value, step, min, max, decimals)}>+</button>
-    </div>
-  </div>
+  <NumberStepper
+    framed
+    layout="stacked"
+    size="sm"
+    {label}
+    {unit}
+    {accent}
+    {decimals}
+    tintedInc
+    inputClass="block-field-input"
+    display={value === 0 ? '' : String(decimals ? +(+value).toFixed(1) : value)}
+    decDisabled={value <= min}
+    incDisabled={value >= max}
+    oninput={(e) => inputField(i, field, e, min, max, decimals)}
+    onstep={(d) => stepField(i, field, value, d * step, min, max, decimals)}
+  >
+    {#snippet note()}
+      {#if plan !== undefined}
+        <div class="block-field-plan">plan {plan}</div>
+      {/if}
+    {/snippet}
+  </NumberStepper>
 {/snippet}
 
 <div class="tab-content" data-component="WorkoutTab">
@@ -195,27 +201,25 @@
         </div>
       </div>
     {:else}
-      <div class="stepper-row">
-        <button class="stepper-btn" onclick={decWeight}>−</button>
-        <div class="stepper-display">
-          <input
-            type="text"
-            inputmode="decimal"
-            value={weightInput}
-            oninput={handleWeightInput}
-            onfocus={(e) => (e.target as HTMLInputElement).select()}
-            placeholder="0"
-            class="weight-input"
-            style="color:{loggedToday ? accent : '#fafafa'}"
-          >
+      <NumberStepper
+        size="lg"
+        decimals
+        name="peso"
+        {accent}
+        display={weightInput}
+        inputStyle="color:{loggedToday ? accent : '#fafafa'}"
+        oninput={handleWeightInput}
+        onfocus={(e) => (e.target as HTMLInputElement).select()}
+        onstep={(d) => (d > 0 ? incWeight() : decWeight())}
+      >
+        {#snippet note()}
           <div class="stepper-unit">{units} <span class="sep">·</span> incrementos de {STEP}{units}</div>
-        </div>
-        <button class="stepper-btn stepper-inc" onclick={incWeight}>+</button>
-      </div>
+        {/snippet}
+      </NumberStepper>
 
-      <button class="btn-dashed-add" style="margin-top:12px" onclick={enterAdvanced}>
+      <Button variant="dashed" style="margin-top:12px" onclick={enterAdvanced}>
         <span class="sr-plus">＋</span> Series y repeticiones por bloque
-      </button>
+      </Button>
     {/if}
 
     {#if isLoggedState}
@@ -296,52 +300,6 @@
     width: 5px;
     height: 5px;
     border-radius: 50%;
-  }
-  .stepper-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    position: relative;
-    z-index: 1;
-  }
-  .stepper-btn {
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    background: var(--border);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    color: var(--text);
-    touch-action: manipulation;
-    flex-shrink: 0;
-    padding: 0;
-    line-height: 1;
-    transition: all 0.15s;
-  }
-  .stepper-display {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-  }
-  .weight-input {
-    background: transparent;
-    border: 0;
-    outline: none;
-    text-align: center;
-    width: 100%;
-    font-family: var(--font-mono);
-    font-size: 48px;
-    font-weight: 500;
-    letter-spacing: -2.2px;
-    line-height: 1;
-    padding: 0;
   }
   .stepper-unit {
     font-family: var(--font-mono);
@@ -449,44 +407,6 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 7px;
   }
-  .block-field {
-    background: rgba(0,0,0,0.25);
-    border: 0.5px solid rgba(255,255,255,0.07);
-    border-radius: 11px;
-    padding: 8px 6px 7px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-  }
-  .block-field-label {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    font-family: var(--font-mono);
-    font-size: 8px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.42);
-    font-weight: 600;
-  }
-  .block-field-unit {
-    opacity: 0.7;
-  }
-  .block-field-input {
-    background: transparent;
-    border: 0;
-    outline: none;
-    text-align: center;
-    width: 100%;
-    font-family: var(--font-mono);
-    font-size: 24px;
-    font-weight: 500;
-    color: var(--text);
-    letter-spacing: -1px;
-    line-height: 1;
-    padding: 0;
-  }
   .block-field-plan {
     font-family: var(--font-mono);
     font-size: 8px;
@@ -496,34 +416,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
-  }
-  .block-field-steps {
-    display: flex;
-    gap: 5px;
-    width: 100%;
-  }
-  .block-step-btn {
-    flex: 1;
-    height: 30px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.06);
-    border: 0.5px solid rgba(255,255,255,0.1);
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 17px;
-    font-weight: 400;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .block-step-btn:disabled {
-    background: rgba(255,255,255,0.03);
-    border-color: rgba(255,255,255,0.06);
-    color: rgba(255,255,255,0.2);
-    cursor: default;
   }
   .btn-add-block {
     margin-top: 10px;

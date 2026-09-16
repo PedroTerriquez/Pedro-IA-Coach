@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PageHeader from '$lib/components/PageHeader.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
   import { PUSH_SERVER_URL } from '$lib/config'
   import { onMount } from 'svelte'
   import { toast } from '$lib/stores/ui'
@@ -230,7 +232,7 @@
 
 {#if initialLoading}
   <div class="page">
-    <div class="friends-empty" id="friends-list">Cargando...</div>
+    <EmptyState id="friends-list" class="friends-empty" message="Cargando..." />
   </div>
 {:else if !username}
   <div class="page username-prompt" id="username-prompt">
@@ -256,10 +258,7 @@
   </div>
 {:else}
   <div class="page">
-    <div class="page-header">
-      <div class="page-header-eyebrow">Amigos</div>
-      <div class="page-header-title">Amigos.</div>
-    </div>
+    <PageHeader eyebrow="Amigos" title="Amigos." />
 
     <div class="friends-my-streak">
       🔥 Racha: <strong>{myStreak}</strong> {myStreak === 1 ? 'semana' : 'semanas'} {exercisedToday ? '· Hoy ✅' : ''}
@@ -280,7 +279,7 @@
     </div>
     <div class="section-pad" id="friends-list">
       {#if loading}
-        <div class="friends-empty">Cargando amigos...</div>
+        <EmptyState class="friends-empty" message="Cargando amigos..." />
       {:else}
         <Leaderboard {friends} {myStreak} {myGymSeconds} myUsername={username} {accent} onremove={removeFriend} />
       {/if}

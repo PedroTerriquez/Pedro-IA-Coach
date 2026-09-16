@@ -16,6 +16,9 @@
   import StatBlock from '$lib/components/StatBlock.svelte'
   import StatsGrid from '$lib/components/StatsGrid.svelte'
   import CenterDialog from '$lib/components/CenterDialog.svelte'
+  import PageHeader from '$lib/components/PageHeader.svelte'
+  import ChipRow from '$lib/components/ChipRow.svelte'
+  import FilterChip from '$lib/components/FilterChip.svelte'
   import ProfileCard from '$lib/components/ProfileCard.svelte'
   import QuickSettingsCard from '$lib/components/QuickSettingsCard.svelte'
   import ProgramCard from '$lib/components/ProgramCard.svelte'
@@ -552,10 +555,7 @@
 </script>
 
 <div class="page">
-  <div class="page-header">
-    <div class="page-header-eyebrow">Tú</div>
-    <div class="page-header-title">Tú</div>
-  </div>
+  <PageHeader eyebrow="Tú" title="Tú" />
 
   <div class="section-pad">
     <SegmentedControl
@@ -680,39 +680,35 @@
           <div class="card-subtitle">La IA crea un programa completo basado en tu perfil y preferencias.</div>
 
           <div class="chip-group">
-            <div class="chip-group-label">Días por semana</div>
-            <div class="chip-row">
+            <ChipRow label="Días por semana">
               {#each [3, 4, 5, 6] as d}
-                <button class="chip-btn" class:chip-active={generateDaysPerWeek === d} onclick={() => generateDaysPerWeek = generateDaysPerWeek === d ? null : d}>{d}d</button>
+                <FilterChip variant="sans" {accent} active={generateDaysPerWeek === d} onclick={() => generateDaysPerWeek = generateDaysPerWeek === d ? null : d}>{d}d</FilterChip>
               {/each}
-            </div>
+            </ChipRow>
           </div>
 
           <div class="chip-group">
-            <div class="chip-group-label">Equipo</div>
-            <div class="chip-row">
+            <ChipRow label="Equipo">
               {#each [{ v: 'gym', l: 'Gimnasio' }, { v: 'mancuernas', l: 'Mancuernas' }, { v: 'calistenia', l: 'Calistenia' }] as e}
-                <button class="chip-btn" class:chip-active={generateEquipment === e.v} onclick={() => generateEquipment = generateEquipment === e.v ? null : e.v}>{e.l}</button>
+                <FilterChip variant="sans" {accent} active={generateEquipment === e.v} onclick={() => generateEquipment = generateEquipment === e.v ? null : e.v}>{e.l}</FilterChip>
               {/each}
-            </div>
+            </ChipRow>
           </div>
 
           <div class="chip-group">
-            <div class="chip-group-label">Enfoque</div>
-            <div class="chip-row">
+            <ChipRow label="Enfoque">
               {#each [{ v: 'full', l: 'Cuerpo completo' }, { v: 'chest', l: 'Pecho' }, { v: 'back', l: 'Espalda' }, { v: 'legs', l: 'Piernas' }, { v: 'shoulders', l: 'Hombros' }, { v: 'arms', l: 'Brazos' }, { v: 'core', l: 'Abdomen' }] as f}
-                <button class="chip-btn" class:chip-active={generateFocus.includes(f.v)} onclick={() => { generateFocus = generateFocus.includes(f.v) ? generateFocus.filter(v => v !== f.v) : [...generateFocus, f.v] }}>{f.l}</button>
+                <FilterChip variant="sans" {accent} active={generateFocus.includes(f.v)} onclick={() => { generateFocus = generateFocus.includes(f.v) ? generateFocus.filter(v => v !== f.v) : [...generateFocus, f.v] }}>{f.l}</FilterChip>
               {/each}
-            </div>
+            </ChipRow>
           </div>
 
           <div class="chip-group">
-            <div class="chip-group-label">Zonas con molestia</div>
-            <div class="chip-row">
+            <ChipRow label="Zonas con molestia">
               {#each ['Espalda', 'Hombro', 'Rodilla', 'Cadera', 'Cuello', 'Muñeca', 'Codo', 'Tobillo'] as part}
-                <button class="chip-btn" class:chip-active={generateLimitations.includes(part)} onclick={() => { generateLimitations = generateLimitations.includes(part) ? generateLimitations.filter(p => p !== part) : [...generateLimitations, part] }}>{part}</button>
+                <FilterChip variant="sans" {accent} active={generateLimitations.includes(part)} onclick={() => { generateLimitations = generateLimitations.includes(part) ? generateLimitations.filter(p => p !== part) : [...generateLimitations, part] }}>{part}</FilterChip>
               {/each}
-            </div>
+            </ChipRow>
           </div>
 
           <div class="status-text">{generateStatus}</div>
@@ -849,11 +845,14 @@
   </div>
 </div>
 
-<CenterDialog id="skipped-overlay" open={showSkippedOverlay} onclose={() => showSkippedOverlay = false}>
-  <div class="dialog-header">
-    <div class="dialog-title">Sin coincidencia en diccionario</div>
-    <button id="skipped-close-btn" class="dialog-close" onclick={() => showSkippedOverlay = false}>✕</button>
-  </div>
+<CenterDialog
+  id="skipped-overlay"
+  open={showSkippedOverlay}
+  onclose={() => showSkippedOverlay = false}
+  title="Sin coincidencia en diccionario"
+  showClose
+  closeId="skipped-close-btn"
+>
   <div class="stack">
     {#each dictSkippedNames as name}
       <div class="skipped-item">{name}</div>
@@ -874,7 +873,6 @@
   .section-label-wrap:first-child { margin-top: 0; }
   .section-card { margin: 0 0 20px; }
   .card-content { padding: 14px 16px; }
-  .page-header-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .username-field { outline: none; border: 0; display: inline-block; min-width: 50px; }
   .edit-btn { background: none; border: 0; cursor: pointer; flex-shrink: 0; margin-top: 6px; padding: 0; }
   .section-pad { margin: 0 0 20px; }
@@ -886,31 +884,8 @@
   .ex-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; }
   .exercise-list-wrap { display: flex; flex-direction: column; gap: 8px; padding: 0 0 20px; }
   .exercise-search-wrap { margin: 0 0 10px; }
-  .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .dialog-title { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text); }
-  .dialog-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px; padding: 4px; }
   .skipped-item { padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; font-size: 13px; color: var(--text); font-family: var(--font-sans); }
   .chip-group { margin-top: 14px; }
-  .chip-group-label { font-size: 11px; color: rgba(255,255,255,0.5); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 500; }
-  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip-btn {
-    padding: 6px 14px;
-    border-radius: 9999px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    color: rgba(255,255,255,0.6);
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .chip-btn.chip-active {
-    background: var(--accent);
-    color: #0a0a0a;
-    border-color: var(--accent);
-    font-weight: 600;
-  }
   .ia-free-banner {
     margin: 0 0 14px;
     padding: 10px 14px;

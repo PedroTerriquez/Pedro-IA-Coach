@@ -1,4 +1,6 @@
 <script lang="ts">
+  import StatBlock from './StatBlock.svelte'
+  import NumberStepper from './NumberStepper.svelte'
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { parseRepsDefault } from '$lib/exercise-utils'
   import { getTodaySets, saveSetEntry, type SetEntry } from '$lib/set-log'
@@ -221,16 +223,20 @@
         </div>
       </div>
       <div class="rtf-stats">
-        <div class="rtf-stat"><span class="rtf-stat-v">{timer.sets}</span><span class="rtf-stat-l">series</span></div>
-        <div class="rtf-stat"><span class="rtf-stat-v">{timer.reps}</span><span class="rtf-stat-l">reps</span></div>
-        <div class="rtf-stat">
-          <span class="rtf-stat-v" class:is-accent={!!timer.lastWeight}>{timer.lastWeight ? `${timer.lastWeight}${units}` : '—'}</span>
-          <span class="rtf-stat-l">última</span>
-        </div>
-        <div class="rtf-stat">
-          <span class="rtf-stat-v">{timer.maxWeight ? `${timer.maxWeight}${units}` : '—'}</span>
-          <span class="rtf-stat-l">récord</span>
-        </div>
+        <StatBlock size="sm" value={timer.sets} label="series" accent="var(--text)" />
+        <StatBlock size="sm" value={timer.reps} label="reps" accent="var(--text)" />
+        <StatBlock
+          size="sm"
+          value={timer.lastWeight ? `${timer.lastWeight}${units}` : '—'}
+          label="última"
+          accent={timer.lastWeight ? 'var(--rt)' : 'var(--text)'}
+        />
+        <StatBlock
+          size="sm"
+          value={timer.maxWeight ? `${timer.maxWeight}${units}` : '—'}
+          label="récord"
+          accent="var(--text)"
+        />
       </div>
 
       {#if timer.exerciseId}
@@ -245,36 +251,25 @@
             {/if}
           </div>
           <div class="rtf-log-grid">
-            <div class="rtf-field">
-              <button class="rtf-field-btn" type="button" aria-label="Menos peso" onclick={() => stepWeight(-WEIGHT_STEP)}>−</button>
-              <div class="rtf-field-val">
-                <input
-                  class="rtf-field-input"
-                  inputmode="decimal"
-                  aria-label="Peso de la serie"
-                  value={weight ? fmtNum(weight) : ''}
-                  oninput={inputWeight}
-                  placeholder="0"
-                >
-                <span class="rtf-field-unit">{units}</span>
-              </div>
-              <button class="rtf-field-btn" type="button" aria-label="Más peso" onclick={() => stepWeight(WEIGHT_STEP)}>+</button>
-            </div>
-            <div class="rtf-field">
-              <button class="rtf-field-btn" type="button" aria-label="Menos reps" onclick={() => stepReps(-1)}>−</button>
-              <div class="rtf-field-val">
-                <input
-                  class="rtf-field-input"
-                  inputmode="numeric"
-                  aria-label="Reps de la serie"
-                  value={reps ? String(reps) : ''}
-                  oninput={inputReps}
-                  placeholder="0"
-                >
-                <span class="rtf-field-unit">reps</span>
-              </div>
-              <button class="rtf-field-btn" type="button" aria-label="Más reps" onclick={() => stepReps(1)}>+</button>
-            </div>
+            <NumberStepper
+              framed
+              decimals
+              name="peso"
+              inputClass="rtf-field-input"
+              unit={units}
+              display={weight ? fmtNum(weight) : ''}
+              oninput={inputWeight}
+              onstep={(d) => stepWeight(d * WEIGHT_STEP)}
+            />
+            <NumberStepper
+              framed
+              name="reps"
+              inputClass="rtf-field-input"
+              unit="reps"
+              display={reps ? String(reps) : ''}
+              oninput={inputReps}
+              onstep={(d) => stepReps(d)}
+            />
           </div>
           {#if recap}
             <div class="rtf-log-recap">{recap}</div>
@@ -429,11 +424,7 @@
     margin-top: 14px; padding-top: 14px; border-top: 0.5px solid var(--border);
     display: grid; grid-template-columns: repeat(4, 1fr);
   }
-  .rtf-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .rtf-stat + .rtf-stat { border-left: 0.5px solid var(--border); }
-  .rtf-stat-v { font-family: var(--font-mono); font-size: 17px; font-weight: 500; letter-spacing: -0.5px; color: var(--text); }
-  .rtf-stat-v.is-accent { color: var(--rt); }
-  .rtf-stat-l { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--text-muted); }
+  .rtf-stats :global([data-component='StatBlock'] + [data-component='StatBlock']) { border-left: 0.5px solid var(--border); }
 
   .rtf-log { margin-top: 14px; padding-top: 13px; border-top: 0.5px solid var(--border); }
   .rtf-log-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
@@ -447,28 +438,6 @@
     letter-spacing: 1.2px; text-transform: uppercase; color: var(--rt);
   }
   .rtf-log-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .rtf-field {
-    display: flex; align-items: center; gap: 4px;
-    background: rgba(0,0,0,0.25); border: 0.5px solid rgba(255,255,255,0.07);
-    border-radius: var(--radius-md); padding: 5px;
-  }
-  .rtf-field-btn {
-    width: clamp(28px, 8.5vw, 34px); height: 38px; flex-shrink: 0; border-radius: 9px;
-    background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.1);
-    color: var(--text); font-family: var(--font-mono); font-size: 18px; line-height: 1;
-    display: grid; place-items: center; cursor: pointer; padding: 0;
-  }
-  .rtf-field-btn:active { transform: scale(0.94); background: rgba(255,255,255,0.11); }
-  .rtf-field-val { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; }
-  .rtf-field-input {
-    width: 100%; background: transparent; border: 0; outline: none; text-align: center;
-    font-family: var(--font-mono); font-size: clamp(16px, 5.3vw, 21px); font-weight: 500;
-    letter-spacing: -0.8px; line-height: 1; color: var(--text); padding: 0;
-  }
-  .rtf-field-unit {
-    font-family: var(--font-mono); font-size: 8px; letter-spacing: 1.1px;
-    text-transform: uppercase; color: var(--text-muted);
-  }
   .rtf-log-recap {
     margin-top: 9px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2px;
     color: var(--text-tertiary); white-space: nowrap; overflow-x: auto; scrollbar-width: none;

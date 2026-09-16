@@ -11,6 +11,7 @@
     style = '',
     maxlength = undefined,
     autocomplete = undefined,
+    list = undefined,
     oninput = undefined,
     onblur = undefined,
     id = undefined
@@ -24,6 +25,7 @@
     style?: string
     maxlength?: number
     autocomplete?: FullAutoFill
+    list?: string
     oninput?: (val: string) => void
     onblur?: () => void
     id?: string
@@ -40,6 +42,7 @@
   {style}
   {maxlength}
   {autocomplete}
+  {list}
   {id}
   data-component="TextInput"
   oninput={(e) => oninput?.((e.target as HTMLInputElement).value)}

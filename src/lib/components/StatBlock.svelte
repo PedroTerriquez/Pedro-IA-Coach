@@ -4,14 +4,14 @@
     label: string
     unit?: string
     accent?: string
-    size?: 'md' | 'lg'
+    size?: 'sm' | 'md' | 'lg'
   } = $props()
 
-  let numSize = $derived(size === 'md' ? 22 : 30)
-  let unitSize = $derived(size === 'md' ? 11 : 14)
+  let numSize = $derived(size === 'sm' ? 17 : size === 'md' ? 22 : 30)
+  let unitSize = $derived(size === 'sm' ? 9 : size === 'md' ? 11 : 14)
 </script>
 
-<div class="stat-block" data-component="StatBlock">
+<div class="stat-block size-{size}" data-component="StatBlock">
   <div class="stat-value" style="color:{accent};font-size:{numSize}px">
     {value}
     {#if unit}
@@ -36,6 +36,14 @@
   .stat-unit {
     color: rgba(255,255,255,0.4);
     margin-left: 4px;
+  }
+  .size-sm .stat-value {
+    letter-spacing: -0.5px;
+  }
+  .size-sm .stat-label {
+    margin-top: 4px;
+    font-size: 9px;
+    letter-spacing: 1.1px;
   }
   .stat-label {
     margin-top: 6px;

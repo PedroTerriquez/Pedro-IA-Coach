@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PageHeader from '$lib/components/PageHeader.svelte'
+  import FilterChip from '$lib/components/FilterChip.svelte'
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import { onMount } from 'svelte'
   import { settings } from '$lib/stores/settings'
@@ -226,25 +228,29 @@
   </div>
 {:else}
   <div class="page">
-    <div class="page-header">
-      <div class="min-0">
-        <div class="page-header-eyebrow">
-          {planEditing ? 'Reprogramar' : 'Tu programa'}
-        </div>
-        <div class="page-header-title">
-          {planEditing ? 'Mover.' : 'Plan.'}
-        </div>
-      </div>
-      <button id="plan-reprogram-btn" class="btn-reprogram" style="border:{planEditing ? '0' : `0.5px solid ${accent}55`};background:{planEditing ? accent : 'transparent'};color:{planEditing ? 'var(--bg)' : accent}"
-        onclick={toggleEditing}>
-        {#if planEditing}
-          Listo
-        {:else}
-          <Icon name="swap" size={15} color={accent} />
-          Reprogramar
-        {/if}
-      </button>
-    </div>
+    <PageHeader
+      eyebrow={planEditing ? 'Reprogramar' : 'Tu programa'}
+      title={planEditing ? 'Mover.' : 'Plan.'}
+    >
+      {#snippet action()}
+        <FilterChip
+          id="plan-reprogram-btn"
+          variant="sans"
+          size="lg"
+          {accent}
+          active={planEditing}
+          style={planEditing ? 'margin-bottom:2px' : `border:0.5px solid ${accent}55;background:transparent;color:${accent};margin-bottom:2px`}
+          onclick={toggleEditing}
+        >
+          {#if planEditing}
+            Listo
+          {:else}
+            <Icon name="swap" size={15} color={accent} />
+            Reprogramar
+          {/if}
+        </FilterChip>
+      {/snippet}
+    </PageHeader>
 
     {#if planEditing}
       <div class="section-pad-sm">
@@ -400,9 +406,6 @@
 
 <style>
   .no-program-msg { padding: 56px 20px; text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; }
-  .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-  .min-0 { min-width: 0; }
-  .btn-reprogram { flex-shrink: 0; padding: 9px 15px; border-radius: 9999px; cursor: pointer; font-family: var(--font-sans); font-size: 13px; font-weight: 700; letter-spacing: -0.1px; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
   .section-pad-sm { padding: 0 20px; margin-bottom: 14px; }
   .section-pad-md { padding: 0 20px; margin-bottom: 16px; }
   .section-pad-xs { padding: 0 20px; margin-bottom: 10px; }

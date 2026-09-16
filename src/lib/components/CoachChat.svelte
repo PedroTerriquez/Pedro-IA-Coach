@@ -4,6 +4,8 @@
   import { settings } from '$lib/stores/settings'
   import Icon from './Icon.svelte'
   import Button from './Button.svelte'
+  import ChipRow from './ChipRow.svelte'
+  import FilterChip from './FilterChip.svelte'
   import DebugAIToggle from './DebugAIToggle.svelte'
 
   interface ExerciseCoach {
@@ -163,29 +165,29 @@
           <span class="pain-title">¿Dónde lo sientes?</span>
           <Button variant="text" onclick={() => showBodyParts = false}>× cancelar</Button>
         </div>
-        <div class="pain-parts">
+        <ChipRow gap={7}>
           {#each bodyParts as part}
-            <button class="pain-part-btn" style="background:{accent}14;border-color:{accent}3a;color:{accent}" onclick={() => handlePainSelect(part)}>
+            <FilterChip variant="sans" size="lg" style="background:{accent}14;border-color:{accent}3a;color:{accent}" onclick={() => handlePainSelect(part)}>
               {part}
-            </button>
+            </FilterChip>
           {/each}
-        </div>
+        </ChipRow>
       </div>
     {:else}
-      <div class="coach-chips">
-        <button class="chip-btn" onclick={() => handleQuickChip('¿Cómo mejoro mi técnica en este ejercicio?')}>
+      <ChipRow class="coach-chips" gap={7} scroll>
+        <FilterChip variant="sans" size="lg" onclick={() => handleQuickChip('¿Cómo mejoro mi técnica en este ejercicio?')}>
           Mejorar técnica
-        </button>
-        <button class="chip-btn" style="background:{accent}16;border-color:{accent}3a;color:{accent}" onclick={() => showBodyParts = true}>
+        </FilterChip>
+        <FilterChip variant="sans" size="lg" style="background:{accent}16;border-color:{accent}3a;color:{accent}" onclick={() => showBodyParts = true}>
           ⚠️ Me duele algo
-        </button>
-        <button class="chip-btn" onclick={() => handleQuickChip('¿Cómo sé si estoy usando demasiado peso?')}>
+        </FilterChip>
+        <FilterChip variant="sans" size="lg" onclick={() => handleQuickChip('¿Cómo sé si estoy usando demasiado peso?')}>
           ¿Voy muy pesado?
-        </button>
-        <button class="chip-btn" onclick={() => handleQuickChip('Dame 2-3 alternativas reales para este ejercicio. Dame el nombre en inglés y en español.')}>
+        </FilterChip>
+        <FilterChip variant="sans" size="lg" onclick={() => handleQuickChip('Dame 2-3 alternativas reales para este ejercicio. Dame el nombre en inglés y en español.')}>
           Variante
-        </button>
-      </div>
+        </FilterChip>
+      </ChipRow>
     {/if}
 
     <div class="coach-input-row">
@@ -384,47 +386,9 @@
     color: var(--text-secondary);
     font-weight: 600;
   }
-  .pain-parts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-  }
-  .pain-part-btn {
-    padding: 8px 13px;
-    border-radius: var(--radius-full);
-    cursor: pointer;
-    border: 0.5px solid;
-    font-family: var(--font-sans);
-    font-size: 12.5px;
-    font-weight: 600;
-  }
-  .coach-chips {
+  :global(.coach-chips) {
     flex-shrink: 0;
     padding: 10px 16px 8px;
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .coach-chips::-webkit-scrollbar {
-    display: none;
-  }
-  .chip-btn {
-    flex-shrink: 0;
-    padding: 8px 13px;
-    border-radius: var(--radius-full);
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.05);
-    border: 0.5px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-    font-family: var(--font-sans);
-    font-size: 12.5px;
-    font-weight: 600;
-    white-space: nowrap;
-    transition: opacity 0.15s;
-  }
-  .chip-btn:active {
-    opacity: 0.7;
   }
   .coach-input-row {
     flex-shrink: 0;
