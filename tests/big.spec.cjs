@@ -939,15 +939,163 @@ test.describe('You — Programas tab', () => {
     await dupCard.getByRole('button', { name: 'Eliminar' }).click()
     await page.waitForTimeout(400)
     await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })).toHaveCount(0)
+  })
 
-    // Coach IA — switch to IA Powered sub-tab, ask a question, verify a response renders
+  test('Coach de programa: chat multi-turno → Aplicar cambios crea y activa programa', async ({ page }) => {
+    test.setTimeout(60000)
+    await mockApiRoutes(page)
+
+    const chatBodies = []
+    let applyBody = null
+    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+      const body = route.request().postDataJSON()
+      chatBodies.push(body)
+      const n = chatBodies.length
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: `Respuesta del coach ${n}`, _provider: 'test' }) })
+    })
+    await page.route((url) => url.href.includes('/api/ai/program-coach'), async (route) => {
+      applyBody = route.request().postDataJSON()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          program: {
+            program_name: 'Programa Acordado',
+            weeks: [{ name: 'Semana 1', tag: '', days: [{ name: 'Pecho', subtitle: '', duration_min: 60, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }] }],
+          },
+          _provider: 'test',
+        }),
+      })
+    })
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], program: PROGRAM_A, settings: { ...SETTINGS, userName: 'Pedro' } })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.getByRole('button', { name: 'Programas' }).click()
+    await page.waitForTimeout(300)
     await page.getByRole('button', { name: 'IA Powered' }).click()
     await page.waitForTimeout(300)
-    await page.locator('[data-component="ProgramEditorIACard"] textarea').fill('¿Está balanceada mi rutina?')
-    await page.getByRole('button', { name: 'Enviar al coach' }).click()
-    await page.waitForTimeout(600)
-    await expect(page.locator('[data-component="CoachResponseCard"]')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('[data-component="CoachResponseCard"]')).toContainText('Listo.')
+
+    // Open chat: personalized greeting, no quick chips, apply disabled until the coach replies
+    await page.getByRole('button', { name: 'Mejorar programa actual' }).click()
+    const chat = page.locator('[data-component="CoachChat"]')
+    await expect(chat).toBeVisible()
+    await expect(chat).toContainText('Coach de programa')
+    await expect(chat).toContainText('¡Qué onda Pedro!')
+    await expect(chat).toContainText('«Programa Activo» (1 días por semana)')
+    await expect(chat.locator('[data-component="FilterChip"]')).toHaveCount(0)
+    const applyBtn = chat.getByRole('button', { name: 'Aplicar cambios' })
+    await expect(applyBtn).toBeDisabled()
+
+    // Two turns: the whole thread is sent each time, with program context in the system prompt
+    const input = chat.locator('textarea')
+    await input.fill('¿Está balanceada mi rutina?')
+    await input.press('Enter')
+    await expect(chat).toContainText('Respuesta del coach 1')
+    await input.fill('Agrega más pecho')
+    await input.press('Enter')
+    await expect(chat).toContainText('Respuesta del coach 2')
+    expect(chatBodies[1].messages.map(m => m.content)).toEqual(['¿Está balanceada mi rutina?', 'Respuesta del coach 1', 'Agrega más pecho'])
+    expect(chatBodies[1].systemPrompt).toContain('PROGRAMA ACTUAL:')
+    expect(chatBodies[1].systemPrompt).toContain('Programa Activo')
+
+    // Apply: sends the conversation + apply request, creates & activates the new program, closes chat
+    await expect(applyBtn).toBeEnabled()
+    await applyBtn.click()
+    await expect(chat).not.toBeVisible({ timeout: 10000 })
+    expect(applyBody.messages).toHaveLength(5)
+    expect(applyBody.messages[4].content).toContain('Aplica los cambios que acordamos')
+    await page.getByRole('button', { name: 'Manual' }).click().catch(() => {})
+    const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Acordado' })
+    await expect(newCard).toBeVisible()
+    await expect(newCard).toHaveClass(/active/)
+
+    // Reopen: conversation starts from scratch
+    await page.getByRole('button', { name: 'IA Powered' }).click()
+    await page.getByRole('button', { name: 'Mejorar programa actual' }).click()
+    await expect(chat).toBeVisible()
+    await expect(chat).not.toContainText('Respuesta del coach')
+    await chat.locator('.coach-close-btn').click()
+    await expect(chat).not.toBeVisible()
+  })
+
+  test('Generar programa: el coach propone con perfil + selecciones, se discute y Crear programa usa lo acordado', async ({ page }) => {
+    test.setTimeout(60000)
+    await mockApiRoutes(page)
+
+    const chatBodies = []
+    let createBody = null
+    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+      chatBodies.push(route.request().postDataJSON())
+      const reply = chatBodies.length === 1
+        ? 'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.'
+        : 'Va, bajamos piernas a 1 día.'
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply, _provider: 'test' }) })
+    })
+    await page.route((url) => url.href.includes('/api/ai/generate-program'), async (route) => {
+      createBody = route.request().postDataJSON()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          program_name: 'Upper/Lower Acordado',
+          weeks: [{ name: 'Semana 1', tag: '', days: [{ name: 'Espalda', weekday: 1, subtitle: '', duration_min: 60, exercises: [{ exercise_name: 'Remo con Barra', muscle: 'Back', sets: 4, reps: '8-12', rest_sec: 90 }] }] }],
+          _provider: 'test',
+        }),
+      })
+    })
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], program: PROGRAM_A, settings: { ...SETTINGS, userName: 'Pedro', occupation: 'Programador', age: '35' } })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.getByRole('button', { name: 'Programas' }).click()
+    await page.waitForTimeout(300)
+    await page.getByRole('button', { name: 'IA Powered' }).click()
+    await page.waitForTimeout(300)
+    await page.getByRole('button', { name: '4d' }).click()
+    await page.getByRole('button', { name: 'Rodilla' }).click()
+
+    // Opening the chat: the coach speaks first with a proposal (kickoff turn is hidden)
+    await page.getByRole('button', { name: 'Generar programa con IA' }).click()
+    const chat = page.locator('[data-component="CoachChat"]')
+    await expect(chat).toContainText('Nuevo programa')
+    await expect(chat).toContainText('¡Qué onda Pedro!')
+    await expect(chat).toContainText('Propuesta: por tu trabajo de oficina')
+    await expect(chat).not.toContainText('dame tu propuesta inicial')
+    expect(chatBodies[0].messages).toHaveLength(1)
+    expect(chatBodies[0].systemPrompt).toContain('PERFIL DEL USUARIO')
+    expect(chatBodies[0].systemPrompt).toContain('Programador')
+    expect(chatBodies[0].systemPrompt).toContain('"daysPerWeek":4')
+    expect(chatBodies[0].systemPrompt).toContain('Rodilla')
+
+    // Discuss
+    const input = chat.locator('textarea')
+    await input.fill('Prefiero menos pierna')
+    await input.press('Enter')
+    await expect(chat).toContainText('Va, bajamos piernas a 1 día.')
+
+    // Create: sends the whole conversation + preferences, activates the new program
+    await chat.getByRole('button', { name: 'Crear programa' }).click()
+    await expect(chat).not.toBeVisible({ timeout: 10000 })
+    expect(createBody.messages.map(m => m.content)).toEqual([
+      chatBodies[0].messages[0].content,
+      'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.',
+      'Prefiero menos pierna',
+      'Va, bajamos piernas a 1 día.',
+      'Crea el programa completo con el enfoque que acordamos en esta conversación.',
+    ])
+    expect(createBody.systemPrompt).toContain('"daysPerWeek":4')
+    const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Upper/Lower Acordado' })
+    await expect(newCard).toBeVisible()
+    await expect(newCard).toHaveClass(/active/)
   })
 })
 

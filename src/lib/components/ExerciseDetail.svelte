@@ -7,7 +7,7 @@
   import type { ExerciseLogBlock } from '$lib/types'
   import Sheet from './Sheet.svelte'
   import SegmentedControl from './SegmentedControl.svelte'
-  import CoachChat from './CoachChat.svelte'
+  import ExerciseCoachChat from './ExerciseCoachChat.svelte'
   import ExerciseHero from './ExerciseHero.svelte'
   import WorkoutTab from './WorkoutTab.svelte'
   import HistoryTab from './HistoryTab.svelte'
@@ -368,7 +368,7 @@
       </div>
 
     {#if chatOpen}
-      <CoachChat {exercise} {accent} onclose={() => chatOpen = false} />
+      <ExerciseCoachChat {exercise} {accent} onclose={() => chatOpen = false} />
     {/if}
   </Sheet>
 {/if}

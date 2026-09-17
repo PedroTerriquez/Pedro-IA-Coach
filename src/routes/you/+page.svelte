@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { importWithAI, generateProgramWithAI, programCoach, type ProgramOverrides } from '$lib/ai'
+  import { importWithAI, generateProgramWithAI, generateProgramChat, programCoach, programCoachChat, type ProgramOverrides } from '$lib/ai'
   import { subscribePush } from '$lib/push'
   import { onMount } from 'svelte'
   import { settings } from '$lib/stores/settings'
@@ -24,6 +24,9 @@
   import ProgramCard from '$lib/components/ProgramCard.svelte'
   import ProgramEditor from '$lib/components/ProgramEditor.svelte'
   import ProgramEditorIACard from '$lib/components/ProgramEditorIACard.svelte'
+  import ProgramChat from '$lib/components/ProgramChat.svelte'
+  import type { ChatTurn } from '$lib/components/CoachChat.svelte'
+  import { GENERATE_KICKOFF, generateGreeting, improveGreeting } from '$lib/program-chat'
   import ExerciseListItem from '$lib/components/ExerciseListItem.svelte'
   import NormalizeCard from '$lib/components/NormalizeCard.svelte'
   import NewExerciseForm from '$lib/components/NewExerciseForm.svelte'
@@ -69,18 +72,14 @@
   let newProgramName = $state('')
   let editProgram = $state<Program | null>(null)
   let showEditor = $state(false)
-  let coachInput = $state('')
-  let coachStatus = $state('')
-  let coachResponseVisible = $state(false)
-  let coachResponseText = $state('')
-  let coachProvider = $state('')
+  let programChat = $state<'improve' | 'generate' | null>(null)
+  let generateOverrides = $state<ProgramOverrides>({})
+  let activeProgram = $derived(programs.find(p => p.id === $settings.activeProgramId))
   let programSubTab = $state<'manual' | 'ia'>('manual')
   let generateDaysPerWeek = $state<number | null>(null)
   let generateEquipment = $state<string | null>(null)
   let generateFocus = $state<string[]>([])
   let generateLimitations = $state<string[]>([])
-  let generatingProgram = $state(false)
-  let generateStatus = $state('')
 
   // Datos tab state
   let aiInput = $state('')
@@ -272,62 +271,34 @@
     showEditor = true
   }
 
-  async function submitCoach() {
-    const text = coachInput.trim()
-    if (!text) { coachStatus = '⚠️ Escribe tu pregunta o petición'; return }
-    const activeProgram = programs.find(p => p.id === $settings.activeProgramId)
-    if (!activeProgram) { coachStatus = '⚠️ No hay un programa activo'; return }
-    coachStatus = '⏳ Conectando con la IA…'
-    coachResponseVisible = false
-    let progressStarted = false
-    const waitTimer = setTimeout(() => { if (!progressStarted) coachStatus = '⏳ Esperando la IA…' }, 3000)
-    try {
-      const result = await programCoach(text, activeProgram, (cur, total) => {
-        progressStarted = true
-        coachStatus = `⚡ Generando ejercicios ${cur}/${total}`
-      })
-      if (result.program) {
-        coachStatus = `✅ Nuevo programa "${result.program.name}" creado y activado`
-        programSubTab = 'manual'
-        refresh()
-      } else {
-        coachResponseText = result.message || 'Listo.'
-        coachProvider = result._provider || ''
-        coachResponseVisible = true
-        coachStatus = ''
-      }
-    } catch (err: any) {
-      coachStatus = `❌ ${err.message}`
-    }
-    clearTimeout(waitTimer)
-    coachInput = ''
+  function openImproveChat() {
+    if (!activeProgram) { toast.show('⚠️ No hay un programa activo', true); return }
+    programChat = 'improve'
   }
 
-  async function submitGenerate() {
-    generatingProgram = true
-    generateStatus = '⏳ Conectando con la IA…'
-    let progressStarted = false
-    const waitTimer = setTimeout(() => { if (generatingProgram && !progressStarted) generateStatus = '⏳ Esperando la IA…' }, 3000)
-    try {
-      const overrides: ProgramOverrides = {}
-      if (generateDaysPerWeek) overrides.daysPerWeek = generateDaysPerWeek
-      if (generateEquipment) overrides.equipment = generateEquipment
-      if (generateFocus.length) overrides.focus = generateFocus
-      if (generateLimitations.length) overrides.limitations = generateLimitations
+  function buildGenerateOverrides(): ProgramOverrides {
+    const overrides: ProgramOverrides = {}
+    if (generateDaysPerWeek) overrides.daysPerWeek = generateDaysPerWeek
+    if (generateEquipment) overrides.equipment = generateEquipment
+    if (generateFocus.length) overrides.focus = generateFocus
+    if (generateLimitations.length) overrides.limitations = generateLimitations
+    return overrides
+  }
 
-      const program = await generateProgramWithAI(overrides, (cur, total) => {
-        progressStarted = true
-        generateStatus = `⚡ Generando ejercicios ${cur}/${total}`
-      })
-      generateStatus = `✅ "${program.name}" generado con ${program.weeks.length} semana(s)`
-      programSubTab = 'manual'
-      refresh()
-    } catch (err: any) {
-      generateStatus = `❌ ${err.message}`
-    } finally {
-      generatingProgram = false
-      clearTimeout(waitTimer)
-    }
+  function openGenerateChat() {
+    generateOverrides = buildGenerateOverrides()
+    programChat = 'generate'
+  }
+
+  async function createAgreedProgram(thread: ChatTurn[]) {
+    return { program: await generateProgramWithAI(generateOverrides, undefined, thread) }
+  }
+
+  async function onProgramApplied(program: Program) {
+    const weekReset = programChat === 'generate' ? { currentWeekIdx: 0 } : {}
+    await settings.update({ activeProgramId: program.id, ...weekReset })
+    programSubTab = 'manual'
+    refresh()
   }
 
   // ── Ejercicios tab ──
@@ -673,11 +644,11 @@
           <div class="coach-top-row">
             <div class="coach-badge">
               <span class="badge-dot" style="background:{accent}"></span>
-              {generatingProgram ? 'GENERATING' : 'GENERATOR READY'}
+              GENERATOR READY
             </div>
             <DebugAIToggle label="Program Creator IA" {accent} />
           </div>
-          <div class="card-subtitle">La IA crea un programa completo basado en tu perfil y preferencias.</div>
+          <div class="card-subtitle">El coach te propone un enfoque según tu perfil y lo que selecciones. Lo platican y, cuando estén de acuerdo, crea el programa.</div>
 
           <div class="chip-group">
             <ChipRow label="Días por semana">
@@ -711,22 +682,12 @@
             </ChipRow>
           </div>
 
-          <div class="status-text">{generateStatus}</div>
           <div class="submit-wrap-ia">
-            <Button variant="primary" {accent} fullWidth onclick={submitGenerate} disabled={generatingProgram}>{generatingProgram ? '⏳ Generando…' : 'Generar programa con IA'}</Button>
+            <Button variant="primary" {accent} fullWidth onclick={openGenerateChat}>Generar programa con IA</Button>
           </div>
         </CyberpunkCard>
 
-        <ProgramEditorIACard
-          {accent}
-          {coachInput}
-          {coachStatus}
-          {coachResponseVisible}
-          {coachResponseText}
-          {coachProvider}
-          oninput={(val) => coachInput = val}
-          onsubmit={submitCoach}
-        />
+        <ProgramEditorIACard {accent} onopen={openImproveChat} />
       {/if}
 
     {:else if activeTab === 'ejercicios'}
@@ -859,6 +820,36 @@
     {/each}
   </div>
 </CenterDialog>
+
+{#if programChat === 'improve' && activeProgram}
+  {@const program = activeProgram}
+  <ProgramChat
+    title="Coach de programa"
+    subtitle={program.name}
+    greeting={improveGreeting(program, $settings.userName)}
+    applyLabel="Aplicar cambios"
+    applyingLabel="Aplicando cambios…"
+    {accent}
+    send={(thread) => programCoachChat(thread, program)}
+    apply={(thread) => programCoach('', program, undefined, thread)}
+    onapplied={onProgramApplied}
+    onclose={() => programChat = null}
+  />
+{:else if programChat === 'generate'}
+  <ProgramChat
+    title="Nuevo programa"
+    subtitle="Propuesta según tu perfil"
+    greeting={generateGreeting($settings.userName)}
+    kickoff={GENERATE_KICKOFF}
+    applyLabel="Crear programa"
+    applyingLabel="Creando programa…"
+    {accent}
+    send={(thread) => generateProgramChat(thread, generateOverrides)}
+    apply={createAgreedProgram}
+    onapplied={onProgramApplied}
+    onclose={() => programChat = null}
+  />
+{/if}
 
 <ProgramEditor
   bind:open={showEditor}

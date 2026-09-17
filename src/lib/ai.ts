@@ -4,9 +4,10 @@ import type { Program, Settings } from '$lib/types'
 
 import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionary'
-import { buildImportPrompt, buildProgramCoachPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
+import { buildImportPrompt, buildProgramCoachPrompt, buildProgramChatPrompt, buildGenerateChatPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 import { lastAIExchange, aiExchanges } from '$lib/stores/debug'
+import type { ChatTurn } from '$lib/components/CoachChat.svelte'
 
 const LANGUAGE: PromptLanguage = 'es'
 
@@ -170,16 +171,37 @@ export interface ProgramOverrides {
   limitations?: string[]
 }
 
-export async function generateProgramWithAI(overrides: ProgramOverrides = {}, onProgress?: (current: number, total: number, name: string) => void): Promise<Program> {
-  const settings = await Storage.getSettings()
-  const language = LANGUAGE
-  const userProfile = buildUserProfile(settings)
-  const reqBody = {
+function generateContextText(userProfile: ReturnType<typeof buildUserProfile>, overrides: ProgramOverrides): string {
+  return 'PERFIL DEL USUARIO:\n' + JSON.stringify(userProfile)
+    + '\n\nPREFERENCIAS DEL USUARIO:\n' + JSON.stringify(overrides)
+}
+
+const CREATE_PROGRAM_MESSAGE = 'Crea el programa completo con el enfoque que acordamos en esta conversación.'
+
+function buildGenerateBody(userProfile: ReturnType<typeof buildUserProfile>, overrides: ProgramOverrides, thread?: ChatTurn[]) {
+  if (thread?.length) {
+    return {
+      messages: [...thread, { role: 'user', content: CREATE_PROGRAM_MESSAGE }],
+      systemPrompt: `${buildGeneratePrompt(LANGUAGE)}\n\n${generateContextText(userProfile, overrides)}`,
+    }
+  }
+  return {
     userProfile,
     overrides,
-    language,
-    systemPrompt: buildGeneratePrompt(language),
+    language: LANGUAGE,
+    systemPrompt: buildGeneratePrompt(LANGUAGE),
   }
+}
+
+export async function generateProgramChat(thread: ChatTurn[], overrides: ProgramOverrides): Promise<{ reply: string; _provider?: string }> {
+  const settings = await Storage.getSettings()
+  const context = generateContextText(buildUserProfile(settings), overrides)
+  return postProgramChat('Generar programa (chat)', { messages: thread, systemPrompt: buildGenerateChatPrompt(LANGUAGE, context) })
+}
+
+export async function generateProgramWithAI(overrides: ProgramOverrides = {}, onProgress?: (current: number, total: number, name: string) => void, thread?: ChatTurn[]): Promise<Program> {
+  const settings = await Storage.getSettings()
+  const reqBody = buildGenerateBody(buildUserProfile(settings), overrides, thread)
   if (import.meta.env.DEV) console.log('[AI] generateProgramWithAI → sending', JSON.stringify(overrides).length, 'chars overrides')
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
     method: 'POST',
@@ -216,7 +238,7 @@ export async function generateProgramWithAI(overrides: ProgramOverrides = {}, on
   return program
 }
 
-export async function programCoach(text: string, program: Program, onProgress?: (current: number, total: number, name: string) => void): Promise<{ program?: Program; message?: string; _provider?: string }> {
+async function buildProgramContext(program: Program) {
   const exercises = await Storage.getExercises()
   const exerciseMap = new Map(exercises.map(e => [e.id, e]))
 
@@ -234,23 +256,67 @@ export async function programCoach(text: string, program: Program, onProgress?: 
   }
 
   const settings = await Storage.getSettings()
-  const language = LANGUAGE
   const userProfile = buildUserProfile(settings)
 
   const exerciseNames = program.weeks.flatMap(w =>
     w.days.flatMap(d => d.exercises.map(ex => exerciseMap.get(ex.exerciseId)?.name).filter(Boolean) as string[])
   )
-  const filteredDictionary = buildFilteredDictionary(exerciseNames)
+  const dictionary = buildFilteredDictionary(exerciseNames)
 
-  const reqBody = {
-    text,
-    currentProgram: programWithNames,
-    userProfile,
-    language,
-    systemPrompt: buildProgramCoachPrompt(language),
-    dictionary: filteredDictionary,
+  return { programWithNames, userProfile, dictionary }
+}
+
+function programContextText(ctx: Awaited<ReturnType<typeof buildProgramContext>>): string {
+  return 'PROGRAMA ACTUAL:\n' + JSON.stringify(ctx.programWithNames)
+    + '\n\nPERFIL DEL USUARIO:\n' + JSON.stringify(ctx.userProfile)
+    + '\n\nDICCIONARIO DE EJERCICIOS:\n' + JSON.stringify(ctx.dictionary)
+}
+
+const APPLY_CHANGES_MESSAGE = 'Aplica los cambios que acordamos en esta conversación y devuelve el programa completo.'
+
+function buildProgramCoachBody(text: string, ctx: Awaited<ReturnType<typeof buildProgramContext>>, thread?: ChatTurn[]) {
+  if (thread?.length) {
+    return {
+      messages: [...thread, { role: 'user', content: APPLY_CHANGES_MESSAGE }],
+      systemPrompt: `${buildProgramCoachPrompt(LANGUAGE)}\n\n${programContextText(ctx)}`,
+    }
   }
-  if (import.meta.env.DEV) console.log('[AI] programCoach → sending', text.length, 'chars, dict', filteredDictionary.length)
+  return {
+    text,
+    currentProgram: ctx.programWithNames,
+    userProfile: ctx.userProfile,
+    language: LANGUAGE,
+    systemPrompt: buildProgramCoachPrompt(LANGUAGE),
+    dictionary: ctx.dictionary,
+  }
+}
+
+async function postProgramChat(label: string, reqBody: { messages: ChatTurn[]; systemPrompt: string }): Promise<{ reply: string; _provider?: string }> {
+  const url = `${PUSH_SERVER_URL}/api/ai/program-chat`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqBody)
+    })
+    const data = await res.json()
+    await recordIfDebug(label, url, reqBody, res.ok ? data : { error: true, status: res.status, raw: data })
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+    return { reply: data.reply || 'No tengo respuesta ahora.', _provider: data._provider }
+  } catch (err: any) {
+    return { reply: 'Error al contactar al coach: ' + err.message }
+  }
+}
+
+export async function programCoachChat(thread: ChatTurn[], program: Program): Promise<{ reply: string; _provider?: string }> {
+  const ctx = await buildProgramContext(program)
+  return postProgramChat('Coach de programa (chat)', { messages: thread, systemPrompt: buildProgramChatPrompt(LANGUAGE, programContextText(ctx)) })
+}
+
+export async function programCoach(text: string, program: Program, onProgress?: (current: number, total: number, name: string) => void, thread?: ChatTurn[]): Promise<{ program?: Program; message?: string; _provider?: string }> {
+  const ctx = await buildProgramContext(program)
+  const reqBody = buildProgramCoachBody(text, ctx, thread)
+  if (import.meta.env.DEV) console.log('[AI] programCoach → sending', text.length, 'chars, dict', ctx.dictionary.length)
   const res = await fetch(`${PUSH_SERVER_URL}/api/ai/program-coach`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

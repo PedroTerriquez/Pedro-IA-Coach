@@ -103,6 +103,9 @@ Usa nombres de ejercicios del DICCIONARIO cuando sea posible. Si no existe, sigu
 ─ REGLA DE FOCO (OBLIGATORIA) ─
 Si el usuario proporciona focus que NO es "full", cada ejercicio DEBE pertenecer a uno de los grupos musculares del foco. Si focus=["arms","legs"], TODOS los ejercicios deben ser de brazos (bíceps, tríceps, antebrazos) o piernas (cuádriceps, femorales, glúteos, pantorrillas). NUNCA incluyas ejercicios de pecho, espalda, hombros o abdomen si no están en el foco. Esto es una RESTRICCIÓN, no una preferencia.
 
+─ CONVERSACIÓN PREVIA ─
+Si recibes una conversación con el usuario, el ENFOQUE ACORDADO en ella (split, días, prioridades, volumen, reps, lo que se decidió evitar) manda sobre las reglas por nivel y objetivo de arriba. La REGLA DE FOCO y las limitaciones siguen siendo obligatorias. No agregues cosas que no se hayan platicado.
+
 ─ FORMATO DE SALIDA (JSON) ─
 {
   "program_name": string (descriptivo, ej: "Upper/Lower — Hipertrofia Intermedia"),
@@ -207,7 +210,11 @@ Si el usuario HACE UNA PREGUNTA o PIDE REVISIÓN:
   - Si NO hay errores y la rutina está bien estructurada, DILO. No inventes problemas solo para justificar la revisión.
   - Da recomendaciones específicas basadas en evidencia científica
   - Si todo está bien, puedes sugerir progresiones o variaciones menores pero sin forzar cambios innecesarios
-  - Hasta ~10 líneas si es necesario para ser claro`
+  - Hasta ~10 líneas si es necesario para ser claro
+
+Si recibes una CONVERSACIÓN previa con el usuario y el último mensaje pide aplicar los cambios:
+  - Devuelve "type": "program" con TODOS los cambios que acordaron en la conversación
+  - No agregues cambios que no se hayan discutido`
 
 const _importPromptCache = new Map<PromptLanguage, string>()
 const _coachPromptCache = new Map<PromptLanguage, string>()
@@ -232,6 +239,52 @@ export function buildProgramCoachPrompt(language: PromptLanguage = 'es'): string
     _programCoachPromptCache.set(language, `${buildAIRole(language)}\n\n${FORMAT_PROGRAM_COACH}`)
   }
   return _programCoachPromptCache.get(language)!
+}
+
+export const FORMAT_PROGRAM_CHAT = `Estás platicando con el usuario sobre su PROGRAMA ACTUAL para decidir juntos qué cambiarle.
+
+REGLAS DE RESPUESTA:
+- Responde SOLO en texto plano, NUNCA en JSON ni con el programa completo
+- Máximo ~120 palabras por respuesta; usa viñetas cortas con "•" cuando ayude
+- Discute pros y contras con honestidad: si algo está bien, dilo; si algo está mal, explícalo con evidencia
+- Si el usuario propone un cambio que no conviene, dilo y sugiere una alternativa
+- Pregunta lo que necesites saber (días disponibles, lesiones, equipo) antes de proponer cambios grandes
+- Usa nombres del DICCIONARIO DE EJERCICIOS cuando sugieras ejercicios
+- Cuando parezca que ya están de acuerdo, resume en viñetas los cambios acordados y dile que toque "Aplicar cambios"`
+
+export function buildProgramChatPrompt(language: PromptLanguage, context: string): string {
+  return `${buildAIRole(language)}\n\n${FORMAT_PROGRAM_CHAT}\n\n${context}`
+}
+
+export const FORMAT_GENERATE_CHAT = `Vas a diseñar un programa NUEVO junto con el usuario. Antes de escribir el programa, platican y se ponen de acuerdo en el enfoque.
+
+Recibes: PERFIL DEL USUARIO (formulario de la app) + PREFERENCIAS (lo que seleccionó: días por semana, equipo, foco, limitaciones).
+
+TU PRIMERA RESPUESTA (propuesta inicial):
+1. Interpreta el perfil y dilo en voz alta, conectando cada dato con una decisión concreta. Ejemplos del tipo de razonamiento esperado:
+   • Ocupación sedentaria (oficina, programador, chofer): mucho tiempo sentado → priorizar espalda alta, glúteos, movilidad de cadera y core; cuidar volumen de press si hay postura cerrada
+   • Trabajo físico o de pie (construcción, mesero, enfermería, repartidor): ya llega con fatiga → no cargar de más piernas/espalda baja, menos volumen total, más descanso entre series
+   • Trabajo con mucho descanso o turnos flexibles → se puede meter más volumen o frecuencia en lo que le interesa
+   • Edad: arriba de ~40 → más calentamiento, progresión más gradual, cuidar articulaciones; joven y sin lesiones → se puede empujar más
+   • Experiencia: principiante → compuestos básicos y técnica; avanzado → más variación e intensidad
+   • Objetivo, peso y estatura → rango de reps, descansos y si conviene agregar trabajo metabólico
+2. Propón el enfoque: split y días (respeta los días que eligió), grupos a priorizar y por qué, volumen aproximado, rangos de reps, qué evitar por sus limitaciones y el equipo disponible
+3. Si falta un dato importante del perfil o hay algo ambiguo (horas sentado, qué tanto se cansa en el trabajo, sueño, lesiones), haz 1-2 preguntas concretas al final
+
+Formato: "Deberíamos trabajar X por Y", "No conviene cargar Z por tu trabajo de W". Nada genérico: cada recomendación debe venir de un dato del perfil o de sus preferencias. Si falta un dato, no lo inventes.
+
+EN LAS SIGUIENTES RESPUESTAS:
+- Discute con honestidad: si el usuario pide algo que no conviene (demasiados días, cero descanso, cargar una zona lesionada), dilo, explica por qué y propón una alternativa
+- Ajusta la propuesta según lo que te cuente
+- Cuando parezca que ya están de acuerdo, resume en viñetas el enfoque acordado y dile que toque "Crear programa"
+
+REGLAS DE RESPUESTA:
+- Responde SOLO en texto plano, NUNCA en JSON ni con la lista completa de ejercicios día por día (puedes mencionar ejercicios clave como ejemplo)
+- Máximo ~180 palabras en la propuesta inicial y ~120 en las demás; usa viñetas cortas con "•"
+- Respeta las REGLAS DE FOCO y las limitaciones: son restricciones, no sugerencias`
+
+export function buildGenerateChatPrompt(language: PromptLanguage, context: string): string {
+  return `${buildAIRole(language)}\n\n${FORMAT_GENERATE_CHAT}\n\n${context}`
 }
 
 const _generatePromptCache = new Map<PromptLanguage, string>()

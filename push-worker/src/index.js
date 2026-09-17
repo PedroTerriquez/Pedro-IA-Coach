@@ -452,6 +452,18 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/ai/program-chat') {
+      try {
+        const result = await handleAIEndpoint(req, env, {
+          buildPrompt: () => '',
+          model: 'gemini-2.5-flash',
+        })
+        return respond({ reply: result.text || '', _provider: result.provider })
+      } catch (err) {
+        return respond({ error: 'Error de IA: ' + err.message }, 500)
+      }
+    }
+
     if (url.pathname === '/api/ai/exercise-coach') {
       try {
         const result = await handleAIEndpoint(req, env, {

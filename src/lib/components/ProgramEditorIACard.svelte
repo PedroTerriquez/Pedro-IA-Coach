@@ -1,33 +1,19 @@
 <script lang="ts">
   import Button from './Button.svelte'
-  import TextArea from './TextArea.svelte'
-  import CoachResponseCard from './CoachResponseCard.svelte'
   import CyberpunkCard from './CyberpunkCard.svelte'
   import DebugAIToggle from './DebugAIToggle.svelte'
 
   let {
     accent = 'var(--accent)',
-    coachInput = '',
-    coachStatus = '',
-    coachResponseVisible = false,
-    coachResponseText = '',
-    coachProvider = '',
-    oninput = () => {},
-    onsubmit = () => {}
+    onopen = () => {}
   }: {
     accent?: string
-    coachInput?: string
-    coachStatus?: string
-    coachResponseVisible?: boolean
-    coachResponseText?: string
-    coachProvider?: string
-    oninput?: (val: string) => void
-    onsubmit?: () => void
+    onopen?: () => void
   } = $props()
 </script>
 
 <div class="section-pad-bot" data-component="ProgramEditorIACard">
-  <CyberpunkCard label="PROGRAM_COACH v2.1" {accent}>
+  <CyberpunkCard label="PROGRAM_COACH v3.0" {accent}>
     <div class="coach-top-row">
       <div class="coach-badge">
         <span class="badge-dot" style="background:{accent}"></span>
@@ -35,19 +21,8 @@
       </div>
       <DebugAIToggle label="Program Editor IA" {accent} />
     </div>
-    <div class="card-subtitle">Pregunta o pide cambios en tu rutina.</div>
-    <TextArea value={coachInput} placeholder='Ej: "Cambia press banca por press inclinado", "¿Está balanceada mi rutina?"' {oninput} />
-    <div id="prog-coach-status" class="status-text">{coachStatus}</div>
-    <div class="submit-wrap">
-      <Button variant="primary" {accent} fullWidth onclick={onsubmit}>Enviar al coach</Button>
-    </div>
-    {#if coachResponseVisible}
-      <div class="coach-response-wrap">
-        <CoachResponseCard {accent} provider={coachProvider}>
-          {coachResponseText}
-        </CoachResponseCard>
-      </div>
-    {/if}
+    <div class="card-subtitle">Platica con el coach sobre tu programa actual: qué está bien, qué cambiar. Cuando estén de acuerdo, aplica los cambios.</div>
+    <Button variant="primary" {accent} fullWidth onclick={onopen}>Mejorar programa actual</Button>
   </CyberpunkCard>
 </div>
 
@@ -83,9 +58,7 @@
   .card-subtitle {
     font-size: 10px;
     color: var(--text-secondary);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     line-height: 1.4;
   }
-  .submit-wrap { margin-top: 10px; }
-  .coach-response-wrap { margin-top: 12px; }
 </style>

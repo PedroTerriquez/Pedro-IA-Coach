@@ -1,36 +1,50 @@
-<script lang="ts">
-  import { bodyPartsFor } from '$lib/data/body-parts'
-  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
-  import { settings } from '$lib/stores/settings'
-  import Icon from './Icon.svelte'
-  import Button from './Button.svelte'
-  import ChipRow from './ChipRow.svelte'
-  import FilterChip from './FilterChip.svelte'
-  import DebugAIToggle from './DebugAIToggle.svelte'
-
-  interface ExerciseCoach {
-    name: string
-    muscle: string
-    alternatives?: { name: string; reason: string }[]
-  }
-
-  interface Message {
+<script module lang="ts">
+  export interface ChatTurn {
     role: string
     content: string
+  }
+</script>
+
+<script lang="ts">
+  import { onMount, untrack, type Snippet } from 'svelte'
+  import Icon from './Icon.svelte'
+  import DebugAIToggle from './DebugAIToggle.svelte'
+
+  interface Message extends ChatTurn {
     _provider?: string
+    hidden?: boolean
   }
 
-  let { exercise, accent = 'var(--accent)', onclose }: {
-    exercise: ExerciseCoach
+  let {
+    title = 'Coach IA',
+    subtitle = '',
+    greeting,
+    kickoff = '',
+    accent = 'var(--accent)',
+    send,
+    thread = $bindable([]),
+    busy = false,
+    chips,
+    footer,
+    onclose,
+  }: {
+    title?: string
+    subtitle?: string
+    greeting: string
+    /** Hidden first user turn sent on open, so the coach starts the conversation */
+    kickoff?: string
     accent?: string
+    send: (thread: ChatTurn[]) => Promise<{ reply: string; _provider?: string }>
+    thread?: ChatTurn[]
+    busy?: boolean
+    chips?: Snippet<[(msg: string) => void]>
+    footer?: Snippet
     onclose?: () => void
   } = $props()
 
-  let messages = $state<Message[]>([])
+  let messages = $state<Message[]>([{ role: 'assistant', content: untrack(() => greeting) }])
   let input = $state('')
   let loading = $state(false)
-  let chatThread = $state<{ role: string; content: string }[]>([])
-  let showBodyParts = $state(false)
   let chatEl: HTMLDivElement
   let textareaEl: HTMLTextAreaElement
 
@@ -40,50 +54,39 @@
     textareaEl.style.height = Math.min(textareaEl.scrollHeight, 120) + 'px'
   }
 
-  let bodyParts = $derived(bodyPartsFor(exercise.muscle))
-  let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
-
-  function initChat() {
-    messages = []
-    chatThread = []
-    showBodyParts = false
-    const greeting = `¡Qué onda! 👋 Soy tu coach para «${exercise.name}». Pregúntame sobre técnica, peso, o si algo te molesta y lo ajustamos.`
-    messages = [{ role: 'assistant', content: greeting }]
-  }
-
-  function handleQuickChip(msg: string) {
-    sendMessage(msg)
-  }
-
-  function handlePainSelect(part: string) {
-    sendMessage(`Siento molestia en ${part.toLowerCase()} al hacer este ejercicio. ¿Qué ajusto?`)
-    showBodyParts = false
-  }
-
-  async function sendMessage(text?: string) {
-    const msg = (text || input).trim()
-    if (!msg || loading) return
-    input = ''
-    showBodyParts = false
-    if (textareaEl) { textareaEl.style.height = 'auto' }
-
-    chatThread.push({ role: 'user', content: msg })
-    messages = [...messages, { role: 'user', content: msg }]
-    loading = true
-
-    const { exerciseCoachChat } = await import('$lib/ai')
-    const alternatives = (exercise.alternatives || []).map(a => a.name)
-    const result = await exerciseCoachChat(exercise.name, exercise.muscle, alternatives, chatThread)
-    const reply = result?.reply || 'No tengo respuesta ahora mismo.'
-
-    chatThread.push({ role: 'assistant', content: reply })
-    messages = [...messages, { role: 'assistant', content: reply, _provider: result?._provider }]
-    loading = false
-
+  function scrollToBottom() {
     setTimeout(() => {
       chatEl?.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' })
     }, 50)
   }
+
+  function addTurn(turn: Message) {
+    thread = [...thread, { role: turn.role, content: turn.content }]
+    messages = [...messages, turn]
+  }
+
+  async function requestReply(msg: string, hidden = false) {
+    addTurn({ role: 'user', content: msg, hidden })
+    loading = true
+    scrollToBottom()
+
+    const result = await send(thread)
+    addTurn({ role: 'assistant', content: result?.reply || 'No tengo respuesta ahora mismo.', _provider: result?._provider })
+    loading = false
+    scrollToBottom()
+  }
+
+  function sendMessage(text?: string) {
+    const msg = (text || input).trim()
+    if (!msg || loading || busy) return
+    input = ''
+    if (textareaEl) { textareaEl.style.height = 'auto' }
+    requestReply(msg)
+  }
+
+  onMount(() => {
+    if (kickoff) requestReply(kickoff, true)
+  })
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -91,8 +94,6 @@
       sendMessage()
     }
   }
-
-  initChat()
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -105,8 +106,8 @@
         <Icon name="coach" size={18} color={accent} />
       </div>
       <div class="coach-header-info">
-        <div class="coach-header-name">Coach IA</div>
-        <div class="coach-header-ex-name">{displayName}</div>
+        <div class="coach-header-name">{title}</div>
+        {#if subtitle}<div class="coach-header-ex-name">{subtitle}</div>{/if}
       </div>
       <button class="coach-close-btn" onclick={onclose}>
         <svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 1l11 11M12 1L1 12" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -120,7 +121,9 @@
     <div class="coach-msgs" bind:this={chatEl}>
       <div class="coach-bubbles">
         {#each messages as msg}
-          {#if msg.role === 'user'}
+          {#if msg.hidden}
+            <!-- kickoff turn: sent to the AI, not shown -->
+          {:else if msg.role === 'user'}
             <div class="bubble-row user-row">
               <div class="bubble user-bubble" style="background:{accent};color:var(--bg);border-radius:16px 16px 4px 16px;font-weight:600">
                 {msg.content}
@@ -159,36 +162,8 @@
       </div>
     </div>
 
-    {#if showBodyParts}
-      <div class="pain-picker">
-        <div class="pain-header">
-          <span class="pain-title">¿Dónde lo sientes?</span>
-          <Button variant="text" onclick={() => showBodyParts = false}>× cancelar</Button>
-        </div>
-        <ChipRow gap={7}>
-          {#each bodyParts as part}
-            <FilterChip variant="sans" size="lg" style="background:{accent}14;border-color:{accent}3a;color:{accent}" onclick={() => handlePainSelect(part)}>
-              {part}
-            </FilterChip>
-          {/each}
-        </ChipRow>
-      </div>
-    {:else}
-      <ChipRow class="coach-chips" gap={7} scroll>
-        <FilterChip variant="sans" size="lg" onclick={() => handleQuickChip('¿Cómo mejoro mi técnica en este ejercicio?')}>
-          Mejorar técnica
-        </FilterChip>
-        <FilterChip variant="sans" size="lg" style="background:{accent}16;border-color:{accent}3a;color:{accent}" onclick={() => showBodyParts = true}>
-          ⚠️ Me duele algo
-        </FilterChip>
-        <FilterChip variant="sans" size="lg" onclick={() => handleQuickChip('¿Cómo sé si estoy usando demasiado peso?')}>
-          ¿Voy muy pesado?
-        </FilterChip>
-        <FilterChip variant="sans" size="lg" onclick={() => handleQuickChip('Dame 2-3 alternativas reales para este ejercicio. Dame el nombre en inglés y en español.')}>
-          Variante
-        </FilterChip>
-      </ChipRow>
-    {/if}
+    {@render chips?.(sendMessage)}
+    {@render footer?.()}
 
     <div class="coach-input-row">
       <div class="coach-input-wrap">
@@ -202,7 +177,7 @@
           onkeydown={handleKeydown}
         ></textarea>
       </div>
-      <button class="coach-send-btn" style="background:{accent}" onclick={() => sendMessage()} disabled={loading}>
+      <button class="coach-send-btn" style="background:{accent}" onclick={() => sendMessage()} disabled={loading || busy}>
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 15V3M9 3l-5 5M9 3l5 5" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
@@ -365,26 +340,6 @@
     border-radius: 50%;
     opacity: 0.25;
     animation: coachBlink 1.2s 0s infinite ease-in-out;
-  }
-  .pain-picker {
-    flex-shrink: 0;
-    padding: 12px 16px;
-    border-top: 0.5px solid var(--border);
-    background: rgba(255, 255, 255, 0.015);
-  }
-  .pain-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 9px;
-  }
-  .pain-title {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    font-weight: 600;
   }
   :global(.coach-chips) {
     flex-shrink: 0;
