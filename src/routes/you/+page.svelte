@@ -291,7 +291,7 @@
   }
 
   async function createAgreedProgram(thread: ChatTurn[]) {
-    return { program: await generateProgramWithAI(generateOverrides, undefined, thread) }
+    return { program: await generateProgramWithAI(generateOverrides, thread) }
   }
 
   async function onProgramApplied(program: Program) {
@@ -831,7 +831,7 @@
     applyingLabel="Aplicando cambios…"
     {accent}
     send={(thread) => programCoachChat(thread, program)}
-    apply={(thread) => programCoach('', program, undefined, thread)}
+    apply={(thread) => programCoach(program, thread)}
     onapplied={onProgramApplied}
     onclose={() => programChat = null}
   />

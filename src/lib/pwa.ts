@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.68'
-const _VER_DESC = 'Coach IA en chat para mejorar y generar programas'
-const _VER_TIME = '2026-09-16 23:41'
+const _VER_BASE = 'v2.69'
+const _VER_DESC = 'Limpieza del coach viejo de programa'
+const _VER_TIME = '2026-09-23 22:02'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

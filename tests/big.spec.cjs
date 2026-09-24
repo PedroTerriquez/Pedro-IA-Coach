@@ -899,7 +899,7 @@ test.describe('You — Programas tab', () => {
     weeks: [{ name: 'Semana 1', subtitle: '', tag: 'BUILD', days: [{ name: 'Día 1', subtitle: '', duration: 60, exercises: [] }] }],
   }
 
-  test('create, activate, duplicate, delete a program + Coach IA response', async ({ page }) => {
+  test('create, activate, duplicate, delete a program', async ({ page }) => {
     test.setTimeout(60000)
     await mockApiRoutes(page)
 
