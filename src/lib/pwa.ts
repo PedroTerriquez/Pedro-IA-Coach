@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.70'
-const _VER_DESC = 'Ciclo de series: el descanso arranca solo y encadena serie a serie'
-const _VER_TIME = '2026-09-25 00:00'
+const _VER_BASE = 'v2.71'
+const _VER_DESC = 'Tests del botón Iniciar en espera y guardrail de tests'
+const _VER_TIME = '2026-09-25 00:31'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

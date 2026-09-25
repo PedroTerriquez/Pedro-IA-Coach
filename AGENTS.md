@@ -192,6 +192,7 @@ Sets, reps, rest LIVE on the program exercise instance, NOT on the exercise defi
 
 ## Tests & Verification
 - **E2E**: `npx playwright test` — runs `tests/big.spec.cjs` (the single test file, with `EXPECTED_STEPS` guardrail). New scenarios = new `describe` block with exactly one `test()`. Never add a second test file; never remove steps from the guardrail.
+- **NEVER delete, rename or weaken an existing `test()` without asking Pedro first.** This includes rewriting its assertions to match new behavior, or dropping an assertion because the feature changed: those tests are the record of what the app promised, and silently rewriting them makes a regression indistinguishable from an intended change. When a change makes an existing test wrong, say so, explain what promise is being broken and wait for a yes — then update it and keep the old intent in a comment. Adding tests never needs permission.
 - **Type check**: `npm run check` (svelte-check)
 - **Build**: `npm run build` (adapter-static, base `/Pedro-IA-Coach`)
 - Before pushing, all three must pass.

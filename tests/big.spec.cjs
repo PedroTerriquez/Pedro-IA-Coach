@@ -1,3 +1,11 @@
+// GUARDRAIL: NEVER delete, rename or weaken an existing test() without asking
+// Pedro first — including rewriting its assertions so they match new behavior.
+// These tests are the record of what the app promised; rewriting one silently
+// makes a regression look exactly like an intended change. If your change makes
+// a test wrong, stop and say which promise is breaking, wait for a yes, and
+// then keep the old intent in a comment next to the new assertion. Adding
+// tests never needs permission.
+//
 // GUARDRAIL: If you're removing/modifying steps below, STOP.
 // This is the single source of truth for behavioral/E2E coverage of the app —
 // all behavior tests live here, against the real SvelteKit app (real routes,
@@ -2528,6 +2536,94 @@ test.describe('Rest timer — ciclo de series', () => {
     expect(afterSecond.weight).toBe(60)
     expect(afterSecond.sets).toBe(2)
     expect(afterSecond.blocks).toBeUndefined()
+  })
+})
+
+test.describe('Rest timer — "Iniciar" deshabilitado durante la espera', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-iniciar', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  // Tapping "Iniciar" doesn't do anything you can see for 3s (the window that
+  // lets you lock the phone so the push reaches the Watch). If the button
+  // doesn't say so, the tap looks ignored and you tap again — which used to be
+  // possible, because the button re-enabled itself in the same microtask.
+  test('goes grey and counts down while the push is on its way, ignoring a second tap', async ({ page }) => {
+    let startPushes = 0
+    await page.route(/push\/start/, async (route) => {
+      startPushes++
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'sent' }) })
+    })
+    await page.route(/rest-timer\/(start|cancel)/, async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+    })
+
+    const program = {
+      id: 'prog-iniciar', name: 'Programa Iniciar',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+
+    await page.goto('plan')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: SETTINGS,
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    await page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' }).click()
+    await page.waitForTimeout(400)
+
+    const iniciar = page.locator('.iniciar-btn')
+    await expect(iniciar).toBeEnabled()
+    await expect(iniciar).toContainText('Iniciar')
+    const accentBg = await iniciar.evaluate(el => getComputedStyle(el).backgroundColor)
+
+    await iniciar.click()
+
+    // Disabled from the tap itself, not after the 3s.
+    await expect(iniciar).toBeDisabled()
+    await expect(iniciar).toContainText(/Preparando \ds/)
+
+    // …and it *looks* disabled: no longer the accent-coloured call to action.
+    const waitingStyle = await iniciar.evaluate(el => {
+      const s = getComputedStyle(el)
+      return { bg: s.backgroundColor, cursor: s.cursor, border: s.borderStyle }
+    })
+    expect(waitingStyle.bg).not.toBe(accentBg)
+    expect(waitingStyle.cursor).toBe('default')
+    expect(waitingStyle.border).toBe('dashed')
+
+    // The seconds actually run down instead of sitting on one number.
+    const readSeconds = async () => parseInt((await iniciar.textContent()).match(/(\d)s/)[1], 10)
+    const first = await readSeconds()
+    await page.waitForTimeout(1600)
+    const later = await readSeconds()
+    expect(later).toBeLessThan(first)
+
+    // Jabbing it again while it waits must not send a second notification.
+    await iniciar.click({ force: true }).catch(() => {})
+    await page.waitForTimeout(200)
+
+    // Once the push is away the rest starts on its own and the button is back.
+    await expect(page.locator('[data-component="RestTimerFullscreen"]')).toBeVisible({ timeout: 6000 })
+    await expect(iniciar).toBeEnabled()
+    await expect(iniciar).toContainText('Iniciar')
+    expect(startPushes).toBe(1)
+
+    // One tap, one serie: the double tap didn't count an extra set either.
+    await expect(page.locator('.rtf-serie-label')).toContainText('Serie 1 de 4')
   })
 })
 
