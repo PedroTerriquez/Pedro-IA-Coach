@@ -225,6 +225,20 @@ async function seedIndexedDB(page, data, retries = 3) {
   }
 }
 
+// The Nth "Iniciar" (or notification tap) of the day on an exercise is its Nth
+// set, counted in localStorage (`rest-set-counts`). A test that fabricates the
+// rest of set N — instead of tapping through the previous ones — has to leave
+// the day's counter at N−1 first, or the rest opens on the wrong serie.
+async function seedSetCounter(page, exerciseId, setsDone) {
+  await page.evaluate(([id, done]) => {
+    const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    localStorage.setItem('rest-set-counts', JSON.stringify({
+      date: d.toISOString().slice(0, 10),
+      counts: { [id]: done },
+    }))
+  }, [exerciseId, setsDone])
+}
+
 // Generic /api/ interceptor shared by the sub-tab suites below — mirrors the
 // default branch of the main flow's route handler (coach-style JSON), since
 // most of these tests don't care about AI response shape, only that the UI
@@ -468,14 +482,17 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // Merged from the former tests/notifications.spec.cjs — a real user taps
   // "Iniciar" right after logging a set, to start resting before the next one.
-  // This only stages the rest-timer push for the service worker; it must NOT
-  // arm the in-app timer/banner itself — those only start once the OS
-  // notification is tapped (covered in the "Rest timer notification flow"
-  // suite below, which picks up from exactly this staged state).
-  const iniciarBtn = page.getByRole('button', { name: 'Iniciar' })
+  // The tap stages the rest-timer push for the service worker and, while that
+  // push is on its way (3s, time to lock the phone), the button stays visibly
+  // disabled counting down. When the window closes the rest starts on its own,
+  // without anyone tapping the notification.
+  const iniciarBtn = page.getByRole('button', { name: /Iniciar|Preparando/ })
   await expect(iniciarBtn).toBeVisible()
   await iniciarBtn.click()
   await page.waitForTimeout(600)
+
+  await expect(iniciarBtn).toBeDisabled()
+  await expect(iniciarBtn).toContainText(/Preparando \ds/)
 
   const stagedPush = await page.evaluate(async () => {
     const cache = await caches.open('push-pending')
@@ -488,7 +505,18 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   expect(stagedPush.exerciseData.restSec).toBe(180)
   expect(stagedPush.exerciseData.sets).toBe(5)
   expect(stagedPush.exerciseData.exerciseId).toBe('ex-bench')
-  await expect(page.locator('[data-component="RestTimerBanner"]')).toHaveCount(0)
+  // Nothing is armed yet: the rest only starts once the push is away.
+  await expect(page.locator('[data-component="RestTimerFullscreen"]')).toHaveCount(0)
+
+  const restTimer = page.locator('[data-component="RestTimerFullscreen"]')
+  await expect(restTimer).toBeVisible({ timeout: 6000 })
+  await expect(restTimer).toContainText('Press de Banca con Barra')
+  await expect(iniciarBtn).toBeEnabled()
+
+  // Back to the sheet to keep the journey going.
+  await restTimer.locator('.rtf-skip').click()
+  await expect(restTimer).toHaveCount(0)
+  await page.waitForTimeout(300)
 
   // Navigate to exercise 2 via Siguiente nav pill
   await page.getByRole('button', { name: 'Siguiente' }).first().click()
@@ -1916,7 +1944,9 @@ test.describe('Historial — Ejercicios sub-tab', () => {
 test.describe('Rest timer notification flow', () => {
   test('tapping the start notification schedules the delayed push and shows the rest banner', async ({ page }) => {
     let startTimerPayload = null
+    let startTimerCalls = 0
     await page.route(/rest-timer\/start/, async (route) => {
+      startTimerCalls++
       startTimerPayload = route.request().postData()
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'scheduled' }) })
     })
@@ -1964,6 +1994,26 @@ test.describe('Rest timer notification flow', () => {
     expect(payload.title).toBe('Press Banca')
     expect(payload.tag).toBeTruthy()
 
+    // Tapping the notification again while that same rest is running only
+    // brings the app to the front — it must not restart the clock.
+    const endTimeBefore = await page.evaluate(async () => {
+      const res = await caches.open('rest-timer').then(c => c.match('/pending'))
+      return (await res.json()).endTime
+    })
+    await page.evaluate(async () => {
+      const cache = await caches.open('rest-pending')
+      await cache.put('/from-notification', new Response('1'))
+      window.dispatchEvent(new Event('focus'))
+      await new Promise(r => setTimeout(r, 400))
+    })
+    await page.waitForTimeout(600)
+    expect(startTimerCalls).toBe(1)
+    const endTimeAfter = await page.evaluate(async () => {
+      const res = await caches.open('rest-timer').then(c => c.match('/pending'))
+      return (await res.json()).endTime
+    })
+    expect(endTimeAfter).toBe(endTimeBefore)
+
     // The "Saltar" button cancels the queued delayed push (tapping the card
     // itself no longer cancels — avoids accidental cancels).
     await timer.locator('.rtf-skip').click()
@@ -1974,7 +2024,7 @@ test.describe('Rest timer notification flow', () => {
     expect(cancelData.deviceId).toBeTruthy()
   })
 
-  test('banner completion disappears silently and does not reschedule', async ({ page }) => {
+  test('a finished rest waits on screen for the next serie and does not reschedule', async ({ page }) => {
     let restTimerCalled = false
     await page.route(/rest-timer\/start/, async (route) => {
       restTimerCalled = true
@@ -1998,17 +2048,35 @@ test.describe('Rest timer notification flow', () => {
     })
     await page.waitForTimeout(1500)
 
-    // Banner is decorative: it just disappears. No "Descanso terminado" toast —
-    // that message belongs to the delayed push (avoids a double notification).
-    await expect(page.locator('[data-component="RestTimerFullscreen"]')).toHaveCount(0)
+    // The rest is over but the screen stays: that's where the serie is
+    // registered and the next one starts. The timer itself never re-arms —
+    // only an explicit "Siguiente serie" does (the push drives the cycle).
+    const timer = page.locator('[data-component="RestTimerFullscreen"]')
+    await expect(timer).toBeVisible()
+    await expect(timer).toHaveAttribute('data-phase', 'done')
+    await expect(timer).toContainText('Descanso terminado')
+    await expect(timer.getByRole('button', { name: /Siguiente serie/ })).toBeVisible()
     await expect(page.locator('[data-component="RestTimerBanner"]')).toHaveCount(0)
+    expect(restTimerCalled).toBe(false)
+    // No in-app "Descanso terminado" toast: the screen says it and the delayed
+    // push owns the notification (avoids announcing the same thing twice).
     const toastText = await page.evaluate(() => {
       const t = document.getElementById('backup-toast')
       return t ? t.textContent : ''
     })
     expect(toastText).not.toContain('Descanso terminado')
-    // Completion must not schedule a new delayed push (the push drives the cycle).
-    expect(restTimerCalled).toBe(false)
+
+    // Reopening the app minutes later still finds the unfinished serie: the
+    // 'done' phase lives in the cache, not in memory.
+    const cached = await page.evaluate(async () => {
+      const res = await caches.open('rest-timer').then(c => c.match('/pending'))
+      return res ? await res.json() : null
+    })
+    expect(cached.phase).toBe('done')
+
+    // "Terminar" closes the cycle for this exercise.
+    await timer.getByRole('button', { name: 'Terminar ejercicio' }).click()
+    await expect(timer).toHaveCount(0)
   })
 
   // Regression: returning to the foreground fires focus + visibilitychange
@@ -2064,6 +2132,7 @@ test.describe('Rest timer — pantalla completa', () => {
 
     // Same payload the SW caches on notification tap — now carrying everything
     // the full-screen timer renders (serie, músculo, última, récord, siguiente).
+    await seedSetCounter(page, 'ex-bench', 1)
     await page.evaluate(async () => {
       const cache = await caches.open('rest-pending')
       await cache.put('/pending', new Response(JSON.stringify({
@@ -2139,6 +2208,7 @@ test.describe('Rest timer — registro de series', () => {
     })
 
     const openRestForSet = async (setIndex) => {
+      await seedSetCounter(page, 'ex-bench', setIndex - 1)
       await page.evaluate(async (idx) => {
         const cache = await caches.open('rest-pending')
         await cache.put('/pending', new Response(JSON.stringify({
@@ -2289,6 +2359,7 @@ test.describe('Rest timer — registro de series', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
+    await seedSetCounter(page, 'ex-bench', 1)
     await page.evaluate(async () => {
       const cache = await caches.open('rest-pending')
       await cache.put('/pending', new Response(JSON.stringify({
@@ -2333,6 +2404,7 @@ test.describe('Rest timer — registro de series', () => {
     await page.waitForTimeout(600)
 
     const openRest = async (exerciseId) => {
+      await seedSetCounter(page, exerciseId, 0)
       await page.evaluate(async (id) => {
         const cache = await caches.open('rest-pending')
         await cache.put('/pending', new Response(JSON.stringify({
@@ -2371,6 +2443,91 @@ test.describe('Rest timer — registro de series', () => {
     expect(logs.find(l => l.exerciseId === 'ex-first')).toEqual({ exerciseId: 'ex-first', weight: 62.5 })
     // Nothing was written for the exercise that merely came next.
     expect(logs.find(l => l.exerciseId === 'ex-second')).toBeUndefined()
+  })
+})
+
+test.describe('Rest timer — ciclo de series', () => {
+  // The whole point of the cycle: finish a set, rest, and let the same screen
+  // carry you into the next set — counting series and saving them — without
+  // typing anything and without leaving the app.
+  test('a finished rest waits, hands over to the next serie, and compresses untouched sets into one record', async ({ page }) => {
+    let startPushes = 0
+    await page.route(/push\/start/, async (route) => {
+      startPushes++
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'sent' }) })
+    })
+    await page.route(/rest-timer\/(start|cancel)/, async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+    })
+
+    const todayLog = () => page.evaluate(async () => {
+      const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+      const today = d.toISOString().slice(0, 10)
+      const req = indexedDB.open('coach-pedro-ai', 2)
+      const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error) })
+      const store = db.transaction('exerciseLogs', 'readonly').objectStore('exerciseLogs')
+      const all = await new Promise((res, rej) => { const r = store.getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) })
+      db.close()
+      return all.find(l => l.exerciseId === 'ex-bench' && l.date === today) || null
+    })
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+
+    // Serie 1 starts from a notification tap. A 3s rest so the whole cycle
+    // fits in a test; everything else is the real machinery.
+    await seedSetCounter(page, 'ex-bench', 0)
+    await page.evaluate(async () => {
+      const cache = await caches.open('rest-pending')
+      await cache.put('/pending', new Response(JSON.stringify({
+        name: 'Press Banca', restSec: 3, sets: 3, reps: '8-10', exerciseId: 'ex-bench',
+        muscle: 'Chest', units: 'kg', lastWeight: 60, maxWeight: 70,
+      })))
+      await cache.put('/from-notification', new Response('1'))
+      window.dispatchEvent(new Event('focus'))
+      await new Promise(r => setTimeout(r, 300))
+    })
+
+    const timer = page.locator('[data-component="RestTimerFullscreen"]')
+    await expect(timer).toBeVisible({ timeout: 3000 })
+    await expect(timer.locator('.rtf-serie-label')).toContainText('Serie 1 de 3')
+    // Seeded from "última" and the prescribed reps — nobody typed anything.
+    await expect(timer.locator('.rtf-field-input').first()).toHaveValue('60')
+    await expect(timer.locator('.rtf-field-input').nth(1)).toHaveValue('10')
+    expect(await todayLog()).toBeNull()
+
+    // The rest runs out: the screen stays, asking for the next serie.
+    await expect(timer).toHaveAttribute('data-phase', 'done', { timeout: 8000 })
+    await expect(timer).toContainText('Listo para la serie 2')
+
+    // Handing over to serie 2 saves serie 1 with what the fields showed and
+    // sends its own start notification (the Watch gets a card per serie).
+    const nextBtn = timer.locator('.rtf-act-next')
+    await expect(nextBtn).toContainText('Siguiente serie · 2')
+    await nextBtn.click()
+    await expect(nextBtn).toBeDisabled()
+    await expect(nextBtn).toContainText(/Preparando… \ds/)
+
+    await expect(timer).toHaveAttribute('data-phase', 'resting', { timeout: 8000 })
+    await expect(timer.locator('.rtf-serie-label')).toContainText('Serie 2 de 3')
+    await expect(timer.locator('.rtf-log-title')).toContainText('Registrar serie 2')
+    expect(startPushes).toBe(1)
+
+    const afterFirst = await todayLog()
+    expect(afterFirst.weight).toBe(60)
+    expect(afterFirst.sets).toBe(1)
+    expect(afterFirst.reps).toBe('10')
+    expect(afterFirst.blocks).toBeUndefined()
+
+    // Serie 2 also goes untouched: two identical sets stay ONE record, not two.
+    await expect(timer).toHaveAttribute('data-phase', 'done', { timeout: 8000 })
+    await timer.getByRole('button', { name: 'Terminar ejercicio' }).click()
+    await expect(timer).toHaveCount(0)
+
+    const afterSecond = await todayLog()
+    expect(afterSecond.weight).toBe(60)
+    expect(afterSecond.sets).toBe(2)
+    expect(afterSecond.blocks).toBeUndefined()
   })
 })
 

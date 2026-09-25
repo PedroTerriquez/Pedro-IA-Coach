@@ -13,7 +13,7 @@
 - **Device**: iPhone with iOS (PWA installed from Safari)
 - **Browser**: Safari (PWA standalone mode)
 - **Notifications**: Web Push via Cloudflare Worker; `showNotification()` actions NOT supported on iOS
-- **Watch mirror**: Notifications mirror to Apple Watch, but long-press actions don't work on iOS — fallback to tap-to-start-timer in `src/service-worker.js`. Tap notification → timer starts, "⏱️ Xs · ejercicio" confirmation appears for 2s → when timer completes, "⏰ Descanso terminado" shows for 10s
+- **Watch mirror**: Notifications mirror to Apple Watch, but long-press actions don't work on iOS. "Iniciar" waits 3s (time to lock the phone, so the push reaches the Watch — the button is disabled and counting meanwhile), sends the start notification and then starts the rest itself; the tap only opens the app on a rest that's already running. When the rest ends, the full-screen timer stays up in phase `done` asking for the next serie. Full cycle: `docs/superpowers/specs/2026-09-24-ciclo-de-series-descanso-design.md`
 
 ## Project Structure
 ```

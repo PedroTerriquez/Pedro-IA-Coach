@@ -7,7 +7,7 @@
   import RestTimerBanner from '$lib/components/RestTimerBanner.svelte'
   import RestTimerFullscreen from '$lib/components/RestTimerFullscreen.svelte'
   import OnboardingBanner from '$lib/components/OnboardingBanner.svelte'
-  import { restBannerState, cancelRestTimer, adjustRestTimer, restartRestTimer } from '$lib/rest-timer'
+  import { restBannerState, cancelRestTimer, adjustRestTimer, restartRestTimer, startNextSet } from '$lib/rest-timer'
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
   import { ROUTES } from '$lib/routes'
@@ -62,12 +62,15 @@
   let bannerStep = $derived(getBannerStep())
 
   // The rest timer opens full screen; "minimizar" collapses it to the floating
-  // banner. Every new rest (new tag) opens full screen again.
+  // banner. Every new rest (new tag) opens full screen again, and so does the
+  // end of a rest: that's where the set is registered and the next one starts.
   let restMinimized = $state(false)
   let restTag = $derived($restBannerState.tag)
+  let restPhase = $derived($restBannerState.phase)
 
   $effect(() => {
     restTag
+    restPhase
     restMinimized = false
   })
 </script>
@@ -87,9 +90,11 @@
   timer={$restBannerState}
   {accent}
   onskip={() => cancelRestTimer($restBannerState.tag)}
+  onclose={() => cancelRestTimer($restBannerState.tag)}
   onminimize={() => restMinimized = true}
   onadjust={(delta) => adjustRestTimer(delta)}
   onrestart={() => restartRestTimer()}
+  onnext={() => startNextSet()}
 />
 
 <RestTimerBanner

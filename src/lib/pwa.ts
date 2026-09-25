@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.69'
-const _VER_DESC = 'Limpieza del coach viejo de programa'
-const _VER_TIME = '2026-09-23 22:02'
+const _VER_BASE = 'v2.70'
+const _VER_DESC = 'Ciclo de series: el descanso arranca solo y encadena serie a serie'
+const _VER_TIME = '2026-09-25 00:00'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

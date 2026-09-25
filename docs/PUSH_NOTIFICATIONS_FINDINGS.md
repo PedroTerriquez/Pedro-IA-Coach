@@ -66,26 +66,36 @@ empty-push + cache mechanism.
 ## How it works now (v1.74)
 
 ```
-CLICK "Iniciar"
+CLICK "Iniciar"   (button visibly disabled, counting 3…2…1)
   ├─ stage push-pending /pending = { kind:'start', exerciseData }   (local cache)
-  ├─ wait 2s (Apple Watch sync)
-  └─ POST /api/push/start  →  Worker sends EMPTY push (VAPID auth, Content-Length:0)
-        └─ SW push event: no payload → read push-pending → showStartNotification()
+  ├─ wait 3s (time to lock the phone → Apple Watch sync)
+  ├─ POST /api/push/start  →  Worker sends EMPTY push (VAPID auth, Content-Length:0)
+  │     └─ SW push event: no payload → read push-pending → showStartNotification(running)
+  └─ armRest()  ← the rest starts HERE, locked phone or not, tap or not
+        ├─ stage push-pending /pending = { kind:'done', exerciseData }   (overwrites 'start')
+        ├─ POST /api/rest-timer/start  (endTime = now + rest*1000 − 10000)  → Worker Queue
+        └─ full-screen rest timer on screen (decorative, best-effort)
 
-TAP "Tap para iniciar descanso"   (notificationclick, kind:'start')
+TAP "Descanso en curso · Tap para ver"   (notificationclick, kind:'start')
   ├─ SW writes rest-pending /pending = exerciseData + /from-notification flag, focuses app
   ├─ SW postMessage({type:'rest-start'}) to the focused client  ← reliable trigger
-  └─ app onStartNotificationTap():  (also called on focus/visibilitychange/init as fallback)
-        ├─ stage push-pending /pending = { kind:'done', exerciseData }
-        ├─ POST /api/rest-timer/start  (endTime = now + rest*1000 − 10000)  → Worker Queue
-        └─ startRestBanner()  (decorative, best-effort)
+  └─ app checkPendingRest():  (also called on focus/visibilitychange/init as fallback)
+        ├─ rest already running → do nothing, the tap just opened the app
+        └─ no rest running → count one set + arm a new rest (app-closed path)
 
 DELAYED empty push fires (~rest − 10s; latency compensation)
   └─ SW push event: no payload → read push-pending {done} →
-        showDoneNotification("Descanso terminado")  +  showStartNotification()  +  closeDoneAfter(20s)
+        showDoneNotification("Descanso terminado")
+        + showStartNotification(running=false → "Tap para iniciar descanso")
+        + closeDoneAfter(20s)
+  └─ in the app: phase 'done' — the timer stays up asking for the next serie.
 
 TAP "Descanso terminado" (kind:'done') → only opens the app, no timer.
 ```
+
+The set-by-set cycle built on top of this (the 3s window, phase `done`,
+"Siguiente serie") is described in
+`docs/superpowers/specs/2026-09-24-ciclo-de-series-descanso-design.md`.
 
 ### Source of truth & roles
 - The **delayed empty push** is the source of truth for "rest over" (works with the
@@ -102,7 +112,7 @@ TAP "Descanso terminado" (kind:'done') → only opens the app, no timer.
 | `push-pending` | `/pending` | client `_stageNotification` (Iniciar click, tap) | SW `push` handler (empty push) |
 | `rest-pending` | `/pending` | SW `notificationclick` (kind:start) | app `onStartNotificationTap` |
 | `rest-pending` | `/from-notification` | SW `notificationclick` (kind:start) | app `onStartNotificationTap` |
-| `rest-timer` | `/pending` | app `startRestBanner` | app `_checkRestTimer` (banner) |
+| `rest-timer` | `/pending` | app `armRest` (also marks `phase:'done'`) | app `_checkRestTimer` (timer screen) |
 
 ## Worker endpoints
 

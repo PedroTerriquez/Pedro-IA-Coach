@@ -57,9 +57,15 @@ function _repsLabel(ex) {
   return ex && ex.sets && ex.reps ? `${ex.sets}×${ex.reps} · ` : ''
 }
 
-function showStartNotification(ex) {
+// `running` tells which of the two moments this card belongs to: right after
+// "Iniciar" the rest is already on the clock in the app (tapping only opens
+// it), while the one re-shown when a rest ends is the tapeable way to start
+// the next serie with the app closed.
+function showStartNotification(ex, running) {
   return self.registration.showNotification(ex.name || 'Coach Pedro AI', {
-    body: `${_repsLabel(ex)}Tap para iniciar descanso ▸`,
+    body: running
+      ? `${_repsLabel(ex)}Descanso en curso · Tap para ver ▸`
+      : `${_repsLabel(ex)}Tap para iniciar descanso ▸`,
     icon: 'icons/icon-192.png',
     tag: START_TAG,
     renotify: true,
@@ -100,12 +106,12 @@ self.addEventListener('push', (e) => {
     }
     const ex = data.exerciseData
     if (data.kind === 'start' && ex) {
-      await showStartNotification(ex)
+      await showStartNotification(ex, true)
       return
     }
     if (data.kind === 'done' && ex) {
       await showDoneNotification(ex)
-      await showStartNotification(ex)
+      await showStartNotification(ex, false)
       await closeDoneAfter(20000)
       return
     }

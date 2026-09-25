@@ -3,6 +3,7 @@
   import { toast } from '$lib/stores/ui'
   import { settings } from '$lib/stores/settings'
   import { parseRepsDefault } from '$lib/exercise-utils'
+  import { prepCountdown } from '$lib/rest-timer'
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import type { ExerciseLogBlock } from '$lib/types'
   import Sheet from './Sheet.svelte'
@@ -80,7 +81,7 @@
     onNavigate?: ((dir: 'prev' | 'next') => void) | null
     onClose?: (() => void) | null
     onLog?: (() => void) | null
-    onStartRest?: ((data: any) => void) | null
+    onStartRest?: ((data: any) => void | Promise<void>) | null
     onSwap?: (() => void) | null
     onRevert?: (() => void) | null
   } = $props()
@@ -93,6 +94,7 @@
   let pendingWeight = $state(todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0))
   let loggedToday = $state(!!todayLog)
   let iniciarLoading = $state(false)
+  let iniciarSecs = $state(0)
   let showGif = $state(true)
 
   let chatOpen = $state(false)
@@ -208,14 +210,19 @@
     onRevert?.()
   }
 
+  // The rest doesn't start the instant you tap: the start notification waits a
+  // few seconds so you can lock the phone and let it reach the Watch. The
+  // button stays disabled and counts that window down, so it's never unclear
+  // whether the tap registered.
   async function handleIniciar() {
     if (iniciarLoading) return
     iniciarLoading = true
+    const stopCountdown = prepCountdown((s) => { iniciarSecs = s })
     try {
       if (navigator.vibrate) navigator.vibrate(40)
       // Everything here survives the trip through the notification, so it is
       // also what the full-screen rest timer can show while resting.
-      onStartRest?.({
+      await onStartRest?.({
         name: displayName,
         restSec: exercise.rest,
         tag: 'rest-' + Date.now(),
@@ -230,6 +237,7 @@
         maxWeight
       })
     } finally {
+      stopCountdown()
       iniciarLoading = false
     }
   }
@@ -260,9 +268,16 @@
                 <span class="pill-name">Anterior</span>
               </div>
             </button>
-            <button class="iniciar-btn" style="background:{accent}" onclick={handleIniciar} disabled={iniciarLoading}>
+            <button
+              class="iniciar-btn"
+              class:is-preparing={iniciarLoading}
+              style={iniciarLoading ? '' : `background:${accent}`}
+              onclick={handleIniciar}
+              disabled={iniciarLoading}
+              aria-live="polite"
+            >
               {#if iniciarLoading}
-                <span class="iniciar-icon">⏳</span> Enviando...
+                <span class="iniciar-icon">⏳</span> Preparando {iniciarSecs}s
               {:else}
                 <span class="iniciar-icon">⚡</span> Iniciar
               {/if}
@@ -482,6 +497,19 @@
     background: var(--border-medium);
     cursor: default;
     opacity: 0.5;
+  }
+  /* The disabled look has to read as "espera, ya va" and not as "se trabó":
+     flat grey, dashed outline and a slow pulse for the seconds it lasts. */
+  .iniciar-btn.is-preparing {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    border: 1px dashed var(--border-medium);
+    opacity: 1;
+    animation: iniciar-wait 1s ease-in-out infinite;
+  }
+  @keyframes iniciar-wait { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+  @media (prefers-reduced-motion: reduce) {
+    .iniciar-btn.is-preparing { animation: none; }
   }
   .iniciar-icon {
     font-size: 15px;

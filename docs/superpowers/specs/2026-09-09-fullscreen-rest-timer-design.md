@@ -89,6 +89,8 @@ serie N** con dos campos: **peso** (pasos de 2.5) y **reps** (pasos de 1).
 - **No hay botón "Guardar":** tocar un `±` o escribir ya es la intención de
   guardar. Se escribe con 450 ms de debounce y aparece "✓ Guardada". Sin
   interacción no se escribe nada: abrir el timer nunca inventa un registro.
+  (Desde 2026-09-24, "Siguiente serie" y "Terminar" sí guardan lo que muestran
+  los campos aunque no los toques — ver el diseño del ciclo de series.)
 - Debajo, un recap de lo registrado hoy (`S1 62.5kg×10 · S2 …`).
 
 ### Cómo se guarda (uno o detallado)
@@ -117,17 +119,22 @@ ejercicio aunque para entonces ya haya empezado otro descanso.
 Al guardar se emite `window` → `logs-updated`; `today/+page.svelte` lo escucha
 y refresca sus tarjetas (el timer vive en el layout, encima de la página).
 
-## Dos formas de arrancar un descanso
+## Formas de arrancar un descanso
 
-Esta es la parte a no romper. Hay **dos entradas** y comparten toda la maquinaria
-(`armRest`) salvo un paso:
+Esta es la parte a no romper. Todas comparten la maquinaria (`armRest`) y se
+diferencian en dos cosas: si mandan notificación de inicio y si cuentan serie.
 
-| | Botón "Iniciar" (ExerciseDetail) | "Reiniciar descanso" (timer) |
-|---|---|---|
-| Notificación tapeable de inicio | **Sí** — `startRestFromExercise()` la manda y el descanso arranca cuando la tapeas | **No** — arranca en el momento |
-| Push retardado ("Descanso terminado") | Sí | Sí |
-| Cuenta una serie nueva (`setIndex`) | Sí | No — sigues en la misma serie |
-| Función | `startRestFromExercise()` → push → tap → `checkPendingRest()` → `scheduleRestTimer()` | `restartRestTimer()` → `scheduleRestTimer()` |
+> **Actualizado el 2026-09-24** — "Iniciar" ya no espera al tap de la
+> notificación: manda el push y arranca el descanso él mismo. El ciclo completo
+> está en `2026-09-24-ciclo-de-series-descanso-design.md`.
+
+| | "Iniciar" (ExerciseDetail) y "Siguiente serie" (timer) | Tap en la notificación de inicio | "Reiniciar descanso" / "Descansar más" |
+|---|---|---|---|
+| Notificación tapeable de inicio | **Sí** — se manda tras 3 s (botón deshabilitado mientras tanto) | Ya venías de ella | **No** |
+| Arranca el descanso | Sí, al irse el push — sin depender del tap | Solo si no hay uno corriendo | Sí, en el momento |
+| Push retardado ("Descanso terminado") | Sí | Sí | Sí |
+| Cuenta una serie nueva (`setIndex`) | Sí | Sí, cuando arranca uno nuevo | No — sigues en la misma serie |
+| Función | `startRestFromExercise()` / `startNextSet()` | `checkPendingRest()` → `countSetAndArm()` | `restartRestTimer()` |
 
 `restartRestTimer()` cancela el push encolado del descanso en curso y vuelve a
 programar desde cero con `restSec` **actual** (el que muestra "de X:XX"): si

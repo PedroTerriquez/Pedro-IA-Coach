@@ -4,7 +4,7 @@
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { parseRepsDefault } from '$lib/exercise-utils'
   import { getTodaySets, saveSetEntry, type SetEntry } from '$lib/set-log'
-  import type { RestTimerData } from '$lib/rest-timer'
+  import { prepCountdown, type RestTimerData } from '$lib/rest-timer'
 
   let {
     visible = false,
@@ -13,7 +13,9 @@
     onskip = undefined,
     onminimize = undefined,
     onadjust = undefined,
-    onrestart = undefined
+    onrestart = undefined,
+    onnext = undefined,
+    onclose = undefined
   }: {
     visible: boolean
     timer: RestTimerData
@@ -22,6 +24,8 @@
     onminimize?: () => void
     onadjust?: (deltaSec: number) => void
     onrestart?: () => void
+    onnext?: () => void | Promise<void>
+    onclose?: () => void
   } = $props()
 
   const WEIGHT_STEP = 2.5
@@ -42,8 +46,13 @@
   // by the time it fires the timer may already be on another exercise.
   let pending: { exerciseId: string; setNo: number; units: string; entry: SetEntry } | null = null
 
+  // While the next rest's start push is on its way the screen stays up with the
+  // button disabled and counting down, same as "Iniciar" on the exercise sheet.
+  let preparing = $state(0)
+
   let displayName = $derived(getExerciseDisplayName({ name: timer.name }) || timer.name)
-  let isEnding = $derived(remainingMs <= 10000)
+  let isDone = $derived(timer.phase === 'done')
+  let isEnding = $derived(!isDone && remainingMs <= 10000)
   let units = $derived(timer.units || 'kg')
   let setIndex = $derived(timer.setIndex || 0)
   let dots = $derived(Array.from({ length: Math.max(timer.sets || 0, setIndex) }, (_, i) => i + 1))
@@ -78,6 +87,39 @@
   function restart() {
     if (navigator.vibrate) navigator.vibrate(30)
     onrestart?.()
+  }
+
+  // "Siguiente serie": closes the set you just did and starts its rest. The set
+  // is saved with whatever the fields show — if you never touched them, that's
+  // the previous set repeated, which is exactly how a normal workout reads.
+  async function next() {
+    if (preparing) return
+    if (navigator.vibrate) navigator.vibrate(40)
+    // The countdown starts on the tap itself, not after the set is written:
+    // the button must go disabled the instant you touch it.
+    const stop = prepCountdown((s) => { preparing = s })
+    try {
+      await commitShownSet()
+      await onnext?.()
+    } finally {
+      stop()
+      preparing = 0
+    }
+  }
+
+  async function close() {
+    await commitShownSet()
+    onclose?.()
+  }
+
+  // Writes the set on screen, cancelling the debounce so it isn't written
+  // twice. Nothing to save if there's no weight or no reps to stand behind.
+  async function commitShownSet() {
+    if (saveId) { clearTimeout(saveId); saveId = null }
+    pending = null
+    if (!timer.exerciseId || !(weight > 0) || !(reps > 0)) return
+    entries = await saveSetEntry(timer.exerciseId, setNo, { reps, weight }, units)
+    saved = true
   }
 
   // Seeds the two fields: whatever this set already has, else the previous set
@@ -159,38 +201,63 @@
   })
 </script>
 
-{#if visible && remainingMs > 0}
-  <div class="rtf" class:is-ending={isEnding} data-component="RestTimerFullscreen" style="--rt:{accent}" role="dialog" aria-label="Descanso">
+{#if visible && (remainingMs > 0 || isDone)}
+  <div class="rtf" class:is-ending={isEnding} class:is-done={isDone} data-component="RestTimerFullscreen" data-phase={isDone ? 'done' : 'resting'} style="--rt:{accent}" role="dialog" aria-label="Descanso">
 
     <header class="rtf-top">
-      <button class="rtf-icon-btn" type="button" aria-label="Minimizar descanso" onclick={onminimize}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <span class="rtf-status">Descanso</span>
-      <button class="rtf-skip" type="button" aria-label="Saltar descanso" onclick={onskip}>
-        Saltar
-        <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 3.2l8 5.8-8 5.8V3.2z" fill="currentColor"/><rect x="12.5" y="3" width="2" height="12" rx="1" fill="currentColor"/></svg>
-      </button>
+      <!-- Nothing to minimize to once the rest is over: the banner only shows a
+           running clock, so collapsing here would hide "Siguiente serie" with
+           no way back. -->
+      {#if isDone}
+        <span class="rtf-top-gap"></span>
+      {:else}
+        <button class="rtf-icon-btn" type="button" aria-label="Minimizar descanso" onclick={onminimize}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      {/if}
+      <span class="rtf-status">{isDone ? 'Descanso terminado' : 'Descanso'}</span>
+      {#if isDone}
+        <button class="rtf-skip" type="button" aria-label="Terminar ejercicio" onclick={close}>
+          Terminar
+          <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4.5 4.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      {:else}
+        <button class="rtf-skip" type="button" aria-label="Saltar descanso" onclick={onskip}>
+          Saltar
+          <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 3.2l8 5.8-8 5.8V3.2z" fill="currentColor"/><rect x="12.5" y="3" width="2" height="12" rx="1" fill="currentColor"/></svg>
+        </button>
+      {/if}
     </header>
 
     <section class="rtf-clock">
-      <button class="rtf-nudge rtf-nudge-minus" type="button" aria-label="−15 s" onclick={() => adjust(-15)}>
-        <span class="rtf-nudge-n">−15</span><span class="rtf-nudge-u">s</span>
-      </button>
+      {#if !isDone}
+        <button class="rtf-nudge rtf-nudge-minus" type="button" aria-label="−15 s" onclick={() => adjust(-15)}>
+          <span class="rtf-nudge-n">−15</span><span class="rtf-nudge-u">s</span>
+        </button>
+      {/if}
       <div class="rtf-ring-wrap">
         <svg class="rtf-ring" viewBox="0 0 308 308" aria-hidden="true">
           <circle class="rtf-ring-track" cx="154" cy="154" r="150"></circle>
           <circle class="rtf-ring-prog" cx="154" cy="154" r="150" pathLength="100"
-            style="stroke-dashoffset:{ringOffset(remainingMs)}"></circle>
+            style="stroke-dashoffset:{isDone ? 0 : ringOffset(remainingMs)}"></circle>
         </svg>
         <div class="rtf-center">
-          <div class="rtf-time">{fmtClock(remainingMs)}</div>
-          <div class="rtf-total">de {fmtClock(timer.restSec * 1000)}</div>
+          {#if isDone}
+            <div class="rtf-done-mark">
+              <svg width="54" height="42" viewBox="0 0 14 11" fill="none" aria-hidden="true"><path d="M1 5.5l4 4 8-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="rtf-done-label">Listo para la serie {setNo + 1}</div>
+          {:else}
+            <div class="rtf-time">{fmtClock(remainingMs)}</div>
+            <div class="rtf-total">de {fmtClock(timer.restSec * 1000)}</div>
+          {/if}
         </div>
       </div>
-      <button class="rtf-nudge rtf-nudge-plus" type="button" aria-label="+30 s" onclick={() => adjust(30)}>
-        <span class="rtf-nudge-n">+30</span><span class="rtf-nudge-u">s</span>
-      </button>
+      {#if !isDone}
+        <button class="rtf-nudge rtf-nudge-plus" type="button" aria-label="+30 s" onclick={() => adjust(30)}>
+          <span class="rtf-nudge-n">+30</span><span class="rtf-nudge-u">s</span>
+        </button>
+      {/if}
     </section>
 
     {#if dots.length}
@@ -279,9 +346,19 @@
     </section>
 
     <footer class="rtf-actions">
-      <button class="rtf-act rtf-act-restart" type="button" onclick={restart}>
+      {#if isDone}
+        <button class="rtf-act rtf-act-next" type="button" onclick={next} disabled={preparing > 0}>
+          {#if preparing > 0}
+            Preparando… {preparing}s
+          {:else}
+            Siguiente serie · {setNo + 1}
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
+          {/if}
+        </button>
+      {/if}
+      <button class="rtf-act rtf-act-restart" type="button" onclick={restart} disabled={preparing > 0}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a9 9 0 0 1 15.5-5L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a9 9 0 0 1-15.5 5L2.5 16"/></svg>
-        Reiniciar descanso
+        {isDone ? 'Descansar más' : 'Reiniciar descanso'}
       </button>
     </footer>
 
@@ -314,6 +391,7 @@
     color: var(--text-secondary); display: grid; place-items: center; cursor: pointer;
   }
   .rtf-icon-btn:active { transform: scale(0.92); }
+  .rtf-top-gap { width: 38px; }
   .rtf-status {
     display: flex; align-items: center; gap: 8px;
     font-family: var(--font-mono); font-size: 11px; font-weight: 600;
@@ -460,7 +538,27 @@
     border-color: color-mix(in srgb, var(--rt) 26%, transparent);
     background: color-mix(in srgb, var(--rt) 7%, transparent);
   }
+  .rtf-act:disabled { opacity: 0.45; cursor: default; }
+  .rtf-act:disabled:active { transform: none; }
 
+  /* Terminado: "Siguiente serie" is the one action that matters, so it's the
+     only filled button on screen; "Descansar más" drops to secondary. */
+  .rtf-act-next {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    font-family: var(--font-sans); font-size: 17px; font-weight: 600;
+    color: var(--bg); background: var(--rt); border-color: transparent;
+    box-shadow: 0 8px 26px -12px var(--rt);
+  }
+  .rtf-act-next:active { background: color-mix(in srgb, var(--rt) 85%, #000); }
+  .is-done .rtf-act-restart { font-size: 15px; color: var(--text-secondary); border-color: var(--border-medium); background: rgba(255,255,255,0.045); }
+  .is-done .rtf-ring-prog { transition: stroke-dashoffset 0.5s var(--ease-smooth); }
+  .rtf-done-mark { color: var(--rt); display: grid; place-items: center; }
+  .rtf-done-label {
+    margin-top: 12px; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.6px;
+    color: var(--text-secondary); text-align: center;
+  }
+
+  .is-done .rtf-status::before { animation: none; }
   .is-ending { --rt: #ff5b4d; }
   .is-ending .rtf-time { color: #ff5b4d; animation: rtf-blink 1s ease-in-out infinite; }
 
