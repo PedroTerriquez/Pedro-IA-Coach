@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.71'
-const _VER_DESC = 'Tests del botón Iniciar en espera y guardrail de tests'
-const _VER_TIME = '2026-09-25 00:31'
+const _VER_BASE = 'v2.72'
+const _VER_DESC = 'Widget "Sin conexión" cuando no hay internet'
+const _VER_TIME = '2026-09-29 15:26'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

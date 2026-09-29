@@ -7,6 +7,7 @@
   import RestTimerBanner from '$lib/components/RestTimerBanner.svelte'
   import RestTimerFullscreen from '$lib/components/RestTimerFullscreen.svelte'
   import OnboardingBanner from '$lib/components/OnboardingBanner.svelte'
+  import OfflineBanner from '$lib/components/OfflineBanner.svelte'
   import { restBannerState, cancelRestTimer, adjustRestTimer, restartRestTimer, startNextSet } from '$lib/rest-timer'
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
@@ -119,6 +120,8 @@
 {/if}
 
 <Toast visible={toastState.visible} message={toastState.message} isError={toastState.isError} />
+
+<OfflineBanner />
 
 <style>
   .app-shell {

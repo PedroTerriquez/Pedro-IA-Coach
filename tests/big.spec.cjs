@@ -3316,3 +3316,23 @@ test.describe('Hoy — sobreescribir peso tras registrar', () => {
   })
 })
 
+
+// ── Red — widget sin conexión ──
+// Sin internet aparece "Sin conexión" arriba; al volver, "Conectado de nuevo"
+// un momento y se oculta. Con red desde el inicio no se muestra nada.
+test.describe('Red — widget sin conexión', () => {
+  test('shows offline, then reconnected, then hides', async ({ page, context }) => {
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    const banner = page.locator('#offline-banner')
+    await expect(banner).toHaveCount(0)
+
+    await context.setOffline(true)
+    await expect(banner).toBeVisible()
+    await expect(banner).toContainText('Sin conexión')
+
+    await context.setOffline(false)
+    await expect(banner).toContainText('Conectado de nuevo')
+    await expect(banner).toHaveCount(0, { timeout: 5000 })
+  })
+})
