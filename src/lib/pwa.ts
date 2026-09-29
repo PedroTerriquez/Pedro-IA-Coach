@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.74'
-const _VER_DESC = 'Offline: IA deshabilitada, amigos desde caché, chat sin cuelgues'
-const _VER_TIME = '2026-09-29 15:39'
+const _VER_BASE = 'v2.75'
+const _VER_DESC = 'Detecta sin internet real con ping HEAD al abrir la app'
+const _VER_TIME = '2026-09-29 16:00'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

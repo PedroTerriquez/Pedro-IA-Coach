@@ -3322,6 +3322,9 @@ test.describe('Hoy — sobreescribir peso tras registrar', () => {
 // un momento y se oculta. Con red desde el inicio no se muestra nada.
 test.describe('Red — widget sin conexión', () => {
   test('shows offline, then reconnected, then hides', async ({ page, context }) => {
+    // The connectivity check pings the Worker; answer it so the run doesn't
+    // depend on the real Worker being reachable.
+    await page.route(/\/api\/ping/, (route) => route.fulfill({ status: 405, headers: { 'Access-Control-Allow-Origin': '*' } }))
     await page.goto('today')
     await page.waitForTimeout(600)
     const banner = page.locator('#offline-banner')
@@ -3334,6 +3337,40 @@ test.describe('Red — widget sin conexión', () => {
     await context.setOffline(false)
     await expect(banner).toContainText('Conectado de nuevo')
     await expect(banner).toHaveCount(0, { timeout: 5000 })
+  })
+})
+
+// ── Red — datos prendidos pero sin internet ──
+// Con datos móviles prendidos sin señal, navigator.onLine dice true. Al abrir
+// la app se hace un ping barato (HEAD) al Worker: si no responde, "Sin
+// conexión". Al volver a primer plano se revisa de nuevo.
+test.describe('Red — datos prendidos pero sin internet', () => {
+  test('ping failure on open shows offline even with navigator.onLine true', async ({ page }) => {
+    let reachable = false
+    const pings = []
+    await page.route(/\/api\/ping/, (route) => {
+      pings.push(route.request().method())
+      return reachable
+        ? route.fulfill({ status: 405, headers: { 'Access-Control-Allow-Origin': '*' } })
+        : route.abort('internetdisconnected')
+    })
+
+    await page.goto('today')
+    const banner = page.locator('#offline-banner')
+    await expect(banner).toContainText('Sin conexión', { timeout: 8000 })
+    expect(await page.evaluate(() => navigator.onLine)).toBe(true)
+    expect(pings[0]).toBe('HEAD')
+
+    // Coming back to the foreground re-checks: now the server answers.
+    reachable = true
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+    await expect(banner).toContainText('Conectado de nuevo')
+    await expect(banner).toHaveCount(0, { timeout: 5000 })
+
+    // Online: no periodic polling — no extra pings while nothing happens.
+    const count = pings.length
+    await page.waitForTimeout(3000)
+    expect(pings.length).toBe(count)
   })
 })
 
@@ -3443,6 +3480,7 @@ test.describe('Offline — funciones que requieren internet', () => {
 
     // Offline: the Worker is unreachable, so the list comes from the cache.
     await page.unrouteAll()
+    await page.route(/\/api\/ping/, (route) => route.fulfill({ status: 405, headers: { 'Access-Control-Allow-Origin': '*' } }))
     await context.setOffline(true)
     await page.reload()
     await expect(page.locator('#friends-list')).toContainText('Ana', { timeout: 5000 })
