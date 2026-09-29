@@ -9,6 +9,7 @@
   import { onMount, untrack, type Snippet } from 'svelte'
   import Icon from './Icon.svelte'
   import DebugAIToggle from './DebugAIToggle.svelte'
+  import { online } from '$lib/stores/network'
 
   interface Message extends ChatTurn {
     _provider?: string
@@ -70,7 +71,12 @@
     loading = true
     scrollToBottom()
 
-    const result = await send(thread)
+    let result: { reply: string; _provider?: string } | undefined
+    try {
+      result = await send(thread)
+    } catch {
+      result = { reply: 'No pude conectar con el coach. Revisa tu conexión e intenta de nuevo.' }
+    }
     addTurn({ role: 'assistant', content: result?.reply || 'No tengo respuesta ahora mismo.', _provider: result?._provider })
     loading = false
     scrollToBottom()
@@ -78,14 +84,24 @@
 
   function sendMessage(text?: string) {
     const msg = (text || input).trim()
-    if (!msg || loading || busy) return
+    if (!msg || loading || busy || !$online) return
     input = ''
     if (textareaEl) { textareaEl.style.height = 'auto' }
     requestReply(msg)
   }
 
+  // The kickoff waits for a connection: opened offline, the coach starts
+  // talking as soon as the network comes back.
+  let kickoffPending = $state(false)
+
   onMount(() => {
-    if (kickoff) requestReply(kickoff, true)
+    kickoffPending = !!kickoff
+  })
+
+  $effect(() => {
+    if (!kickoffPending || !$online) return
+    kickoffPending = false
+    untrack(() => requestReply(kickoff, true))
   })
 
   function handleKeydown(e: KeyboardEvent) {
@@ -165,19 +181,24 @@
     {@render chips?.(sendMessage)}
     {@render footer?.()}
 
+    {#if !$online}
+      <div class="coach-offline" data-testid="coach-offline">Requiere internet · el coach vuelve cuando tengas conexión</div>
+    {/if}
+
     <div class="coach-input-row">
       <div class="coach-input-wrap">
         <textarea
           placeholder="Escribe tu pregunta…"
           class="coach-input"
           rows="1"
+          disabled={!$online}
           bind:value={input}
           bind:this={textareaEl}
           oninput={autoResize}
           onkeydown={handleKeydown}
         ></textarea>
       </div>
-      <button class="coach-send-btn" style="background:{accent}" onclick={() => sendMessage()} disabled={loading || busy}>
+      <button class="coach-send-btn" style="background:{accent}" onclick={() => sendMessage()} disabled={loading || busy || !$online}>
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 15V3M9 3l-5 5M9 3l5 5" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
@@ -185,6 +206,17 @@
 </div>
 
 <style>
+  .coach-offline {
+    margin: 0 16px 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    background: #2a0f0f;
+    color: #ff6b6b;
+    border: 0.5px solid rgba(255, 107, 107, 0.25);
+  }
   .coach-overlay {
     position: fixed;
     inset: 0;

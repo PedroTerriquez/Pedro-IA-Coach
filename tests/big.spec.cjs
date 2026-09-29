@@ -3397,3 +3397,73 @@ test.describe('Offline — las vistas abren sin internet', () => {
     await context.setOffline(false)
   })
 })
+
+// ── Offline — funciones que requieren internet ──
+// Lo que depende del Worker no falla en silencio: Amigos muestra la última
+// lista guardada y deshabilita la búsqueda; el coach IA dice "Requiere
+// internet". Nada de esto debe dejar errores de JS.
+test.describe('Offline — funciones que requieren internet', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-offline-ai', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+    onboarded: true, username: 'TestUser',
+  }
+
+  test('friends shows the cached list and AI coach is disabled offline', async ({ page, context }) => {
+    test.setTimeout(60000)
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+    const program = {
+      id: 'prog-offline-ai', name: 'Programa Offline IA',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+    const friends = [{ username: 'Ana', streak: 12, exercisedToday: false, gymTime: 7800, lastUpdate: new Date().toISOString() }]
+
+    await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends }) }))
+    await page.route(/\/api\/user\//, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true }) }))
+
+    await page.goto('friends')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: SETTINGS,
+    })
+    await page.reload()
+    await expect(page.locator('#friends-list')).toContainText('Ana', { timeout: 5000 })
+    await expect(page.locator('#friends-cached')).toHaveCount(0)
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 })
+
+    // Offline: the Worker is unreachable, so the list comes from the cache.
+    await page.unrouteAll()
+    await context.setOffline(true)
+    await page.reload()
+    await expect(page.locator('#friends-list')).toContainText('Ana', { timeout: 5000 })
+    await expect(page.locator('#friends-cached')).toContainText('Sin conexión · última actualización')
+    await expect(page.locator('#friend-search-offline')).toContainText('requiere internet')
+    await expect(page.locator('#friend-search-input')).toHaveCount(0)
+
+    // AI coach button in the exercise detail is disabled offline.
+    await page.goto('plan')
+    const exerciseRow = page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })
+    await expect(exerciseRow).toBeVisible({ timeout: 5000 })
+    await exerciseRow.click()
+    const coachBtn = page.locator('.coach-cyber-btn')
+    await expect(coachBtn).toBeDisabled()
+    await expect(coachBtn).toContainText('Requiere internet')
+
+    // Back online: the coach becomes available again.
+    await context.setOffline(false)
+    await expect(coachBtn).toBeEnabled()
+    await expect(coachBtn).toContainText('Técnica · Variantes · Dolor')
+
+    expect(errors).toEqual([])
+  })
+})

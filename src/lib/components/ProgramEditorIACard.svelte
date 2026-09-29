@@ -2,6 +2,7 @@
   import Button from './Button.svelte'
   import CyberpunkCard from './CyberpunkCard.svelte'
   import DebugAIToggle from './DebugAIToggle.svelte'
+  import { online } from '$lib/stores/network'
 
   let {
     accent = 'var(--accent)',
@@ -22,7 +23,7 @@
       <DebugAIToggle label="Program Editor IA" {accent} />
     </div>
     <div class="card-subtitle">Platica con el coach sobre tu programa actual: qué está bien, qué cambiar. Cuando estén de acuerdo, aplica los cambios.</div>
-    <Button variant="primary" {accent} fullWidth onclick={onopen}>Mejorar programa actual</Button>
+    <Button variant="primary" {accent} fullWidth onclick={onopen} disabled={!$online}>{$online ? 'Mejorar programa actual' : 'Requiere internet'}</Button>
   </CyberpunkCard>
 </div>
 

@@ -17,6 +17,29 @@
   import TextInput from '$lib/components/TextInput.svelte'
   import Button from '$lib/components/Button.svelte'
   import SectionLabel from '$lib/components/SectionLabel.svelte'
+  import { online } from '$lib/stores/network'
+
+  const FRIENDS_CACHE_KEY = 'friends-cache'
+
+  // Last friends list we got from the Worker, shown as-is while offline.
+  function readFriendsCache(): { friends: any[]; savedAt: number } | null {
+    try {
+      const raw = localStorage.getItem(FRIENDS_CACHE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }
+
+  function writeFriendsCache(list: any[]) {
+    try {
+      localStorage.setItem(FRIENDS_CACHE_KEY, JSON.stringify({ friends: list, savedAt: Date.now() }))
+    } catch {}
+  }
+
+  function formatSavedAt(ts: number): string {
+    return new Date(ts).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  }
 
   let username = $state('')
   let inputUsername = $state('')
@@ -37,6 +60,7 @@
   let searchTimer: ReturnType<typeof setTimeout> | null = null
   let accent = $derived($settings.accentColor || '#d4ff3a')
   let settingsLoaded = $state(false)
+  let cachedAt = $state<number | null>(null)
 
   onMount(async () => {
     const s = await getSettings()
@@ -88,8 +112,12 @@
       const res = await fetch(`${PUSH_SERVER_URL}/api/friends/list?username=${encodeURIComponent(username)}`)
       const data = await res.json()
       friends = data.friends || []
+      cachedAt = null
+      writeFriendsCache(friends)
     } catch {
-      friends = []
+      const cache = readFriendsCache()
+      friends = cache?.friends || []
+      cachedAt = cache?.savedAt ?? null
     } finally {
       loading = false
     }
@@ -211,6 +239,10 @@
   }
 
   async function removeFriend(friendUsername: string) {
+    if (!$online) {
+      toast.show('Requiere internet', true)
+      return
+    }
     try {
       const res = await fetch(`${PUSH_SERVER_URL}/api/friends/remove`, {
         method: 'POST',
@@ -281,6 +313,9 @@
       {#if loading}
         <EmptyState class="friends-empty" message="Cargando amigos..." />
       {:else}
+        {#if cachedAt}
+          <div class="friends-cached" id="friends-cached">Sin conexión · última actualización {formatSavedAt(cachedAt)}</div>
+        {/if}
         <Leaderboard {friends} {myStreak} {myGymSeconds} myUsername={username} {accent} onremove={removeFriend} />
       {/if}
     </div>
@@ -289,6 +324,9 @@
       <SectionLabel {accent}>Buscar</SectionLabel>
     </div>
     <div class="section-pad">
+      {#if !$online}
+        <EmptyState id="friend-search-offline" class="friends-empty" message="Buscar amigos requiere internet" />
+      {:else}
       <SearchInput id="friend-search-input" value={searchQuery} placeholder="🔍 Buscar usuario..." oninput={(val) => searchQuery = val} />
       <SearchResults
         query={searchQuery}
@@ -298,6 +336,7 @@
         {accent}
         onadd={addFriend}
       />
+      {/if}
     </div>
   </div>
 {/if}
@@ -312,5 +351,10 @@
   }
   .section-label-wrap {
     padding: 0 20px;
+  }
+  .friends-cached {
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--text-tertiary);
   }
 </style>

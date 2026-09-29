@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.73'
-const _VER_DESC = 'App offline: vistas precacheadas, imagen default y fuentes locales'
-const _VER_TIME = '2026-09-29 15:33'
+const _VER_BASE = 'v2.74'
+const _VER_DESC = 'Offline: IA deshabilitada, amigos desde caché, chat sin cuelgues'
+const _VER_TIME = '2026-09-29 15:39'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

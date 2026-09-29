@@ -17,6 +17,7 @@
   import StatsGrid from './StatsGrid.svelte'
   import StatBlock from './StatBlock.svelte'
   import DebugAIToggle from './DebugAIToggle.svelte'
+  import { online } from '$lib/stores/network'
 
   function getToday(): string {
     const d = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
@@ -299,7 +300,7 @@
 
         <!-- Coach IA button -->
         <div class="coach-bar" data-component="CoachBar">
-          <button class="coach-cyber-btn" style="--cyber-accent:{accent};border-color:color-mix(in srgb, {accent} 22%, transparent);background:color-mix(in srgb, {accent} 6%, var(--surface))" onclick={() => chatOpen = true}>
+          <button class="coach-cyber-btn" style="--cyber-accent:{accent};border-color:color-mix(in srgb, {accent} 22%, transparent);background:color-mix(in srgb, {accent} 6%, var(--surface))" disabled={!$online} onclick={() => chatOpen = true}>
             <span class="coach-cyber-scanline"></span>
             <span class="coach-cyber-topline"></span>
             <div class="coach-cyber-inner">
@@ -308,7 +309,7 @@
               </span>
               <div class="coach-cyber-text">
                 <span class="coach-cyber-label">{'>'} Preguntar al coach</span>
-                <span class="coach-cyber-sub">Técnica · Variantes · Dolor</span>
+                <span class="coach-cyber-sub">{$online ? 'Técnica · Variantes · Dolor' : 'Requiere internet'}</span>
               </div>
               <span class="coach-cyber-arrow" style="color:{accent}">›</span>
             </div>
@@ -536,6 +537,10 @@
     overflow: hidden;
     text-align: left;
     transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .coach-cyber-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .coach-cyber-btn:hover {
     transform: scale(1.01);

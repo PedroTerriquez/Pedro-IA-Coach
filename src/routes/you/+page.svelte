@@ -39,6 +39,7 @@
   import { lastAIExchange, DEBUG_PASSWORD, formatExchange, type AIExchange } from '$lib/stores/debug'
   import DebugAIToggle from '$lib/components/DebugAIToggle.svelte'
   import CyberpunkCard from '$lib/components/CyberpunkCard.svelte'
+  import { online } from '$lib/stores/network'
   import type { Exercise, ExerciseLog, Program, Settings } from '$lib/types'
 
   let activeTab = $state<'perfil' | 'programas' | 'ejercicios' | 'datos'>('perfil')
@@ -636,7 +637,7 @@
           </div>
           <div id="ai-status" class="status-text">{aiStatus}</div>
           <div class="submit-wrap-ia">
-            <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI}>{importingAI ? '⏳ Procesando…' : 'Importar con IA'}</Button>
+            <Button variant="primary" {accent} fullWidth onclick={submitAIImport} disabled={importingAI || !$online}>{importingAI ? '⏳ Procesando…' : $online ? 'Importar con IA' : 'Requiere internet'}</Button>
           </div>
         </CyberpunkCard>
 
@@ -683,7 +684,7 @@
           </div>
 
           <div class="submit-wrap-ia">
-            <Button variant="primary" {accent} fullWidth onclick={openGenerateChat}>Generar programa con IA</Button>
+            <Button variant="primary" {accent} fullWidth onclick={openGenerateChat} disabled={!$online}>{$online ? 'Generar programa con IA' : 'Requiere internet'}</Button>
           </div>
         </CyberpunkCard>
 
