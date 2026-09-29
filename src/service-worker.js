@@ -1,7 +1,10 @@
-import { build, files, version } from '$service-worker'
+import { base, build, files, prerendered, version } from '$service-worker'
 
 const CACHE = `cache-${version}`
-const ASSETS = [...build, ...files]
+// App shell = the SPA fallback page every route can boot from offline.
+const SHELL = `${base}/`
+const PLACEHOLDER_IMG = `${base}/dumbbell-placeholder.jpg`
+const ASSETS = [...new Set([...build, ...files, ...prerendered, SHELL])]
 
 const START_TAG = 'rest-start'
 const DONE_TAG = 'rest-done'
@@ -24,18 +27,35 @@ self.addEventListener('activate', (e) => {
   )
 })
 
+async function fetchAndCache(request) {
+  const res = await fetch(request)
+  const clone = res.clone()
+  caches.open(CACHE).then((cache) => cache.put(request, clone))
+  return res
+}
+
+// Offline fallback for what isn't cached: navigations boot from the app
+// shell (IndexedDB has the data), images show the default dumbbell.
+function offlineFallback(request) {
+  if (request.mode === 'navigate') return caches.match(SHELL)
+  if (request.destination === 'image') return caches.match(PLACEHOLDER_IMG)
+  return undefined
+}
+
+async function networkFirst(request) {
+  try {
+    return await fetchAndCache(request)
+  } catch (err) {
+    const cached = (await caches.match(request)) || (await offlineFallback(request))
+    if (cached) return cached
+    throw err
+  }
+}
+
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return
   if (e.request.url.includes('/api/')) return
-  e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        const clone = res.clone()
-        caches.open(CACHE).then((cache) => cache.put(e.request, clone))
-        return res
-      })
-      .catch(() => caches.match(e.request))
-  )
+  e.respondWith(networkFirst(e.request))
 })
 
 self.addEventListener('message', (e) => {

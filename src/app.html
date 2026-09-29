@@ -9,8 +9,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="apple-touch-icon" href="%sveltekit.assets%/icons/icon-192.png" />
   <link rel="manifest" href="%sveltekit.assets%/manifest.json" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <!-- Self-hosted (static/fonts) so they're precached and work offline -->
+  <style>
+    @font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 300 700; font-display: swap; src: url(%sveltekit.assets%/fonts/space-grotesk.woff2) format('woff2'); }
+    @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 100 800; font-display: swap; src: url(%sveltekit.assets%/fonts/jetbrains-mono.woff2) format('woff2'); }
+  </style>
   %sveltekit.head%
 </head>
 <body data-sveltekit-prerender="true">

@@ -3336,3 +3336,64 @@ test.describe('Red — widget sin conexión', () => {
     await expect(banner).toHaveCount(0, { timeout: 5000 })
   })
 })
+
+// ── Offline — las vistas abren sin internet ──
+// Tras una visita con red, el service worker tiene todo precacheado: sin
+// internet las rutas abren (aunque no se hayan visitado), recargar funciona y
+// las imágenes que no están en caché caen al placeholder de la mancuerna.
+test.describe('Offline — las vistas abren sin internet', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-offline', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+    onboarded: true,
+  }
+
+  test('plan, history and reload work offline; uncached images use the placeholder', async ({ page, context }) => {
+    test.setTimeout(60000)
+    const program = {
+      id: 'prog-offline', name: 'Programa Offline',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'BUILD',
+        days: buildDayArray({
+          name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+          exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+        }),
+      }],
+    }
+
+    await page.goto('today')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
+      program,
+      settings: SETTINGS,
+    })
+    await page.reload()
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 })
+
+    await context.setOffline(true)
+
+    await page.goto('plan')
+    await expect(page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('#offline-banner')).toContainText('Sin conexión')
+
+    await page.goto('history')
+    await expect(page.getByRole('button', { name: 'Constancia' })).toBeVisible({ timeout: 5000 })
+
+    await page.goto('today')
+    await page.reload()
+    await expect(page.locator('#offline-banner')).toBeVisible()
+
+    // An image never seen before can't come from the network → placeholder.
+    const width = await page.evaluate(() => new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve(img.naturalWidth)
+      img.onerror = () => resolve(0)
+      img.src = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/offline-test/0.jpg'
+    }))
+    expect(width).toBe(1200)
+
+    await context.setOffline(false)
+  })
+})
