@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.75'
-const _VER_DESC = 'Detecta sin internet real con ping HEAD al abrir la app'
-const _VER_TIME = '2026-09-29 16:00'
+const _VER_BASE = 'v2.76'
+const _VER_DESC = 'Arranca aunque los datos se cuelguen sin responder'
+const _VER_TIME = '2026-10-03 19:19'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

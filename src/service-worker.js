@@ -4,6 +4,7 @@ const CACHE = `cache-${version}`
 // App shell = the SPA fallback page every route can boot from offline.
 const SHELL = `${base}/`
 const PLACEHOLDER_IMG = `${base}/dumbbell-placeholder.jpg`
+const IMMUTABLE_PREFIX = `${base}/_app/immutable/`
 const ASSETS = [...new Set([...build, ...files, ...prerendered, SHELL])]
 
 const START_TAG = 'rest-start'
@@ -27,11 +28,36 @@ self.addEventListener('activate', (e) => {
   )
 })
 
+// A network that connects but never answers (mobile data with no coverage, a
+// black-holed DNS, a captive portal) leaves `fetch` pending forever: with no
+// deadline the navigation never settles and the app won't boot even though the
+// cache is full. So every network attempt has a deadline, and past it we serve
+// the local copy.
+const NET_TIMEOUT_MS = 3000
+
 async function fetchAndCache(request) {
-  const res = await fetch(request)
-  const clone = res.clone()
-  caches.open(CACHE).then((cache) => cache.put(request, clone))
-  return res
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), NET_TIMEOUT_MS)
+  try {
+    const res = await fetch(request, { signal: ctrl.signal })
+    // Only real answers get stored: a 404 page cached under an image URL would
+    // be served forever. Opaque cross-origin responses count as real.
+    if (res.ok || res.type === 'opaque') {
+      const clone = res.clone()
+      caches.open(CACHE).then((cache) => cache.put(request, clone))
+    }
+    return res
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// Build assets carry a hash of their content in the file name, so a cached hit
+// is always the right answer: there is nothing fresher to ask the network for.
+async function cacheFirst(request) {
+  const cached = await caches.match(request)
+  if (cached) return cached
+  return await fetchAndCache(request)
 }
 
 // Offline fallback for what isn't cached: navigations boot from the app
@@ -55,7 +81,8 @@ async function networkFirst(request) {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return
   if (e.request.url.includes('/api/')) return
-  e.respondWith(networkFirst(e.request))
+  const immutable = new URL(e.request.url).pathname.startsWith(IMMUTABLE_PREFIX)
+  e.respondWith(immutable ? cacheFirst(e.request) : networkFirst(e.request))
 })
 
 self.addEventListener('message', (e) => {

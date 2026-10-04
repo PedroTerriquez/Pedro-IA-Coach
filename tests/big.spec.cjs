@@ -3505,3 +3505,93 @@ test.describe('Offline — funciones que requieren internet', () => {
     expect(errors).toEqual([])
   })
 })
+
+// ── Offline — red que conecta pero no contesta ──
+// Los datos móviles a menudo aceptan la conexión y se quedan colgados sin
+// entregar nada. Un fetch sin plazo muerto nunca resuelve, así que la
+// navegación se quedaba esperando en vez de arrancar desde la caché: la app
+// no abría hasta apagar los datos. Este test reproduce ese servidor mudo
+// (acepta y nunca responde) y exige que la app arranque igual.
+test.describe('Offline — la red que se cuelga sin responder', () => {
+  test('la app arranca desde caché cuando la red conecta pero no contesta', async ({ page }) => {
+    test.setTimeout(120000)
+    const http = require('http')
+    const fs = require('fs')
+    const path = require('path')
+
+    // Sirve el mismo build que el preview, pero con un interruptor: colgado
+    // las peticiones se quedan abiertas sin responder nunca.
+    const ROOT = path.join(__dirname, '..', 'build')
+    const MIME = {
+      '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
+      '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
+      '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.txt': 'text/plain',
+    }
+    let stuck = false
+    let stuckBuildHits = 0
+    const server = http.createServer((req, res) => {
+      if (req.method === 'POST' && req.url.startsWith('/__stuck')) {
+        stuck = req.url.includes('on')
+        res.writeHead(200, { 'content-type': 'text/plain' })
+        res.end(stuck ? 'on' : 'off')
+        return
+      }
+      let url = req.url.split('?')[0]
+      if (url.startsWith('/Pedro-IA-Coach')) url = url.slice('/Pedro-IA-Coach'.length) || '/'
+      if (url === '/') url = '/index.html'
+      if (stuck) {
+        // Red muda: ni responde ni falla. Se cuenta lo que le piden para
+        // comprobar que el código de la app ni siquiera se pide.
+        if (url.includes('/_app/immutable/')) stuckBuildHits++
+        return
+      }
+      let file = path.join(ROOT, url)
+      if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+        const asHtml = `${file}.html`
+        file = fs.existsSync(asHtml) ? asHtml : path.join(ROOT, 'index.html')
+      }
+      if (!fs.existsSync(file)) {
+        res.writeHead(404)
+        res.end('not found')
+        return
+      }
+      res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' })
+      fs.createReadStream(file).pipe(res)
+    })
+    await new Promise((r) => server.listen(0, r))
+    const base = `http://localhost:${server.address().port}/Pedro-IA-Coach/`
+
+    const setStuck = (on) => new Promise((resolve, reject) => {
+      const req = http.request({ host: 'localhost', port: server.address().port, path: `/__stuck?${on ? 'on' : 'off'}`, method: 'POST' }, (res) => {
+        res.resume()
+        res.on('end', resolve)
+      })
+      req.on('error', reject)
+      req.end()
+    })
+
+    try {
+      // Visita con red para que el SW precachee, y otra recarga para que
+      // controlara la página.
+      await page.goto(base)
+      await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 20000 })
+      await page.reload()
+      await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 20000 })
+      await expect(page.locator('[data-component="TabBar"]')).toBeVisible()
+
+      // Ahora la red se cuelga: la navegación debe arrancar igual desde caché.
+      await setStuck(true)
+      stuckBuildHits = 0
+      await page.goto(base, { timeout: 15000 })
+      await expect(page.locator('[data-component="TabBar"]')).toBeVisible({ timeout: 15000 })
+
+      // Y ni siquiera le pide su código a la red: los assets con hash se
+      // sirven directo de la caché.
+      expect(stuckBuildHits).toBe(0)
+
+      await setStuck(false)
+    } finally {
+      await new Promise((r) => server.close(r))
+    }
+  })
+})
