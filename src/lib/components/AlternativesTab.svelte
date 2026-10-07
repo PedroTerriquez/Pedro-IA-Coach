@@ -72,14 +72,12 @@
     {/if}
   </div>
 
-  <div class="alt-label">
-    {#if searching}
+  {#if searching}
+    <div class="alt-label">
       <span class="alt-label-dot" style="background:{accent}"></span>
       {results.length} resultado{results.length === 1 ? '' : 's'}
-    {:else}
-      ¿Aparato ocupado? Prueba una alternativa
-    {/if}
-  </div>
+    </div>
+  {/if}
 
   {#if searching && results.length === 0}
     <div class="alt-empty">

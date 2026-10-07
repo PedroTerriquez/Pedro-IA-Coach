@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.79'
-const _VER_DESC = 'Buscador de ejercicios en Alternativas sobre todo el diccionario'
-const _VER_TIME = '2026-10-06 22:48'
+const _VER_BASE = 'v2.80'
+const _VER_DESC = 'Alternativas: buscador arriba de la lista, sin copy de aparato ocupado'
+const _VER_TIME = '2026-10-06 23:58'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
