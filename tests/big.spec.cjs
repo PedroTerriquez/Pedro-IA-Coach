@@ -2540,6 +2540,155 @@ test.describe('Rest timer — ciclo de series', () => {
   })
 })
 
+test.describe('Rest timer — confirmar series al terminar', () => {
+  // After the rest of the LAST serie there is no next serie to hand over to:
+  // the timer turns into "Confirma tus series", one row per serie, where the
+  // whole exercise is reviewed, corrected and saved in one go.
+  test('the last rest ends on a summary where every serie can be edited and saved', async ({ page }) => {
+    await page.route(/push\/start/, async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'sent' }) })
+    })
+    await page.route(/rest-timer\/(start|cancel)/, async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+    })
+
+    const todayLog = () => page.evaluate(async () => {
+      const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+      const today = d.toISOString().slice(0, 10)
+      const req = indexedDB.open('coach-pedro-ai', 2)
+      const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error) })
+      const store = db.transaction('exerciseLogs', 'readonly').objectStore('exerciseLogs')
+      const all = await new Promise((res, rej) => { const r = store.getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) })
+      db.close()
+      return all.find(l => l.exerciseId === 'ex-bench' && l.date === today) || null
+    })
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+
+    await seedSetCounter(page, 'ex-bench', 0)
+    await page.evaluate(async () => {
+      const cache = await caches.open('rest-pending')
+      await cache.put('/pending', new Response(JSON.stringify({
+        name: 'Press Banca', restSec: 3, sets: 3, reps: '8-10', exerciseId: 'ex-bench',
+        muscle: 'Chest', units: 'kg', lastWeight: 60, maxWeight: 70,
+      })))
+      await cache.put('/from-notification', new Response('1'))
+      window.dispatchEvent(new Event('focus'))
+      await new Promise(r => setTimeout(r, 300))
+    })
+
+    const timer = page.locator('[data-component="RestTimerFullscreen"]')
+    await expect(timer).toBeVisible({ timeout: 3000 })
+
+    // Serie 1 untouched (60×10). A rest that is not the last one still ends on
+    // the usual "Siguiente serie" screen, never on the summary.
+    await expect(timer).toHaveAttribute('data-phase', 'done', { timeout: 8000 })
+    await expect(timer.locator('.rs-row')).toHaveCount(0)
+    await timer.locator('.rtf-act-next').click()
+
+    // Serie 2 heavier: 62.5×10.
+    await expect(timer).toHaveAttribute('data-phase', 'resting', { timeout: 1500 })
+    await timer.getByRole('button', { name: 'Más peso' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'done', { timeout: 8000 })
+    await expect(timer.locator('.rtf-act-next')).toContainText('Siguiente serie · 3')
+    await timer.locator('.rtf-act-next').click()
+
+    // Serie 3 (the last one) falls short of the 8-10 target: 62.5×7.
+    await expect(timer).toHaveAttribute('data-phase', 'resting', { timeout: 1500 })
+    await expect(timer.locator('.rtf-serie-label')).toContainText('Serie 3 de 3')
+    for (let i = 0; i < 3; i++) await timer.getByRole('button', { name: 'Menos reps' }).click()
+
+    // Its rest runs out → the summary, not "Siguiente serie · 4".
+    await expect(timer).toHaveAttribute('data-phase', 'summary', { timeout: 8000 })
+    await expect(timer).toContainText('Completado')
+    await expect(timer).toContainText('Confirma tus series')
+    await expect(timer.locator('.rs-eyebrow')).toContainText(/press/i)
+    await expect(timer.locator('.rtf-act-next')).toHaveCount(0)
+    await expect(timer.locator('.rs-meta')).toContainText('objetivo 8–10 reps')
+
+    const rows = timer.locator('.rs-row')
+    await expect(rows).toHaveCount(3)
+    await expect(rows.nth(0)).toContainText('60kg×10reps')
+    await expect(rows.nth(0)).toContainText('en rango')
+    await expect(rows.nth(1)).toContainText('62.5kg×10reps')
+    await expect(rows.nth(2)).toContainText('62.5kg×7reps')
+    await expect(rows.nth(2)).toContainText('-1 rep')
+    // 60×10 + 62.5×10 + 62.5×7
+    await expect(timer.locator('.rs-vol')).toHaveText(/1,?663 kg/)
+
+    // Getting here already closed the last serie, exactly as registered.
+    expect((await todayLog()).blocks).toEqual([
+      { sets: 1, reps: 10, weight: 60 },
+      { sets: 1, reps: 10, weight: 62.5 },
+      { sets: 1, reps: 7, weight: 62.5 },
+    ])
+
+    const save = timer.locator('.rs-save')
+    await expect(save).toContainText('Guardar 3 series')
+    await expect(save).not.toContainText('editada')
+
+    // Edit serie 3 and take it back: "Restablecer" returns what was registered.
+    await timer.getByRole('button', { name: 'Serie 3', exact: true }).click()
+    await expect(timer.locator('.rs-ed-title')).toContainText('Serie 3 de 3')
+    await expect(timer.locator('.rs-ed-prev')).toContainText('Registrado: 62.5 kg × 7')
+    await expect(timer.getByRole('button', { name: 'Copiar a las siguientes' })).toBeDisabled()
+    await timer.getByRole('button', { name: 'Más reps' }).click()
+    await expect(rows.nth(2)).toContainText('62.5kg×8reps')
+    await expect(rows.nth(2)).toContainText('editada')
+    await expect(save).toContainText('Guardar 3 series · 1 editada')
+    await timer.getByRole('button', { name: 'Restablecer' }).click()
+    await expect(rows.nth(2)).toContainText('62.5kg×7reps')
+    await expect(save).not.toContainText('editada')
+
+    // Serie 1 up by the chosen step (±5), typed reps, then copied down.
+    await timer.getByRole('button', { name: 'Serie 1', exact: true }).click()
+    await timer.getByRole('button', { name: '±5', exact: true }).click()
+    await timer.getByRole('button', { name: 'Más peso' }).click()
+    await expect(timer.getByLabel('Peso', { exact: true })).toHaveValue('65')
+    await timer.getByLabel('Reps', { exact: true }).fill('9')
+    await expect(rows.nth(0)).toContainText('65kg×9reps')
+    await timer.getByRole('button', { name: 'Siguiente serie' }).click()
+    await expect(timer.locator('.rs-ed-title')).toContainText('Serie 2 de 3')
+    await timer.getByRole('button', { name: 'Serie 1', exact: true }).click()
+    await timer.getByRole('button', { name: 'Copiar a las siguientes' }).click()
+    await expect(rows.nth(1)).toContainText('65kg×9reps')
+    await expect(rows.nth(2)).toContainText('65kg×9reps')
+    await expect(save).toContainText('Guardar 3 series · 3 editadas')
+
+    // Nothing is written until "Guardar".
+    expect((await todayLog()).blocks).toHaveLength(3)
+
+    // The whole view fits every phone: the save button stays on screen and
+    // nothing scrolls sideways.
+    for (const size of [
+      { width: 320, height: 568 },
+      { width: 375, height: 667 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(size)
+      await page.waitForTimeout(300)
+      const box = await save.boundingBox()
+      expect(box.y + box.height, `save off screen at ${size.width}`).toBeLessThanOrEqual(size.height)
+      const head = await timer.locator('.rs-title').boundingBox()
+      expect(head.y).toBeGreaterThanOrEqual(0)
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+      expect(overflow, `horizontal overflow at ${size.width}`).toBeLessThanOrEqual(0)
+      const pills = await timer.locator('.rs-pill').evaluateAll(els => els.filter(el => el.scrollWidth > el.clientWidth + 1).length)
+      expect(pills, `clipped pill at ${size.width}`).toBe(0)
+    }
+
+    // Guardar rewrites today's log from the confirmed rows and closes the timer.
+    await save.click()
+    await expect(timer).toHaveCount(0)
+    const log = await todayLog()
+    expect(log.weight).toBe(65)
+    expect(log.sets).toBe(3)
+    expect(log.reps).toBe('9')
+    expect(log.blocks).toBeUndefined()
+  })
+})
+
 // Renamed 2026-10-06 (approved by Pedro) from 'Rest timer — "Iniciar"
 // deshabilitado durante la espera'. That suite promised a 3s wait you could
 // see: the button went grey and dashed, counted "Preparando 3s…2s…1s", and only

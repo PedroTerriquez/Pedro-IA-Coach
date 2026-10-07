@@ -3,7 +3,8 @@
   import NumberStepper from './NumberStepper.svelte'
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { parseRepsDefault } from '$lib/exercise-utils'
-  import { getTodaySets, saveSetEntry, type SetEntry } from '$lib/set-log'
+  import RestSetsSummary from './RestSetsSummary.svelte'
+  import { getTodaySets, saveSetEntry, persistSets, type SetEntry } from '$lib/set-log'
   import type { RestTimerData } from '$lib/rest-timer'
 
   let {
@@ -49,8 +50,17 @@
   // Keeps a double tap on "Siguiente serie" from counting two sets.
   let advancing = false
 
+  // "Confirma tus series": the rows to review once the last serie's rest is
+  // over. Null until they are read back from today's log.
+  let summary = $state<SetEntry[] | null>(null)
+  let summaryKey = ''
+  let loading: Promise<void> = Promise.resolve()
+
   let displayName = $derived(getExerciseDisplayName({ name: timer.name }) || timer.name)
   let isDone = $derived(timer.phase === 'done')
+  // No next serie to hand over to: the finished rest of the last serie asks you
+  // to confirm the whole exercise instead.
+  let isSummary = $derived(isDone && !!timer.exerciseId && timer.sets > 0 && (timer.setIndex || 0) >= timer.sets)
   let isEnding = $derived(!isDone && remainingMs <= 10000)
   let units = $derived(timer.units || 'kg')
   let setIndex = $derived(timer.setIndex || 0)
@@ -152,6 +162,25 @@
     }
   }
 
+  // Closes the last serie with what its fields show (same rule as "Siguiente
+  // serie") and lists every serie of the exercise. Series nobody registered are
+  // shown as a repeat of the one before, ready to be corrected.
+  async function openSummary() {
+    await loading
+    await commitShownSet()
+    const fallback = { weight: timer.lastWeight || 0, reps: parseRepsDefault(timer.reps) }
+    const rows = entries.map(e => ({ ...e }))
+    while (rows.length < Math.max(timer.sets, setIndex)) rows.push({ ...(rows[rows.length - 1] || fallback) })
+    summary = rows
+  }
+
+  // "Guardar N series": today's log is rewritten from the confirmed rows.
+  async function saveSummary(sets: SetEntry[]) {
+    const done = sets.filter(s => s.weight > 0 && s.reps > 0)
+    if (done.length) await persistSets(timer.exerciseId, done, units)
+    onclose?.()
+  }
+
   function stepWeight(delta: number) {
     weight = Math.max(0, +(weight + delta).toFixed(1))
     if (navigator.vibrate) navigator.vibrate(10)
@@ -183,7 +212,15 @@
     const key = `${timer.exerciseId}#${setNo}`
     if (!visible || !timer.exerciseId || key === loadedKey) return
     loadedKey = key
-    loadSets()
+    loading = loadSets()
+  })
+
+  $effect(() => {
+    const key = `${timer.exerciseId}#${setNo}`
+    if (!visible || !isSummary) { summary = null; summaryKey = ''; return }
+    if (key === summaryKey) return
+    summaryKey = key
+    openSummary()
   })
 
   $effect(() => {
@@ -198,8 +235,20 @@
 </script>
 
 {#if visible && (remainingMs > 0 || isDone)}
-  <div class="rtf" class:is-ending={isEnding} class:is-done={isDone} data-component="RestTimerFullscreen" data-phase={isDone ? 'done' : 'resting'} style="--rt:{accent}" role="dialog" aria-label="Descanso">
+  <div class="rtf" class:is-ending={isEnding} class:is-done={isDone} data-component="RestTimerFullscreen" data-phase={isSummary ? 'summary' : isDone ? 'done' : 'resting'} style="--rt:{accent}" role="dialog" aria-label={isSummary ? 'Confirma tus series' : 'Descanso'}>
 
+    {#if isSummary}
+      {#if summary}
+        <RestSetsSummary
+          name={displayName}
+          reps={timer.reps}
+          {units}
+          entries={summary}
+          onsave={saveSummary}
+          onclose={onclose}
+        />
+      {/if}
+    {:else}
     <header class="rtf-top">
       <!-- Nothing to minimize to once the rest is over: the banner only shows a
            running clock, so collapsing here would hide "Siguiente serie" with
@@ -353,6 +402,7 @@
         {isDone ? 'Descansar más' : 'Reiniciar descanso'}
       </button>
     </footer>
+    {/if}
 
   </div>
 {/if}
