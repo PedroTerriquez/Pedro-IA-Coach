@@ -13,7 +13,7 @@
 - **Device**: iPhone with iOS (PWA installed from Safari)
 - **Browser**: Safari (PWA standalone mode)
 - **Notifications**: Web Push via Cloudflare Worker; `showNotification()` actions NOT supported on iOS
-- **Watch mirror**: Notifications mirror to Apple Watch, but long-press actions don't work on iOS. "Iniciar" waits 3s (time to lock the phone, so the push reaches the Watch — the button is disabled and counting meanwhile), sends the start notification and then starts the rest itself; the tap only opens the app on a rest that's already running. When the rest ends, the full-screen timer stays up in phase `done` asking for the next serie. Full cycle: `docs/superpowers/specs/2026-09-24-ciclo-de-series-descanso-design.md`
+- **Watch mirror**: Notifications mirror to Apple Watch, but long-press actions don't work on iOS. "Iniciar" starts the rest on the tap (timer up, delayed push queued) and sends the start notification 3s later (time to lock the phone, so it reaches the Watch) without blocking; the tap only opens the app on a rest that's already running. When the rest ends, the full-screen timer stays up in phase `done` asking for the next serie. Full cycle: `docs/superpowers/specs/2026-09-24-ciclo-de-series-descanso-design.md`
 
 ## Project Structure
 ```
@@ -253,7 +253,7 @@ today.js → sendPushNotification()
 3. `scheduleRestTimer()` sends `pushEndTime = endTime - 10000` — the push arrives ~10s before rest ends.
 4. `cancelRestTimer()` POSTs `/api/rest-timer/cancel` — Worker sets KV `cancel_{tag}` so the queue skips delivery.
 5. A rest can start from TWO places, and they share everything except the start notification:
-   - **"Iniciar" (ExerciseDetail)** → `startRestFromExercise()` sends the tapeable start notification; the rest begins when the user taps it. Counts a new set (`nextSetIndex`).
+   - **"Iniciar" (ExerciseDetail) / "Siguiente serie"** → `startRestFromExercise()` starts the rest at once and sends the start notification 3s later. Counts a new set (`nextSetIndex`).
    - **"Reiniciar descanso" (full-screen timer)** → `restartRestTimer()` starts the rest immediately, with NO start notification. Does NOT count a new set.
    Both end up in `scheduleRestTimer()` → `armRest()`, so both queue the delayed push identically. Adding a third entry point means reusing `armRest()`, never duplicating the queue call.
 6. `adjustRestTimer(delta)` (`−15 s` / `+30 s`) and `restartRestTimer()` re-queue under a FRESH tag after cancelling the in-flight one — the Worker drops the stale message via `active_{deviceId}`.

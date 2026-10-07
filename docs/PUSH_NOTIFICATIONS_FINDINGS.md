@@ -66,15 +66,22 @@ empty-push + cache mechanism.
 ## How it works now (v1.74)
 
 ```
-CLICK "Iniciar"   (button visibly disabled, counting 3…2…1)
-  ├─ stage push-pending /pending = { kind:'start', exerciseData }   (local cache)
-  ├─ wait 3s (time to lock the phone → Apple Watch sync)
-  ├─ POST /api/push/start  →  Worker sends EMPTY push (VAPID auth, Content-Length:0)
-  │     └─ SW push event: no payload → read push-pending → showStartNotification(running)
-  └─ armRest()  ← the rest starts HERE, locked phone or not, tap or not
-        ├─ stage push-pending /pending = { kind:'done', exerciseData }   (overwrites 'start')
-        ├─ POST /api/rest-timer/start  (endTime = now + rest*1000 − 10000)  → Worker Queue
-        └─ full-screen rest timer on screen (decorative, best-effort)
+CLICK "Iniciar" / "Siguiente serie"
+  ├─ armRest()  ← the rest starts HERE, on the tap, locked phone or not
+  │     ├─ stage push-pending /pending = { exerciseData, startedAt, doneAt }   (local cache)
+  │     ├─ full-screen rest timer on screen (decorative, best-effort)
+  │     └─ POST /api/rest-timer/start  (endTime = doneAt = now + rest*1000 − 10000)  → Worker Queue
+  └─ 3s later (time to lock the phone → Apple Watch sync), without blocking anything:
+        POST /api/push/start  →  Worker sends EMPTY push (VAPID auth, Content-Length:0)
+          └─ SW push event: no payload → read push-pending → pushKind() = 'start'
+                → showStartNotification(running)
+
+HOW THE SW TELLS THE TWO PUSHES APART — pushKind(spec, now)
+  Both pushes are empty. The SW reads the clock: a push closer to `startedAt` is the
+  start one, a push closer to `doneAt` is the done one. It used to read a `kind` the app
+  flipped from 'start' to 'done' right after sending the start push; a push that reached
+  the phone a moment late found 'done' and announced "Descanso terminado" on a rest that
+  had just begun.
 
 TAP "Descanso en curso · Tap para ver"   (notificationclick, kind:'start')
   ├─ SW writes rest-pending /pending = exerciseData + /from-notification flag, focuses app
@@ -84,7 +91,7 @@ TAP "Descanso en curso · Tap para ver"   (notificationclick, kind:'start')
         └─ no rest running → count one set + arm a new rest (app-closed path)
 
 DELAYED empty push fires (~rest − 10s; latency compensation)
-  └─ SW push event: no payload → read push-pending {done} →
+  └─ SW push event: no payload → read push-pending → pushKind() = 'done' →
         showDoneNotification("Descanso terminado")
         + showStartNotification(running=false → "Tap para iniciar descanso")
         + closeDoneAfter(20s)
@@ -93,7 +100,7 @@ DELAYED empty push fires (~rest − 10s; latency compensation)
 TAP "Descanso terminado" (kind:'done') → only opens the app, no timer.
 ```
 
-The set-by-set cycle built on top of this (the 3s window, phase `done`,
+The set-by-set cycle built on top of this (phase `done`,
 "Siguiente serie") is described in
 `docs/superpowers/specs/2026-09-24-ciclo-de-series-descanso-design.md`.
 
@@ -109,7 +116,7 @@ The set-by-set cycle built on top of this (the 3s window, phase `done`,
 
 | Cache | Key | Written by | Read by |
 |---|---|---|---|
-| `push-pending` | `/pending` | client `_stageNotification` (Iniciar click, tap) | SW `push` handler (empty push) |
+| `push-pending` | `/pending` | app `armRest` → `stagePushSpec` (every rest that starts) | SW `push` handler (empty push) |
 | `rest-pending` | `/pending` | SW `notificationclick` (kind:start) | app `onStartNotificationTap` |
 | `rest-pending` | `/from-notification` | SW `notificationclick` (kind:start) | app `onStartNotificationTap` |
 | `rest-timer` | `/pending` | app `armRest` (also marks `phase:'done'`) | app `_checkRestTimer` (timer screen) |

@@ -4,7 +4,7 @@
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { parseRepsDefault } from '$lib/exercise-utils'
   import { getTodaySets, saveSetEntry, type SetEntry } from '$lib/set-log'
-  import { prepCountdown, type RestTimerData } from '$lib/rest-timer'
+  import type { RestTimerData } from '$lib/rest-timer'
 
   let {
     visible = false,
@@ -46,9 +46,8 @@
   // by the time it fires the timer may already be on another exercise.
   let pending: { exerciseId: string; setNo: number; units: string; entry: SetEntry } | null = null
 
-  // While the next rest's start push is on its way the screen stays up with the
-  // button disabled and counting down, same as "Iniciar" on the exercise sheet.
-  let preparing = $state(0)
+  // Keeps a double tap on "Siguiente serie" from counting two sets.
+  let advancing = false
 
   let displayName = $derived(getExerciseDisplayName({ name: timer.name }) || timer.name)
   let isDone = $derived(timer.phase === 'done')
@@ -93,17 +92,14 @@
   // is saved with whatever the fields show — if you never touched them, that's
   // the previous set repeated, which is exactly how a normal workout reads.
   async function next() {
-    if (preparing) return
+    if (advancing) return
+    advancing = true
     if (navigator.vibrate) navigator.vibrate(40)
-    // The countdown starts on the tap itself, not after the set is written:
-    // the button must go disabled the instant you touch it.
-    const stop = prepCountdown((s) => { preparing = s })
     try {
       await commitShownSet()
       await onnext?.()
     } finally {
-      stop()
-      preparing = 0
+      advancing = false
     }
   }
 
@@ -347,16 +343,12 @@
 
     <footer class="rtf-actions">
       {#if isDone}
-        <button class="rtf-act rtf-act-next" type="button" onclick={next} disabled={preparing > 0}>
-          {#if preparing > 0}
-            Preparando… {preparing}s
-          {:else}
-            Siguiente serie · {setNo + 1}
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
-          {/if}
+        <button class="rtf-act rtf-act-next" type="button" onclick={next}>
+          Siguiente serie · {setNo + 1}
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
         </button>
       {/if}
-      <button class="rtf-act rtf-act-restart" type="button" onclick={restart} disabled={preparing > 0}>
+      <button class="rtf-act rtf-act-restart" type="button" onclick={restart}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a9 9 0 0 1 15.5-5L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a9 9 0 0 1-15.5 5L2.5 16"/></svg>
         {isDone ? 'Descansar más' : 'Reiniciar descanso'}
       </button>
@@ -538,8 +530,6 @@
     border-color: color-mix(in srgb, var(--rt) 26%, transparent);
     background: color-mix(in srgb, var(--rt) 7%, transparent);
   }
-  .rtf-act:disabled { opacity: 0.45; cursor: default; }
-  .rtf-act:disabled:active { transform: none; }
 
   /* Terminado: "Siguiente serie" is the one action that matters, so it's the
      only filled button on screen; "Descansar más" drops to secondary. */

@@ -490,17 +490,20 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // Merged from the former tests/notifications.spec.cjs — a real user taps
   // "Iniciar" right after logging a set, to start resting before the next one.
-  // The tap stages the rest-timer push for the service worker and, while that
-  // push is on its way (3s, time to lock the phone), the button stays visibly
-  // disabled counting down. When the window closes the rest starts on its own,
-  // without anyone tapping the notification.
-  const iniciarBtn = page.getByRole('button', { name: /Iniciar|Preparando/ })
+  // The tap starts the rest on the spot — full-screen timer up, no waiting —
+  // and stages for the service worker *when* that rest runs, which is how it
+  // tells a start push from a "done" one.
+  //
+  // Changed 2026-10-06 (approved by Pedro). This used to promise the opposite:
+  // the button sat disabled on "Preparando Ns" for 3s, the staged spec said
+  // `kind: 'start'`, and nothing was armed until the start push had left.
+  const iniciarBtn = page.getByRole('button', { name: 'Iniciar' })
   await expect(iniciarBtn).toBeVisible()
   await iniciarBtn.click()
-  await page.waitForTimeout(600)
 
-  await expect(iniciarBtn).toBeDisabled()
-  await expect(iniciarBtn).toContainText(/Preparando \ds/)
+  const restTimer = page.locator('[data-component="RestTimerFullscreen"]')
+  await expect(restTimer).toBeVisible({ timeout: 1500 })
+  await expect(restTimer).toContainText('Press de Banca con Barra')
 
   const stagedPush = await page.evaluate(async () => {
     const cache = await caches.open('push-pending')
@@ -508,18 +511,13 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
     return res ? await res.json() : null
   })
   expect(stagedPush).not.toBeNull()
-  expect(stagedPush.kind).toBe('start')
   expect(stagedPush.exerciseData.name).toBe('Press de Banca con Barra')
   expect(stagedPush.exerciseData.restSec).toBe(180)
   expect(stagedPush.exerciseData.sets).toBe(5)
   expect(stagedPush.exerciseData.exerciseId).toBe('ex-bench')
-  // Nothing is armed yet: the rest only starts once the push is away.
-  await expect(page.locator('[data-component="RestTimerFullscreen"]')).toHaveCount(0)
-
-  const restTimer = page.locator('[data-component="RestTimerFullscreen"]')
-  await expect(restTimer).toBeVisible({ timeout: 6000 })
-  await expect(restTimer).toContainText('Press de Banca con Barra')
-  await expect(iniciarBtn).toBeEnabled()
+  // The "done" push is due ~10s before the 180s rest ends.
+  expect(stagedPush.doneAt).toBeGreaterThan(Date.now() + 150 * 1000)
+  expect(stagedPush.doneAt - stagedPush.startedAt).toBeGreaterThan(165 * 1000)
 
   // Back to the sheet to keep the journey going.
   await restTimer.locator('.rtf-skip').click()
@@ -2510,16 +2508,19 @@ test.describe('Rest timer — ciclo de series', () => {
 
     // Handing over to serie 2 saves serie 1 with what the fields showed and
     // sends its own start notification (the Watch gets a card per serie).
+    //
+    // Changed 2026-10-06 (approved by Pedro): the button used to go disabled
+    // on "Preparando… Ns" for 3s before serie 2 started. Now the rest starts
+    // on the tap and the start notification follows 3s later.
     const nextBtn = timer.locator('.rtf-act-next')
     await expect(nextBtn).toContainText('Siguiente serie · 2')
     await nextBtn.click()
-    await expect(nextBtn).toBeDisabled()
-    await expect(nextBtn).toContainText(/Preparando… \ds/)
 
-    await expect(timer).toHaveAttribute('data-phase', 'resting', { timeout: 8000 })
+    await expect(timer).toHaveAttribute('data-phase', 'resting', { timeout: 1500 })
     await expect(timer.locator('.rtf-serie-label')).toContainText('Serie 2 de 3')
     await expect(timer.locator('.rtf-log-title')).toContainText('Registrar serie 2')
-    expect(startPushes).toBe(1)
+    expect(startPushes).toBe(0)
+    await expect.poll(() => startPushes, { timeout: 6000 }).toBe(1)
 
     const afterFirst = await todayLog()
     expect(afterFirst.weight).toBe(60)
@@ -2539,24 +2540,30 @@ test.describe('Rest timer — ciclo de series', () => {
   })
 })
 
-test.describe('Rest timer — "Iniciar" deshabilitado durante la espera', () => {
+// Renamed 2026-10-06 (approved by Pedro) from 'Rest timer — "Iniciar"
+// deshabilitado durante la espera'. That suite promised a 3s wait you could
+// see: the button went grey and dashed, counted "Preparando 3s…2s…1s", and only
+// then did the rest start. The wait is gone — the rest starts on the tap — and
+// what survives is the part that mattered: one tap, one notification, one serie.
+test.describe('Rest timer — "Iniciar" arranca el descanso al instante', () => {
   const SETTINGS = {
     id: 'settings', activeProgramId: 'prog-iniciar', currentWeekIdx: 0, units: 'kg',
     accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
     sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
   }
 
-  // Tapping "Iniciar" doesn't do anything you can see for 3s (the window that
-  // lets you lock the phone so the push reaches the Watch). If the button
-  // doesn't say so, the tap looks ignored and you tap again — which used to be
-  // possible, because the button re-enabled itself in the same microtask.
-  test('goes grey and counts down while the push is on its way, ignoring a second tap', async ({ page }) => {
+  // Tapping "Iniciar" puts the timer on screen and queues the delayed push
+  // right away; the start notification leaves 3s later (the window that lets
+  // you lock the phone so it reaches the Watch) without holding anything up.
+  test('starts the rest on the tap, sends the start notification 3s later, and counts a double tap once', async ({ page }) => {
     let startPushes = 0
     await page.route(/push\/start/, async (route) => {
       startPushes++
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'sent' }) })
     })
+    let delayedPushes = 0
     await page.route(/rest-timer\/(start|cancel)/, async (route) => {
+      if (route.request().url().includes('rest-timer/start')) delayedPushes++
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
     })
 
@@ -2588,42 +2595,103 @@ test.describe('Rest timer — "Iniciar" deshabilitado durante la espera', () => 
     const iniciar = page.locator('.iniciar-btn')
     await expect(iniciar).toBeEnabled()
     await expect(iniciar).toContainText('Iniciar')
-    const accentBg = await iniciar.evaluate(el => getComputedStyle(el).backgroundColor)
 
-    await iniciar.click()
+    // A double tap, the way an impatient thumb does it.
+    await iniciar.dblclick()
 
-    // Disabled from the tap itself, not after the 3s.
-    await expect(iniciar).toBeDisabled()
-    await expect(iniciar).toContainText(/Preparando \ds/)
+    // The timer is up and the delayed push queued well inside the old 3s wait,
+    // and the start notification hasn't left yet.
+    const timer = page.locator('[data-component="RestTimerFullscreen"]')
+    await expect(timer).toBeVisible({ timeout: 1500 })
+    await expect(timer).toHaveAttribute('data-phase', 'resting')
+    await expect.poll(() => delayedPushes, { timeout: 1500 }).toBe(1)
+    expect(startPushes).toBe(0)
 
-    // …and it *looks* disabled: no longer the accent-coloured call to action.
-    const waitingStyle = await iniciar.evaluate(el => {
-      const s = getComputedStyle(el)
-      return { bg: s.backgroundColor, cursor: s.cursor, border: s.borderStyle }
-    })
-    expect(waitingStyle.bg).not.toBe(accentBg)
-    expect(waitingStyle.cursor).toBe('default')
-    expect(waitingStyle.border).toBe('dashed')
-
-    // The seconds actually run down instead of sitting on one number.
-    const readSeconds = async () => parseInt((await iniciar.textContent()).match(/(\d)s/)[1], 10)
-    const first = await readSeconds()
-    await page.waitForTimeout(1600)
-    const later = await readSeconds()
-    expect(later).toBeLessThan(first)
-
-    // Jabbing it again while it waits must not send a second notification.
-    await iniciar.click({ force: true }).catch(() => {})
-    await page.waitForTimeout(200)
-
-    // Once the push is away the rest starts on its own and the button is back.
-    await expect(page.locator('[data-component="RestTimerFullscreen"]')).toBeVisible({ timeout: 6000 })
-    await expect(iniciar).toBeEnabled()
-    await expect(iniciar).toContainText('Iniciar')
+    // It follows on its own, once.
+    await expect.poll(() => startPushes, { timeout: 6000 }).toBe(1)
+    await page.waitForTimeout(1500)
     expect(startPushes).toBe(1)
+    expect(delayedPushes).toBe(1)
 
     // One tap, one serie: the double tap didn't count an extra set either.
     await expect(page.locator('.rtf-serie-label')).toContainText('Serie 1 de 4')
+  })
+})
+
+test.describe('Rest timer — el push de inicio nunca dice "Descanso terminado"', () => {
+  // Pushes reach the phone empty, so the Service Worker has to work out which
+  // card to show. It used to go by a note the app flipped from "start" to
+  // "done" right after sending the start push — and a push that took a moment
+  // to arrive (the normal case with the phone just locked) found "done" and
+  // announced "Descanso terminado" on a rest that had only begun. Now it reads
+  // the clock, so the same push says what is true whenever it lands.
+  test('an empty push shows "en curso" while the rest is young and "terminado" only once it is due', async ({ page, context }) => {
+    await page.route(/push\/start/, async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'sent' }) })
+    })
+    await page.route(/rest-timer\/(start|cancel)/, async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+    })
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope)
+
+    // Delivers a push to the real Service Worker, payload-less like the ones
+    // the Worker sends.
+    const cdp = await context.newCDPSession(page)
+    let registrationId = null
+    cdp.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
+      const mine = registrations.find(r => r.scopeURL === scope)
+      if (mine) registrationId = mine.registrationId
+    })
+    await cdp.send('ServiceWorker.enable')
+    await expect.poll(() => registrationId, { timeout: 5000 }).not.toBeNull()
+    const deliverEmptyPush = () => cdp.send('ServiceWorker.deliverPushMessage', {
+      origin: new URL(scope).origin, registrationId, data: '',
+    })
+    // Headless Chromium refuses notification permission, so the last step —
+    // handing the card to the OS — is recorded instead. Everything before it
+    // (the push event, reading the staged spec, choosing the card) is the real
+    // Service Worker.
+    const sw = context.serviceWorkers()[0]
+    await sw.evaluate(() => {
+      self.__cards = []
+      self.registration.showNotification = async (_title, opts) => { self.__cards.push(`${opts.tag}: ${opts.body}`) }
+      self.registration.getNotifications = async () => []
+    })
+    const shownCards = () => sw.evaluate(() => self.__cards)
+
+    // A real 120s rest, armed by the app itself.
+    await seedSetCounter(page, 'ex-bench', 0)
+    await page.evaluate(async () => {
+      const cache = await caches.open('rest-pending')
+      await cache.put('/pending', new Response(JSON.stringify({
+        name: 'Press Banca', restSec: 120, sets: 4, reps: '8-10', exerciseId: 'ex-bench',
+      })))
+      await cache.put('/from-notification', new Response('1'))
+      window.dispatchEvent(new Event('focus'))
+    })
+    await expect(page.locator('[data-component="RestTimerFullscreen"]')).toBeVisible({ timeout: 3000 })
+
+    // The start push lands — late or not, the rest has only just begun.
+    await deliverEmptyPush()
+    await expect.poll(shownCards, { timeout: 5000 }).toEqual(['rest-start: 4×8-10 · Descanso en curso · Tap para ver ▸'])
+
+    // The same rest, 115s later: now the push is the "done" one.
+    await page.evaluate(async () => {
+      const cache = await caches.open('push-pending')
+      const spec = await (await cache.match('/pending')).json()
+      spec.startedAt -= 115 * 1000
+      spec.doneAt -= 115 * 1000
+      await cache.put('/pending', new Response(JSON.stringify(spec)))
+    })
+    await sw.evaluate(() => { self.__cards = [] })
+    await deliverEmptyPush()
+    await expect.poll(shownCards, { timeout: 5000 }).toEqual([
+      'rest-done: Descanso terminado',
+      'rest-start: 4×8-10 · Tap para iniciar descanso ▸',
+    ])
   })
 })
 

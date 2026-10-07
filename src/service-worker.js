@@ -138,6 +138,16 @@ async function closeDoneAfter(ms) {
   ns.forEach((n) => n.close())
 }
 
+// Pushes arrive empty, so which card to show is read off the clock: the app
+// stages when the rest started and when its "done" push is due, and a push is
+// whichever of the two moments it lands closer to. Deciding by order of arrival
+// instead showed "Descanso terminado" whenever the start push came in late.
+// Specs without `doneAt` come from an older app version and still carry `kind`.
+function pushKind(spec, now) {
+  if (!spec.doneAt) return spec.kind
+  return now >= (spec.startedAt + spec.doneAt) / 2 ? 'done' : 'start'
+}
+
 self.addEventListener('push', (e) => {
   e.waitUntil((async () => {
     let data = {}
@@ -152,11 +162,12 @@ self.addEventListener('push', (e) => {
       } catch {}
     }
     const ex = data.exerciseData
-    if (data.kind === 'start' && ex) {
+    const kind = pushKind(data, Date.now())
+    if (kind === 'start' && ex) {
       await showStartNotification(ex, true)
       return
     }
-    if (data.kind === 'done' && ex) {
+    if (kind === 'done' && ex) {
       await showDoneNotification(ex)
       await showStartNotification(ex, false)
       await closeDoneAfter(20000)

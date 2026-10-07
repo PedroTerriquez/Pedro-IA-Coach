@@ -3,7 +3,6 @@
   import { toast } from '$lib/stores/ui'
   import { settings } from '$lib/stores/settings'
   import { parseRepsDefault } from '$lib/exercise-utils'
-  import { prepCountdown } from '$lib/rest-timer'
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import type { ExerciseLogBlock } from '$lib/types'
   import Sheet from './Sheet.svelte'
@@ -94,8 +93,7 @@
   let tab = $state<'workout' | 'history' | 'alternatives'>('workout')
   let pendingWeight = $state(todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0))
   let loggedToday = $state(!!todayLog)
-  let iniciarLoading = $state(false)
-  let iniciarSecs = $state(0)
+  let iniciarLoading = false
   let showGif = $state(true)
 
   let chatOpen = $state(false)
@@ -211,14 +209,11 @@
     onRevert?.()
   }
 
-  // The rest doesn't start the instant you tap: the start notification waits a
-  // few seconds so you can lock the phone and let it reach the Watch. The
-  // button stays disabled and counts that window down, so it's never unclear
-  // whether the tap registered.
+  // The rest starts on the tap and the full-screen timer covers this sheet;
+  // the guard only keeps a double tap from counting two sets.
   async function handleIniciar() {
     if (iniciarLoading) return
     iniciarLoading = true
-    const stopCountdown = prepCountdown((s) => { iniciarSecs = s })
     try {
       if (navigator.vibrate) navigator.vibrate(40)
       // Everything here survives the trip through the notification, so it is
@@ -238,7 +233,6 @@
         maxWeight
       })
     } finally {
-      stopCountdown()
       iniciarLoading = false
     }
   }
@@ -271,17 +265,10 @@
             </button>
             <button
               class="iniciar-btn"
-              class:is-preparing={iniciarLoading}
-              style={iniciarLoading ? '' : `background:${accent}`}
+              style="background:{accent}"
               onclick={handleIniciar}
-              disabled={iniciarLoading}
-              aria-live="polite"
             >
-              {#if iniciarLoading}
-                <span class="iniciar-icon">⏳</span> Preparando {iniciarSecs}s
-              {:else}
-                <span class="iniciar-icon">⚡</span> Iniciar
-              {/if}
+              <span class="iniciar-icon">⚡</span> Iniciar
             </button>
             <button class="pill-btn pill-next" disabled={!hasNext} onclick={() => onNavigate?.('next')} aria-label="Siguiente">
               <div class="pill-label-col pill-label-col-end">
@@ -493,24 +480,6 @@
     white-space: nowrap;
     cursor: pointer;
     transition: opacity 0.15s;
-  }
-  .iniciar-btn:disabled {
-    background: var(--border-medium);
-    cursor: default;
-    opacity: 0.5;
-  }
-  /* The disabled look has to read as "espera, ya va" and not as "se trabó":
-     flat grey, dashed outline and a slow pulse for the seconds it lasts. */
-  .iniciar-btn.is-preparing {
-    background: var(--surface-2);
-    color: var(--text-secondary);
-    border: 1px dashed var(--border-medium);
-    opacity: 1;
-    animation: iniciar-wait 1s ease-in-out infinite;
-  }
-  @keyframes iniciar-wait { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-  @media (prefers-reduced-motion: reduce) {
-    .iniciar-btn.is-preparing { animation: none; }
   }
   .iniciar-icon {
     font-size: 15px;

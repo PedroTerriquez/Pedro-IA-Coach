@@ -41,9 +41,13 @@ const EMPTY_TIMER: RestTimerData = {
 
 // Time between tapping "Iniciar" and the start push leaving: enough to lock the
 // phone, which is what makes iOS mirror the notification to the Apple Watch.
-// The rest clock starts when this window closes, so the button is disabled for
-// exactly as long as it lasts.
+// The rest itself doesn't wait for it: the clock is already running.
 export const START_PUSH_DELAY_MS = 3000
+const START_PUSH_MAX_LATE_MS = 5000
+
+// The delayed push leaves this long before the rest ends, to compensate for
+// delivery latency.
+const DONE_PUSH_LEAD_MS = 10000
 
 // A finished rest waiting for "Siguiente serie" is only meaningful for a while;
 // after that, coming back to the app shouldn't greet you with an old set.
@@ -55,21 +59,8 @@ export const restBannerState = writable<RestTimerData & { visible: boolean }>({
 })
 
 let _restTimerTickId: ReturnType<typeof setTimeout> | null = null
+let _startPushId: ReturnType<typeof setTimeout> | null = null
 let _announcedTag = ''
-
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms))
-}
-
-// Counts 3 → 1 while the start push is on its way, so both entry points
-// ("Iniciar" and "Siguiente serie") can show the same disabled countdown.
-export function prepCountdown(onTick: (secondsLeft: number) => void): () => void {
-  const end = Date.now() + START_PUSH_DELAY_MS
-  const tick = () => onTick(Math.max(0, Math.ceil((end - Date.now()) / 1000)))
-  tick()
-  const id = setInterval(tick, 200)
-  return () => clearInterval(id)
-}
 
 export async function storeRestPending(data: RestPendingData): Promise<void> {
   const cache = await caches.open(REST_PENDING_CACHE)
@@ -235,22 +226,36 @@ export async function _checkRestTimer() {
   } catch {}
 }
 
-async function stagePushSpec(kind: 'start' | 'done', exerciseData: RestPendingData): Promise<void> {
+function donePushTime(data: RestTimerData): number {
+  return Math.max(data.endTime - DONE_PUSH_LEAD_MS, Date.now() + 1000)
+}
+
+// Pushes arrive empty, so the Service Worker needs to be told what to show.
+// It is told *when* this rest runs, not which push comes next: a push near the
+// start shows "Descanso en curso", one near `doneAt` shows "Descanso
+// terminado". Order of arrival can't confuse it — a late start push used to
+// read a note already flipped to "done".
+async function stagePushSpec(data: RestTimerData): Promise<void> {
   try {
     const cache = await caches.open('push-pending')
-    await cache.put('/pending', new Response(JSON.stringify({ kind, exerciseData })))
+    const spec = {
+      exerciseData: data,
+      startedAt: data.endTime - data.restSec * 1000,
+      doneAt: donePushTime(data)
+    }
+    await cache.put('/pending', new Response(JSON.stringify(spec)))
   } catch {}
 }
 
 // The delayed push is the source of truth for "rest over" — the in-app timer is
-// decorative best-effort. Fired 10s early to compensate for delivery latency.
+// decorative best-effort.
 async function scheduleDelayedPush(data: RestTimerData): Promise<void> {
   try {
     await fetch(`${PUSH_SERVER_URL}/api/rest-timer/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        endTime: Math.max(data.endTime - 10000, Date.now() + 1000),
+        endTime: donePushTime(data),
         deviceId: getDeviceId(),
         tag: data.tag,
         title: data.name,
@@ -274,14 +279,15 @@ async function cancelDelayedPush(tag: string): Promise<void> {
   } catch {}
 }
 
-// Single place that puts a rest on the clock: cache it, stage the "done"
-// notification spec, queue the delayed push and start the on-screen countdown.
+// Single place that puts a rest on the clock: cache it, tell the Service Worker
+// when it runs, show the countdown and queue the delayed push. The screen goes
+// up before the network call so the timer never waits on it.
 async function armRest(data: RestTimerData): Promise<void> {
   _announcedTag = ''
   await storeRestTimer({ ...data, phase: 'resting' })
-  await stagePushSpec('done', data)
-  await scheduleDelayedPush(data)
+  await stagePushSpec(data)
   await _checkRestTimer()
+  await scheduleDelayedPush(data)
 }
 
 export async function scheduleRestTimer(pending: RestPendingData): Promise<void> {
@@ -339,17 +345,30 @@ async function announceRestDone(data: RestTimerData): Promise<void> {
 // today/+page.svelte, plan/+page.svelte and Calendar.svelte so every route triggers
 // the same rest-timer push/watch flow instead of duplicating it.
 //
-// Order matters: the start notification must be sent before the rest is armed,
-// because arming stages the "done" spec over the "start" one the Service Worker
-// is about to read. Once the push is away the rest starts on its own — whether
-// or not the phone got locked, whether or not the notification is ever tapped.
+// The rest starts on the tap: the timer goes up and the delayed push is queued
+// right away. The start notification follows 3s later on its own — whether or
+// not the phone got locked, whether or not it is ever tapped.
 export async function startRestFromExercise(data: RestPendingData): Promise<void> {
   const pending: RestPendingData = { ...data, setIndex: nextSetIndex(data.exerciseId) }
   await storeRestPending(pending)
-  await stagePushSpec('start', pending)
-  await delay(START_PUSH_DELAY_MS)
-  await sendStartNotification(pending)
+  queueStartNotification(pending)
   await scheduleRestTimer(pending)
+}
+
+function cancelStartNotification(): void {
+  if (_startPushId) { clearTimeout(_startPushId); _startPushId = null }
+}
+
+// A locked phone can freeze the app and only run this when you come back,
+// long after the 3s. By then you are looking at the timer, so the card would
+// announce nothing: it is dropped instead of sent late.
+function queueStartNotification(pending: RestPendingData): void {
+  cancelStartNotification()
+  const due = Date.now() + START_PUSH_DELAY_MS
+  _startPushId = setTimeout(() => {
+    _startPushId = null
+    if (Date.now() - due < START_PUSH_MAX_LATE_MS) sendStartNotification(pending)
+  }, START_PUSH_DELAY_MS)
 }
 
 async function sendStartNotification(pending: RestPendingData): Promise<void> {
@@ -359,8 +378,9 @@ async function sendStartNotification(pending: RestPendingData): Promise<void> {
 }
 
 // "Siguiente serie" from the finished timer: you just did the next set, so it
-// counts one more and runs the same flow as "Iniciar" — start notification
-// included, so the Watch keeps getting the card for every series.
+// counts one more and runs the same flow as "Iniciar" — the rest starts at
+// once and the start notification follows, so the Watch keeps getting the card
+// for every series.
 export async function startNextSet(): Promise<void> {
   const current = (await getRestTimer()) || (await getRestPending())
   if (!current) return
@@ -376,6 +396,7 @@ function toExerciseData(data: RestTimerData | RestPendingData): RestPendingData 
 }
 
 export async function cancelRestTimer(tag: string): Promise<void> {
+  cancelStartNotification()
   _hideRestTimerBanner()
   await clearRestTimer()
   await clearRestPending()

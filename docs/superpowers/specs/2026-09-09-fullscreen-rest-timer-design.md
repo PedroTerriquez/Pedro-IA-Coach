@@ -130,8 +130,8 @@ diferencian en dos cosas: si mandan notificación de inicio y si cuentan serie.
 
 | | "Iniciar" (ExerciseDetail) y "Siguiente serie" (timer) | Tap en la notificación de inicio | "Reiniciar descanso" / "Descansar más" |
 |---|---|---|---|
-| Notificación tapeable de inicio | **Sí** — se manda tras 3 s (botón deshabilitado mientras tanto) | Ya venías de ella | **No** |
-| Arranca el descanso | Sí, al irse el push — sin depender del tap | Solo si no hay uno corriendo | Sí, en el momento |
+| Notificación tapeable de inicio | **Sí** — sale 3 s después, sin bloquear nada | Ya venías de ella | **No** |
+| Arranca el descanso | Sí, en el momento del tap | Solo si no hay uno corriendo | Sí, en el momento |
 | Push retardado ("Descanso terminado") | Sí | Sí | Sí |
 | Cuenta una serie nueva (`setIndex`) | Sí | Sí, cuando arranca uno nuevo | No — sigues en la misma serie |
 | Función | `startRestFromExercise()` / `startNextSet()` | `checkPendingRest()` → `countSetAndArm()` | `restartRestTimer()` |

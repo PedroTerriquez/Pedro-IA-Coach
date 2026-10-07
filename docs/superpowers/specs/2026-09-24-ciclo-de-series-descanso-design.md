@@ -14,38 +14,44 @@ Hasta ahora el descanso solo arrancaba si tapeabas la notificación. Si no
 bloqueabas el celular (o la notificación no llegaba), no había descanso en la
 app: ni reloj, ni registro, ni contador. Este diseño corta esa dependencia.
 
-## Los 3 segundos antes de la notificación
+## Qué pasa al tocar "Iniciar" (actualizado 2026-10-06)
 
-Al tocar **Iniciar** no se manda la notificación de inmediato: se esperan
-**3 s** (`START_PUSH_DELAY_MS`) para darte tiempo de bloquear el celular, que
-es lo que hace que iOS refleje la notificación en el Apple Watch.
+El descanso arranca **en el tap**, sin espera:
 
-Esa espera antes era invisible: el botón se "deshabilitaba" durante un
-microsegundo (nadie hacía `await`), así que parecía que el tap no había hecho
-nada. Ahora:
+1. Se abre el reloj a pantalla completa y empieza a correr.
+2. Se programa la notificación retardada ("Descanso terminado"), que llegará
+   cuando se acabe el descanso de ese ejercicio.
+3. **3 s después** (`START_PUSH_DELAY_MS`) sale la notificación de inicio
+   ("Descanso en curso"). Esos 3 s son el tiempo para bloquear el celular: si
+   lo bloqueaste llega al Apple Watch, si no llega al celular. No bloquean
+   nada — el reloj ya va corriendo.
+4. Tapear esa notificación abre la app en el reloj.
 
-- El botón queda **deshabilitado de verdad** todo el tramo — gris plano,
-  borde punteado y un pulso lento — y cuenta el tiempo: `Preparando 3s`,
-  `2s`, `1s`.
-- `prepCountdown()` (en `rest-timer.ts`) es el que cuenta, y lo comparten los
-  dos botones que arrancan un descanso: **Iniciar** y **Siguiente serie**.
+**Siguiente serie** hace exactamente lo mismo: reloj al instante, nueva
+retardada y, a los 3 s, la de inicio.
 
-## Qué pasa al terminar esos 3 segundos
+Antes el botón se quedaba 3 s en "Preparando 3s…2s…1s" y el descanso empezaba
+al terminar esa espera. Ya no existe.
 
-El orden importa y no es negociable:
+Si saltas el descanso dentro de esos 3 s, la notificación de inicio no sale.
+Si el celular congela la app y los 3 s se cumplen mucho después, tampoco: para
+entonces ya estás viendo el reloj.
 
-1. Se escribe la especificación `{kind:'start'}` en la caché `push-pending`
-   (es lo que lee el Service Worker cuando llega el push vacío).
-2. Pasan los 3 s.
-3. Se manda el push de inicio.
-4. **Recién entonces** se arma el descanso (`armRest`), que pisa esa
-   especificación con `{kind:'done'}` y encola el push retardado.
+### Cómo sabe el celular qué notificación mostrar
 
-Si se armara antes, el SW leería `done` al llegar el push de inicio y
-mostraría "Descanso terminado" al comenzar el descanso.
+Las dos notificaciones viajan **vacías** (ver
+`docs/PUSH_NOTIFICATIONS_FINDINGS.md`), así que el Service Worker tiene que
+decidir el texto. Al armar el descanso la app le deja anotado en la caché
+`push-pending` **cuándo empezó** y **cuándo toca la retardada**
+(`{exerciseData, startedAt, doneAt}`); cuando llega un push, `pushKind()` mira
+el reloj: más cerca del inicio → "Descanso en curso"; más cerca del final →
+"Descanso terminado".
 
-El descanso arranca **siempre**, bloquees el celular o no, tapees la
-notificación o no. El reloj a pantalla completa aparece solo.
+Antes la nota decía `inicio` o `terminado` y la app la cambiaba a `terminado`
+justo después de mandar la de inicio. Si esa notificación tardaba un instante
+en llegar (lo normal con el celular recién bloqueado) ya leía `terminado` y
+anunciaba "Descanso terminado" con el descanso empezando. Decidir por el reloj
+elimina esa carrera: no importa cuál llegue primero ni cuánto tarde.
 
 ### La notificación de inicio ya no siempre dice lo mismo
 
@@ -54,8 +60,8 @@ texto cambia según el caso (`showStartNotification(ex, running)`):
 
 | Momento | Texto | Qué hace el tap |
 |---|---|---|
-| Justo después de "Iniciar" (`kind:'start'`) | `Descanso en curso · Tap para ver ▸` | Solo abre la app en el descanso que ya corre |
-| Re-mostrada al terminar un descanso (`kind:'done'`) | `Tap para iniciar descanso ▸` | Cuenta una serie y arranca el siguiente descanso |
+| 3 s después de "Iniciar" | `Descanso en curso · Tap para ver ▸` | Solo abre la app en el descanso que ya corre |
+| Re-mostrada al terminar un descanso | `Tap para iniciar descanso ▸` | Cuenta una serie y arranca el siguiente descanso |
 
 La diferencia la decide `isRestRunning()`: si hay un descanso corriendo, el tap
 **no** rearma nada (antes reiniciaba el reloj). Si no lo hay, el tap es la
@@ -86,9 +92,9 @@ vuelve a abrir sola: ahí es donde se registra y se continúa.
 
 `startNextSet()` toma el ejercicio del descanso que acaba de terminar, le quita
 lo que era de ese descanso (`endTime`, `phase`, `setIndex`) y corre exactamente
-el mismo camino que el botón Iniciar: cuenta una serie más, espera los 3 s,
-manda la notificación y arma el nuevo descanso. Así el Watch recibe su tarjeta
-en cada serie, no solo en la primera.
+el mismo camino que el botón Iniciar: cuenta una serie más, arma el nuevo
+descanso al instante y a los 3 s manda la notificación. Así el Watch recibe su
+tarjeta en cada serie, no solo en la primera.
 
 ## Registro sin escribir nada: la serie se hereda
 
@@ -111,14 +117,13 @@ habías tocado.
 
 ```
 Serie 1 hecha
-  └─ [Iniciar]  → botón "Preparando 3s…2s…1s" (deshabilitado)
-       └─ push de inicio → (Watch)
-            └─ descanso armado → PANTALLA COMPLETA (serie 1 de 4)
-                 ├─ registras 60kg × 10   (o no tocas nada)
-                 └─ se acaba el tiempo → push "Descanso terminado" + fase done
-                      └─ [Siguiente serie · 2]
-                           ├─ guarda la serie 1 con lo que muestre la pantalla
-                           └─ vuelve al principio con serie 2
+  └─ [Iniciar]  → PANTALLA COMPLETA al instante (serie 1 de 4) + retardada programada
+       ├─ a los 3 s → push de inicio "Descanso en curso" → (Watch si bloqueaste)
+       ├─ registras 60kg × 10   (o no tocas nada)
+       └─ se acaba el tiempo → push "Descanso terminado" + fase done
+            └─ [Siguiente serie · 2]
+                 ├─ guarda la serie 1 con lo que muestre la pantalla
+                 └─ vuelve al principio con serie 2
 …
 Última serie → [Terminar] → guarda y cierra el ciclo
 ```
@@ -127,20 +132,27 @@ Serie 1 hecha
 
 | Archivo | Rol |
 |---|---|
-| `src/lib/rest-timer.ts` | `START_PUSH_DELAY_MS`, `prepCountdown`, `startRestFromExercise`, `startNextSet`, `completeRest`, `isRestRunning`, fase `done` |
+| `src/lib/rest-timer.ts` | `START_PUSH_DELAY_MS`, `startRestFromExercise`, `queueStartNotification`, `stagePushSpec`, `startNextSet`, `completeRest`, `isRestRunning`, fase `done` |
 | `src/lib/components/RestTimerFullscreen.svelte` | Fases `resting`/`done`, `Siguiente serie`, `commitShownSet()` |
-| `src/lib/components/ExerciseDetail.svelte` | Botón "Iniciar" deshabilitado con cuenta regresiva |
+| `src/lib/components/ExerciseDetail.svelte` | Botón "Iniciar" |
 | `src/routes/+layout.svelte` | Cablea `onnext`/`onclose` y reabre a pantalla completa al terminar |
-| `src/service-worker.js` | `showStartNotification(ex, running)` — dos textos, una tarjeta |
+| `src/service-worker.js` | `pushKind()` decide por el reloj; `showStartNotification(ex, running)` — dos textos, una tarjeta |
 | `src/lib/set-log.ts` | Sin cambios: expande/colapsa y comprime las series iguales |
 
 ## Verificación
 
-`tests/big.spec.cjs` → `Rest timer — ciclo de series`: toca "Iniciar", ve el
-botón deshabilitado con su cuenta, espera a que el descanso arranque solo (sin
-tapear ninguna notificación), lo lleva al final, comprueba la pantalla de
-`Descanso terminado`, toca "Siguiente serie" y verifica que la serie 1 se
-guardó heredando los valores mostrados y que el contador va en la serie 2.
+`tests/big.spec.cjs` → `Rest timer — ciclo de series`: lleva un descanso al
+final, comprueba la pantalla de `Descanso terminado`, toca "Siguiente serie" y
+verifica que la serie 2 arranca al instante, que la serie 1 se guardó heredando
+los valores mostrados y que la notificación de inicio sale después.
+
+`Rest timer — "Iniciar" arranca el descanso al instante`: un tap (o doble tap)
+abre el reloj y programa la retardada de inmediato; la de inicio sale una sola
+vez, 3 s después, y cuenta una sola serie.
+
+`Rest timer — el push de inicio nunca dice "Descanso terminado"`: entrega un
+push vacío al Service Worker real con el descanso recién armado (muestra "en
+curso") y otra vez con el descanso por acabar (muestra "terminado").
 
 `tests/big.spec.cjs` → `Rest timer notification flow`: el tap de la
 notificación con un descanso corriendo **no** reinicia el reloj; sin descanso

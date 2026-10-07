@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.76'
-const _VER_DESC = 'Arranca aunque los datos se cuelguen sin responder'
-const _VER_TIME = '2026-10-03 19:19'
+const _VER_BASE = 'v2.77'
+const _VER_DESC = 'Iniciar arranca el descanso al instante, sin Descanso terminado fantasma'
+const _VER_TIME = '2026-10-06 22:09'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
