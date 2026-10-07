@@ -2541,6 +2541,24 @@ export function findExerciseEntryFuzzy(name: string, threshold = 0.5) {
   }
   return bestScore >= threshold ? best : null
 }
+
+// Free-text search over the dictionary (es/en/aliases, accent-insensitive).
+// Every query word must appear; names that start with the query rank first.
+export function searchExerciseEntries(query: string, limit = 20) {
+  const q = _normExercise(query)
+  const tokens = q.split(' ').filter(Boolean)
+  if (tokens.length === 0) return []
+  const hits: { entry: (typeof EXERCISE_DICTIONARY)[number]; rank: number }[] = []
+  for (const entry of EXERCISE_DICTIONARY) {
+    const names = [entry.es, entry.en].map(_normExercise)
+    const haystack = [...names, ...(entry.aliases || []).map(_normExercise)].join(' | ')
+    if (!tokens.every((t) => haystack.includes(t))) continue
+    const rank = names.some((n) => n.startsWith(q)) ? 0 : names.some((n) => n.includes(q)) ? 1 : 2
+    hits.push({ entry, rank })
+  }
+  return hits.sort((a, b) => a.rank - b.rank).slice(0, limit).map((h) => h.entry)
+}
+
 export function translateExerciseToEnglish(name: string) {
   const e = findExerciseEntry(name)
   return e ? e.en : null

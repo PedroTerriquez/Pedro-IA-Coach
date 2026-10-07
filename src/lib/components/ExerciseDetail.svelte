@@ -26,6 +26,7 @@
   interface Alternative {
     name: string
     reason: string
+    muscle?: string
   }
 
   interface ExerciseLog {
@@ -195,7 +196,7 @@
 
   async function selectAlternative(alt: Alternative) {
     const originalId = exercise.originalExerciseId || currentExerciseKey
-    const newEx = await findOrCreateExerciseByName(alt.name, exercise.muscle)
+    const newEx = await findOrCreateExerciseByName(alt.name, alt.muscle || exercise.muscle)
     await swapExerciseForToday(originalId, newEx.id)
     tab = 'workout'
     toast.show(`🔄 Cambiado a ${getExerciseDisplayName(newEx, $settings.language)} por hoy`)
@@ -364,6 +365,7 @@
             language={$settings.language}
             {isSwapped}
             originalName={exercise.originalExerciseName || ''}
+            currentName={exercise.name}
             onSelect={selectAlternative}
             onRevert={revertAlternative}
           />

@@ -3056,6 +3056,76 @@ test.describe('Hoy — alternativa registrada cuenta como hecha', () => {
   })
 })
 
+// ── Alternativas: buscador sobre todo el diccionario ──
+// Además de las alternativas curadas, la pestaña deja buscar cualquier
+// ejercicio del diccionario y usarlo por hoy.
+test.describe('Alternativas — buscador de ejercicios', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-alt-search', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  function getTodayStr() {
+    return new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  }
+
+  test('busca en el diccionario, muestra vacío sin coincidencias y cambia al elegido', async ({ page }) => {
+    const today = getTodayStr()
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    await seedIndexedDB(page, {
+      exercises: [SEED.exercises[0]], // ex-bench, con 2 alternativas curadas
+      program: {
+        id: 'prog-alt-search', name: 'Programa Alt Search',
+        weeks: [{
+          name: 'Semana 1', subtitle: '', tag: 'BUILD',
+          days: buildDayArray({
+            name: 'Empuje', subtitle: 'Press Banca', duration: 60,
+            exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }],
+          }),
+        }],
+      },
+      settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0 } },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(1000)
+
+    await page.locator('[data-phase="training"]').first().click()
+    await page.waitForTimeout(400)
+    await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Alternativas' }).click()
+    await page.waitForTimeout(300)
+
+    const altTab = page.locator('[data-component="AlternativesTab"]')
+    const cards = altTab.locator('.alt-card')
+    const search = altTab.getByLabel('Buscar ejercicio alternativo')
+
+    // Sin búsqueda: las curadas de siempre.
+    await expect(cards).toHaveCount(2)
+
+    // Sin coincidencias → estado vacío, ninguna tarjeta.
+    await search.fill('zzzxqy')
+    await expect(altTab.locator('.alt-empty')).toContainText('Sin resultados')
+    await expect(cards).toHaveCount(0)
+
+    // Limpiar devuelve las curadas.
+    await altTab.getByRole('button', { name: 'Limpiar búsqueda' }).click()
+    await expect(cards).toHaveCount(2)
+
+    // Buscar sin acentos encuentra ejercicios que NO son alternativas curadas.
+    await search.fill('sentadilla hack')
+    await expect(cards.first()).toContainText('Sentadilla Hack')
+    await expect(altTab.locator('.alt-label')).toContainText(/resultado/)
+
+    // Elegirlo cambia el ejercicio de hoy y vuelve a Registrar.
+    await cards.first().click()
+    await page.waitForTimeout(500)
+    await expect(page.locator('.hero-name')).toContainText('Sentadilla Hack')
+    await expect(page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Registrar' })).toHaveClass(/seg-active/)
+  })
+})
+
 // ── Hoy: ejercicios completados marcados en verde ──
 // Un ejercicio del día cuenta como hecho cuando existe exerciseLog de hoy
 // con peso > 0 (misma fuente que todayExDone). La TrainingCard debe marcar
