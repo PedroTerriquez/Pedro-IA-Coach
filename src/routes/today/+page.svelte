@@ -98,6 +98,7 @@
     exercises = exs
     if (day) todayExercises = buildTodayExercises(day, exercises, allLogs)
     detailExercises = todayExercises
+    loadTodayLogs()
   }
 
   function openTrainingDetail() {
@@ -329,8 +330,10 @@
     const logs = await getLogsForDate(todayDate)
     const nextDone: Record<string, true> = {}
     const count = day ? day.exercises.filter(ex => {
-      const isDone = logs.some(l => l.exerciseId === ex.exerciseId && l.weight > 0)
-      if (isDone) nextDone[ex.exerciseId] = true
+      // The log is stored under the alternative's id when the slot is swapped.
+      const displayId = todaySwapsMap[ex.exerciseId] || ex.exerciseId
+      const isDone = logs.some(l => l.exerciseId === displayId && l.weight > 0)
+      if (isDone) nextDone[displayId] = true
       return isDone
     }).length : 0
     doneIds = nextDone
@@ -347,8 +350,9 @@
       completionToastShown = true
       phase = 'stretch'
       stretchDone = false
+      // Session time stops when the exercises are done — stretching is not counted.
+      if (!endedAt) endedAt = Date.now()
       if (!hasStretch) {
-        if (!endedAt) endedAt = Date.now()
         phase = 'complete'
         showCoach = true
         showEffortAfterStreak()
@@ -357,7 +361,7 @@
           imageSrc: `${base}/images/pedro.png`,
           message: 'Estira bb',
           subtext: 'Ya no tienes 20 añitos',
-          timeLabel: startedAt ? formatElapsed(startedAt, Date.now()) : '',
+          timeLabel: startedAt ? formatElapsed(startedAt, endedAt) : '',
           duration: 3000,
         }
       }
@@ -387,7 +391,8 @@
     if (stretchDone) p = 4
     if (showCoach) p = 5
     const sessionState = { date: todayDate, phase: p, todayExDone, startedAt, endedAt }
-    Storage.saveSettings({ ...$settings, sessionState })
+    // Merge onto what's stored, never onto the in-memory store: it can be stale
+    // (e.g. missing todaySwaps) and would wipe today's alternative.
     settings.update({ sessionState } as any)
   }
 
@@ -608,7 +613,7 @@
         {#if todayExercises.length > 0}
           {#if warmupDone && todayExDone < exercisesTotal}
             <TrainingCard
-              {day}
+              day={{ ...day, exercises: todayExercises }}
               {accent}
               {todayExDone}
               {exercisesTotal}

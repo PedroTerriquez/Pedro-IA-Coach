@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.77'
-const _VER_DESC = 'Iniciar arranca el descanso al instante, sin Descanso terminado fantasma'
-const _VER_TIME = '2026-10-06 22:09'
+const _VER_BASE = 'v2.78'
+const _VER_DESC = 'Alternativa registrada cuenta como hecha; timer corta al terminar ejercicios'
+const _VER_TIME = '2026-10-06 22:37'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

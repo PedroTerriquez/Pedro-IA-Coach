@@ -2939,6 +2939,123 @@ test.describe('Today — Alternative exercise swap', () => {
   })
 })
 
+// ── Hoy: una alternativa registrada cuenta como el ejercicio hecho ──
+// El log se guarda con el id de la alternativa, no con el del programa: la fila
+// debe marcarse en verde igual y desbloquear el estiramiento. Además el tiempo
+// de la sesión se corta al terminar la Fase 02, no al terminar de estirar.
+test.describe('Hoy — alternativa registrada cuenta como hecha', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: 'prog-alt-done', currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+    sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
+  }
+
+  function getTodayStr() {
+    return new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  }
+
+  function readEndedAt(page) {
+    return page.evaluate(() => new Promise((resolve, reject) => {
+      const req = indexedDB.open('coach-pedro-ai', 2)
+      req.onsuccess = () => {
+        const db = req.result
+        const get = db.transaction('settings', 'readonly').objectStore('settings').get('settings')
+        get.onsuccess = () => { db.close(); resolve(get.result?.sessionState?.endedAt ?? null) }
+        get.onerror = () => reject(get.error)
+      }
+      req.onerror = () => reject(req.error)
+    }))
+  }
+
+  test('la alternativa marca la fila en verde, desbloquea estiramiento y corta el timer', async ({ page }) => {
+    test.setTimeout(90000)
+    await mockApiRoutes(page)
+    const today = getTodayStr()
+
+    await page.goto('today')
+    await page.waitForTimeout(600)
+    await seedIndexedDB(page, {
+      exercises: [
+        SEED.exercises[0], // ex-bench, con alternativas curadas
+        { id: 'ex-military', name: 'Press Militar', muscle: 'Shoulders', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      ],
+      program: {
+        id: 'prog-alt-done', name: 'Programa Alt Done',
+        weeks: [{
+          name: 'Semana 1', subtitle: '', tag: 'BUILD',
+          days: buildDayArray({
+            name: 'Empuje', subtitle: 'Press Banca · Press Militar', duration: 60,
+            exercises: [
+              { exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 },
+              { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 },
+            ],
+          }),
+        }],
+      },
+      // phase 2 = calentamiento hecho; la sesión arrancó hace 5 min.
+      settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0, startedAt: Date.now() - 5 * 60000, endedAt: null } },
+    })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(1000)
+
+    const timerRing = page.locator('[data-component="TimerRing"]')
+    await expect(timerRing).toBeVisible()
+
+    // ── Cambiar Press Banca por la alternativa y registrar su peso ──
+    await page.locator('[data-phase="training"]').first().click()
+    await page.waitForTimeout(400)
+    await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Alternativas' }).click()
+    await page.waitForTimeout(300)
+    await page.locator('[data-component="AlternativesTab"] .alt-card').filter({ hasText: 'Mancuernas' }).click()
+    await page.waitForTimeout(500)
+    await expect(page.locator('.hero-name')).toContainText('Mancuernas')
+    await page.locator('input[inputmode="decimal"]').first().fill('45')
+    await page.getByRole('button', { name: /Registrar ·/ }).click()
+    await page.waitForTimeout(500)
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+    await page.waitForTimeout(500)
+
+    // ── La fila muestra la alternativa y queda marcada en verde ──
+    const altRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Mancuernas' })
+    const militaryRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Press Militar' })
+    await expect(altRow).toHaveAttribute('data-done', 'true')
+    await expect(altRow.locator('.ex-done-badge')).toBeVisible()
+    await expect(militaryRow).toHaveAttribute('data-done', 'false')
+    // Aún falta un ejercicio: el timer sigue corriendo.
+    await expect(timerRing).toBeVisible()
+    expect(await readEndedAt(page)).toBeNull()
+
+    // ── Registrar el segundo ejercicio → Fase 02 terminada ──
+    await militaryRow.click()
+    await page.waitForTimeout(400)
+    await expect(page.locator('.hero-name')).toContainText('Militar')
+    await page.locator('input[inputmode="decimal"]').first().fill('30')
+    await page.getByRole('button', { name: /Registrar ·/ }).click()
+    await page.waitForTimeout(500)
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+
+    await expect(page.locator('[data-component="CenterToast"]', { hasText: 'Estira bb' })).toBeVisible({ timeout: 3000 })
+    const stretchCard = page.locator('[data-phase="stretch"]')
+    await expect(stretchCard).toBeVisible()
+
+    // ── El tiempo de la sesión se corta aquí, antes de estirar ──
+    await expect(timerRing).toHaveCount(0)
+    const endedAt = await readEndedAt(page)
+    expect(endedAt).not.toBeNull()
+
+    // ── Estirar no mueve el tiempo final ──
+    await expect(page.locator('[data-component="CenterToast"]')).toHaveCount(0, { timeout: 6000 })
+    await stretchCard.click()
+    await page.waitForTimeout(500)
+    const hecho = page.getByRole('button', { name: 'Hecho' })
+    await expect(hecho).toBeVisible({ timeout: 3000 })
+    await hecho.click()
+    await page.waitForTimeout(800)
+    expect(await readEndedAt(page)).toBe(endedAt)
+  })
+})
+
 // ── Hoy: ejercicios completados marcados en verde ──
 // Un ejercicio del día cuenta como hecho cuando existe exerciseLog de hoy
 // con peso > 0 (misma fuente que todayExDone). La TrainingCard debe marcar
