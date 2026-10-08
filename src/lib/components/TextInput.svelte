@@ -14,7 +14,8 @@
     list = undefined,
     oninput = undefined,
     onblur = undefined,
-    id = undefined
+    id = undefined,
+    autofocus = false
   }: {
     value?: string
     placeholder?: string
@@ -29,10 +30,18 @@
     oninput?: (val: string) => void
     onblur?: () => void
     id?: string
+    autofocus?: boolean
   } = $props()
+
+  let inputEl: HTMLInputElement | null = null
+
+  $effect(() => {
+    if (autofocus) inputEl?.focus()
+  })
 </script>
 
 <input
+  bind:this={inputEl}
   class={mono ? 'input-field-mono' : 'input-field'}
   class:compact
   {type}

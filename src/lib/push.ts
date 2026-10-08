@@ -118,6 +118,15 @@ export async function registerUser(username: string): Promise<boolean> {
   return false
 }
 
+// Moves the user to a new name on the Worker (record, own friends list and every
+// list that had them added). 'taken' = someone already owns the new name.
+export async function renameUser(oldName: string, newName: string): Promise<'ok' | 'taken' | 'error'> {
+  const res = await postJSON('/api/user/rename', { username: oldName, newUsername: newName }, 0)
+  if (!res) return 'error'
+  if (res.ok) return 'ok'
+  return res.status === 409 ? 'taken' : 'error'
+}
+
 // Checks whether a username is already registered with the Worker, without
 // creating/modifying anything. Used to decide whether to show the register button.
 export async function checkUserExists(username: string): Promise<boolean> {

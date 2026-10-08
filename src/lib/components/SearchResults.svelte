@@ -1,109 +1,100 @@
 <script lang="ts">
   import EmptyState from './EmptyState.svelte'
+  import Avatar from './Avatar.svelte'
+  import Button from './Button.svelte'
+  import { TOUCH_PILL } from './friends-touch'
+  import { streakLabel } from '$lib/league'
 
   let {
     query = '',
     searching = false,
     results = [],
     addingFriend = null,
-    accent = 'var(--accent)',
+    inLeague = [],
     onadd = undefined
   }: {
     query: string
     searching: boolean
-    results: { username: string; streak: number }[]
+    results: { username: string; streak?: number }[]
     addingFriend: string | null
-    accent?: string
+    inLeague?: string[]
     onadd?: (username: string) => void
   } = $props()
 
-  let show = $derived(query.length >= 1 || searching || results.length > 0)
+  // Length of the part of the name that matches what was typed, from its start.
+  function matchLength(name: string): number {
+    return name.toLowerCase().startsWith(query.toLowerCase()) ? query.length : 0
+  }
 </script>
 
-{#if show}
+{#if searching}
+  <EmptyState message="Buscando…" style="padding:28px 20px" />
+{:else if results.length > 0}
   <div class="search-results" data-component="SearchResults">
-    {#if searching}
-      <EmptyState message="Buscando..." style="padding:20px" />
-    {:else if results.length === 0}
-      <EmptyState message="No se encontraron usuarios" style="padding:20px" />
-    {:else}
-      {#each results as r (r.username)}
-        <div class="sr-item">
-          <div class="sr-avatar" style="background:{accent}22; color:{accent}">{r.username.charAt(0).toUpperCase()}</div>
-          <div class="sr-info">
-            <span class="sr-name">{r.username}</span>
-            <span class="sr-streak">{r.streak} {r.streak === 1 ? 'día' : 'días'}</span>
-          </div>
-          <button
-            class="sr-add"
-            style="background:{accent}"
-            onclick={() => onadd?.(r.username)}
-            disabled={addingFriend === r.username}
-            aria-label="Agregar {r.username}"
-          >
-            {addingFriend === r.username ? '…' : '+'}
-          </button>
+    {#each results as r (r.username)}
+      {@const cut = matchLength(r.username)}
+      <div class="sr-item">
+        <Avatar username={r.username} />
+        <div class="sr-info">
+          <div class="sr-name"><mark>{r.username.slice(0, cut)}</mark>{r.username.slice(cut)}</div>
+          <div class="sr-streak">{streakLabel(r.streak || 0)}</div>
         </div>
-      {/each}
-    {/if}
+        {#if inLeague.includes(r.username)}
+          <span class="sr-in">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+            En tu liga
+          </span>
+        {:else}
+          <Button variant="secondary" style={TOUCH_PILL} disabled={addingFriend === r.username} onclick={() => onadd?.(r.username)}>Agregar</Button>
+        {/if}
+      </div>
+    {/each}
   </div>
 {/if}
 
 <style>
   .search-results {
-    margin-top: 12px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    --ring: var(--surface);
   }
   .sr-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--surface);
-    border-radius: var(--radius-md);
-    border: 0.5px solid var(--border);
+    gap: 14px;
+    min-height: 68px;
   }
-  .sr-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
+  .sr-item + .sr-item { box-shadow: 0 -0.5px 0 var(--border); }
+  .sr-info { min-width: 0; }
+  .sr-name {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
     color: var(--text);
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .sr-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-  .sr-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .sr-name mark {
+    background: none;
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,0.35);
+    text-underline-offset: 4px;
+  }
   .sr-streak {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--text-muted);
+    margin-top: 3px;
+    font-size: 13px;
+    color: var(--text-tertiary);
   }
-  .sr-add {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: none;
-    background: var(--accent);
-    color: #000;
-    font-size: 18px;
-    font-weight: 600;
+  .sr-in {
     display: flex;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
-    padding: 0;
-    line-height: 1;
-  }
-  .sr-add:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    gap: 6px;
+    height: 44px;
+    padding: 0 4px;
+    font-size: 14px;
+    color: var(--text-tertiary);
   }
 </style>

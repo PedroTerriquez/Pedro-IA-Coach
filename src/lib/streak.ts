@@ -39,7 +39,7 @@ function addDays(date: Date, n: number): Date {
   return d
 }
 
-function isTrained(log: { weight?: number; exerciseId?: string }): boolean {
+export function isTrained(log: { weight?: number; exerciseId?: string }): boolean {
   return (log.weight !== undefined && log.weight > 0) || log.exerciseId === '__day__'
 }
 

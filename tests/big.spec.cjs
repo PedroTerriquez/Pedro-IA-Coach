@@ -215,6 +215,7 @@ async function seedIndexedDB(page, data, retries = 3) {
               d.exercises.forEach(ex => tx.objectStore('exercises').put(ex))
               ;(d.exerciseLogs || []).forEach(log => tx.objectStore('exerciseLogs').put(log))
               if (d.program) tx.objectStore('programs').put(d.program)
+              ;(d.gymSessions || []).forEach(g => tx.objectStore('gymSessions').put(g))
               tx.objectStore('settings').put(d.settings)
               tx.oncomplete = () => { db.close(); resolve() }
               tx.onerror = () => reject(tx.error)
@@ -290,6 +291,9 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null, { timeout: 5000 }).catch(() => {})
 
   // Intercept Worker API calls
+  // Ana only joins the list once she is added (Step 12): since Amigos v2 a
+  // friend already in the league shows "En tu liga" instead of "Agregar".
+  let anaAdded = false
   await page.route(/\/api\//, async (route) => {
     const url = route.request().url()
     if (url.includes('/api/user/register')) {
@@ -305,10 +309,12 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: [{ username: 'Ana', streak: 12, exercisedToday: true }] }) })
     }
     if (url.includes('/api/friends/add')) {
+      anaAdded = true
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
     }
     if (url.includes('/api/friends/list')) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends: [{ username: 'Ana', streak: 12, exercisedToday: true, lastUpdate: new Date().toISOString() }] }) })
+      const friends = anaAdded ? [{ username: 'Ana', streak: 12, exercisedToday: true, lastUpdate: new Date().toISOString() }] : []
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends }) })
     }
     // Default: coach AI response (used by You → Programas → Coach IA, not by
     // the local post-workout coach card, which is client-side only)
@@ -633,16 +639,27 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.goto('friends')
   await page.waitForTimeout(500)
 
+  // Changed 2026-10-07 with Amigos v2 (approved by Pedro). This step used to
+  // promise: a `.friends-my-streak` banner saying "Racha", the username in
+  // `.username-editor .name-text` on the page, the search box always visible on
+  // the page, and Ana as a `.friend-card` with her streak and a ✅ for "trained
+  // today". Now: the "Tu racha" card, the username inside Mi perfil, the search
+  // inside the "Agregar amigo" sheet, and Ana as a league row with her streak
+  // and the "Entrenó hoy" dot.
+  //
   // El prompt #username-prompt solo aparece si el usuario NO tiene nombre.
   // Como este flujo ya seedea settings.userName = 'TestUser', Friends renderiza
-  // directo la vista principal; el nombre se verifica abajo en el UsernameEditor.
-  await expect(page.locator('.friends-my-streak')).toContainText('Racha')
+  // directo la vista principal.
+  const friendsSheet = page.locator('[data-component="Sheet"]')
+  await expect(page.locator('[data-component="WeekCard"]')).toContainText('Tu racha')
 
-  // El username ahora vive aquí (en Mi Perfil / UsernameEditor), no en el header
-  // de You (se movió en 5d134e8). Es el nuevo lugar de verificación del nombre.
-  await expect(page.locator('.username-editor .name-text')).toContainText('TestUser')
+  // El username vive en Mi perfil (hoja que abre el avatar del encabezado).
+  await page.getByRole('button', { name: 'Mi perfil' }).click()
+  await expect(page.locator('[data-component="ProfileSheet"]')).toContainText('TestUser')
+  await friendsSheet.getByRole('button', { name: 'Cerrar' }).click()
 
-  // Search for friend
+  // Search for friend — inside the "Agregar amigo" sheet
+  await page.getByRole('button', { name: 'Agregar amigo' }).click()
   const searchInput = page.locator('#friend-search-input')
   await expect(searchInput).toBeVisible()
   await searchInput.fill('Ana')
@@ -654,17 +671,18 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(searchResult).toContainText('Ana')
 
   // Add friend
-  const addBtn = page.getByRole('button', { name: 'Agregar' })
+  const addBtn = searchResult.getByRole('button', { name: 'Agregar' })
   await expect(addBtn).toBeVisible()
   await addBtn.click()
   await page.waitForTimeout(500)
+  await friendsSheet.getByRole('button', { name: 'Cerrar' }).click()
 
-  // Verify friend appears in list with streak (leaderboard grid — Ana es una card).
-  const friendCard = page.locator('.friend-card').filter({ has: page.locator('.name', { hasText: 'Ana' }) })
-  await expect(friendCard).toBeVisible()
-  await expect(friendCard).toContainText('Ana')
-  await expect(friendCard).toContainText('12')
-  await expect(friendCard).toContainText('✅')
+  // Verify friend appears in the league with her streak and the "trained today" dot.
+  const friendRow = page.locator('#friends-list [data-user="Ana"]')
+  await expect(friendRow).toBeVisible()
+  await expect(friendRow).toContainText('Ana')
+  await expect(friendRow).toContainText('12')
+  await expect(friendRow.locator('[data-today]')).toBeVisible()
 
   // ── Step 13: Language Toggle — Exercise Names ──
   await page.goto('you')
@@ -2957,10 +2975,14 @@ test.describe('You — Datos export/import roundtrip', () => {
 
     // El username ya no vive en el header de You (se movió a Friends en 5d134e8):
     // comprobar que 'RoundTripUser' sobrevivió el roundtrip navegando a Friends,
-    // donde ahora se muestra en el UsernameEditor (Mi Perfil).
+    // donde se muestra en Mi perfil.
+    // Changed 2026-10-07 with Amigos v2 (approved by Pedro): it used to be read
+    // from `.username-editor .name-text` on the page; the username now lives in
+    // the Mi perfil sheet behind the header avatar.
     await page.goto('friends')
     await page.waitForTimeout(800)
-    await expect(page.locator('.username-editor .name-text')).toContainText('RoundTripUser')
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    await expect(page.locator('[data-component="ProfileSheet"]')).toContainText('RoundTripUser')
   })
 })
 
@@ -3531,11 +3553,25 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.reload()
     await page.waitForTimeout(500)
 
-    // username ya presente → sin prompt, se muestra el my-streak
-    await expect(page.locator('#username-prompt')).not.toBeVisible()
-    await expect(page.locator('.friends-my-streak')).toContainText('Racha')
+    // Changed 2026-10-07 with Amigos v2 (approved by Pedro). This test used to
+    // promise: a `.friends-my-streak` banner with "Racha"; the empty message
+    // "Aún no tienes amigos"; three `.friend-card` ordered by gym time with the
+    // medals 🏆 🥈 🥉, each friend's streak number, "130 minutos de gym esta
+    // semana" / "84 minutos de gym esta semana" and a "Yo" badge on my card; a
+    // pencil "Editar nombre" on the page that edited the name inline (local
+    // only); and a trash button on each row that removed the friend on a
+    // second tap ("Eliminar amigo" → "Confirmar eliminar").
+    // Now: the week card; "Entrena con tu gente"; the same order by minutes on
+    // a podium without medals, "Tú", "130 min"; the name is edited from Mi
+    // perfil and renamed on the Worker; a friend is removed from their detail
+    // sheet with Cancelar / Quitar.
 
-    // Estado vacío: sin amigos listados → Leaderboard muestra el mensaje.
+    // username ya presente → sin prompt, se muestra la tarjeta de la semana
+    await expect(page.locator('#username-prompt')).not.toBeVisible()
+    await expect(page.locator('[data-component="WeekCard"]')).toContainText('Racha', { timeout: 15000 })
+
+    // Estado vacío: sin amigos listados → se invita a agregar.
+    await page.route(/\/api\/user\/rename/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
     await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends: [] }) }))
     await page.route(/\/api\/friends\/remove/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
     await page.route(/\/api\/user\/register/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
@@ -3543,59 +3579,68 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) }))
     await page.reload()
     await page.waitForTimeout(800)
-    await expect(page.locator('.leaderboard [data-component="EmptyState"]')).toContainText('Aún no tienes amigos')
+    await expect(page.locator('#friends-list')).toContainText('Entrena con tu gente')
 
-    // Con amigos: copas, orden por tiempo en el gym y badge "Yo".
+    // Con amigos: orden por tiempo en el gym y "Tú" en mi lugar.
+    // Ana's lastUpdate used to be 24 h old; a friend who has not synced since
+    // last week now counts 0 min, which would break this on Mondays, so both
+    // friends are fresh here (old data has its own scenario, "datos viejos").
     const friends = [
       { username: 'Luis', streak: 20, exercisedToday: true, gymTime: 5040, lastUpdate: new Date().toISOString() },
-      { username: 'Ana', streak: 12, exercisedToday: false, gymTime: 7800, lastUpdate: new Date(Date.now() - 86400000).toISOString() },
+      { username: 'Ana', streak: 12, exercisedToday: false, gymTime: 7800, lastUpdate: new Date(Date.now() - 60000).toISOString() },
     ]
     await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends }) }))
     await page.reload()
     await page.waitForTimeout(800)
 
-    const cards = page.locator('.friend-card')
-    await expect(cards).toHaveCount(3) // Luis, Ana + yo (TestUser)
-    // Orden por tiempo en el gym: Ana (7800s) primero con 🏆, Luis (5040s) con 🥈, yo (0) al final.
-    await expect(cards.nth(0)).toContainText('Ana')
-    await expect(cards.nth(0)).toContainText('🏆')
-    await expect(cards.nth(0)).toContainText('12')
-    await expect(cards.nth(1)).toContainText('Luis')
-    await expect(cards.nth(1)).toContainText('🥈')
-    await expect(cards.nth(1)).toContainText('20')
-    await expect(cards.nth(2)).toContainText('🥉')
+    const podium = page.locator('[data-component="Leaderboard"] .podium .col')
+    await expect(podium).toHaveCount(3) // Luis, Ana + yo (TestUser)
+    // Orden por tiempo en el gym: Ana (7800s) primera, Luis (5040s) segundo, yo (0) al final.
+    const first = page.locator('.podium .col[data-pos="1"]')
+    const second = page.locator('.podium .col[data-pos="2"]')
+    const third = page.locator('.podium .col[data-pos="3"]')
+    await expect(first).toContainText('Ana')
+    await expect(second).toContainText('Luis')
+    // Sin medallas en ninguna parte de la vista.
+    for (const medal of ['🏆', '🥈', '🥉']) await expect(page.locator('body')).not.toContainText(medal)
 
-    // Tiempo en el gym semanal (de cada amigo): streak junto al nombre y minutos abajo.
-    await expect(cards.nth(0)).toContainText('130 minutos de gym esta semana') // 7800s
-    await expect(cards.nth(1)).toContainText('84 minutos de gym esta semana') // 5040s
+    // Tiempo en el gym semanal de cada amigo.
+    await expect(first).toContainText('130 min') // 7800s
+    await expect(second).toContainText('84 min') // 5040s
 
-    // Badge "Yo" sobre mi propia card.
-    const myCard = page.locator('.friend-card', { hasText: 'TestUser' })
-    await expect(myCard).toContainText('Yo')
+    // "Tú" sobre mi propio lugar.
+    await expect(third).toContainText('Tú')
 
-    // Editar username inline (UsernameEditor en "Mi Perfil").
-    const editBtn = page.getByRole('button', { name: 'Editar nombre' })
+    // Editar username desde Mi perfil. El usuario aún no existe en el servidor
+    // (check → exists: false), así que primero se registra; luego aparece el lápiz.
+    const sheet = page.locator('[data-component="Sheet"]')
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    await page.getByRole('button', { name: 'Registrar mi usuario' }).click()
+    const editBtn = page.getByRole('button', { name: 'Editar usuario' })
     await expect(editBtn).toBeVisible()
     await editBtn.click()
     await page.waitForTimeout(200)
-    const nameInput = page.locator('.name-input')
+    const nameInput = page.locator('#rename-input')
     await expect(nameInput).toBeVisible()
     await nameInput.fill('Pedro')
     await page.getByRole('button', { name: 'Guardar' }).click()
     await page.waitForTimeout(600)
-    await expect(page.locator('.name-text')).toContainText('Pedro')
+    await expect(page.locator('[data-component="ProfileSheet"] .who-name')).toContainText('Pedro')
+    await sheet.getByRole('button', { name: 'Cerrar' }).click()
 
-    // Eliminar amigo: 2 pasos (confirmación) → desaparece de la lista.
-    const anaCard = page.locator('.friend-card').filter({ has: page.locator('.name', { hasText: 'Ana' }) })
-    const removeBtn = anaCard.getByRole('button', { name: 'Eliminar amigo' })
-    await expect(removeBtn).toBeVisible()
-    await removeBtn.click()
-    await page.waitForTimeout(200)
-    // Primera pulsación: cambia a estado de confirmación.
-    await expect(anaCard.getByRole('button', { name: 'Confirmar eliminar' })).toBeVisible()
-    await anaCard.getByRole('button', { name: 'Confirmar eliminar' }).click()
+    // Quitar amigo desde su detalle: la racha de Ana se ve ahí (en el podio no cabe).
+    await first.click()
+    const detail = page.locator('[data-component="FriendDetail"]')
+    await expect(detail).toContainText('Ana')
+    await expect(detail).toContainText('12')
+    // Confirmación en 2 pasos: Cancelar la deja, Quitar la saca de la liga.
+    await detail.getByRole('button', { name: 'Quitar de mi liga' }).click()
+    await detail.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(page.locator('#friends-list [data-user="Ana"]')).toHaveCount(1)
+    await detail.getByRole('button', { name: 'Quitar de mi liga' }).click()
+    await detail.getByRole('button', { name: 'Quitar', exact: true }).click()
     await page.waitForTimeout(600)
-    await expect(page.locator('.friend-card').filter({ has: page.locator('.name', { hasText: 'Ana' }) })).toHaveCount(0)
+    await expect(page.locator('#friends-list [data-user="Ana"]')).toHaveCount(0)
   })
 
   test('registro manual: botón junto al lápiz aparece si el usuario no existe y avisa si ya existe', async ({ page }) => {
@@ -3615,13 +3660,20 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    const registerBtn = page.getByRole('button', { name: 'Registrar usuario' })
+    // Changed 2026-10-07 with Amigos v2 (approved by Pedro). The button used to
+    // be "Registrar usuario", on the page next to the pencil. It is now
+    // "Registrar mi usuario" inside Mi perfil; same promise: it shows up only
+    // while the user does not exist on the server.
+    const profile = page.locator('[data-component="ProfileSheet"]')
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    const registerBtn = page.getByRole('button', { name: 'Registrar mi usuario' })
     await expect(registerBtn).toBeVisible()
 
     // Al registrarlo se oculta el botón (ya registrado).
     await registerBtn.click()
     await page.waitForTimeout(600)
-    await expect(page.getByRole('button', { name: 'Registrar usuario' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Registrar mi usuario' })).not.toBeVisible()
+    await expect(profile).toContainText('Así te encuentran tus amigos')
 
     // Si el nombre ya existe en el servidor, el botón NO aparece (ya está registrado).
     await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true }) }))
@@ -3632,7 +3684,9 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await expect(page.getByRole('button', { name: 'Registrar usuario' })).not.toBeVisible()
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    await expect(profile).toContainText('Así te encuentran tus amigos')
+    await expect(page.getByRole('button', { name: 'Registrar mi usuario' })).not.toBeVisible()
   })
 })
 
@@ -3888,8 +3942,14 @@ test.describe('Offline — funciones que requieren internet', () => {
     await context.setOffline(true)
     await page.reload()
     await expect(page.locator('#friends-list')).toContainText('Ana', { timeout: 5000 })
-    await expect(page.locator('#friends-cached')).toContainText('Sin conexión · última actualización')
-    await expect(page.locator('#friend-search-offline')).toContainText('requiere internet')
+    // Changed 2026-10-07 with Amigos v2 (approved by Pedro). It used to promise
+    // "Sin conexión · última actualización" in #friends-cached and a
+    // #friend-search-offline notice ("requiere internet") in place of the
+    // search box. Now the cached line carries the date of the data and the
+    // way into the search ("Agregar amigo") is disabled with its reason.
+    await expect(page.locator('#friends-cached')).toContainText('Datos del')
+    await expect(page.getByRole('button', { name: 'Agregar amigo' })).toBeDisabled()
+    await expect(page.locator('#friends-list')).toContainText('Necesitas internet para agregar amigos.')
     await expect(page.locator('#friend-search-input')).toHaveCount(0)
 
     // AI coach button in the exercise detail is disabled offline.
@@ -3997,5 +4057,494 @@ test.describe('Offline — la red que se cuelga sin responder', () => {
     } finally {
       await new Promise((r) => server.close(r))
     }
+  })
+})
+
+// ── Amigos v2 — liga semanal ──
+// Spec: docs/superpowers/specs/2026-10-07-amigos-v2-liga-semanal-design.md.
+// Shared by the nine scenarios below: seeds built around today's date (the
+// league week is always Monday → Sunday, so they hold whatever day the suite
+// runs) and a simulated Worker that each test steers by mutating `api`.
+const LEAGUE = {
+  dateStr(d) {
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  },
+  today() {
+    return LEAGUE.dateStr(new Date())
+  },
+  // Local date `days` after this week's Monday (negative = earlier weeks).
+  fromMonday(days) {
+    const d = new Date()
+    d.setHours(12, 0, 0, 0)
+    d.setDate(d.getDate() - getDayIdx() + days)
+    return LEAGUE.dateStr(d)
+  },
+  // Monday–Wednesday of the week `weeksAgo` weeks back: a completed week for a 4-day program.
+  fullWeek(weeksAgo) {
+    return [0, 1, 2].map((i) => ({ id: `log-w${weeksAgo}-${i}`, exerciseId: 'ex-bench', date: LEAGUE.fromMonday(-7 * weeksAgo + i), weight: 50, units: 'kg' }))
+  },
+  todayLog() {
+    return { id: 'log-liga-today', exerciseId: 'ex-bench', date: LEAGUE.today(), weight: 50, units: 'kg' }
+  },
+  gymToday(seconds) {
+    const date = LEAGUE.today()
+    return { id: date, date, seconds, weekStart: LEAGUE.fromMonday(0) }
+  },
+  exercises: [
+    { id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+    { id: 'ex-military', name: 'Press Militar', muscle: 'Shoulders', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+  ],
+  // Four training days a week (streak threshold 3), today among them.
+  program() {
+    const t = getDayIdx()
+    const training = new Set([t, (t + 1) % 7, (t + 2) % 7, (t + 4) % 7])
+    const workout = { name: 'Empuje', subtitle: 'Press Banca', duration: 60, exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }, { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 }] }
+    const rest = { name: 'Descanso', subtitle: '', duration: 0, exercises: [] }
+    return { id: 'prog-liga', name: 'Programa Liga', weeks: [{ name: 'Semana 1', subtitle: '', tag: 'BUILD', days: Array.from({ length: 7 }, (_, i) => (training.has(i) ? workout : rest)) }] }
+  },
+  settings(over = {}) {
+    return {
+      id: 'settings', activeProgramId: 'prog-liga', currentWeekIdx: 0, units: 'kg',
+      accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+      sessionState: { date: LEAGUE.today(), phase: 2, todayExDone: 0 }, lastCoachAnalysis: null,
+      rescheduleWeekOrder: {}, language: 'es', onboarded: true, username: 'TestUser',
+      ...over,
+    }
+  },
+  friend(username, minutes, over = {}) {
+    return { username, streak: 3, exercisedToday: false, gymTime: minutes * 60, lastUpdate: new Date().toISOString(), ...over }
+  },
+}
+
+// `api` fields: friends (the league on the server), users (what search can
+// find), exists, registerStatus, renameStatus. Every POST body lands in
+// `api.calls` and every list request's username in `api.listUsers`.
+async function mockFriendsWorker(page, api) {
+  api.calls = []
+  api.listUsers = []
+  await page.route(/\/api\//, async (route) => {
+    const req = route.request()
+    const url = new URL(req.url())
+    const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+    const body = req.method() === 'POST' ? req.postDataJSON() : null
+    if (body) api.calls.push({ path: url.pathname, body })
+    if (url.pathname.endsWith('/api/friends/list')) {
+      api.listUsers.push(url.searchParams.get('username'))
+      return json({ friends: api.friends || [] })
+    }
+    if (url.pathname.endsWith('/api/friends/search')) {
+      const q = (url.searchParams.get('q') || '').toLowerCase()
+      return json({ results: (api.users || []).filter((u) => u.username.toLowerCase().includes(q)) })
+    }
+    if (url.pathname.endsWith('/api/friends/add')) {
+      api.friends = [...(api.friends || []), (api.users || []).find((u) => u.username === body.friendUsername)]
+      return json({ status: 'ok' })
+    }
+    if (url.pathname.endsWith('/api/friends/remove')) {
+      api.friends = (api.friends || []).filter((f) => f.username !== body.friendUsername)
+      return json({ status: 'ok' })
+    }
+    if (url.pathname.endsWith('/api/user/check')) return json({ exists: api.exists !== false })
+    if (url.pathname.endsWith('/api/user/register')) return api.registerStatus === 500 ? json({ error: 'boom' }, 500) : json({ status: 'ok' })
+    if (url.pathname.endsWith('/api/user/rename')) return api.renameStatus === 409 ? json({ error: 'Ese usuario ya está tomado' }, 409) : json({ status: 'ok' })
+    return json({ status: 'ok' })
+  })
+}
+
+async function openFriends(page, data) {
+  await page.goto('friends')
+  await page.waitForTimeout(400)
+  await seedIndexedDB(page, { exercises: LEAGUE.exercises, ...data })
+  await page.waitForTimeout(200)
+  await page.reload()
+  await page.waitForTimeout(800)
+}
+
+// Logs one weight on today's first exercise through Hoy, like a user would.
+async function logWeightToday(page) {
+  await page.goto('today')
+  await page.waitForTimeout(800)
+  await page.locator('[data-phase="training"] .exercise-row').first().click()
+  await page.waitForTimeout(500)
+  await page.getByRole('button', { name: 'Más peso' }).first().click()
+  await page.getByRole('button', { name: /Registrar ·/ }).click()
+  await page.waitForTimeout(600)
+}
+
+test.describe('Amigos v2 — liga con podio, tarjeta y detalle', () => {
+  test('shows my week, the podium by minutes, and removes a friend from the detail sheet', async ({ page }) => {
+    const api = { friends: [LEAGUE.friend('Ana', 240, { streak: 12, exercisedToday: true }), LEAGUE.friend('Luis', 195, { streak: 9 }), LEAGUE.friend('Mariana', 60, { streak: 4 }), LEAGUE.friend('Diego', 30, { streak: 1 })] }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, {
+      exerciseLogs: [...LEAGUE.fullWeek(1), ...LEAGUE.fullWeek(2), LEAGUE.todayLog()],
+      gymSessions: [LEAGUE.gymToday(6000)],
+      program: LEAGUE.program(),
+      settings: LEAGUE.settings(),
+    })
+
+    // Week card: streak of 2 past weeks, my 100 minutes, today filled in.
+    const card = page.locator('[data-component="WeekCard"]')
+    await expect(card).toContainText('Tu racha')
+    await expect(card.locator('.num')).toHaveText('2')
+    await expect(card).toContainText('semanas seguidas')
+    await expect(card.locator('.minutes')).toContainText('100')
+    await expect(card.locator('.day').nth(getDayIdx())).toHaveAttribute('data-day', 'done')
+    await expect(card.locator('.line')).toHaveText('Vas #3 de 5. Con 95 min más pasas a Luis.')
+
+    // Podium shown 2-1-3, the other two as rows; no medals anywhere.
+    const cols = page.locator('.podium .col')
+    await expect(cols).toHaveCount(3)
+    await expect(cols.nth(0)).toContainText('Luis')
+    await expect(cols.nth(0)).toContainText('195 min')
+    await expect(cols.nth(1)).toContainText('Ana')
+    await expect(cols.nth(1)).toHaveAttribute('data-pos', '1')
+    await expect(cols.nth(2)).toContainText('Tú')
+    await expect(cols.nth(2)).toContainText('100 min')
+    const rows = page.locator('[data-component="LeagueRow"]')
+    await expect(rows).toHaveCount(2)
+    await expect(rows.nth(0)).toContainText('Mariana')
+    await expect(rows.nth(1)).toContainText('Diego')
+    await expect(rows.nth(1)).toContainText('1 semana seguida')
+    for (const medal of ['🏆', '🥈', '🥉']) await expect(page.locator('body')).not.toContainText(medal)
+
+    // Detail sheet: two figures and the bars relative to whoever has more.
+    await rows.nth(0).click()
+    const detail = page.locator('[data-component="FriendDetail"]')
+    await expect(detail).toContainText('#4 esta semana')
+    await expect(detail.locator('.duo > div').nth(0)).toContainText('4')
+    await expect(detail.locator('.duo > div').nth(0)).toContainText('semanas seguidas')
+    await expect(detail.locator('.duo > div').nth(1)).toContainText('60')
+    await expect(detail.locator('.duo > div').nth(1)).toContainText('min esta semana')
+    await expect(detail.locator('.bar-row')).toHaveCount(2)
+    await expect(detail.locator('.bar-row').nth(0).locator('.bar span')).toHaveAttribute('style', /width:\s*60%/)
+    await expect(detail.locator('.bar-row.me .bar span')).toHaveAttribute('style', /width:\s*100%/)
+    await expect(detail.locator('.bar-row.me')).toContainText('Tú')
+
+    // Cancelar keeps her; Quitar removes her on the Worker and from the league.
+    await detail.getByRole('button', { name: 'Quitar de mi liga' }).click()
+    await expect(detail).toContainText('¿Quitar a Mariana de tu liga?')
+    await detail.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(detail.getByRole('button', { name: 'Quitar de mi liga' })).toBeVisible()
+    expect(api.calls.filter((c) => c.path.endsWith('/api/friends/remove'))).toHaveLength(0)
+    await detail.getByRole('button', { name: 'Quitar de mi liga' }).click()
+    await detail.getByRole('button', { name: 'Quitar', exact: true }).click()
+    await expect(detail).toHaveCount(0)
+    await expect(page.locator('#backup-toast')).toContainText('Mariana ya no está en tu liga')
+    expect(api.calls.find((c) => c.path.endsWith('/api/friends/remove')).body).toEqual({ username: 'TestUser', friendUsername: 'Mariana' })
+    await expect(page.locator('#friends-list [data-user="Mariana"]')).toHaveCount(0)
+    await expect(page.locator('#friends-list [data-user="Diego"]')).toHaveCount(1)
+  })
+})
+
+test.describe('Amigos v2 — liga chica', () => {
+  test('invites when alone, lists without podium with one friend, and brings the podium with two', async ({ page }) => {
+    const api = { friends: [] }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, {
+      exerciseLogs: [...LEAGUE.fullWeek(1), ...LEAGUE.fullWeek(2), LEAGUE.todayLog()],
+      gymSessions: [LEAGUE.gymToday(6000)],
+      program: LEAGUE.program(),
+      settings: LEAGUE.settings(),
+    })
+    const list = page.locator('#friends-list')
+    const line = page.locator('[data-component="WeekCard"] .line')
+    const addBtn = page.getByRole('button', { name: 'Agregar amigo' })
+
+    // Alone: invitation, primary action, share, and the solo phrase.
+    await expect(list).toContainText('Entrena con tu gente')
+    await expect(addBtn).toHaveClass(/btn-primary/)
+    await expect(list.getByRole('button', { name: 'Compartir mi usuario' })).toBeVisible()
+    await expect(line).toHaveText('Llevas 1 entreno esta semana. Te faltan 2 para sumar tu semana 3.')
+
+    // One friend ahead: plain list, the chase phrase, and the nudge to add more.
+    api.friends = [LEAGUE.friend('Luis', 195)]
+    await page.reload()
+    const left = 7 - getDayIdx()
+    await expect(page.locator('[data-component="LeagueRow"]')).toHaveCount(2)
+    await expect(page.locator('.podium')).toHaveCount(0)
+    await expect(line).toHaveText(`Luis va adelante por 95 min. ${left === 1 ? 'Te queda 1 día' : `Te quedan ${left} días`} para alcanzarlo.`)
+    await expect(list).toContainText('Con más amigos, la semana se pone más reñida.')
+    await expect(addBtn).toHaveClass(/btn-primary/)
+
+    // Two friends: the podium appears and adding becomes a secondary action.
+    api.friends = [LEAGUE.friend('Luis', 195), LEAGUE.friend('Ana', 30)]
+    await page.reload()
+    await expect(page.locator('.podium .col')).toHaveCount(3)
+    await expect(list).not.toContainText('Con más amigos')
+    await expect(addBtn).toHaveClass(/btn-secondary/)
+  })
+})
+
+test.describe('Amigos v2 — racha nueva', () => {
+  test('never shows a 0 streak: progress of the week instead, and it moves after training', async ({ page }) => {
+    const api = { friends: [] }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, {
+      exerciseLogs: [...LEAGUE.fullWeek(6), ...LEAGUE.fullWeek(7), ...LEAGUE.fullWeek(8)],
+      program: LEAGUE.program(),
+      settings: LEAGUE.settings(),
+    })
+    const card = page.locator('[data-component="WeekCard"]')
+
+    await expect(card).toContainText('Racha nueva')
+    await expect(card.locator('.num')).toHaveText('0 de 3')
+    await expect(card).toContainText('entrenos esta semana')
+    await expect(card.locator('.line')).toHaveText('Volviste. Tu mejor racha es de 3 semanas; te faltan 3 entrenos para empezar otra.')
+    await expect(card.locator('.day').nth(getDayIdx())).toHaveAttribute('data-day', 'today')
+    await expect(page.locator('body')).not.toContainText('0 semanas')
+
+    await logWeightToday(page)
+    await page.goto('friends')
+    await expect(card.locator('.num')).toHaveText('1 de 3')
+    await expect(card.locator('.day').nth(getDayIdx())).toHaveAttribute('data-day', 'done')
+    await expect(page.locator('body')).not.toContainText('0 semanas')
+  })
+})
+
+test.describe('Amigos v2 — racha viva y voy primero', () => {
+  test('keeps the streak alive on an untrained week, then says I lead once I train', async ({ page }) => {
+    const api = { friends: [LEAGUE.friend('Ana', 60), LEAGUE.friend('Luis', 30)] }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, {
+      exerciseLogs: [...LEAGUE.fullWeek(1), ...LEAGUE.fullWeek(2)],
+      gymSessions: [LEAGUE.gymToday(6000)],
+      program: LEAGUE.program(),
+      settings: LEAGUE.settings(),
+    })
+    const line = page.locator('[data-component="WeekCard"] .line')
+
+    await expect(line).toHaveText('Tu racha de 2 semanas sigue viva. Te faltan 3 entrenos esta semana para llegar a 3.')
+
+    await logWeightToday(page)
+    await page.goto('friends')
+    await expect(line).toHaveText('Vas primero esta semana. Bien hecho.')
+    // The leader stands in the middle of the podium.
+    const middle = page.locator('.podium .col').nth(1)
+    await expect(middle).toHaveAttribute('data-pos', '1')
+    await expect(middle).toContainText('Tú')
+  })
+})
+
+test.describe('Amigos v2 — primera vez y registro', () => {
+  test('picks a username, lands on the league even if registering fails, and registers from Mi perfil', async ({ page }) => {
+    const api = { friends: [], exists: false, registerStatus: 500 }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, { settings: LEAGUE.settings({ username: '', activeProgramId: '', sessionState: null }) })
+    const registers = () => api.calls.filter((c) => c.path.endsWith('/api/user/register'))
+
+    const prompt = page.locator('#username-prompt')
+    await expect(prompt).toContainText('Elige tu usuario')
+    await page.locator('#username-input').fill('P')
+    await expect(prompt).toContainText('1/20')
+    await expect(page.locator('#username-btn')).toBeDisabled()
+    await page.locator('#username-input').fill('Pedro')
+    await expect(prompt).toContainText('5/20')
+    await page.locator('#username-btn').click()
+
+    // "Listo" tried to register (500) and still opened the league.
+    const card = page.locator('[data-component="WeekCard"]')
+    await expect(card.locator('.num')).toHaveText('0 de 4')
+    await expect(card.locator('.line')).toHaveText('Te faltan 4 entrenos esta semana para tu primera semana de racha.')
+    expect(registers().length).toBeGreaterThanOrEqual(1)
+    expect(registers()[0].body).toEqual({ username: 'Pedro' })
+
+    // Unregistered: Mi perfil says so and has no pencil.
+    const profile = page.locator('[data-component="ProfileSheet"]')
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    await expect(profile).toContainText('Aún no pueden encontrarte')
+    await expect(page.getByRole('button', { name: 'Editar usuario' })).toHaveCount(0)
+
+    // Registering from there posts again and clears the notice.
+    api.registerStatus = 200
+    const before = registers().length
+    await page.getByRole('button', { name: 'Registrar mi usuario' }).click()
+    await expect(profile).not.toContainText('Aún no pueden encontrarte')
+    await expect(page.getByRole('button', { name: 'Editar usuario' })).toBeVisible()
+    expect(registers().length).toBe(before + 1)
+  })
+})
+
+test.describe('Amigos v2 — agregar amigo', () => {
+  test('searches from the sheet, adds without closing it, and copies my username when there is no native share', async ({ page }) => {
+    const ana = LEAGUE.friend('Ana', 60)
+    const api = { friends: [ana], users: [ana, LEAGUE.friend('Anabel', 30)] }
+    // Desktop Chromium may or may not have navigator.share: take it away so the
+    // clipboard path is the one under test, and record what gets copied.
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, 'share', { value: undefined, configurable: true })
+      Object.defineProperty(Navigator.prototype, 'clipboard', { value: { writeText: async (t) => { window.__copied = t } }, configurable: true })
+    })
+    await mockFriendsWorker(page, api)
+    await openFriends(page, { program: LEAGUE.program(), settings: LEAGUE.settings() })
+    const sheet = page.locator('[data-component="AddFriend"]')
+    const input = page.locator('#friend-search-input')
+    const toastEl = page.locator('#backup-toast')
+
+    await page.getByRole('button', { name: 'Agregar amigo' }).click()
+    await expect(input).toBeFocused()
+    await expect(sheet).toContainText('¿Tu amigo aún no tiene la app?')
+
+    // Ana is already in my league; Anabel can be added.
+    await input.fill('An')
+    const items = page.locator('.sr-item')
+    await expect(items).toHaveCount(2)
+    const anaItem = items.nth(0)
+    const anabelItem = items.nth(1)
+    await expect(anaItem.locator('.sr-name')).toHaveText('Ana')
+    await expect(anabelItem.locator('.sr-name')).toHaveText('Anabel')
+    await expect(anaItem).toContainText('En tu liga')
+    await expect(anaItem.getByRole('button')).toHaveCount(0)
+    await anabelItem.getByRole('button', { name: 'Agregar' }).click()
+
+    await expect(toastEl).toContainText('Anabel está en tu liga')
+    expect(api.calls.find((c) => c.path.endsWith('/api/friends/add')).body).toEqual({ username: 'TestUser', friendUsername: 'Anabel' })
+    await expect(anabelItem).toContainText('En tu liga')
+    await expect(anabelItem.getByRole('button')).toHaveCount(0)
+    await expect(sheet).toBeVisible()
+
+    // No one by that name.
+    await input.fill('zzq')
+    await expect(sheet).toContainText('No encontramos a «zzq»')
+
+    // No native share → clipboard + "Copiado".
+    await sheet.getByRole('button', { name: 'Compartir mi usuario' }).click()
+    await expect(toastEl).toContainText('Copiado')
+    const copied = await page.evaluate(() => window.__copied)
+    expect(copied).toContain('Agrégame en Coach Pedro AI: mi usuario es TestUser')
+    expect(copied).toContain('/Pedro-IA-Coach/')
+
+    // Closing the sheet: Anabel is in the league.
+    await page.locator('[data-component="Sheet"]').getByRole('button', { name: 'Cerrar' }).click()
+    await expect(sheet).toHaveCount(0)
+    await expect(page.locator('#friends-list [data-user="Anabel"]')).toHaveCount(1)
+  })
+})
+
+test.describe('Amigos v2 — mi perfil y renombrar', () => {
+  test('renames on the Worker, rejects a taken name, and keeps the new name after reload', async ({ page }) => {
+    const api = { friends: [LEAGUE.friend('Ana', 60), LEAGUE.friend('Luis', 30)], renameStatus: 409 }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, {
+      exerciseLogs: [...LEAGUE.fullWeek(1), ...LEAGUE.fullWeek(2), ...LEAGUE.fullWeek(3)],
+      program: LEAGUE.program(),
+      settings: LEAGUE.settings(),
+    })
+    const profile = page.locator('[data-component="ProfileSheet"]')
+    const header = page.locator('[data-component="Sheet"] .sheet-header')
+    const save = page.getByRole('button', { name: 'Guardar' })
+    const renames = () => api.calls.filter((c) => c.path.endsWith('/api/user/rename'))
+
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    await expect(profile.locator('.who-name')).toHaveText('TestUser')
+    await expect(profile.locator('.duo > div').nth(0)).toContainText('3')
+    await expect(profile.locator('.duo > div').nth(0)).toContainText('semanas seguidas')
+    await expect(profile.locator('.duo > div').nth(1)).toContainText('2')
+    await expect(profile.locator('.duo > div').nth(1)).toContainText('amigos en tu liga')
+
+    // Nothing to save until the name changes.
+    await page.getByRole('button', { name: 'Editar usuario' }).click()
+    await expect(header).toHaveText('Cambiar usuario')
+    await expect(save).toBeDisabled()
+    await page.locator('#rename-input').fill('Pedro')
+    await expect(profile).toContainText('5/20')
+
+    // Taken: the error shows, the sheet stays, the name does not change.
+    await save.click()
+    await expect(profile).toContainText('Ese usuario ya está tomado')
+    await expect(header).toHaveText('Cambiar usuario')
+    await expect(page.locator('#backup-toast')).toHaveCount(0)
+    expect(api.listUsers.at(-1)).toBe('TestUser')
+
+    // Free: renamed on the Worker and shown right away.
+    api.renameStatus = 200
+    await save.click()
+    await expect(page.locator('#backup-toast')).toContainText('Usuario actualizado')
+    expect(renames().at(-1).body).toEqual({ username: 'TestUser', newUsername: 'Pedro' })
+    await expect(header).toHaveText('Mi perfil')
+    await expect(profile.locator('.who-name')).toHaveText('Pedro')
+
+    // It survives a reload, and the league is asked for under the new name.
+    await page.reload()
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    await expect(profile.locator('.who-name')).toHaveText('Pedro')
+    expect(api.listUsers.at(-1)).toBe('Pedro')
+  })
+})
+
+test.describe('Amigos v2 — datos viejos', () => {
+  test('a friend who has not synced this week counts 0 min and "trained today" needs today\'s sync', async ({ page }) => {
+    const hoursAgo = (h) => new Date(Date.now() - h * 3600000).toISOString()
+    const api = {
+      friends: [
+        LEAGUE.friend('Viejo', 150, { exercisedToday: true, lastUpdate: hoursAgo(8 * 24) }),
+        LEAGUE.friend('Ayer', 60, { exercisedToday: true, lastUpdate: hoursAgo(24) }),
+        LEAGUE.friend('Hoy', 30, { exercisedToday: true }),
+      ],
+    }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, { gymSessions: [LEAGUE.gymToday(6000)], program: LEAGUE.program(), settings: LEAGUE.settings() })
+    const entry = (name) => page.locator(`#friends-list [data-user="${name}"]`)
+
+    // Last week's 150 minutes are gone, and so is the stale "trained today".
+    await expect(entry('Viejo')).toContainText('0 min')
+    await expect(entry('Viejo')).toHaveAttribute('data-component', 'LeagueRow')
+    await expect(entry('Viejo').locator('.pos')).toHaveText('4')
+    await expect(entry('Viejo').locator('[data-today]')).toHaveCount(0)
+
+    // Yesterday's sync keeps its minutes but not the dot. On a Monday,
+    // yesterday belongs to last week, so those minutes are old data too.
+    const ayerMinutes = getDayIdx() === 0 ? 0 : 60
+    await expect(entry('Ayer')).toContainText(`${ayerMinutes} min`)
+    await expect(entry('Ayer').locator('[data-today]')).toHaveCount(0)
+
+    // Synced today: the dot, and the legend that explains it.
+    await expect(entry('Hoy')).toContainText('30 min')
+    await expect(entry('Hoy').locator('[data-today]')).toHaveCount(1)
+    await expect(page.locator('[data-component="Leaderboard"] .legend')).toHaveText('Entrenó hoy')
+  })
+})
+
+test.describe('Amigos v2 — sin conexión', () => {
+  test('keeps the saved league and disables what needs the Worker, each with its reason', async ({ page, context }) => {
+    test.setTimeout(60000)
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+    const api = { friends: [LEAGUE.friend('Ana', 130, { streak: 12 })] }
+    await mockFriendsWorker(page, api)
+    await openFriends(page, { program: LEAGUE.program(), settings: LEAGUE.settings() })
+    const list = page.locator('#friends-list')
+    const sheet = page.locator('[data-component="Sheet"]')
+    await expect(list).toContainText('Ana', { timeout: 5000 })
+    await expect(page.locator('#friends-cached')).toHaveCount(0)
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 })
+
+    // Offline: the Worker is unreachable, so the league comes from the cache.
+    await page.unrouteAll()
+    await page.route(/\/api\/ping/, (route) => route.fulfill({ status: 405, headers: { 'Access-Control-Allow-Origin': '*' } }))
+    await context.setOffline(true)
+    await page.reload()
+    await expect(list).toContainText('Ana', { timeout: 5000 })
+    await expect(list).toContainText('130 min')
+    await expect(page.locator('#friends-cached')).toHaveText(/^Datos del \d{1,2} [a-z]{3}, \d{2}:\d{2}\. Se actualizan al volver la conexión\.$/)
+    await expect(page.getByRole('button', { name: 'Agregar amigo' })).toBeDisabled()
+    await expect(list).toContainText('Necesitas internet para agregar amigos.')
+
+    // Friend detail: removing is off.
+    await list.locator('[data-user="Ana"]').click()
+    const detail = page.locator('[data-component="FriendDetail"]')
+    await expect(detail.getByRole('button', { name: 'Quitar de mi liga' })).toBeDisabled()
+    await expect(detail).toContainText('Necesitas internet para quitar amigos.')
+    await sheet.getByRole('button', { name: 'Cerrar' }).click()
+
+    // Mi perfil → Cambiar usuario: saving is off even with a new name typed.
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    await page.getByRole('button', { name: 'Editar usuario' }).click()
+    await page.locator('#rename-input').fill('Pedro')
+    const profile = page.locator('[data-component="ProfileSheet"]')
+    await expect(profile.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await expect(profile).toContainText('Necesitas internet para cambiar tu usuario.')
+
+    await context.setOffline(false)
+    expect(errors).toEqual([])
   })
 })

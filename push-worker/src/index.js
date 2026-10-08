@@ -304,6 +304,50 @@ function _rawEcdsaSig(sig) {
   return out
 }
 
+// ── Rename a user: record, own friends list, and everyone who had them added ──
+
+async function listKeyNames(env, prefix) {
+  const names = []
+  let cursor = undefined
+  do {
+    const page = await env.PUSH_KV.list({ prefix, cursor, limit: 1000 })
+    names.push(...page.keys.map(k => k.name))
+    cursor = page.list_complete ? undefined : page.cursor
+  } while (cursor)
+  return names
+}
+
+// A user who only ever synced from an old build may have no record yet: start a base one.
+async function moveUserRecord(env, oldName, newName) {
+  const raw = await env.PUSH_KV.get(`user_${oldName}`)
+  const data = raw ? JSON.parse(raw) : { streak: 0, exercisedToday: false, gymTime: 0, lastExerciseDate: '' }
+  await env.PUSH_KV.put(`user_${newName}`, JSON.stringify({ ...data, username: newName, lastUpdate: new Date().toISOString() }))
+  await env.PUSH_KV.delete(`user_${oldName}`)
+}
+
+async function moveFriendsList(env, oldName, newName) {
+  const raw = await env.PUSH_KV.get(`friends_${oldName}`)
+  if (raw) await env.PUSH_KV.put(`friends_${newName}`, raw)
+  await env.PUSH_KV.delete(`friends_${oldName}`)
+}
+
+// Swaps oldName → newName inside one list. Returns null when the list never had oldName.
+function renameFriendEntry(list, oldName, newName) {
+  if (!list.some(f => f.friendUsername === oldName)) return null
+  const alreadyThere = list.some(f => f.friendUsername === newName)
+  return list
+    .filter(f => !(alreadyThere && f.friendUsername === oldName))
+    .map(f => (f.friendUsername === oldName ? { ...f, friendUsername: newName } : f))
+}
+
+async function renameInFriendLists(env, oldName, newName) {
+  for (const key of await listKeyNames(env, 'friends_')) {
+    const raw = await env.PUSH_KV.get(key)
+    const renamed = raw ? renameFriendEntry(JSON.parse(raw), oldName, newName) : null
+    if (renamed) await env.PUSH_KV.put(key, JSON.stringify(renamed))
+  }
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') {
@@ -523,6 +567,22 @@ export default {
         data.lastExerciseDate = exercisedToday ? new Date().toISOString().slice(0, 10) : data.lastExerciseDate
         data.lastUpdate = new Date().toISOString()
         await env.PUSH_KV.put(`user_${username}`, JSON.stringify(data))
+        return respond({ status: 'ok' })
+      } catch (err) {
+        return respond({ error: err.message }, 500)
+      }
+    }
+
+    if (url.pathname === '/api/user/rename') {
+      try {
+        const { username, newUsername } = await req.json()
+        if (!username || !newUsername) return respond({ error: 'username and newUsername required' }, 400)
+        if (username === newUsername) return respond({ error: 'newUsername must be different' }, 400)
+        if (newUsername.length < 2 || newUsername.length > 20) return respond({ error: 'Username must be 2-20 characters' }, 400)
+        if (await env.PUSH_KV.get(`user_${newUsername}`)) return respond({ error: 'Ese usuario ya está tomado' }, 409)
+        await moveUserRecord(env, username, newUsername)
+        await moveFriendsList(env, username, newUsername)
+        await renameInFriendLists(env, username, newUsername)
         return respond({ status: 'ok' })
       } catch (err) {
         return respond({ error: err.message }, 500)

@@ -3,15 +3,23 @@
     value = '',
     placeholder = 'Buscar...',
     oninput = () => {},
-    id = undefined
+    id = undefined,
+    autofocus = false
   }: {
     value?: string
     placeholder?: string
     oninput?: (val: string) => void
     id?: string
+    autofocus?: boolean
   } = $props()
 
   let inputEl: HTMLInputElement | null = null
+
+  // Focused from code (not the `autofocus` attribute) so it also works when the
+  // input appears later, inside a sheet opened by a tap.
+  $effect(() => {
+    if (autofocus) inputEl?.focus()
+  })
 
   function clear() {
     oninput('')

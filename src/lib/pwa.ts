@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.81'
-const _VER_DESC = 'Timer: al terminar la última serie, confirma y edita todas las series'
-const _VER_TIME = '2026-10-07 08:18'
+const _VER_BASE = 'v2.82'
+const _VER_DESC = 'Amigos v2: liga semanal con podio, hojas de detalle, agregar y perfil'
+const _VER_TIME = '2026-10-08 10:22'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
