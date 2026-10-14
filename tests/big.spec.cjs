@@ -4815,3 +4815,11 @@ test.describe('Tú v2 — primera vez, programa desde cero y ajustes', () => {
     expect(errors).toEqual([])
   })
 })
+
+test.describe('iOS — el teclado no hace zoom al escribir', () => {
+  test('viewport bloquea el auto-zoom de Safari al enfocar un input', async ({ page }) => {
+    await page.goto('today')
+    // iOS Safari zooms into any focused field under 16px; maximum-scale=1 stops it (pinch-zoom still works on iOS)
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /maximum-scale=1/)
+  })
+})

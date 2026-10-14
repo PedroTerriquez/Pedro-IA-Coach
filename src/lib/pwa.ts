@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.83'
-const _VER_DESC = 'Rediseño Tú v2, diccionario aductores/abductores, debug IA apagado por defecto'
-const _VER_TIME = '2026-10-14 17:28'
+const _VER_BASE = 'v2.84'
+const _VER_DESC = 'iOS: sin zoom automático al escribir en el chat e inputs'
+const _VER_TIME = '2026-10-14 17:39'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
