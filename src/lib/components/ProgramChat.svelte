@@ -1,90 +1,81 @@
 <script lang="ts">
   import { toast } from '$lib/stores/ui'
-  import type { Program } from '$lib/types'
   import CoachChat, { type ChatTurn } from './CoachChat.svelte'
   import Button from './Button.svelte'
 
   type ChatReply = { reply: string; _provider?: string }
-  type ApplyResult = { program?: Program; message?: string }
 
+  // Text-only chat of Tú (card 13): the main button stays off until the coach
+  // has answered and while it is writing.
   let {
     title,
-    subtitle = '',
-    greeting,
+    eyebrow = '',
+    greeting = '',
     kickoff = '',
+    kickoffMeta = '',
+    context = [],
+    quickReplies = [],
+    placeholder = 'Escribe un cambio…',
     applyLabel,
     applyingLabel,
-    accent = 'var(--accent)',
     send,
     apply,
-    onapplied,
+    onquickreply = undefined,
     onclose,
   }: {
     title: string
-    subtitle?: string
-    greeting: string
+    eyebrow?: string
+    greeting?: string
     kickoff?: string
+    kickoffMeta?: string
+    context?: string[]
+    quickReplies?: string[]
+    placeholder?: string
     applyLabel: string
     applyingLabel: string
-    accent?: string
     send: (thread: ChatTurn[]) => Promise<ChatReply>
-    /** Turns the agreed conversation into a saved program */
-    apply: (thread: ChatTurn[]) => Promise<ApplyResult>
-    onapplied?: (program: Program) => void
-    onclose?: () => void
+    /** Turns the agreed conversation into the next step; throws to stay in the chat */
+    apply: (thread: ChatTurn[]) => Promise<void>
+    onquickreply?: (chip: string) => boolean
+    onclose: () => void
   } = $props()
 
   let thread = $state<ChatTurn[]>([])
   let applying = $state(false)
-  let status = $state('')
+  let loading = $state(false)
   let hasReply = $derived(thread.some(t => t.role === 'assistant'))
-
-  function sendTurn(turns: ChatTurn[]) {
-    status = ''
-    return send(turns)
-  }
-
-  function finish(program: Program) {
-    toast.show(`✅ Programa "${program.name}" creado y activado`)
-    onapplied?.(program)
-    onclose?.()
-  }
 
   async function applyAgreement() {
     applying = true
-    status = `⏳ ${applyingLabel}`
     try {
-      const result = await apply(thread)
-      if (result.program) return finish(result.program)
-      status = result.message || 'El coach no devolvió un programa. Intenta de nuevo.'
+      await apply($state.snapshot(thread))
     } catch (err: any) {
-      status = `❌ ${err.message}`
+      toast.show(err?.message || 'El coach no pudo crear el programa. Intenta de nuevo.', true)
     }
     applying = false
   }
 </script>
 
-<CoachChat {title} {subtitle} {greeting} {kickoff} {accent} send={sendTurn} bind:thread busy={applying} {onclose}>
+<CoachChat
+  look="nuevo"
+  {title}
+  {eyebrow}
+  {greeting}
+  {kickoff}
+  {kickoffMeta}
+  {context}
+  {quickReplies}
+  {placeholder}
+  {send}
+  {onquickreply}
+  bind:thread
+  bind:loading
+  busy={applying}
+  {onclose}
+>
   {#snippet footer()}
-    <div class="apply-bar" data-component="ProgramChatApply">
-      {#if status}<div class="apply-status">{status}</div>{/if}
-      <Button variant="primary" {accent} fullWidth onclick={applyAgreement} disabled={!hasReply || applying}>
-        {applying ? applyingLabel : applyLabel}
-      </Button>
-    </div>
+    <Button size="lg" variant="primary" onclick={applyAgreement} disabled={!hasReply || applying || loading}>
+      {applying ? applyingLabel : applyLabel}
+    </Button>
   {/snippet}
 </CoachChat>
-
-<style>
-  .apply-bar {
-    flex-shrink: 0;
-    padding: 10px 16px 4px;
-    border-top: 0.5px solid var(--border);
-  }
-  .apply-status {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-    white-space: pre-wrap;
-  }
-</style>

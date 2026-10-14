@@ -20,6 +20,28 @@
   --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --ease-smooth: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Compartidos · Nuevo — values the new designs repeat (cv2.css --cv-*) */
+  --cv-fill-1: rgba(255,255,255,0.04);
+  --cv-fill-2: rgba(255,255,255,0.06);
+  --cv-fill-3: rgba(255,255,255,0.08);
+  --cv-fill-on: rgba(255,255,255,0.1);
+  --cv-line-strong: rgba(255,255,255,0.14);
+  --cv-line-dashed: rgba(255,255,255,0.12);
+  --cv-ring-focus: rgba(255,255,255,0.22);
+  --cv-ring-current: rgba(255,255,255,0.35);
+  --cv-danger-text: #ff7a6e;
+  --cv-danger-bg: rgba(255,91,77,0.14);
+  --cv-scrim: rgba(0,0,0,0.6);
+  --cv-radius-field: 16px;
+  --cv-radius-sheet: 28px;
+  --cv-accent-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+  --cv-accent-tag: color-mix(in srgb, var(--accent) 14%, transparent);
+  --cv-accent-line: color-mix(in srgb, var(--accent) 22%, transparent);
+  --cv-accent-wash: color-mix(in srgb, var(--accent) 9%, transparent);
+  --cv-accent-wash-2: color-mix(in srgb, var(--accent) 2%, transparent);
+  --cv-accent-row: color-mix(in srgb, var(--accent) 7%, transparent);
+  --cv-placeholder-stripe: rgba(255,255,255,0.09);
 }
 
 *, *::before, *::after {
@@ -91,9 +113,8 @@ a { color: inherit; text-decoration: none; }
 .fade-up { animation: fadeUp 0.3s ease both; }
 .fade-in { animation: fadeIn 0.2s ease both; }
 
-.page {
-  padding: 0 0 120px;
-  min-height: 100vh;
+.screen {
+  padding: 0 0 96px;
 }
 
 .page-header {

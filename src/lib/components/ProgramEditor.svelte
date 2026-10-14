@@ -1,329 +1,279 @@
 <script lang="ts">
-  import type { Program, ProgramWeek, ProgramDay, ProgramExercise } from '$lib/types'
+  import type { Exercise, Program } from '$lib/types'
   import * as Storage from '$lib/storage'
   import { generateId } from '$lib/db'
   import { toast } from '$lib/stores/ui'
   import { settings } from '$lib/stores/settings'
+  import { markFirstProgramCreated } from '$lib/profile'
+  import { emptyDraft, toDraft, dayMeta, exerciseSummary, resolveDraft, NEW_EXERCISE, type DraftExercise, type DraftWeek } from '$lib/program-editor'
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
   import TextInput from './TextInput.svelte'
-  import DeleteButton from './DeleteButton.svelte'
+  import Icon from './Icon.svelte'
+  import IconButton from './IconButton.svelte'
+  import NavRow from './NavRow.svelte'
+  import Tag from './Tag.svelte'
+  import EmptyState from './EmptyState.svelte'
+  import InlineConfirm from './InlineConfirm.svelte'
+  import ProgramWeekSheet from './ProgramWeekSheet.svelte'
+  import ProgramDaySheet from './ProgramDaySheet.svelte'
+  import ProgramExerciseSheet from './ProgramExerciseSheet.svelte'
 
   let {
     open = $bindable(false),
     program = null,
-    accent = 'var(--accent)',
     onsave = () => {}
   }: {
     open: boolean
     program: Program | null
     accent?: string
-    onsave?: () => void
+    onsave?: (program: Program) => void
   } = $props()
 
   const isNew = $derived(!program)
 
   let progName = $state('')
-  let weeks = $state<{ name: string; tag: string; days: { name: string; duration: number; weekday?: number; exercises: { name: string; sets: number; reps: string; rest: number }[] }[] }[]>([])
-  let allExerciseNames = $state<string[]>([])
+  let nameError = $state('')
+  let weeks = $state<DraftWeek[]>([])
+  let library = $state<Exercise[]>([])
 
-  const WEEKDAY_OPTS = [
-    { v: 1, l: 'Lun' }, { v: 2, l: 'Mar' }, { v: 3, l: 'Mié' }, { v: 4, l: 'Jue' },
-    { v: 5, l: 'Vie' }, { v: 6, l: 'Sáb' }, { v: 7, l: 'Dom' },
-  ]
+  // Which sub-sheet is open and on what
+  let weekEdit = $state<{ wi: number } | null>(null)
+  let dayEdit = $state<{ wi: number; di: number } | null>(null)
+  let exEdit = $state<{ wi: number; di: number; ei: number | null } | null>(null)
+  let removing = $state<{ wi: number; di: number; ei: number } | null>(null)
+  let weekSheetOpen = $state(false)
+  let daySheetOpen = $state(false)
+  let exSheetOpen = $state(false)
 
   $effect(() => {
     if (open) initEditor()
   })
 
+  // The name is set right away so typing never races the async exercise load
   async function initEditor() {
-    const exs = await Storage.getExercises()
-    allExerciseNames = exs.map(e => e.name)
+    const source = program
+    progName = source?.name || ''
+    nameError = ''
+    removing = null
+    if (!source) weeks = emptyDraft()
+    library = (await Storage.getExercises()).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    if (!source) return
     const idToName: Record<string, string> = {}
-    for (const e of exs) idToName[e.id] = e.name
+    for (const e of library) idToName[e.id] = e.name
+    weeks = toDraft(source, idToName)
+  }
 
-    if (program) {
-      progName = program.name
-      weeks = program.weeks.map(w => ({
-        name: w.name,
-        tag: w.tag || '',
-        days: w.days.map(d => ({
-          name: d.name,
-          duration: d.duration || 60,
-          ...(typeof (d as any).weekday === 'number' ? { weekday: (d as any).weekday } : {}),
-          exercises: d.exercises.map(ex => ({
-            name: idToName[ex.exerciseId] || '',
-            sets: ex.sets,
-            reps: ex.reps,
-            rest: ex.rest
-          }))
-        }))
-      }))
-    } else {
-      progName = ''
-      weeks = [{ name: 'Semana 1', tag: '', days: [{ name: 'Día', duration: 60, exercises: [] }] }]
-    }
+  function openWeek(wi: number) {
+    weekEdit = { wi }
+    weekSheetOpen = true
+  }
+
+  function openDay(wi: number, di: number) {
+    dayEdit = { wi, di }
+    daySheetOpen = true
+  }
+
+  function openExercise(wi: number, di: number, ei: number | null) {
+    exEdit = { wi, di, ei }
+    exSheetOpen = true
   }
 
   function addWeek() {
-    weeks = [...weeks, { name: `Semana ${weeks.length + 1}`, tag: '', days: [] }]
+    weeks.push({ name: `Semana ${weeks.length + 1}`, tag: '', days: [] })
   }
 
-  function removeWeek(i: number) {
-    weeks = weeks.filter((_, idx) => idx !== i)
+  function addDay(wi: number) {
+    const days = weeks[wi].days
+    days.push({ name: `Día ${days.length + 1}`, exercises: [] })
+    openDay(wi, days.length - 1)
   }
 
-  function addDay(weekIdx: number) {
-    weeks = weeks.map((w, wi) => wi === weekIdx
-      ? { ...w, days: [...w.days, { name: `Día ${w.days.length + 1}`, duration: 60, exercises: [] }] }
-      : w
-    )
+  function saveWeek(patch: { name: string; tag: string }) {
+    if (!weekEdit) return
+    Object.assign(weeks[weekEdit.wi], patch)
+    weekSheetOpen = false
   }
 
-  function removeDay(weekIdx: number, dayIdx: number) {
-    weeks = weeks.map((w, wi) => wi === weekIdx
-      ? { ...w, days: w.days.filter((_, di) => di !== dayIdx) }
-      : w
-    )
+  function removeWeek() {
+    if (!weekEdit) return
+    weeks.splice(weekEdit.wi, 1)
+    weekSheetOpen = false
   }
 
-  function addExercise(weekIdx: number, dayIdx: number) {
-    weeks = weeks.map((w, wi) => wi === weekIdx
-      ? { ...w, days: w.days.map((d, di) => di === dayIdx
-        ? { ...d, exercises: [...d.exercises, { name: '', sets: 3, reps: '10', rest: 60 }] }
-        : d
-      ) }
-      : w
-    )
+  function saveDay(patch: { name: string; weekday?: number }) {
+    if (!dayEdit) return
+    const day = weeks[dayEdit.wi].days[dayEdit.di]
+    day.name = patch.name
+    day.weekday = patch.weekday
+    daySheetOpen = false
   }
 
-  function removeExercise(weekIdx: number, dayIdx: number, exIdx: number) {
-    weeks = weeks.map((w, wi) => wi === weekIdx
-      ? { ...w, days: w.days.map((d, di) => di === dayIdx
-        ? { ...d, exercises: d.exercises.filter((_, ei) => ei !== exIdx) }
-        : d
-      ) }
-      : w
-    )
+  function removeDay() {
+    if (!dayEdit) return
+    weeks[dayEdit.wi].days.splice(dayEdit.di, 1)
+    daySheetOpen = false
   }
 
-  function updateWeek(weekIdx: number, patch: Partial<{ name: string; tag: string }>) {
-    weeks = weeks.map((w, wi) => wi === weekIdx ? { ...w, ...patch } : w)
+  function saveExercise(ex: DraftExercise) {
+    if (!exEdit) return
+    const list = weeks[exEdit.wi].days[exEdit.di].exercises
+    if (exEdit.ei === null) list.push(ex)
+    else list[exEdit.ei] = ex
+    exSheetOpen = false
   }
 
-  function updateDay(weekIdx: number, dayIdx: number, patch: Partial<{ name: string; duration: number; weekday: number | undefined }>) {
-    weeks = weeks.map((w, wi) => wi === weekIdx
-      ? { ...w, days: w.days.map((d, di) => di === dayIdx ? { ...d, ...patch } : d) }
-      : w
-    )
+  function confirmRemoveExercise() {
+    if (!removing) return
+    weeks[removing.wi].days[removing.di].exercises.splice(removing.ei, 1)
+    removing = null
   }
 
-  function updateExercise(weekIdx: number, dayIdx: number, exIdx: number, patch: Partial<{ name: string; sets: number; reps: string; rest: number }>) {
-    weeks = weeks.map((w, wi) => wi === weekIdx
-      ? { ...w, days: w.days.map((d, di) => di === dayIdx
-        ? { ...d, exercises: d.exercises.map((ex, ei) => ei === exIdx ? { ...ex, ...patch } : ex) }
-        : d
-      ) }
-      : w
-    )
+  function isRemoving(wi: number, di: number, ei: number): boolean {
+    return removing?.wi === wi && removing?.di === di && removing?.ei === ei
+  }
+
+  async function activateIfNone(id: string) {
+    const s = await Storage.getSettings()
+    if (!s.activeProgramId) await settings.update({ activeProgramId: id, currentWeekIdx: 0 })
   }
 
   async function save() {
-    const name = progName.trim() || 'Programa sin nombre'
-    const exs = await Storage.getExercises()
-    const nameToId: Record<string, string> = {}
-    for (const e of exs) nameToId[e.name.toLowerCase()] = e.id
-
-    const resolvedWeeks: ProgramWeek[] = []
-    for (const w of weeks) {
-      const days: ProgramDay[] = []
-      for (const d of w.days) {
-        const exercises: ProgramExercise[] = []
-        for (const ex of d.exercises) {
-          const exName = ex.name.trim()
-          if (!exName) continue
-          let exId = nameToId[exName.toLowerCase()]
-          if (!exId) {
-            const created = await Storage.findOrCreateExerciseByName(exName, '')
-            exId = created.id
-            nameToId[exName.toLowerCase()] = exId
-          }
-          exercises.push({ exerciseId: exId, sets: ex.sets, reps: ex.reps, rest: ex.rest })
-        }
-        days.push({
-          name: d.name,
-          subtitle: '',
-          duration: d.duration,
-          exercises,
-          ...(typeof d.weekday === 'number' && d.weekday >= 1 && d.weekday <= 7 ? { weekday: d.weekday } : {}),
-        })
-      }
-      resolvedWeeks.push({ name: w.name, subtitle: '', tag: w.tag, days })
-    }
-
+    const name = progName.trim()
+    if (!name) { nameError = 'Ponle un nombre para guardarlo.'; return }
     const prog: Program = {
       id: program?.id || await generateId(),
       name,
-      weeks: resolvedWeeks,
+      weeks: await resolveDraft($state.snapshot(weeks)),
       createdAt: program?.createdAt || new Date().toISOString()
     }
     await Storage.saveProgram(prog)
-
-    const currentSettings = await Storage.getSettings()
-    if (!currentSettings.onboarded && (currentSettings.onboardingStep ?? 0) <= 1) {
-      await settings.update({ onboardingStep: 2 })
-    }
-
+    if (isNew) await activateIfNone(prog.id)
+    await markFirstProgramCreated()
     open = false
     toast.show(isNew ? 'Programa creado' : 'Programa guardado')
-    onsave()
+    onsave(prog)
   }
+
+  let currentWeek = $derived(weekEdit ? weeks[weekEdit.wi] ?? null : null)
+  let currentDay = $derived(dayEdit ? weeks[dayEdit.wi]?.days[dayEdit.di] ?? null : null)
+  let currentEx = $derived(exEdit ? (exEdit.ei === null ? NEW_EXERCISE : weeks[exEdit.wi]?.days[exEdit.di]?.exercises[exEdit.ei] ?? null) : null)
 </script>
 
-<Sheet bind:open onclose={() => open = false}>
-  {#snippet header()}
-    <span>{isNew ? 'Nuevo programa' : 'Editar programa'}</span>
-  {/snippet}
+<Sheet bind:open full title={isNew ? 'Nuevo programa' : 'Editar programa'} id="program-editor">
+  <TextInput
+    variant="field"
+    label="Nombre del programa"
+    placeholder="Ej: Torso / Pierna"
+    bind:value={progName}
+    error={nameError}
+    oninput={() => nameError = ''}
+  />
 
-  <div class="editor-body">
-    <TextInput bind:value={progName} placeholder="Nombre del programa" />
+  {#each weeks as week, wi}
+    <section class="wk" data-week={wi}>
+      <button type="button" class="wkh" onclick={() => openWeek(wi)}>
+        <span class="wkh-n">{week.name}</span>
+        {#if week.tag}<Tag>{week.tag}</Tag>{/if}
+        <span class="chev"><Icon name="chev" size={16} /></span>
+      </button>
 
-    {#each weeks as week, wi}
-      <div class="week-block">
-        <div class="week-header">
-          <TextInput bind:value={week.name} placeholder="Nombre semana" compact style="flex:1" />
-          <TextInput bind:value={week.tag} placeholder="ETIQUETA" compact style="width:70px;text-transform:uppercase;font-size:10px" />
-          <DeleteButton label="Eliminar semana" onclick={() => removeWeek(wi)} />
-        </div>
-
+      {#if week.days.length === 0}
+        <EmptyState title="Aún no hay días" text="Agrega un día y luego sus ejercicios. La duración se calcula sola.">
+          {#snippet actions()}
+            <Button size="lg" variant="secondary" onclick={() => addDay(wi)}><Icon name="plus" size={18} />Añadir día</Button>
+          {/snippet}
+        </EmptyState>
+      {:else}
         {#each week.days as day, di}
-          <div class="day-block">
-            <div class="day-header">
-              <TextInput bind:value={day.name} placeholder="Día" compact style="flex:1" />
-              <select class="weekday-select" value={day.weekday ?? ''} title="Día de la semana"
-                onchange={(e) => updateDay(wi, di, { weekday: e.currentTarget.value === '' ? undefined : Number(e.currentTarget.value) })}>
-                <option value="">Auto</option>
-                {#each WEEKDAY_OPTS as o}<option value={o.v}>{o.l}</option>{/each}
-              </select>
-              <TextInput type="number" mono compact value={String(day.duration)} placeholder="min" style="width:50px;text-align:center"
-                oninput={(v) => updateDay(wi, di, { duration: parseInt(v) || 60 })} />
-              <DeleteButton size="sm" label="Eliminar día" onclick={() => removeDay(wi, di)} />
-            </div>
-
+          <div class="dg" data-component="ProgramEditorDay">
+            <NavRow label={day.name} sub={dayMeta(day)} strong onclick={() => openDay(wi, di)} />
             {#each day.exercises as ex, ei}
-              <div class="ex-row">
-                <TextInput
-                  compact
-                  list="prog-ex-names"
-                  value={ex.name}
-                  placeholder="Nombre ej."
-                  style="flex:1;min-width:0;font-size:11px"
-                  oninput={(v) => updateExercise(wi, di, ei, { name: v })}
+              {#if isRemoving(wi, di, ei)}
+                <InlineConfirm
+                  flat
+                  title="¿Quitar {ex.name} de {day.name}?"
+                  text="Se quita de este día. Tus registros no se tocan."
+                  confirmLabel="Quitar"
+                  oncancel={() => removing = null}
+                  onconfirm={confirmRemoveExercise}
                 />
-                <TextInput type="number" mono compact value={String(ex.sets)} placeholder="S" style="width:44px;text-align:center"
-                  oninput={(v) => updateExercise(wi, di, ei, { sets: parseInt(v) || 3 })} />
-                <TextInput mono compact value={ex.reps} placeholder="R" style="width:44px;text-align:center"
-                  oninput={(v) => updateExercise(wi, di, ei, { reps: v })} />
-                <TextInput type="number" mono compact value={String(ex.rest)} placeholder="Desc" style="width:44px;text-align:center"
-                  oninput={(v) => updateExercise(wi, di, ei, { rest: parseInt(v) || 60 })} />
-                <DeleteButton size="sm" label="Eliminar ejercicio" onclick={() => removeExercise(wi, di, ei)} />
-              </div>
+              {:else}
+                <div class="er">
+                  <button type="button" class="er-main" onclick={() => openExercise(wi, di, ei)}>
+                    <span class="er-n">{ex.name || 'Sin nombre'}</span>
+                    <span class="er-v">{exerciseSummary(ex)}</span>
+                  </button>
+                  <IconButton icon="x" size="sm" iconSize={16} label="Quitar {ex.name}" onclick={() => removing = { wi, di, ei }} />
+                </div>
+              {/if}
             {/each}
-
-            <Button variant="dashed" style="margin-top:4px" onclick={() => addExercise(wi, di)}>+ Añadir ejercicio</Button>
+            <button type="button" class="nr-add" onclick={() => openExercise(wi, di, null)}><Icon name="plus" size={18} />Añadir ejercicio</button>
           </div>
         {/each}
+        <Button size="lg" variant="dashed" onclick={() => addDay(wi)}><Icon name="plus" size={18} />Añadir día</Button>
+      {/if}
+    </section>
+  {/each}
 
-        <Button variant="dashed" style="margin-top:4px" onclick={() => addDay(wi)}>+ Añadir día</Button>
-      </div>
-    {/each}
+  <Button size="lg" variant="secondary" onclick={addWeek}><Icon name="plus" size={18} />Añadir semana</Button>
 
-    <Button variant="dashed" style="margin-top:12px" onclick={addWeek}>+ Añadir semana</Button>
-
-    <datalist id="prog-ex-names">
-      {#each allExerciseNames as name}
-        <option value={name}></option>
-      {/each}
-    </datalist>
-
-    <div class="editor-actions">
-      <Button variant="primary" {accent} fullWidth onclick={save}>{isNew ? 'Crear' : 'Guardar'}</Button>
-      <Button variant="secondary" fullWidth onclick={() => open = false}>Cancelar</Button>
-    </div>
-  </div>
+  {#snippet footer()}
+    <Button size="lg" variant="primary" onclick={save}>Guardar</Button>
+    <Button size="lg" variant="text" style="align-self:center" onclick={() => open = false}>Cancelar</Button>
+  {/snippet}
 </Sheet>
 
+<ProgramWeekSheet bind:open={weekSheetOpen} week={currentWeek} onsave={saveWeek} onremove={removeWeek} />
+<ProgramDaySheet bind:open={daySheetOpen} day={currentDay} weekName={dayEdit ? weeks[dayEdit.wi]?.name ?? '' : ''} onsave={saveDay} onremove={removeDay} />
+<ProgramExerciseSheet bind:open={exSheetOpen} exercise={currentEx} {library} onsave={saveExercise} />
+
 <style>
-  .editor-body {
-    padding: 4px 20px 24px;
+  .wk { display: flex; flex-direction: column; gap: 10px; }
+  .wkh {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .week-block {
-    background: rgba(255,255,255,0.03);
-    border-radius: 14px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .week-header {
-    display: flex;
-    gap: 6px;
     align-items: center;
-  }
-
-  .day-block {
-    background: rgba(255,255,255,0.02);
-    border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .day-header {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .weekday-select {
-    width: 52px;
-    padding: 8px 2px;
-    border-radius: 8px;
-    border: 0.5px solid rgba(255,255,255,0.08);
-    background: var(--bg);
-    color: var(--text);
-    font-size: 11px;
-    font-family: var(--font-mono);
-    text-align: center;
-    outline: none;
-    box-sizing: border-box;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-
-  .ex-row {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    padding: 5px 0;
-    border-bottom: 0.5px solid rgba(255,255,255,0.04);
-  }
-
-
-
-
-
-
-
-  .editor-actions {
-    display: flex;
     gap: 10px;
-    margin-top: 4px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .wkh-n { font-size: 17px; font-weight: 600; letter-spacing: -0.2px; white-space: nowrap; }
+  .chev { margin-left: auto; display: grid; color: var(--text-muted); }
+  .dg { display: flex; flex-direction: column; border-radius: var(--radius-xl); overflow: hidden; background: var(--cv-fill-1); }
+  .dg > :global(* + *) { border-top: 0.5px solid var(--border-medium); }
+  .er { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px; min-height: 56px; padding: 4px 2px 4px 0; }
+  .er-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 0 0 16px;
+    border: 0;
+    background: none;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+  .er-n { font-size: 16px; font-weight: 500; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .er-v { font-family: var(--font-mono); font-size: 14px; color: var(--text-secondary); white-space: nowrap; }
+  .nr-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 56px;
+    padding: 0 16px;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
   }
 </style>

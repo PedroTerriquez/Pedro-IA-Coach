@@ -1,16 +1,24 @@
 <script lang="ts">
+  import Icon from './Icon.svelte'
+
   let {
     value = '',
     placeholder = 'Buscar...',
     oninput = () => {},
     id = undefined,
-    autofocus = false
+    autofocus = false,
+    count = undefined,
+    size = 'md'
   }: {
     value?: string
     placeholder?: string
     oninput?: (val: string) => void
     id?: string
     autofocus?: boolean
+    /** Result count shown at the right while there's a query */
+    count?: number | string
+    /** md = 52 field; lg = 56 field for a dock next to a 56 IconButton */
+    size?: 'md' | 'lg'
   } = $props()
 
   let inputEl: HTMLInputElement | null = null
@@ -27,12 +35,13 @@
   }
 </script>
 
-<div class="search-wrap">
-  <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+<div class="search-wrap size-{size}" class:has-value={value.length > 0}>
+  <span class="search-icon"><Icon name="search" size={18} /></span>
   <input
     bind:this={inputEl}
     class="search-input"
     type="text"
+    enterkeyhint="search"
     {value}
     {placeholder}
     {id}
@@ -40,53 +49,62 @@
     oninput={(e) => oninput((e.target as HTMLInputElement).value)}
   />
   {#if value.length > 0}
+    {#if count !== undefined}<span class="count">{count}</span>{/if}
     <button class="clear-btn" onclick={clear} type="button" aria-label="Limpiar búsqueda">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      <Icon name="x" size={18} />
     </button>
   {/if}
 </div>
 
 <style>
   .search-wrap {
-    position: relative;
     display: flex;
     align-items: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 16px;
+    border-radius: var(--cv-radius-field);
+    background: var(--cv-fill-2);
+    color: var(--text-tertiary);
+    min-width: 0;
+    transition: box-shadow 0.15s;
   }
-  .search-icon {
-    position: absolute;
-    left: 12px;
-    pointer-events: none;
-    flex-shrink: 0;
+  .search-wrap.has-value { padding-right: 4px; }
+  .search-wrap:focus-within { box-shadow: inset 0 0 0 1px var(--cv-ring-focus); }
+  .search-wrap.size-lg {
+    height: 56px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-hover);
   }
+  .search-icon { display: grid; flex-shrink: 0; }
   .search-input {
-    width: 100%;
-    padding: 10px 34px 10px 36px;
-    border-radius: 10px;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 14px;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    background: transparent;
+    border: 0;
     outline: none;
-    box-sizing: border-box;
-    transition: border-color 0.15s;
+    color: var(--text);
+    caret-color: var(--accent);
+    font-family: var(--font-sans);
+    font-size: 17px;
   }
-  .search-input:focus {
-    border-color: rgba(255,255,255,0.18);
+  .search-input::placeholder { color: var(--text-muted); }
+  .count {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
   }
   .clear-btn {
-    position: absolute;
-    right: 8px;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 50%;
     background: none;
-    border: none;
-    padding: 4px;
+    border: 0;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-  }
-  .clear-btn:active {
-    background: rgba(255,255,255,0.08);
+    display: grid;
+    place-items: center;
+    color: var(--text-tertiary);
   }
 </style>

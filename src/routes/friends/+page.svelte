@@ -5,6 +5,7 @@
   import Avatar from '$lib/components/Avatar.svelte'
   import WeekCard from '$lib/components/WeekCard.svelte'
   import Leaderboard from '$lib/components/Leaderboard.svelte'
+  import Stack from '$lib/components/Stack.svelte'
   import FriendDetail from '$lib/components/FriendDetail.svelte'
   import AddFriend from '$lib/components/AddFriend.svelte'
   import ProfileSheet from '$lib/components/ProfileSheet.svelte'
@@ -308,12 +309,12 @@
 {/snippet}
 
 {#if initialLoading}
-  <div class="page">
+  <div class="screen" id="friends">
     <EmptyState id="friends-list" class="friends-empty" message="Cargando…" />
   </div>
 {:else if !username}
   <!-- Field and button right under the text, in the top half: the iOS keyboard covers the rest. -->
-  <div class="page first-time" id="username-prompt">
+  <div class="screen first-time" id="username-prompt">
     <Avatar username={inputUsername.trim()} size={88} />
     <h1>Elige tu usuario</h1>
     <p>Así te encuentran tus amigos para ver quién entrena más cada semana.</p>
@@ -323,7 +324,7 @@
     </div>
   </div>
 {:else}
-  <div class="page">
+  <div class="screen" id="friends">
     <PageHeader eyebrow={weekEyebrow(today)} title="Amigos.">
       {#snippet action()}
         <button type="button" class="me-btn" aria-label="Mi perfil" onclick={() => profileOpen = true}>
@@ -364,7 +365,7 @@
             </div>
           </section>
         {:else}
-          <section class="league" id="friends-list">
+          <Stack gap={24} id="friends-list">
             <Leaderboard
               {league}
               updated={cachedAt ? `Datos del ${formatSavedAt(cachedAt)}. Se actualizan al volver la conexión.` : ''}
@@ -378,7 +379,7 @@
                 <p class="cap">Con más amigos, la semana se pone más reñida.</p>
               {/if}
             </div>
-          </section>
+          </Stack>
         {/if}
       {/if}
     </div>
@@ -431,11 +432,6 @@
     background: none;
     cursor: pointer;
     touch-action: manipulation;
-  }
-  .league {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
   }
   .add {
     display: flex;

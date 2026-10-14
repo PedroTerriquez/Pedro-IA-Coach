@@ -338,21 +338,29 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // que viven en ProfileCard bajo la tab Perfil (default).
   await page.goto('you')
 
-  await expect(page.locator('#height-input')).toHaveValue('180')
-  await expect(page.locator('#weight-input')).toHaveValue('80')
-  await expect(page.locator('#sex-input')).toHaveValue('Masculino')
-  await expect(page.locator('#age-input')).toHaveValue('28')
-  await expect(page.locator('#goal-input')).toHaveValue('hipertrofia')
-  await expect(page.locator('#exp-input')).toHaveValue('intermedio')
-  await expect(page.locator('#occ-input')).toHaveValue('Ingeniero')
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): the seeded profile used
+  // to be read from the ProfileCard inputs (#height-input … #occ-input) on the
+  // Perfil tab. Same promise — every seeded value is visible in Tú — now read
+  // from the 7 rows of the Mis datos subscreen (option values show their label).
+  await page.locator('#you-row-datos').click()
+  await expect(page.locator('#profile-row-height')).toContainText('180 cm')
+  await expect(page.locator('#profile-row-weight')).toContainText('80 kg')
+  await expect(page.locator('#profile-row-sex')).toContainText('Masculino')
+  await expect(page.locator('#profile-row-age')).toContainText('28')
+  await expect(page.locator('#profile-row-goal')).toContainText('Hipertrofia')
+  await expect(page.locator('#profile-row-experience')).toContainText('Intermedio')
+  await expect(page.locator('#profile-row-occupation')).toContainText('Ingeniero')
 
   // ── Step 2: Ejercicios Tab Hydration ──
-  // Proves the SegmentedControl is actually interactive post-hydration by
-  // checking the real effect of clicking it (content swap), not a CSS color.
-  await page.click('#you-tab-ejercicios')
-  await page.waitForTimeout(300)
-  await expect(page.locator('#you-tab-ejercicios')).toHaveClass(/seg-active/)
-  await expect(page.locator('.ex-count')).toBeVisible()
+  // Proves the view is actually interactive post-hydration by checking the
+  // real effect of a tap (content swap), not a CSS color.
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): it used to click the
+  // #you-tab-ejercicios segment and expect .seg-active; the tabs are gone and
+  // the Ejercicios row of the summary opens its subscreen instead.
+  await page.getByRole('button', { name: 'Tú', exact: true }).click()
+  await page.locator('#you-row-ejercicios').click()
+  await expect(page.locator('#you-ejercicios')).toBeVisible()
+  await expect(page.locator('#ex-count')).toBeVisible()
 
   // ── Step 3: Visit Today — Phase Cards ──
   await page.goto('today')
@@ -688,12 +696,17 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.goto('you')
   await page.waitForTimeout(500)
 
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): #lang-toggle-btn used to
+  // flip the language on tap. It's now the Idioma row of Ajustes, which opens a
+  // sheet where the language is picked; same effect on exercise names.
+  await page.locator('#you-row-ajustes').click()
   const langBtn = page.locator('#lang-toggle-btn')
   await expect(langBtn).toBeVisible()
   await expect(langBtn).toContainText('Español')
 
-  // Click to switch to English
+  // Switch to English
   await langBtn.click()
+  await page.locator('#language-sheet').getByRole('radio', { name: 'English' }).click()
   await page.waitForTimeout(500)
 
   // Navigate to History — exercise names should be in English
@@ -705,9 +718,11 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // Toggle back to Spanish
   await page.goto('you')
   await page.waitForTimeout(500)
+  await page.locator('#you-row-ajustes').click()
   const langBtn2 = page.locator('#lang-toggle-btn')
   await expect(langBtn2).toContainText('English')
   await langBtn2.click()
+  await page.locator('#language-sheet').getByRole('radio', { name: 'Español' }).click()
   await page.waitForTimeout(500)
 
   // Verify Spanish names restored
@@ -754,30 +769,40 @@ test.describe('You — Tamaño de texto (accessibility)', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro): #font-size-toggle-btn
+    // used to cycle Normal → Grande → Extra grande on each tap. It's now the
+    // Tamaño de texto row of Ajustes; the size is picked in its sheet. Same
+    // promise: the whole app zooms 1 / 1.15 / 1.3 and it survives a reload.
+    await page.locator('#you-row-ajustes').click()
     const fontBtn = page.locator('#font-size-toggle-btn')
+    const fontSheet = page.locator('#font-size-sheet')
     await expect(fontBtn).toBeVisible()
     await expect(fontBtn).toContainText('Normal')
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
 
     await fontBtn.click()
+    await fontSheet.getByRole('radio', { name: 'Grande', exact: true }).click()
     await page.waitForTimeout(300)
-    await expect(fontBtn).toContainText('Grande')
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.15')
 
-    await fontBtn.click()
+    await fontSheet.getByRole('radio', { name: 'Extra grande' }).click()
     await page.waitForTimeout(300)
-    await expect(fontBtn).toContainText('Extra grande')
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
+    await fontSheet.getByRole('button', { name: 'Cerrar' }).click()
+    await expect(fontBtn).toContainText('Extra grande')
 
     // Persisted to Settings — survives a reload, not just local component state
     await page.reload()
     await page.waitForTimeout(600)
+    await page.locator('#you-row-ajustes').click()
     await expect(page.locator('#font-size-toggle-btn')).toContainText('Extra grande')
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
 
-    // Cycles back to Normal
+    // Back to Normal
     await page.locator('#font-size-toggle-btn').click()
+    await fontSheet.getByRole('radio', { name: 'Normal' }).click()
     await page.waitForTimeout(300)
+    await fontSheet.getByRole('button', { name: 'Cerrar' }).click()
     await expect(page.locator('#font-size-toggle-btn')).toContainText('Normal')
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
   })
@@ -962,33 +987,47 @@ test.describe('You — Programas tab', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Programas' }).click()
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro): the Programas tab had a
+    // name field + "+ Nuevo" and every card carried Activar / Duplicar /
+    // Eliminar, with a native confirm() to delete. Same promise — create,
+    // activate, duplicate and delete — now through Crear programa › Desde cero,
+    // Activar in «Otros programas», and ⋯ with the confirmation in the sheet.
+    await page.locator('#you-row-programas').click()
     await page.waitForTimeout(300)
 
-    // Create a new program
-    await page.getByPlaceholder('Nombre del nuevo programa').fill('Programa Nuevo')
-    await page.getByRole('button', { name: '+ Nuevo' }).click()
-    await page.waitForTimeout(500)
+    // Create a new program from scratch
+    await page.locator('#create-program-btn').click()
+    await page.locator('#create-scratch').click()
+    const editor = page.locator('#program-editor')
+    await editor.getByLabel('Nombre del programa').fill('Programa Nuevo')
+    await editor.getByRole('button', { name: 'Guardar' }).click()
+    await expect(editor).toHaveCount(0)
 
     const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo' }).first()
     await expect(newCard).toBeVisible()
 
-    // Activate it — the ACTIVO pill should move off "Programa Activo"
+    // Activate it — "Programa activo" should move off "Programa Activo"
     await newCard.getByRole('button', { name: 'Activar' }).click()
     await page.waitForTimeout(400)
-    await expect(newCard).toHaveClass(/active/)
-    const oldCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Activo' })
+    const activeCard = page.locator('[data-component="ProgramCard"].active')
+    await expect(activeCard).toContainText('Programa Nuevo')
+    // (by id: the «Programa activo» label of the active card would match the name too)
+    const oldCard = page.locator('[data-component="ProgramCard"][data-program-id="prog-a"]')
     await expect(oldCard).not.toHaveClass(/active/)
 
-    // Duplicate
-    await newCard.getByRole('button', { name: 'Duplicar' }).click()
+    // Duplicate (from ⋯)
+    await activeCard.getByRole('button', { name: 'Más opciones' }).click()
+    await page.locator('#program-options').getByRole('button', { name: 'Duplicar' }).click()
     await page.waitForTimeout(400)
     const dupCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })
     await expect(dupCard).toBeVisible()
 
-    // Delete the duplicate
-    page.once('dialog', d => d.accept())
-    await dupCard.getByRole('button', { name: 'Eliminar' }).click()
+    // Delete the duplicate: ⋯ › Eliminar asks inside the sheet before deleting
+    await dupCard.getByRole('button', { name: 'Más opciones' }).click()
+    const options = page.locator('#program-options')
+    await options.getByRole('button', { name: 'Eliminar', exact: true }).click()
+    await expect(options).toContainText('¿Eliminar «Programa Nuevo (copia)»?')
+    await options.getByRole('button', { name: 'Eliminar', exact: true }).click()
     await page.waitForTimeout(400)
     await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })).toHaveCount(0)
   })
@@ -1027,20 +1066,26 @@ test.describe('You — Programas tab', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Programas' }).click()
-    await page.waitForTimeout(300)
-    await page.getByRole('button', { name: 'IA Powered' }).click()
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro): the chat used to open
+    // from Programas › IA Powered › "Mejorar programa actual", titled "Coach de
+    // programa", greeting "¡Qué onda Pedro!" + "(1 días por semana)", with NO
+    // quick chips, and "Aplicar cambios" replaced the program as
+    // «{nombre} — {fecha}». Now it opens from «Mejorar con el coach», has fixed
+    // quick replies, and «Crear versión nueva» asks for the name of the new
+    // version («Programa Activo · v2») and whether to use it from today.
+    // Same request bodies to the Worker; reopening still starts from scratch.
+    await page.locator('#you-row-programas').click()
     await page.waitForTimeout(300)
 
-    // Open chat: personalized greeting, no quick chips, apply disabled until the coach replies
-    await page.getByRole('button', { name: 'Mejorar programa actual' }).click()
+    // Open chat: personalized greeting, quick replies, apply disabled until the coach replies
+    await page.locator('#improve-program-row').click()
     const chat = page.locator('[data-component="CoachChat"]')
     await expect(chat).toBeVisible()
-    await expect(chat).toContainText('Coach de programa')
-    await expect(chat).toContainText('¡Qué onda Pedro!')
-    await expect(chat).toContainText('«Programa Activo» (1 días por semana)')
-    await expect(chat.locator('[data-component="FilterChip"]')).toHaveCount(0)
-    const applyBtn = chat.getByRole('button', { name: 'Aplicar cambios' })
+    await expect(chat).toContainText('Mejorar con el coach')
+    await expect(chat).toContainText('Qué onda, Pedro.')
+    await expect(chat).toContainText('«Programa Activo»')
+    await expect(chat.getByRole('button', { name: 'Tengo menos tiempo' })).toBeVisible()
+    const applyBtn = chat.getByRole('button', { name: 'Crear versión nueva' })
     await expect(applyBtn).toBeDisabled()
 
     // Two turns: the whole thread is sent each time, with program context in the system prompt
@@ -1055,23 +1100,29 @@ test.describe('You — Programas tab', () => {
     expect(chatBodies[1].systemPrompt).toContain('PROGRAMA ACTUAL:')
     expect(chatBodies[1].systemPrompt).toContain('Programa Activo')
 
-    // Apply: sends the conversation + apply request, creates & activates the new program, closes chat
+    // Crear versión nueva: name + "use it from today", then the same apply request
     await expect(applyBtn).toBeEnabled()
     await applyBtn.click()
+    const versionSheet = page.locator('#new-version-sheet')
+    await expect(versionSheet).toBeVisible()
+    await expect(versionSheet.getByLabel('Nombre')).toHaveValue('Programa Activo · v2')
+    await expect(versionSheet.getByRole('switch', { name: 'Usarla desde hoy' })).toHaveAttribute('aria-checked', 'true')
+    await versionSheet.getByRole('button', { name: 'Crear versión' }).click()
     await expect(chat).not.toBeVisible({ timeout: 10000 })
     expect(applyBody.messages).toHaveLength(5)
     expect(applyBody.messages[4].content).toContain('Aplica los cambios que acordamos')
-    await page.getByRole('button', { name: 'Manual' }).click().catch(() => {})
-    const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Acordado' })
+    await expect(page.locator('body')).toContainText('Versión nueva activa. La anterior sigue abajo.')
+    const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Activo · v2' })
     await expect(newCard).toBeVisible()
     await expect(newCard).toHaveClass(/active/)
+    // The original stays untouched, in «Otros programas»
+    await expect(page.locator('[data-component="ProgramCard"][data-program-id="prog-a"]:not(.active)')).toBeVisible()
 
     // Reopen: conversation starts from scratch
-    await page.getByRole('button', { name: 'IA Powered' }).click()
-    await page.getByRole('button', { name: 'Mejorar programa actual' }).click()
+    await page.locator('#improve-program-row').click()
     await expect(chat).toBeVisible()
     await expect(chat).not.toContainText('Respuesta del coach')
-    await chat.locator('.coach-close-btn').click()
+    await chat.getByRole('button', { name: 'Volver' }).click()
     await expect(chat).not.toBeVisible()
   })
 
@@ -1108,18 +1159,27 @@ test.describe('You — Programas tab', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Programas' }).click()
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro): the selections lived
+    // in Programas › IA Powered (chips "4d", "Rodilla") and "Generar programa
+    // con IA" opened a chat titled "Nuevo programa" with a "¡Qué onda Pedro!"
+    // greeting, created by "Crear programa". Now: Crear programa › Platícalo
+    // con el coach (chips "4", "Rodilla") › chat «Con el coach» where the
+    // coach's proposal is the first message, and «Crear este programa» ends on
+    // the «Listo» screen. Same request bodies to the Worker.
+    await page.locator('#you-row-programas').click()
     await page.waitForTimeout(300)
-    await page.getByRole('button', { name: 'IA Powered' }).click()
-    await page.waitForTimeout(300)
-    await page.getByRole('button', { name: '4d' }).click()
-    await page.getByRole('button', { name: 'Rodilla' }).click()
+    await page.locator('#create-program-btn').click()
+    await page.locator('#create-coach').click()
+    const setup = page.locator('#coach-setup-sheet')
+    await setup.getByRole('button', { name: '4', exact: true }).click()
+    await setup.getByRole('button', { name: 'Rodilla' }).click()
 
     // Opening the chat: the coach speaks first with a proposal (kickoff turn is hidden)
-    await page.getByRole('button', { name: 'Generar programa con IA' }).click()
+    await setup.getByRole('button', { name: 'Platicar con el coach' }).click()
     const chat = page.locator('[data-component="CoachChat"]')
-    await expect(chat).toContainText('Nuevo programa')
-    await expect(chat).toContainText('¡Qué onda Pedro!')
+    await expect(chat).toContainText('Con el coach')
+    await expect(chat).toContainText('4 días')
+    await expect(chat).toContainText('Cuidar rodilla')
     await expect(chat).toContainText('Propuesta: por tu trabajo de oficina')
     await expect(chat).not.toContainText('dame tu propuesta inicial')
     expect(chatBodies[0].messages).toHaveLength(1)
@@ -1135,7 +1195,7 @@ test.describe('You — Programas tab', () => {
     await expect(chat).toContainText('Va, bajamos piernas a 1 día.')
 
     // Create: sends the whole conversation + preferences, activates the new program
-    await chat.getByRole('button', { name: 'Crear programa' }).click()
+    await chat.getByRole('button', { name: 'Crear este programa' }).click()
     await expect(chat).not.toBeVisible({ timeout: 10000 })
     expect(createBody.messages.map(m => m.content)).toEqual([
       chatBodies[0].messages[0].content,
@@ -1145,6 +1205,10 @@ test.describe('You — Programas tab', () => {
       'Crea el programa completo con el enfoque que acordamos en esta conversación.',
     ])
     expect(createBody.systemPrompt).toContain('"daysPerWeek":4')
+    const ready = page.locator('[data-component="ProgramReady"]')
+    await expect(ready).toContainText('Listo, Pedro.')
+    await expect(ready).toContainText('«Upper/Lower Acordado» ya es tu programa activo.')
+    await ready.getByRole('button', { name: 'Ver programa' }).click()
     const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Upper/Lower Acordado' })
     await expect(newCard).toBeVisible()
     await expect(newCard).toHaveClass(/active/)
@@ -1162,16 +1226,31 @@ test.describe('You — Datos tab', () => {
   test('AI import, dictionary migration, and JSON export/import', async ({ page }) => {
     test.setTimeout(60000)
 
-    // Only the AI-import endpoint needs a real payload (it requires `weeks`);
-    // registered as its own route so it's matched ahead of nothing else here.
-    await page.route((url) => url.href.includes('/api/ai/import'), (route) => route.fulfill({
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro). It used to promise:
+    // Programas › IA Powered › "Importar con IA" (POST /api/ai/import) creates
+    // "Programa IA"; Ejercicios › "Sobrescribir" shows "Actualizados" in
+    // #dict-migrate-status; Datos › "Exportar JSON" downloads ejercicios-*.json;
+    // importing an exercises file says "1 ejercicios importados" (and
+    // overwrote existing ones); importing the logs file says "Importados 1 logs".
+    // Now: Pega tu rutina opens a chat (/api/ai/program-chat) and «Crear este
+    // programa» creates it (/api/ai/generate-program); Copia de seguridad ›
+    // Ordenar con el diccionario confirms first and shows a result sheet;
+    // Exportar / Importar ejercicios show result sheets and importing NEVER
+    // overwrites an exercise you already have; Restaurar una copia merges the
+    // logs file and says what came in.
+    const chatBodies = []
+    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+      chatBodies.push(route.request().postDataJSON())
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: 'Entendí 1 día: Lunes · Press Banca 4 × 8.', _provider: 'test' }) })
+    })
+    await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         program_name: 'Programa IA',
         weeks: [{
-          name: 'Semana 1', subtitle: '', tag: 'BUILD',
-          days: [{ name: 'Día 1', subtitle: '', duration: 60, exercises: [{ name: 'Press Banca', muscle: 'Chest' }] }],
+          name: 'Semana 1', subtitle: '', tag: 'VOLUMEN',
+          days: [{ name: 'Pecho', subtitle: '', weekday: 1, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }],
         }],
       }),
     }))
@@ -1183,63 +1262,88 @@ test.describe('You — Datos tab', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Programas' }).click()
-    await page.waitForTimeout(300)
-    await page.getByRole('button', { name: 'IA Powered' }).click()
-    await page.waitForTimeout(300)
+    // Pega tu rutina → chat → Crear este programa
+    await page.locator('#you-step-programa').click()
+    await page.locator('#create-paste').click()
+    const paste = page.locator('#paste-routine-sheet')
+    await paste.getByRole('button', { name: 'Escribirla aquí' }).click()
+    await paste.getByRole('textbox', { name: 'Tu rutina' }).fill('Lunes: Press banca 4x8')
+    await paste.getByRole('button', { name: 'Ver cómo queda' }).click()
+    const chat = page.locator('[data-component="CoachChat"]')
+    await expect(chat).toContainText('Tu rutina · 1 línea')
+    await expect(chat).toContainText('Entendí 1 día')
+    expect(chatBodies[0].messages[0].content).toBe('Lunes: Press banca 4x8')
+    await chat.getByRole('button', { name: 'Crear este programa' }).click()
+    const ready = page.locator('[data-component="ProgramReady"]')
+    await expect(ready).toContainText('«Programa IA» ya es tu programa activo.', { timeout: 5000 })
+    await ready.getByRole('button', { name: 'Ver programa' }).click()
+    await expect(page.locator('[data-component="ProgramCard"].active', { hasText: 'Programa IA' })).toBeVisible()
 
-    // AI import — now redirects to the Manual sub-tab, so the new program card appears
-    await page.locator('.ai-textarea-wrap textarea').fill('Lunes: Press banca 4x8')
-    await page.getByRole('button', { name: 'Importar con IA' }).click()
-    await page.waitForTimeout(600)
-    await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa IA' })).toBeVisible({ timeout: 5000 })
-
-    // Dictionary migration now lives at the top of the Ejercicios tab
-    await page.getByRole('button', { name: 'Ejercicios' }).click()
-    await page.waitForTimeout(300)
-    await page.getByRole('button', { name: 'Sobrescribir' }).click()
-    await page.waitForTimeout(500)
-    await expect(page.locator('#dict-migrate-status')).toContainText('Actualizados')
-
-    // Switch to Datos tab for JSON import/export
-    await page.getByRole('button', { name: 'Datos' }).click()
-    await page.waitForTimeout(300)
+    // Ordenar con el diccionario: confirmation, then a result sheet
+    await page.getByRole('button', { name: 'Tú', exact: true }).click()
+    await page.locator('#you-row-copia').click()
+    await page.locator('#dictionary-row').click()
+    await page.locator('#dictionary-sheet').getByRole('button', { name: 'Ordenar 1 ejercicio' }).click()
+    const resultSheet = page.locator('[data-component="ResultSheet"]')
+    await expect(resultSheet).toContainText('de 1 ordenados')
+    await page.getByRole('button', { name: 'Listo' }).click()
 
     // Export exercises JSON
     const [download1] = await Promise.all([
       page.waitForEvent('download'),
-      page.locator('[data-component="DataExportSection"]').getByRole('button', { name: 'Exportar JSON' }).first().click(),
+      page.locator('#export-exercises-row').click(),
     ])
     expect(download1.suggestedFilename()).toMatch(/^ejercicios-\d{4}-\d{2}-\d{2}\.json$/)
+    await expect(resultSheet).toContainText('1 ejercicio exportado')
+    await page.getByRole('button', { name: 'Listo' }).click()
 
-    // Import exercises JSON
+    // Import exercises JSON: one new, one you already have (left as it was)
     const fs = require('fs')
     const os = require('os')
     const path = require('path')
+    const exported = JSON.parse(fs.readFileSync(await download1.path(), 'utf8'))
     const exFile = path.join(os.tmpdir(), `pw-exercises-${Date.now()}.json`)
     fs.writeFileSync(exFile, JSON.stringify([
       { id: 'ex-imported', name: 'Curl de Bíceps', muscle: 'Biceps', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      { ...exported[0], muscle: 'Músculo Pisado' },
     ]))
     try {
-      await page.locator('[data-component="DataImportSection"] input[type="file"]').first().setInputFiles(exFile)
-      await page.waitForTimeout(500)
-      await expect(page.locator('[data-component="DataImportSection"]')).toContainText('1 ejercicios importados')
+      const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser'),
+        page.locator('#import-exercises-row').click(),
+      ])
+      await chooser.setFiles(exFile)
+      await expect(resultSheet).toContainText('2 ejercicios en el archivo')
+      await expect(resultSheet).toContainText('Nuevos1')
+      await expect(resultSheet).toContainText('Ya los tenías')
+      await page.getByRole('button', { name: 'Listo' }).click()
     } finally {
       fs.unlinkSync(exFile)
     }
 
-    // Import logs+settings JSON
+    // Restaurar una copia with the logs JSON (merges)
     const logsFile = path.join(os.tmpdir(), `pw-logs-${Date.now()}.json`)
     fs.writeFileSync(logsFile, JSON.stringify({
       exerciseLogs: [{ id: 'log-imported', exerciseId: 'ex-imported', date: '2026-07-01', weight: 40, units: 'kg' }],
     }))
     try {
-      await page.locator('[data-component="DataImportSection"] input[type="file"]').nth(1).setInputFiles(logsFile)
-      await page.waitForTimeout(500)
-      await expect(page.locator('[data-component="DataImportSection"]')).toContainText('Importados 1 logs')
+      await page.locator('#restore-row').click()
+      const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser'),
+        page.locator('#restore-sheet').getByRole('button', { name: 'Elegir archivo y restaurar' }).click(),
+      ])
+      await chooser.setFiles(logsFile)
+      await expect(resultSheet).toContainText('Copia restaurada')
+      await expect(resultSheet).toContainText('entrenos')
     } finally {
       fs.unlinkSync(logsFile)
     }
+
+    // The exercise you already had kept its own muscle
+    await page.goto('you')
+    await page.locator('#you-row-ejercicios').click()
+    await expect(page.locator('#you-ejercicios')).toContainText('Curl de Bíceps')
+    await expect(page.locator('#you-ejercicios')).not.toContainText('Músculo Pisado')
   })
 
   // Merged from the former tests/dict-normalize.spec.cjs — same Ejercicios tab,
@@ -1257,32 +1361,36 @@ test.describe('You — Datos tab', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Ejercicios' }).click()
-    await page.waitForTimeout(300)
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro): "Sobrescribir" in the
+    // Ejercicios tab used to show "sin match 1" in #dict-migrate-status, a
+    // #ver-mas-link opened the #skipped-overlay listing the name, and
+    // #skipped-close-btn closed it. Same promise — the unmatched exercise is
+    // listed and you can get out — now via Copia de seguridad › Ordenar con el
+    // diccionario › result «1 de 2 ordenados» › «Sin coincidencia» subscreen,
+    // where each row opens Editar ejercicio.
+    await page.locator('#you-row-copia').click()
+    await page.locator('#dictionary-row').click()
+    await page.locator('#dictionary-sheet').getByRole('button', { name: 'Ordenar 2 ejercicios' }).click()
 
-    // "Sobrescribir" re-runs the migration even if already applied this session
-    const forceBtn = page.getByRole('button', { name: 'Sobrescribir' })
-    await expect(forceBtn).toBeVisible()
-    await forceBtn.click()
+    const resultSheet = page.locator('[data-component="ResultSheet"]')
+    await expect(resultSheet).toContainText('1 de 2 ordenados', { timeout: 10000 })
 
-    const statusEl = page.locator('#dict-migrate-status')
-    await expect(statusEl).toContainText('sin match 1', { timeout: 10000 })
+    const unmatchedRow = page.locator('#unmatched-row')
+    await expect(unmatchedRow).toBeVisible()
+    await expect(unmatchedRow).toContainText('1')
+    await unmatchedRow.click()
 
-    const verMas = page.locator('#ver-mas-link')
-    await expect(verMas).toBeVisible()
-    await expect(verMas).toContainText('ver más')
-    await verMas.click()
-    await page.waitForTimeout(300)
+    const subscreen = page.locator('#you-sin-coincidencia')
+    await expect(subscreen).toBeVisible()
+    await expect(subscreen).toContainText('Ejercicio Inventado X7')
 
-    const overlay = page.locator('#skipped-overlay')
-    await expect(overlay).toBeVisible()
-    await expect(overlay).toContainText('Ejercicio Inventado X7')
-
-    const closeBtn = page.locator('#skipped-close-btn')
-    await expect(closeBtn).toBeVisible()
-    await closeBtn.click()
-    await page.waitForTimeout(200)
-    await expect(overlay).not.toBeVisible()
+    await subscreen.locator('[data-component="ExerciseListItem"]', { hasText: 'Ejercicio Inventado X7' }).click()
+    const editSheet = page.locator('#edit-exercise-sheet')
+    await expect(editSheet).toBeVisible()
+    await editSheet.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(editSheet).toHaveCount(0)
+    await page.getByRole('button', { name: 'Copia de seguridad', exact: true }).click()
+    await expect(page.locator('#you-copia')).toBeVisible()
   })
 })
 
@@ -1309,42 +1417,51 @@ test.describe('You — Ejercicios tab CRUD', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.click('#you-tab-ejercicios')
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro): the Ejercicios tab had
+    // "+ Nuevo" with an inline form, the open exercise edited inline under
+    // "Editar", and "Eliminar" used a native confirm(). Same promise — search,
+    // create, edit and delete, with the count in #ex-count — now with the search
+    // and + in the dock, the «Nuevo ejercicio» sheet, Datos (Editar ejercicio)
+    // and «Eliminar ejercicio» confirmed inside that sheet.
+    await page.locator('#you-row-ejercicios').click()
     await page.waitForTimeout(300)
     await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
 
     // Search filters the list down to one match
-    await page.getByPlaceholder('Buscar ejercicio…').fill('sentad')
+    await page.locator('#exercise-search').fill('sentad')
     await page.waitForTimeout(300)
     await expect(page.locator('[data-component="ExerciseListItem"]')).toHaveCount(1)
     await expect(page.locator('[data-component="ExerciseListItem"]')).toContainText('Sentadilla')
-    await page.getByPlaceholder('Buscar ejercicio…').fill('')
+    await page.locator('#exercise-search').fill('')
     await page.waitForTimeout(300)
 
     // Add a new exercise
-    await page.getByRole('button', { name: '+ Nuevo' }).click()
-    await page.getByPlaceholder('Nombre del ejercicio').fill('Remo con Barra')
-    await page.getByPlaceholder('Músculo (ej: Pecho, Espalda)').fill('Espalda')
-    await page.getByRole('button', { name: 'Guardar' }).click()
+    await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
+    const newSheet = page.locator('#new-exercise-sheet')
+    await newSheet.getByLabel('Nombre').fill('Remo con Barra')
+    await newSheet.getByLabel('Músculo').fill('Espalda')
+    await newSheet.getByRole('button', { name: 'Guardar' }).click()
     await page.waitForTimeout(400)
     await expect(page.locator('#ex-count')).toHaveText('3 ejercicios')
     const newItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra' })
     await expect(newItem).toBeVisible()
 
-    // Edit it
+    // Edit it (Datos)
     await newItem.locator('.exercise-toggle').click()
     await page.waitForTimeout(300)
-    await newItem.getByRole('button', { name: 'Editar' }).click()
-    await newItem.getByPlaceholder('Nombre').fill('Remo con Barra (editado)')
-    await newItem.getByRole('button', { name: 'Guardar' }).click()
+    await newItem.getByRole('button', { name: 'Datos' }).click()
+    const editSheet = page.locator('#edit-exercise-sheet')
+    await editSheet.getByLabel('Nombre').fill('Remo con Barra (editado)')
+    await editSheet.getByRole('button', { name: 'Guardar' }).click()
     await page.waitForTimeout(400)
     const editedItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra (editado)' })
     await expect(editedItem).toBeVisible()
 
-    // Delete it — still expanded from the edit step above (a second toggle
-    // click here would collapse it again and hide the Eliminar button)
-    page.once('dialog', d => d.accept())
-    await editedItem.getByRole('button', { name: 'Eliminar' }).click()
+    // Delete it — still open from the edit step above; the sheet asks first
+    await editedItem.getByRole('button', { name: 'Datos' }).click()
+    await editSheet.getByRole('button', { name: 'Eliminar ejercicio' }).click()
+    await expect(editSheet).toContainText('¿Eliminar «Remo con Barra (editado)»?')
+    await editSheet.getByRole('button', { name: 'Eliminar', exact: true }).click()
     await page.waitForTimeout(400)
     await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
   })
@@ -2895,15 +3012,24 @@ test.describe('You — Datos export/import roundtrip', () => {
     await page.reload()
     await page.waitForTimeout(800)
 
-    await page.getByRole('button', { name: 'Datos' }).click()
+    // Changed 2026-10-13 with Tú v2 (approved by Pedro): the backup used to be
+    // exported/imported from the Datos tab ("Exportar JSON" / file input of
+    // DataImportSection, "Importados 2 ejercicios, 1 programas, 3 logs"), the
+    // empty state was "0 ejercicios" and the profile was read from the
+    // ProfileCard inputs. Same roundtrip promise: Copia de seguridad › Guardar
+    // copia (same file name) → wipe → Restaurar una copia → everything is back,
+    // checked in Ejercicios and Mis datos.
+    await page.locator('#you-row-copia').click()
     await page.waitForTimeout(300)
 
-    // Export logs+settings JSON (second Exportar JSON button)
+    // Guardar copia: downloads everything
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.locator('[data-component="DataExportSection"]').getByRole('button', { name: 'Exportar JSON' }).nth(1).click(),
+      page.locator('#save-backup-btn').click(),
     ])
     expect(download.suggestedFilename()).toMatch(/^training-backup-\d{4}-\d{2}-\d{2}\.json$/)
+    await expect(page.locator('[data-component="ResultSheet"]')).toContainText('Copia guardada')
+    await page.getByRole('button', { name: 'Listo' }).click()
 
     // Read file and verify content matches seeded data
     const filePath = await download.path()
@@ -2944,34 +3070,44 @@ test.describe('You — Datos export/import roundtrip', () => {
     await page.waitForTimeout(800)
 
     // Verify empty state
-    await page.waitForSelector('#you-tab-ejercicios')
-    await page.locator('#you-tab-ejercicios').click()
+    await page.waitForSelector('#you-row-ejercicios')
+    await page.locator('#you-row-ejercicios').click()
     await page.waitForTimeout(300)
-    await expect(page.locator('#ex-count')).toContainText('0 ejercicios')
+    await expect(page.locator('#you-ejercicios')).toContainText('Aún no hay ejercicios')
 
-    // Import the exported file back
-    await page.getByRole('button', { name: 'Datos' }).click()
-    await page.waitForTimeout(300)
-    await page.locator('[data-component="DataImportSection"] input[type="file"]').nth(1).setInputFiles(filePath)
-    await page.waitForTimeout(600)
-    await expect(page.locator('[data-component="DataImportSection"]')).toContainText('Importados 2 ejercicios, 1 programas, 3 logs')
+    // Restore the saved file
+    await page.getByRole('button', { name: 'Tú', exact: true }).click()
+    await page.locator('#you-row-copia').click()
+    await page.locator('#restore-row').click()
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.locator('#restore-sheet').getByRole('button', { name: 'Elegir archivo y restaurar' }).click(),
+    ])
+    await chooser.setFiles(filePath)
+    const restored = page.locator('[data-component="ResultSheet"]')
+    await expect(restored).toContainText('Copia restaurada')
+    // 2 workout days, 1 program, 2 exercises
+    await expect(restored.locator('[data-component="StatBlock"]').nth(0)).toContainText('2')
+    await expect(restored.locator('[data-component="StatBlock"]').nth(1)).toContainText('1')
+    await expect(restored.locator('[data-component="StatBlock"]').nth(2)).toContainText('2')
 
     // Reload so the app picks up restored settings
     await page.reload()
     await page.waitForTimeout(800)
 
     // Verify exercises restored
-    await page.locator('#you-tab-ejercicios').click()
+    await page.locator('#you-row-ejercicios').click()
     await page.waitForTimeout(300)
     await expect(page.locator('#ex-count')).toContainText('2 ejercicios')
     await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Banca' })).toBeVisible()
     await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Muerto' })).toBeVisible()
 
-    // Verify settings survived roundtrip (perfil en You — ProfileCard)
+    // Verify settings survived roundtrip (Mis datos)
     await page.goto('you')
     await page.waitForTimeout(500)
-    await expect(page.locator('#height-input')).toHaveValue('175')
-    await expect(page.locator('#weight-input')).toHaveValue('78')
+    await page.locator('#you-row-datos').click()
+    await expect(page.locator('#profile-row-height')).toContainText('175 cm')
+    await expect(page.locator('#profile-row-weight')).toContainText('78 kg')
 
     // El username ya no vive en el header de You (se movió a Friends en 5d134e8):
     // comprobar que 'RoundTripUser' sobrevivió el roundtrip navegando a Friends,
@@ -3611,21 +3747,24 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     // "Tú" sobre mi propio lugar.
     await expect(third).toContainText('Tú')
 
-    // Editar username desde Mi perfil. El usuario aún no existe en el servidor
-    // (check → exists: false), así que primero se registra; luego aparece el lápiz.
+    // Changed 2026-10-14 (approved by Pedro): «Editar usuario» is hidden, so the
+    // rename-from-Mi-perfil steps are commented. Opening + closing the sheet is kept
+    // so the friend-removal journey below is unaffected.
+    // // Editar username desde Mi perfil. El usuario aún no existe en el servidor
+    // // (check → exists: false), así que primero se registra; luego aparece el lápiz.
     const sheet = page.locator('[data-component="Sheet"]')
     await page.getByRole('button', { name: 'Mi perfil' }).click()
-    await page.getByRole('button', { name: 'Registrar mi usuario' }).click()
-    const editBtn = page.getByRole('button', { name: 'Editar usuario' })
-    await expect(editBtn).toBeVisible()
-    await editBtn.click()
-    await page.waitForTimeout(200)
-    const nameInput = page.locator('#rename-input')
-    await expect(nameInput).toBeVisible()
-    await nameInput.fill('Pedro')
-    await page.getByRole('button', { name: 'Guardar' }).click()
-    await page.waitForTimeout(600)
-    await expect(page.locator('[data-component="ProfileSheet"] .who-name')).toContainText('Pedro')
+    // await page.getByRole('button', { name: 'Registrar mi usuario' }).click()
+    // const editBtn = page.getByRole('button', { name: 'Editar usuario' })
+    // await expect(editBtn).toBeVisible()
+    // await editBtn.click()
+    // await page.waitForTimeout(200)
+    // const nameInput = page.locator('#rename-input')
+    // await expect(nameInput).toBeVisible()
+    // await nameInput.fill('Pedro')
+    // await page.getByRole('button', { name: 'Guardar' }).click()
+    // await page.waitForTimeout(600)
+    // await expect(page.locator('[data-component="ProfileSheet"] .who-name')).toContainText('Pedro')
     await sheet.getByRole('button', { name: 'Cerrar' }).click()
 
     // Quitar amigo desde su detalle: la racha de Ana se ve ahí (en el podio no cabe).
@@ -4359,7 +4498,10 @@ test.describe('Amigos v2 — primera vez y registro', () => {
     const before = registers().length
     await page.getByRole('button', { name: 'Registrar mi usuario' }).click()
     await expect(profile).not.toContainText('Aún no pueden encontrarte')
-    await expect(page.getByRole('button', { name: 'Editar usuario' })).toBeVisible()
+    // Changed 2026-10-14 (approved by Pedro): the «Editar usuario» pencil is hidden
+    // for now, so it is no longer shown even once registered. Old promise: it became
+    // visible to open «Cambiar usuario». Restore `toBeVisible()` when the pencil returns.
+    await expect(page.getByRole('button', { name: 'Editar usuario' })).toHaveCount(0)
     expect(registers().length).toBe(before + 1)
   })
 })
@@ -4420,6 +4562,10 @@ test.describe('Amigos v2 — agregar amigo', () => {
   })
 })
 
+// Changed 2026-10-14 (approved by Pedro): the «Editar usuario» pencil in Mi perfil is
+// hidden for now, so «Cambiar usuario» can't be opened from the UI. This whole journey
+// (rename on the Worker, taken name, survives reload) is commented until the pencil returns.
+/*
 test.describe('Amigos v2 — mi perfil y renombrar', () => {
   test('renames on the Worker, rejects a taken name, and keeps the new name after reload', async ({ page }) => {
     const api = { friends: [LEAGUE.friend('Ana', 60), LEAGUE.friend('Luis', 30)], renameStatus: 409 }
@@ -4470,6 +4616,7 @@ test.describe('Amigos v2 — mi perfil y renombrar', () => {
     expect(api.listUsers.at(-1)).toBe('Pedro')
   })
 })
+*/
 
 test.describe('Amigos v2 — datos viejos', () => {
   test('a friend who has not synced this week counts 0 min and "trained today" needs today\'s sync', async ({ page }) => {
@@ -4536,15 +4683,135 @@ test.describe('Amigos v2 — sin conexión', () => {
     await expect(detail).toContainText('Necesitas internet para quitar amigos.')
     await sheet.getByRole('button', { name: 'Cerrar' }).click()
 
-    // Mi perfil → Cambiar usuario: saving is off even with a new name typed.
-    await page.getByRole('button', { name: 'Mi perfil' }).click()
-    await page.getByRole('button', { name: 'Editar usuario' }).click()
-    await page.locator('#rename-input').fill('Pedro')
-    const profile = page.locator('[data-component="ProfileSheet"]')
-    await expect(profile.getByRole('button', { name: 'Guardar' })).toBeDisabled()
-    await expect(profile).toContainText('Necesitas internet para cambiar tu usuario.')
+    // Changed 2026-10-14 (approved by Pedro): «Editar usuario» is hidden, so the
+    // offline «Cambiar usuario» check can't be opened from the UI. Kept for when
+    // the pencil returns.
+    // // Mi perfil → Cambiar usuario: saving is off even with a new name typed.
+    // await page.getByRole('button', { name: 'Mi perfil' }).click()
+    // await page.getByRole('button', { name: 'Editar usuario' }).click()
+    // await page.locator('#rename-input').fill('Pedro')
+    // const profile = page.locator('[data-component="ProfileSheet"]')
+    // await expect(profile.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    // await expect(profile).toContainText('Necesitas internet para cambiar tu usuario.')
 
     await context.setOffline(false)
+    expect(errors).toEqual([])
+  })
+})
+
+// ── Tú v2 ──
+// First time in Tú: the guided «Mis datos», a program from scratch (with its
+// computed day duration, also in Plan), units that persist, and creating the
+// exercise you searched for.
+test.describe('Tú v2 — primera vez, programa desde cero y ajustes', () => {
+  const SETTINGS = {
+    id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
+    accentColor: '#d4ff3a', hasWatch: false, language: 'es', onboarded: false, onboardingStep: 0,
+  }
+
+  test('guides the data, creates a program from scratch, keeps lb and creates the searched exercise', async ({ page }) => {
+    test.setTimeout(90000)
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+    await mockApiRoutes(page)
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
+    await page.waitForTimeout(200)
+    await page.reload()
+    await page.waitForTimeout(800)
+
+    // 1. First time: «Hola.», two steps and «Completar mis datos»; no onboarding banner here
+    const first = page.locator('#you-first-time')
+    await expect(first).toContainText('Hola.')
+    await expect(page.locator('#you-step-datos')).toContainText('Tus datos')
+    await expect(page.locator('#you-step-datos')).toContainText('0 de 7')
+    await expect(page.locator('#you-step-programa')).toContainText('Tu programa')
+    const completar = page.getByRole('button', { name: 'Completar mis datos' })
+    await expect(completar).toBeVisible()
+    await expect(page.locator('[data-component="OnboardingBanner"]')).toHaveCount(0)
+
+    // 2. Guided data: height +2 → 172, weight −1 step, skip the rest
+    await completar.click()
+    const guide = page.locator('#profile-guide')
+    await expect(guide).toContainText('Mis datos · 1 de 7')
+    await expect(guide).toContainText('¿Cuánto mides?')
+    await guide.getByRole('button', { name: 'Más estatura' }).click()
+    await guide.getByRole('button', { name: 'Más estatura' }).click()
+    await expect(guide.locator('[data-component="NumberStepper"]')).toContainText('172')
+    await guide.getByRole('button', { name: 'Siguiente' }).click()
+    await expect(guide).toContainText('¿Cuánto pesas?')
+    await guide.getByRole('button', { name: 'Menos peso' }).click()
+    await guide.getByRole('button', { name: 'Siguiente' }).click()
+    for (let i = 0; i < 5; i++) await guide.getByRole('button', { name: 'Saltar' }).click()
+    await expect(guide).toHaveCount(0)
+    await expect(page.locator('#you-step-datos')).toContainText('2 de 7')
+
+    // 3. Crear programa › Desde cero › Guardar without a name marks the error
+    await page.locator('#you-step-programa').click()
+    const createSheet = page.locator('#create-program-sheet')
+    await expect(createSheet).toContainText('Platícalo con el coach')
+    await expect(createSheet).toContainText('Pega tu rutina')
+    await createSheet.getByRole('button', { name: /Desde cero/ }).click()
+    const editor = page.locator('#program-editor')
+    await editor.getByRole('button', { name: 'Guardar' }).click()
+    await expect(editor).toContainText('Ponle un nombre para guardarlo.')
+    await expect(editor).toBeVisible()
+
+    // 4. Name, a Monday day «Empuje», and Press Banca 4 × 8-10 · 120 s
+    await editor.getByLabel('Nombre del programa').fill('Torso Test')
+    await editor.getByRole('button', { name: 'Añadir día' }).click()
+    const daySheet = page.locator('#program-day-sheet')
+    await daySheet.getByLabel('Nombre del día').fill('Empuje')
+    await daySheet.getByRole('button', { name: 'L', exact: true }).click()
+    await daySheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(daySheet).toHaveCount(0)
+    await editor.getByRole('button', { name: 'Añadir ejercicio' }).click()
+    const exSheet = page.locator('#program-exercise-sheet')
+    await exSheet.getByLabel('Nombre').fill('Press Banca')
+    await exSheet.getByRole('button', { name: 'Más series' }).click()
+    await exSheet.getByLabel('Repeticiones').fill('8-10')
+    for (let i = 0; i < 4; i++) await exSheet.getByRole('button', { name: 'Más descanso' }).click()
+    await expect(exSheet).toContainText('4series')
+    await expect(exSheet).toContainText('120s')
+    await exSheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(exSheet).toHaveCount(0)
+    await expect(editor.locator('[data-component="ProgramEditorDay"]')).toContainText('Lunes · ≈ 10 min · 1 ejercicio')
+
+    // 5. Guardar → the normal summary with the active program; Mis datos 2 de 7
+    await editor.getByRole('button', { name: 'Guardar' }).click()
+    await expect(editor).toHaveCount(0)
+    const active = page.locator('[data-component="ProgramCard"].active')
+    await expect(active).toContainText('Programa activo')
+    await expect(active).toContainText('Torso Test')
+    await expect(page.locator('#you-row-datos')).toContainText('2 de 7')
+
+    // 6. Plan shows the computed duration
+    await page.goto('plan')
+    await page.waitForTimeout(600)
+    await expect(page.locator('.meta-label', { hasText: '10m' }).first()).toBeVisible()
+
+    // 7. Ajustes › Unidades lb survives a reload
+    await page.goto('you')
+    await page.locator('#you-row-ajustes').click()
+    await page.locator('#units-lb').click()
+    await page.waitForTimeout(300)
+    await page.reload()
+    await page.waitForTimeout(800)
+    await page.locator('#you-row-ajustes').click()
+    await expect(page.locator('#units-lb')).toHaveAttribute('aria-pressed', 'true')
+
+    // 8. Ejercicios: no results offers to create what you searched
+    await page.goto('you')
+    await page.locator('#you-row-ejercicios').click()
+    await page.locator('#exercise-search').fill('Remo Z')
+    await expect(page.locator('#you-ejercicios')).toContainText('No tienes «Remo Z»')
+    await page.getByRole('button', { name: 'Crear «Remo Z»' }).click()
+    await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo Z' })).toBeVisible()
+    await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
+
+    // 9. No page errors
     expect(errors).toEqual([])
   })
 })

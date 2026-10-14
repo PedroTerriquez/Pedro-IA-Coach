@@ -40,7 +40,6 @@ Si se proporciona PERFIL DEL USUARIO, úsalo para personalizar la rutina:
       "name": string (LOS MÚSCULOS entrenados ese día, formato corto: "Pecho · Tríceps", "Espalda · Bíceps", "Pierna". NUNCA el día de la semana ni "Día 1"),
       "weekday": number (día de la semana SOLO si el texto lo menciona explícitamente: 1=lunes, 2=martes, 3=miércoles, 4=jueves, 5=viernes, 6=sábado, 7=domingo. Ej: "Martes: Pecho" → weekday=2. Si el texto NO menciona días de la semana, OMITIR este campo),
       "subtitle": string (detalle adicional del día: énfasis o tipo de sesión; puede ir vacío),
-      "duration_min": number,
       "exercises": [{
         "exercise_name": string (si el ejercicio existe en el DICCIONARIO, usa su campo "es" EXACTO, copiado carácter por carácter. Si NO existe, construye el nombre con la CONVENCIÓN DE NOMBRES:
 
@@ -116,7 +115,6 @@ Si recibes una conversación con el usuario, el ENFOQUE ACORDADO en ella (split,
       "name": string (LOS MÚSCULOS entrenados ese día, formato corto: "Pecho · Tríceps", "Empuje". NUNCA el día de la semana),
       "weekday": number (1=lunes … 7=domingo. Distribuye los días de forma lógica según el split: Full Body 3d → 1,3,5 · Upper/Lower 4d → 1,2,4,5 · PPL 6d → 1,2,3,4,5,6),
       "subtitle": string (detalle adicional del día; puede ir vacío),
-      "duration_min": number (estimado),
       "exercises": [{
         "exercise_name": string,
         "muscle": string (grupo muscular principal),
@@ -185,7 +183,6 @@ Si el usuario PIDE UNA MODIFICACIÓN (cambiar/agregar/quitar ejercicios, ajustar
         "name": string,
         "weekday": number (1=lunes … 7=domingo; CONSERVA el weekday original de cada día existente, para días nuevos omítelo),
         "subtitle": string,
-        "duration_min": number,
         "exercises": [{
           "exercise_name": string,
           "muscle": string,
@@ -285,6 +282,65 @@ REGLAS DE RESPUESTA:
 
 export function buildGenerateChatPrompt(language: PromptLanguage, context: string): string {
   return `${buildAIRole(language)}\n\n${FORMAT_GENERATE_CHAT}\n\n${context}`
+}
+
+export const FORMAT_PASTE_CHAT = `El usuario pegó su rutina tal como la tiene anotada (abreviada, con faltas o desordenada). Vas a interpretarla y a platicar con él hasta que quede como la quiere.
+
+TU PRIMERA RESPUESTA:
+1. Di cuántos días y cuántos ejercicios entendiste, en una frase corta
+2. Descríbela día por día, en una línea por día: "Lunes · Pecho y tríceps: Press Banca 4 × 8, Aperturas en Polea 3 × 12, …". Usa nombres del DICCIONARIO DE EJERCICIOS cuando reconozcas el ejercicio, y las series × repeticiones que anotó
+3. Si algo no lo entendiste (una abreviatura, un ejercicio ambiguo, series que faltan), pregúntalo al final con una duda concreta
+4. Si lo pegado NO trae días ni ejercicios, dilo y pide que la pase con un ejercicio por línea, con un ejemplo corto como:
+   Lunes pecho
+   press banca 4x8
+   fondos 3 al fallo
+   y dile que también se la puede contar con sus palabras
+
+EN LAS SIGUIENTES RESPUESTAS:
+- Aplica los cambios que pida y vuelve a mostrar SOLO los días que cambiaron
+- Si pide algo que no conviene, dilo y propón una alternativa
+- Cuando parezca que ya están de acuerdo, dile que toque "Crear este programa"
+
+REGLAS DE RESPUESTA:
+- Responde SOLO en texto plano, NUNCA en JSON
+- Sin emojis; frases cortas; tutea al usuario
+- No inventes ejercicios que no pegó ni platicaron`
+
+export function buildPasteChatPrompt(language: PromptLanguage, context: string): string {
+  return `${buildAIRole(language)}\n\n${FORMAT_PASTE_CHAT}\n\n${context}`
+}
+
+export const FORMAT_PASTE_CREATE = `Recibes una conversación: el primer mensaje del usuario es su rutina pegada tal como la tiene anotada, y después platicaron cambios. Convierte la rutina con TODOS los cambios acordados en un programa completo. SOLO JSON, sin markdown, sin explicaciones.
+
+REGLAS:
+- Respeta los días, ejercicios, series y repeticiones que pegó, salvo lo que se cambió en la plática
+- No agregues ejercicios que no pegó ni platicaron
+- Si faltan series, repeticiones o descanso, usa sets=3, reps="10", rest_sec=90
+- Si la rutina menciona días de la semana, pon el "weekday" de cada día (1=lunes … 7=domingo); si no, omite el campo
+- El "name" de cada día son los músculos que trabaja ("Pecho · Tríceps"), nunca el día de la semana
+
+{
+  "program_name": string (corto, según los días: ej. "Pecho / Espalda / Pierna"),
+  "weeks": [{
+    "name": "Semana 1",
+    "tag": "VOLUMEN" | "FUERZA" | "RESISTENCIA" (omite si no aplica),
+    "days": [{
+      "name": string,
+      "weekday": number (solo si se mencionó),
+      "subtitle": string (puede ir vacío),
+      "exercises": [{
+        "exercise_name": string (usa el nombre "es" EXACTO del DICCIONARIO cuando exista),
+        "muscle": string,
+        "sets": number,
+        "reps": string,
+        "rest_sec": number
+      }]
+    }]
+  }]
+}`
+
+export function buildPasteCreatePrompt(language: PromptLanguage, context: string): string {
+  return `${buildAIRole(language)}\n\n${AI_SECURITY}\n\n${FORMAT_PASTE_CREATE}\n\n${context}`
 }
 
 const _generatePromptCache = new Map<PromptLanguage, string>()

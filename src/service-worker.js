@@ -22,7 +22,11 @@ self.addEventListener('activate', (e) => {
     Promise.all([
       clients.claim(),
       caches.keys().then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith('cache-') && k !== CACHE)
+            .map((k) => caches.delete(k))
+        )
       ),
     ])
   )

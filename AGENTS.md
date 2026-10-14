@@ -108,13 +108,13 @@ Week structure:
 {
   name: "Week A", subtitle: "Volume", tag: "BUILD",
   days: [{
-    name: "Push", subtitle: "Chest · Shoulders · Triceps", duration: 65,
+    name: "Push", subtitle: "Chest · Shoulders · Triceps",
     exercises: [{ exerciseId: "ex-bench", sets: 4, reps: "6-8", rest: 180 }]
   }]
 }
 ```
 
-Sets, reps, rest LIVE on the program exercise instance, NOT on the exercise definition.
+Sets, reps, rest LIVE on the program exercise instance, NOT on the exercise definition. Day duration is never stored: `dayDurationMin()` (`src/lib/program-utils.ts`) computes Σ sets × (30 s + rest).
 
 ### `settings` (singleton)
 ```
@@ -308,6 +308,9 @@ Use `git status`, `git diff`, `git log --oneline -3` before committing to verify
 - No build step beyond Vite/SvelteKit: `npm run dev` for local, `npm run build` for static output, `npm run preview` to test the build
 - GitHub Pages: push to `main` → `.github/workflows/deploy.yml` builds and deploys to `/Pedro-IA-Coach`
 - Base path is `/Pedro-IA-Coach` (must match in `vite.config.ts` and Playwright base URL)
+
+## Design System
+Todo cambio visual actualiza sus cards en Claude Design en el mismo trabajo — cómo: `docs/design-system.md`.
 
 ## Prior Art
 Design prototype in `training-with-pedro/project/` — use for visual reference only.

@@ -252,7 +252,7 @@ export async function getSettings(): Promise<Settings> {
     pushServerUrl: '', pushSubscribed: false, hasWatch: false,
     lastCoachAnalysis: null, lastUpdate: '', sessionState: null,
     rescheduleWeekOrder: {}, username: '', language: 'es', fontScale: 1,
-    onboarded: false, onboardingStep: 0
+    onboarded: false, onboardingStep: 0, debugAI: false
   }
 }
 
@@ -456,6 +456,39 @@ export async function exportLogsAndSettings(): Promise<string> {
     exportedAt: new Date().toISOString(),
   }
   return JSON.stringify(data, null, 2)
+}
+
+function exercisesFromFile(data: unknown): any[] {
+  const list = Array.isArray(data) ? data : (data as any)?.exercises
+  return Array.isArray(list) ? list.filter(item => item && typeof item.name === 'string' && item.name.trim()) : []
+}
+
+/**
+ * Imports an exercises file without overwriting: an exercise whose id or
+ * name (ignoring case) already exists stays as it was.
+ */
+export async function importExercisesKeepingExisting(data: unknown): Promise<{ added: number; skipped: number }> {
+  const list = exercisesFromFile(data)
+  if (!list.length) throw new Error('El archivo no tiene ejercicios')
+  const existing = await getExercises()
+  const ids = new Set(existing.map(e => e.id))
+  const names = new Set(existing.map(e => e.name.trim().toLowerCase()))
+  let added = 0
+  for (const item of list) {
+    const name = item.name.trim().toLowerCase()
+    if ((item.id && ids.has(item.id)) || names.has(name)) continue
+    const ex: Exercise = { imgUrl: '', gifUrl: '', tips: [], alternatives: [], muscle: '', ...item, id: item.id || await generateId() }
+    await put('exercises', ex)
+    ids.add(ex.id)
+    names.add(name)
+    added++
+  }
+  await backupAll()
+  return { added, skipped: list.length - added }
+}
+
+export async function countLogsForExercise(exerciseId: string): Promise<number> {
+  return (await getLogsForExercise(exerciseId)).length
 }
 
 export async function importLogsAndSettings(jsonStr: string) {

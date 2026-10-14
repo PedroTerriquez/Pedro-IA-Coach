@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.82'
-const _VER_DESC = 'Amigos v2: liga semanal con podio, hojas de detalle, agregar y perfil'
-const _VER_TIME = '2026-10-08 10:22'
+const _VER_BASE = 'v2.83'
+const _VER_DESC = 'Rediseño Tú v2, diccionario aductores/abductores, debug IA apagado por defecto'
+const _VER_TIME = '2026-10-14 17:28'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

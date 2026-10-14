@@ -1,10 +1,41 @@
 <script lang="ts">
-  let { open = $bindable(false), children, header, onclose = () => {} }: {
+  import type { Snippet } from 'svelte'
+  import Icon from './Icon.svelte'
+
+  let {
+    open = $bindable(false),
+    children,
+    header,
+    footer,
+    title = '',
+    eyebrow = '',
+    titleStyle = 'title',
+    full = false,
+    elevated = false,
+    id = undefined,
+    onclose = () => {}
+  }: {
+    /** Above full-screen layers such as the coach chat */
+    elevated?: boolean
     open: boolean
-    children?: import('svelte').Snippet
-    header?: import('svelte').Snippet
+    children?: Snippet
+    /** Old header (views not migrated yet); keeps the floating close button */
+    header?: Snippet
+    /** Fixed footer under the body (pie fijo) */
+    footer?: Snippet
+    /** New header: title + close 44 in the same row */
+    title?: string
+    /** With `titleStyle="center"`: small mono line under the centered title */
+    eyebrow?: string
+    /** title = 20/600 at the left · label = mono label (guided steps) · center = ‹ back + centered title */
+    titleStyle?: 'title' | 'label' | 'center'
+    /** Full height, from the status bar down */
+    full?: boolean
+    id?: string
     onclose?: () => void
   } = $props()
+
+  let isNew = $derived(!!title)
 
   function close() {
     open = false
@@ -13,19 +44,36 @@
 </script>
 
 {#if open}
-  <div class="sheet-overlay" data-component="Sheet" role="dialog" aria-modal="true">
-    <div class="sheet-backdrop" onclick={close}></div>
-    <button class="sheet-close-btn" onclick={close} aria-label="Cerrar">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l10 10M12 2L2 12"/></svg>
-    </button>
-    <div class="sheet-content">
-      <div class="sheet-handle"></div>
-      {#if header}
+  <div {id} class="sheet-overlay" class:elevated data-component="Sheet" role="dialog" aria-modal="true" aria-label={title || undefined}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="sheet-backdrop" role="presentation" onclick={close}></div>
+    {#if !isNew}
+      <button class="sheet-close-btn" onclick={close} aria-label="Cerrar">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l10 10M12 2L2 12"/></svg>
+      </button>
+    {/if}
+    <div class="sheet-content" class:v2={isNew} class:full>
+      {#if titleStyle !== 'center'}<div class="sheet-handle"></div>{/if}
+      {#if isNew && titleStyle === 'center'}
+        <div class="sheet-head-center">
+          <button class="sheet-x" onclick={close} aria-label="Volver"><Icon name="back" size={20} /></button>
+          <div class="sheet-title-center">{title}{#if eyebrow}<small>{eyebrow}</small>{/if}</div>
+          <span></span>
+        </div>
+      {:else if isNew}
+        <div class="sheet-head">
+          <span class={titleStyle === 'label' ? 'sheet-label' : 'sheet-title'}>{title}</span>
+          <button class="sheet-x" onclick={close} aria-label="Cerrar"><Icon name="x" size={18} /></button>
+        </div>
+      {:else if header}
         <div class="sheet-header">{@render header()}</div>
       {/if}
       <div class="sheet-body">
         {#if children}{@render children()}{/if}
       </div>
+      {#if footer}
+        <div class="sheet-footer">{@render footer()}</div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -37,10 +85,11 @@
     z-index: 100;
     pointer-events: auto;
   }
+  .sheet-overlay.elevated { z-index: 220; }
   .sheet-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--cv-scrim);
     transition: background 0.25s;
   }
   .sheet-content {
@@ -49,7 +98,7 @@
     right: 0;
     bottom: 0;
     background: var(--surface);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-radius: var(--cv-radius-sheet) var(--cv-radius-sheet) 0 0;
     max-height: 88%;
     overflow: hidden;
     box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.5);
@@ -57,12 +106,16 @@
     display: flex;
     flex-direction: column;
   }
+  .sheet-content.full {
+    top: max(54px, env(safe-area-inset-top, 0px));
+    max-height: none;
+  }
   .sheet-handle {
     width: 36px;
     height: 5px;
     border-radius: 3px;
     background: rgba(255, 255, 255, 0.18);
-    margin: 10px auto 0;
+    margin: 8px auto 0;
     flex-shrink: 0;
   }
   .sheet-header {
@@ -96,4 +149,70 @@
     flex: 1;
     padding: 0 20px;
   }
+
+  /* ── New sheet (Compartidos · Nuevo) ── */
+  .sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 52px;
+    padding: 8px 10px 0 22px;
+    flex-shrink: 0;
+  }
+  .sheet-title { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
+  .sheet-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .sheet-head-center {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    padding: 10px 10px 0;
+    flex-shrink: 0;
+  }
+  .sheet-title-center { text-align: center; font-size: 15px; font-weight: 600; }
+  .sheet-title-center small {
+    display: block;
+    margin-top: 3px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .sheet-x {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    color: var(--text-tertiary);
+    padding: 0;
+  }
+  .v2 .sheet-body {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 8px 20px 44px;
+  }
+  .v2.full .sheet-body { padding-bottom: 20px; }
+  .v2 .sheet-body > :global(*) { flex-shrink: 0; }
+  .sheet-footer {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 20px max(26px, env(safe-area-inset-bottom, 0px));
+    border-top: 0.5px solid var(--border-medium);
+  }
+  .v2:has(.sheet-footer) .sheet-body { padding-bottom: 20px; }
 </style>

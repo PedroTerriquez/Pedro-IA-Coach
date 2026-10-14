@@ -14,6 +14,7 @@
   import Button from '$lib/components/Button.svelte'
   import { startRestFromExercise } from '$lib/rest-timer'
   import { resolveWeekOrder } from '$lib/week-order'
+  import { dayDurationMin } from '$lib/program-utils'
 
   const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
@@ -221,13 +222,13 @@
 </script>
 
 {#if noProgram}
-  <div class="page">
+  <div class="screen" id="plan">
     <div class="no-program-msg">
       Ningún programa seleccionado. Ve a Tú para crear uno.
     </div>
   </div>
 {:else}
-  <div class="page">
+  <div class="screen" id="plan">
     <PageHeader
       eyebrow={planEditing ? 'Reprogramar' : 'Tu programa'}
       title={planEditing ? 'Mover.' : 'Plan.'}
@@ -357,6 +358,7 @@
               {isMoved}
               movedFrom={DAY_NAMES_SHORT[naturalSlot]}
               exerciseCount={day?.exercises?.length || 0}
+              duration={day?.exercises?.length ? String(dayDurationMin(day.exercises)) : undefined}
               {isRest}
               {isExpanded}
               {accent}

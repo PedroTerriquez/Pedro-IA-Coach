@@ -529,6 +529,8 @@ const FREE_EXERCISE_DIRS = new Set([
   'One-Arm_Kettlebell_Split_Snatch',
   'One-Arm_Kettlebell_Swings',
   'One-Arm_Long_Bar_Row',
+  'Thigh_Abductor',
+  'Thigh_Adductor',
 ])
 
 export function getExerciseGifUrl(exerciseName: string) {
@@ -1485,6 +1487,17 @@ export const EXERCISE_DICTIONARY = [
     alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }],
   },
   {
+    id: 'aductor-cadera',
+    es: 'Aductor en Máquina',
+    en: 'Hip Adductor',
+    aliases: ['aductor en máquina', 'aduccion de cadera', 'aduccion de cadera en maquina', 'hip adductor', 'máquina de aducción sentada'],
+    image: _IMG('Thigh_Adductor'),
+    gif: _GIF('adductors/lever-seated-hip-adduction'),
+    muscle: 'Aductores',
+    tips: ['Siéntate con la espalda apoyada y las almohadillas en la cara interna de los muslos.', 'Junta las piernas de forma controlada y resiste la vuelta sin dejar caer el peso de golpe.'],
+    alternatives: [{ name: 'Aducción de Cadera en Polea', reason: '' }, { name: 'Butterfly (Mariposa)', reason: '' }],
+  },
+  {
     id: 'pull-through-en-polea',
     es: 'Pull-Through',
     en: '',
@@ -1498,13 +1511,24 @@ export const EXERCISE_DICTIONARY = [
   {
     id: 'abduccion-de-cadera-en-polea',
     es: 'Abducción de Cadera en Polea',
-    en: '',
-    aliases: [],
-    image: _IMG('Cable_Hip_Adduction'),
-    gif: _GIF('adductors/cable-hip-adduction'),
+    en: 'Cable Hip Abduction',
+    aliases: ['abduccion de cadera en polea', 'abduccion de pierna en polea', 'cable hip abduction', 'abduccion con tobillera'],
+    image: _IMG('Thigh_Abductor'),
+    gif: _GIF('abductors/side-hip-abduction'),
     muscle: 'Glúteos',
     tips: ['Con tobillera en polea baja, abriendo la pierna hacia el lado.', 'Pasa el cable por delante de ti. Movimiento controlado para aislar el glúteo lateral.'],
-    alternatives: [{ name: 'Máquina de Abducción Sentada', reason: '' }, { name: 'Banded Lateral Walks (caminata lateral con liga)', reason: '' }],
+    alternatives: [{ name: 'Abductor en Máquina', reason: '' }, { name: 'Banded Lateral Walks (caminata lateral con liga)', reason: '' }],
+  },
+  {
+    id: 'aduccion-de-cadera-en-polea',
+    es: 'Aducción de Cadera en Polea',
+    en: 'Cable Hip Adduction',
+    aliases: ['aduccion de cadera en polea', 'aduccion de pierna en polea', 'cable hip adduction', 'aduccion con tobillera'],
+    image: _IMG('Cable_Hip_Adduction'),
+    gif: _GIF('adductors/cable-hip-adduction'),
+    muscle: 'Aductores',
+    tips: ['Con tobillera en polea baja, llevando la pierna hacia el centro del cuerpo.', 'Torso estable y sin balanceo: el movimiento nace de la cadera, no de la espalda.'],
+    alternatives: [{ name: 'Aductor en Máquina', reason: '' }, { name: 'Butterfly (Mariposa)', reason: '' }],
   },
 
   // ── ISQUIOSURALES / POSTERIORES ───────────────────────────────────

@@ -1,6 +1,7 @@
 <script lang="ts">
   import DayCard from './DayCard.svelte'
   import type { ProgramDay } from '$lib/types'
+  import { dayDurationMin } from '$lib/program-utils'
 
   let {
     order,
@@ -142,7 +143,7 @@
         isMoved={hasWorkout && naturalSlot !== -1 && naturalSlot !== calIdx}
         movedFrom={dayNames[naturalSlot]}
         exerciseCount={(day?.exercises || []).length}
-        duration={day?.duration ? String(day.duration) : undefined}
+        duration={day?.exercises?.length ? String(dayDurationMin(day.exercises)) : undefined}
         {isRest}
         {accent}
       >

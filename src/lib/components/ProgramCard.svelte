@@ -1,67 +1,54 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
   import type { Program } from '$lib/types'
   import Button from './Button.svelte'
+  import IconButton from './IconButton.svelte'
 
-  let {
-    program,
-    isActive = false,
-    accent = 'var(--accent)',
-    totalExercises = 0,
-    lang = 'es',
-    onactivate = () => {},
-    onedit = () => {},
-    onduplicate = () => {},
-    ondelete = () => {}
-  }: {
+  // isActive = the big card («Programa activo» dot, name, meta and rows below);
+  // otherwise a row of «Otros programas» with Activar and ⋯.
+  let { program, meta, isActive = false, onactivate = undefined, onmore = undefined, children }: {
     program: Program
+    meta: string
     isActive?: boolean
-    accent?: string
-    totalExercises?: number
-    lang?: string
-    onactivate?: (id: string) => void
-    onedit?: (p: Program) => void
-    onduplicate?: (p: Program) => void
-    ondelete?: (p: Program) => void
+    onactivate?: () => void
+    onmore?: () => void
+    /** Active card: NavRows under the name */
+    children?: Snippet
   } = $props()
-
-  function fmtDate(iso: string): string {
-    const d = new Date(iso)
-    if (isNaN(d.getTime())) return ''
-    return d.toLocaleString(lang, {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    })
-  }
 </script>
 
-<div class="card program-item" class:active={isActive} style={isActive ? `border-color:${accent}55` : ''} data-component="ProgramCard" data-program-id={program.id}>
-  <div class="prog-head">
-    <div class="prog-name" title={program.name}>{program.name}</div>
-    {#if isActive}
-      <span class="prog-badge" style="background:{accent}22;color:{accent}">Activo</span>
-    {/if}
+{#if isActive}
+  <section class="pg active" data-component="ProgramCard" data-program-id={program.id}>
+    <div class="pg-top">
+      <span class="act"><i></i>Programa activo</span>
+      {#if onmore}<IconButton icon="more" size="sm" iconSize={20} label="Más opciones" onclick={onmore} />{/if}
+    </div>
+    <div class="pg-id">
+      <div class="pg-n">{program.name}</div>
+      <div class="pg-m">{meta}</div>
+    </div>
+    {#if children}<div class="pg-rows">{@render children()}</div>{/if}
+  </section>
+{:else}
+  <div class="pr" data-component="ProgramCard" data-program-id={program.id}>
+    <span class="txt"><span class="pr-n">{program.name}</span><span class="pr-m">{meta}</span></span>
+    <Button size="pill" variant="secondary" onclick={onactivate}>Activar</Button>
+    <IconButton icon="more" size="sm" iconSize={20} label="Más opciones" onclick={onmore} />
   </div>
-  <div class="prog-meta">{program.weeks.length} semana(s) · {totalExercises} ejercicios totales</div>
-  {#if program.createdAt && fmtDate(program.createdAt)}
-    <div class="prog-date">Creado el {fmtDate(program.createdAt)}</div>
-  {/if}
-  <div class="prog-actions">
-    {#if !isActive}
-      <Button size="sm" variant="secondary" style="flex:1;min-width:0;background:{accent}22;color:{accent}" onclick={() => onactivate(program.id)}>Activar</Button>
-    {/if}
-    <Button size="sm" variant="secondary" style="flex:1;min-width:0" onclick={() => onedit(program)}>Editar</Button>
-    <Button size="sm" variant="secondary" style="flex:1;min-width:0" onclick={() => onduplicate(program)}>Duplicar</Button>
-    <Button size="sm" variant="danger" style="flex:1;min-width:0" onclick={() => ondelete(program)}>Eliminar</Button>
-  </div>
-</div>
+{/if}
 
 <style>
-  .program-item { padding: 14px; display: flex; flex-direction: column; gap: 6px; border: 1.5px solid transparent; transition: border-color 0.2s; }
-  .program-item.active { border-color: var(--accent); }
-  .prog-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .prog-name { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: #fafafa; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
-  .prog-badge { flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; padding: 3px 8px; border-radius: 9999px; }
-  .prog-meta { font-size: 11px; color: rgba(255,255,255,0.45); }
-  .prog-date { font-size: 11px; color: rgba(255,255,255,0.45); }
-  .prog-actions { display: flex; gap: 6px; margin-top: 4px; }
+  .pg { display: flex; flex-direction: column; gap: 14px; padding-top: 18px; border-radius: var(--radius-2xl); background: var(--surface); overflow: hidden; }
+  .pg-top, .pg-id { padding: 0 18px; }
+  .pg-top { display: flex; align-items: center; justify-content: space-between; min-height: 24px; margin: -10px -6px -10px 0; padding-right: 0; }
+  .act { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
+  .act i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .pg-n { font-size: 26px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.1; overflow-wrap: anywhere; }
+  .pg-m { margin-top: 6px; font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); }
+  .pg-rows { display: flex; flex-direction: column; border-top: 0.5px solid var(--border-medium); }
+  .pg-rows > :global(* + *) { border-top: 0.5px solid var(--border-medium); }
+  .pr { display: grid; grid-template-columns: minmax(0, 1fr) auto 44px; align-items: center; gap: 8px; min-height: 72px; padding: 8px 6px 8px 16px; }
+  .txt { min-width: 0; }
+  .pr-n { display: block; font-size: 16px; font-weight: 500; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-m { display: block; margin-top: 3px; font-size: 13px; color: var(--text-tertiary); }
 </style>

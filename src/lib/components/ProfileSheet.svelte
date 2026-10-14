@@ -77,7 +77,8 @@
           <div class="who-sub">{registered ? 'Así te encuentran tus amigos' : 'Solo visible en este teléfono'}</div>
         </div>
         {#if registered}
-          <button type="button" class="edit" aria-label="Editar usuario" onclick={startEdit}>
+          <!-- Oculto por ahora (Pedro). El botón sigue aquí para reactivarlo quitando `hidden`. -->
+          <button type="button" class="edit" aria-label="Editar usuario" onclick={startEdit} hidden>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>
           </button>
         {/if}
@@ -153,6 +154,8 @@
     cursor: pointer;
     touch-action: manipulation;
   }
+  /* `.edit` sets display, which would beat the browser's [hidden] rule — keep it off. */
+  .edit[hidden] { display: none; }
   .duo {
     display: grid;
     grid-template-columns: 1fr 1fr;

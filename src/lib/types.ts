@@ -36,7 +36,6 @@ export interface ProgramExercise {
 export interface ProgramDay {
   name: string
   subtitle: string
-  duration: number
   exercises: ProgramExercise[]
   weekday?: number // 1=Lunes … 7=Domingo; undefined = secuencial desde lunes
 }

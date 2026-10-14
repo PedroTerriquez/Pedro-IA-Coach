@@ -53,9 +53,10 @@
     dismissed = true
   }
 
+  // Steps 0–1 (your data, your program) are Tú's own first-time screen now;
+  // the banner only carries steps 2–3 on Today.
   function getBannerStep(): number {
     if (onboarded || dismissed) return -1
-    if (onboardingStep === 0 || onboardingStep === 1) return currentPath === ROUTES.you ? onboardingStep : -1
     if (onboardingStep === 2 || onboardingStep === 3) return currentPath === ROUTES.today ? onboardingStep : -1
     return -1
   }

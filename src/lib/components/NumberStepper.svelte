@@ -1,8 +1,10 @@
 <script lang="ts">
   import StepButton from './StepButton.svelte'
+  import Icon from './Icon.svelte'
   import type { Snippet } from 'svelte'
 
   let {
+    variant = 'default',
     display = '',
     label = '',
     unit = '',
@@ -22,6 +24,8 @@
     oninput = undefined,
     note
   }: {
+    /** default = Detalle / rest timer stepper (debt) · sheet = 58 circles + 56 figure, no keyboard (Compartidos · Nuevo) */
+    variant?: 'default' | 'sheet'
     display?: string
     label?: string
     unit?: string
@@ -63,6 +67,13 @@
   >
 {/snippet}
 
+{#if variant === 'sheet'}
+  <div class="stp58" class:sm={size === 'sm'} data-component="NumberStepper">
+    <button type="button" aria-label={name ? `Menos ${name}` : 'Menos'} disabled={decDisabled} onclick={() => onstep(-1)}><Icon name="minus" size={22} /></button>
+    <b aria-live="polite">{display}{#if unit}<small>{unit}</small>{/if}</b>
+    <button type="button" aria-label={name ? `Más ${name}` : 'Más'} disabled={incDisabled} onclick={() => onstep(1)}><Icon name="plus" size={22} /></button>
+  </div>
+{:else}
 <div class="ns {layout} size-{size}" class:framed data-component="NumberStepper">
   {#if layout === 'stacked'}
     {#if label}<div class="ns-label">{label}{#if unit}<span class="ns-unit-inline"> · {unit}</span>{/if}</div>{/if}
@@ -82,8 +93,42 @@
     {@render inc()}
   {/if}
 </div>
+{/if}
 
 <style>
+  .stp58 { display: grid; grid-template-columns: 58px minmax(0, 1fr) 58px; align-items: center; }
+  .stp58 button {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 0;
+    background: var(--cv-fill-3);
+    color: var(--text);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .stp58 button:disabled { opacity: 0.3; cursor: default; }
+  .stp58 b {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 56px;
+    font-weight: 500;
+    letter-spacing: -0.06em;
+    line-height: 1;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .stp58 b small {
+    font-family: var(--font-sans);
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: 0;
+    margin-left: 4px;
+    color: var(--text-tertiary);
+  }
+  .stp58.sm b { font-size: 40px; }
+
   .ns.inline {
     display: flex;
     align-items: center;

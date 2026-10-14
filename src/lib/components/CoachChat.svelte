@@ -9,6 +9,9 @@
   import { onMount, untrack, type Snippet } from 'svelte'
   import Icon from './Icon.svelte'
   import DebugAIToggle from './DebugAIToggle.svelte'
+  import ChatMessage from './ChatMessage.svelte'
+  import ChatDock from './ChatDock.svelte'
+  import Tag from './Tag.svelte'
   import { online } from '$lib/stores/network'
 
   interface Message extends ChatTurn {
@@ -28,9 +31,18 @@
     chips,
     footer,
     onclose,
+    look = 'classic',
+    eyebrow = '',
+    context = [],
+    quickReplies = [],
+    placeholder = 'Escribe un cambio…',
+    kickoffMeta = '',
+    loading = $bindable(false),
+    onquickreply = undefined,
   }: {
     title?: string
     subtitle?: string
+    /** First coach message; '' = the coach's reply to the kickoff opens the chat */
     greeting: string
     /** Hidden first user turn sent on open, so the coach starts the conversation */
     kickoff?: string
@@ -41,13 +53,27 @@
     chips?: Snippet<[(msg: string) => void]>
     footer?: Snippet
     onclose?: () => void
+    /** classic = Detalle's chat (debt) · nuevo = text-only chat of Tú v2 */
+    look?: 'classic' | 'nuevo'
+    /** nuevo: small mono line under the title */
+    eyebrow?: string
+    /** nuevo: tags of what the user picked before opening the chat */
+    context?: string[]
+    /** nuevo: fixed quick replies */
+    quickReplies?: string[]
+    placeholder?: string
+    /** nuevo: shows the hidden kickoff as the pasted routine, with this meta line */
+    kickoffMeta?: string
+    /** True while the coach is answering */
+    loading?: boolean
+    /** nuevo: a quick reply the parent handles itself; return true to skip sending it */
+    onquickreply?: (chip: string) => boolean
   } = $props()
 
-  let messages = $state<Message[]>([{ role: 'assistant', content: untrack(() => greeting) }])
+  let messages = $state<Message[]>(untrack(() => greeting) ? [{ role: 'assistant', content: untrack(() => greeting) }] : [])
   let input = $state('')
-  let loading = $state(false)
-  let chatEl: HTMLDivElement
-  let textareaEl: HTMLTextAreaElement
+  let chatEl: HTMLDivElement | undefined = $state()
+  let textareaEl: HTMLTextAreaElement | undefined = $state()
 
   function autoResize() {
     if (!textareaEl) return
@@ -110,8 +136,50 @@
       sendMessage()
     }
   }
+
+  function quickReply(chip: string) {
+    if (onquickreply?.(chip)) return
+    sendMessage(chip)
+  }
+
+  let offlineCaption = $derived(!$online ? 'Sin conexión. La plática queda guardada; sigue cuando vuelva el internet.' : '')
 </script>
 
+{#if look === 'nuevo'}
+  <div class="chat2" data-component="CoachChat" role="dialog" aria-modal="true" aria-label={title}>
+    <div class="chat2-head">
+      <button type="button" class="chat2-x" aria-label="Volver" onclick={onclose}><Icon name="back" size={20} /></button>
+      <div class="chat2-ttl">{title}{#if eyebrow}<small>{eyebrow}</small>{/if}</div>
+      <span></span>
+    </div>
+    <div class="chat2-debug"><DebugAIToggle {accent} /></div>
+    <div class="chat2-msgs" bind:this={chatEl}>
+      {#if context.length}
+        <div class="ctx">{#each context as c}<Tag>{c}</Tag>{/each}</div>
+      {/if}
+      {#each messages as msg}
+        {#if msg.hidden}
+          {#if kickoffMeta}<ChatMessage role="paste" content={msg.content} meta={kickoffMeta} />{/if}
+        {:else}
+          <ChatMessage role={msg.role === 'user' ? 'user' : 'coach'} content={msg.content} />
+        {/if}
+      {/each}
+      {#if loading}<ChatMessage role="coach" content="" typing />{/if}
+    </div>
+    <ChatDock
+      bind:value={input}
+      {placeholder}
+      caption={offlineCaption || (loading ? 'El coach está escribiendo…' : '')}
+      chips={quickReplies}
+      inputDisabled={!$online}
+      sendDisabled={loading || busy || !$online}
+      onsend={() => sendMessage()}
+      onchip={quickReply}
+    >
+      {@render footer?.()}
+    </ChatDock>
+  </div>
+{:else}
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 <div class="coach-overlay" data-component="CoachChat">
   <div class="coach-backdrop" onclick={onclose}></div>
@@ -204,8 +272,35 @@
     </div>
   </div>
 </div>
+{/if}
 
 <style>
+  .chat2 {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    padding-top: max(44px, env(safe-area-inset-top, 0px));
+    background: var(--bg);
+  }
+  .chat2-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 10px 10px 0; flex-shrink: 0; }
+  .chat2-x { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; color: var(--text-tertiary); display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .chat2-ttl { text-align: center; font-size: 15px; font-weight: 600; }
+  .chat2-ttl small { display: block; margin-top: 3px; font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: 1px; text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat2-debug { padding: 0 20px; flex-shrink: 0; }
+  .chat2-debug:empty { display: none; }
+  .chat2-msgs {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 16px 20px;
+  }
+  .ctx { align-self: flex-end; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 88%; flex-shrink: 0; }
+
   .coach-offline {
     margin: 0 16px 8px;
     padding: 8px 12px;

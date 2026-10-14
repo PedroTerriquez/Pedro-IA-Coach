@@ -23,7 +23,7 @@ function createSettingsStore() {
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
     accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false,
     pushServerUrl: '', language: initialLang, fontScale: 1,
-    onboarded: false, onboardingStep: 0
+    onboarded: false, onboardingStep: 0, debugAI: false
   })
 
   return {

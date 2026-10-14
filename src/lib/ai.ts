@@ -4,7 +4,7 @@ import type { Program, Settings } from '$lib/types'
 
 import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionary'
-import { buildImportPrompt, buildProgramCoachPrompt, buildProgramChatPrompt, buildGenerateChatPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, type PromptLanguage } from '$lib/brain/prompts'
+import { buildImportPrompt, buildProgramCoachPrompt, buildProgramChatPrompt, buildGenerateChatPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, buildPasteChatPrompt, buildPasteCreatePrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 import { lastAIExchange, aiExchanges } from '$lib/stores/debug'
 import type { ChatTurn } from '$lib/components/CoachChat.svelte'
@@ -94,7 +94,6 @@ async function buildProgramFromAIResponse(data: any, opts?: { noFuzzy?: boolean;
       days.push({
         name: d.name || 'Día',
         subtitle: d.subtitle || '',
-        duration: d.duration_min || d.duration || 60,
         exercises,
         ...(typeof d.weekday === 'number' && d.weekday >= 1 && d.weekday <= 7 ? { weekday: Math.round(d.weekday) } : {}),
       })
@@ -191,12 +190,18 @@ export async function generateProgramChat(thread: ChatTurn[], overrides: Program
   return postProgramChat('Generar programa (chat)', { messages: thread, systemPrompt: buildGenerateChatPrompt(LANGUAGE, context) })
 }
 
-/** Turns the agreed conversation into a new saved + activated program */
-export async function generateProgramWithAI(overrides: ProgramOverrides, thread: ChatTurn[]): Promise<Program> {
-  const settings = await Storage.getSettings()
-  const reqBody = buildGenerateBody(buildUserProfile(settings), overrides, thread)
-  if (import.meta.env.DEV) console.log('[AI] generateProgramWithAI → sending', JSON.stringify(overrides).length, 'chars overrides')
-  const res = await fetch(`${PUSH_SERVER_URL}/api/ai/generate-program`, {
+async function saveAndActivate(program: Program, resetWeek: boolean): Promise<void> {
+  await Storage.saveProgram(program)
+  const s = await Storage.getSettings()
+  s.activeProgramId = program.id
+  if (resetWeek) s.currentWeekIdx = 0
+  await Storage.saveSettings(s)
+}
+
+/** POSTs to /api/ai/generate-program and saves + activates the program it returns */
+async function createProgramFromGenerate(label: string, reqBody: { messages: ChatTurn[]; systemPrompt: string }, fallbackName: string): Promise<Program> {
+  const url = `${PUSH_SERVER_URL}/api/ai/generate-program`
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(reqBody)
@@ -204,31 +209,49 @@ export async function generateProgramWithAI(overrides: ProgramOverrides, thread:
 
   if (!res.ok) {
     const raw = await res.text().catch(() => '')
-    console.error('[AI] generateProgramWithAI ERROR', res.status, raw.slice(0, 500))
-    await recordIfDebug('Generar programa', `${PUSH_SERVER_URL}/api/ai/generate-program`, reqBody, { error: true, status: res.status, raw })
+    console.error(`[AI] ${label} ERROR`, res.status, raw.slice(0, 500))
+    await recordIfDebug(label, url, reqBody, { error: true, status: res.status, raw })
     throw new Error(`AI generation failed: ${res.status}`)
   }
 
   const data = await res.json()
-  if (import.meta.env.DEV) console.log('[AI] generateProgramWithAI ✓', data)
-  await recordIfDebug('Generar programa', `${PUSH_SERVER_URL}/api/ai/generate-program`, reqBody, data)
+  if (import.meta.env.DEV) console.log(`[AI] ${label} ✓`, data)
+  await recordIfDebug(label, url, reqBody, data)
   if (!data.weeks || data.weeks.length === 0) {
     throw new Error('La IA no pudo generar un programa válido')
   }
 
-  const programName = data.program_name || 'Generado con IA'
-
   const program = await buildProgramFromAIResponse(data, { noFuzzy: true })
-  program.name = programName
-
-  await Storage.saveProgram(program)
-
-  const s = await Storage.getSettings()
-  s.activeProgramId = program.id
-  s.currentWeekIdx = 0
-  await Storage.saveSettings(s)
-
+  program.name = data.program_name || fallbackName
+  await saveAndActivate(program, true)
   return program
+}
+
+/** Turns the agreed conversation into a new saved + activated program */
+export async function generateProgramWithAI(overrides: ProgramOverrides, thread: ChatTurn[]): Promise<Program> {
+  const settings = await Storage.getSettings()
+  const reqBody = buildGenerateBody(buildUserProfile(settings), overrides, thread)
+  return createProgramFromGenerate('Generar programa', reqBody, 'Generado con IA')
+}
+
+async function pasteContextText(): Promise<string> {
+  const settings = await Storage.getSettings()
+  return 'PERFIL DEL USUARIO:\n' + JSON.stringify(buildUserProfile(settings))
+    + '\n\nDICCIONARIO DE EJERCICIOS:\n' + JSON.stringify(buildAIDictionary().map(e => e.es))
+}
+
+/** "Pega tu rutina": the first user turn is the pasted text; the coach describes what it understood */
+export async function pasteRoutineChat(thread: ChatTurn[]): Promise<{ reply: string; _provider?: string }> {
+  return postProgramChat('Pega tu rutina (chat)', { messages: thread, systemPrompt: buildPasteChatPrompt(LANGUAGE, await pasteContextText()) })
+}
+
+/** Builds, saves and activates the program agreed in the "Pega tu rutina" chat */
+export async function createProgramFromPaste(thread: ChatTurn[]): Promise<Program> {
+  const reqBody = {
+    messages: [...thread, { role: 'user', content: CREATE_PROGRAM_MESSAGE }],
+    systemPrompt: buildPasteCreatePrompt(LANGUAGE, await pasteContextText()),
+  }
+  return createProgramFromGenerate('Pega tu rutina', reqBody, 'Mi rutina')
 }
 
 async function buildProgramContext(program: Program) {
@@ -296,8 +319,15 @@ export async function programCoachChat(thread: ChatTurn[], program: Program): Pr
   return postProgramChat('Coach de programa (chat)', { messages: thread, systemPrompt: buildProgramChatPrompt(LANGUAGE, programContextText(ctx)) })
 }
 
-/** Rebuilds the program with the changes agreed in the conversation */
-export async function programCoach(program: Program, thread: ChatTurn[]): Promise<{ program?: Program; message?: string; _provider?: string }> {
+export interface NewVersionOptions {
+  /** Name chosen in the "Versión nueva" sheet */
+  name: string
+  /** "Usarla desde hoy" */
+  activate: boolean
+}
+
+/** Creates a new version of the program with the changes agreed in the conversation; the original stays untouched */
+export async function programCoach(program: Program, thread: ChatTurn[], opts: NewVersionOptions): Promise<{ program?: Program; message?: string; _provider?: string }> {
   const ctx = await buildProgramContext(program)
   const reqBody = buildProgramCoachBody(ctx, thread)
   if (import.meta.env.DEV) console.log('[AI] programCoach → sending', thread.length, 'turns, dict', ctx.dictionary.length)
@@ -319,19 +349,9 @@ export async function programCoach(program: Program, thread: ChatTurn[]): Promis
 
   if (data.program && data.program.weeks && data.program.weeks.length) {
     const newProgram = await buildProgramFromAIResponse(data.program, { noFuzzy: false })
-
-    const now = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
-    const baseName = data.program.program_name || program.name || 'Coach IA'
-    newProgram.name = `${baseName} — ${stamp}`
-
-    await Storage.saveProgram(newProgram)
-
-    const s = await Storage.getSettings()
-    s.activeProgramId = newProgram.id
-    await Storage.saveSettings(s)
-
+    newProgram.name = opts.name.trim() || program.name
+    if (opts.activate) await saveAndActivate(newProgram, false)
+    else await Storage.saveProgram(newProgram)
     return { program: newProgram, _provider: data._provider }
   }
 

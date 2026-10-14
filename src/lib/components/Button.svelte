@@ -10,34 +10,47 @@
     onclick = undefined,
     children,
     style = '',
-    id = undefined
+    id = undefined,
+    type = 'button',
+    ariaLabel = undefined
   }: {
-    variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'text' | 'dashed'
+    variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'text' | 'dashed' | 'danger-text'
     accent?: string
     disabled?: boolean
     fullWidth?: boolean
-    size?: 'md' | 'sm'
+    /** md / sm = old buttons (debt) · lg = 56 · pill = 44 (Compartidos · Nuevo) */
+    size?: 'md' | 'sm' | 'lg' | 'pill'
     onclick?: (e: MouseEvent) => void
     children?: Snippet
     style?: string
     id?: string
+    type?: 'button' | 'submit'
+    ariaLabel?: string
   } = $props()
+
+  let v2 = $derived(size === 'lg' || size === 'pill')
 </script>
 
 <button
   class="btn-base"
   data-component="Button"
+  class:v2
+  class:lg={size === 'lg'}
+  class:pill={size === 'pill'}
   class:btn-primary={variant === 'primary'}
   class:btn-secondary={variant === 'secondary'}
   class:btn-danger={variant === 'danger'}
   class:btn-ghost={variant === 'ghost'}
-  class:btn-text={variant === 'text'}
+  class:btn-text={variant === 'text' || variant === 'danger-text'}
+  class:btn-danger-text={variant === 'danger-text'}
   class:btn-dashed={variant === 'dashed'}
   class:full-width={fullWidth}
   class:btn-sm={size === 'sm'}
+  {type}
   {disabled}
   {onclick}
   {id}
+  aria-label={ariaLabel}
   style="{variant === 'primary' ? `background:${accent};color:var(--bg)` : ''};{style}"
 >
   {#if children}{@render children()}{/if}
@@ -117,4 +130,53 @@
     font-size: 12px;
     border-radius: 8px;
   }
+
+  /* ── Compartidos · Nuevo: lg 56 / pill 44 ── */
+  .v2 {
+    gap: 8px;
+    height: 56px;
+    padding: 0 20px;
+    border-radius: var(--radius-lg);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    transition: transform 0.15s var(--ease-smooth), opacity 0.15s;
+  }
+  .v2.lg { width: 100%; }
+  .v2:active:not(:disabled) { transform: scale(0.98); opacity: 0.85; }
+  .v2.pill {
+    height: 44px;
+    width: auto;
+    padding: 0 18px;
+    border-radius: var(--radius-full);
+    font-size: 15px;
+  }
+  .v2.btn-secondary { background: var(--cv-fill-2); color: var(--text); }
+  .v2.btn-danger { background: var(--cv-danger-bg); color: var(--cv-danger-text); }
+  .v2.btn-ghost {
+    background: transparent;
+    border: 0;
+    box-shadow: inset 0 0 0 1px var(--cv-line-strong);
+    color: var(--text);
+    font-size: inherit;
+  }
+  .v2.btn-dashed {
+    background: transparent;
+    border: 1px dashed var(--cv-line-strong);
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: var(--radius-lg);
+  }
+  .v2.btn-text {
+    height: 48px;
+    width: auto;
+    padding: 0 16px;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .v2.btn-danger-text { color: var(--cv-danger-text); }
+  .v2.full-width { width: 100%; }
 </style>

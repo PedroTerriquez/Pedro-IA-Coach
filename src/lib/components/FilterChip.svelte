@@ -4,6 +4,7 @@
   let {
     active = false,
     dimmed = false,
+    disabled = false,
     variant = 'mono',
     size = 'md',
     accent = 'var(--accent)',
@@ -16,7 +17,9 @@
   }: {
     active?: boolean
     dimmed?: boolean
-    variant?: 'mono' | 'sans'
+    disabled?: boolean
+    /** mono / sans = old chips (debt) · choice = 44, white when selected · outline = chat quick replies */
+    variant?: 'mono' | 'sans' | 'choice' | 'outline'
     size?: 'sm' | 'md' | 'lg'
     accent?: string
     onclick?: () => void
@@ -26,19 +29,24 @@
     class?: string
     children?: Snippet
   } = $props()
+
+  let v2 = $derived(variant === 'choice' || variant === 'outline')
+  let activeStyle = $derived(active && !v2 ? `background:${accent};border-color:${accent};color:var(--bg)` : '')
 </script>
 
 <button
   {id}
   {title}
   {onclick}
+  {disabled}
   type="button"
-  class="filter-chip {variant} {size} {className}"
+  class="filter-chip {variant} {v2 ? '' : size} {className}"
+  class:v2
   class:active
   class:dimmed
   data-component="FilterChip"
   aria-pressed={active}
-  style="{active ? `background:${accent};border-color:${accent};color:var(--bg)` : ''};{style}"
+  style="{activeStyle};{style}"
 >
   {@render children?.()}
 </button>
@@ -71,4 +79,23 @@
 
   .active { font-weight: 600; }
   .dimmed { opacity: 0.3; filter: grayscale(0.9); }
+
+  /* ── Compartidos · Nuevo ── */
+  .v2 {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 44px;
+    padding: 0 16px;
+    border: 0;
+    background: var(--cv-fill-2);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .v2.active { background: var(--text); color: var(--bg); font-weight: 600; }
+  .v2.outline { background: transparent; box-shadow: inset 0 0 0 1px var(--cv-line-strong); }
+  .v2:disabled { opacity: 0.4; cursor: default; }
 </style>

@@ -11,6 +11,7 @@
   import FilterChip from '$lib/components/FilterChip.svelte'
   import Button from '$lib/components/Button.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
+  import Stack from '$lib/components/Stack.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import type { Exercise, ExerciseLog } from '$lib/types'
@@ -149,7 +150,7 @@
   })
 </script>
 
-<div class="page">
+<div class="screen" id="history">
   <PageHeader eyebrow="Historial" title="Progreso." />
 
   <div class="segment-wrap">
@@ -191,7 +192,7 @@
     {#if filtered.length === 0}
       <EmptyState message="No se encontraron ejercicios." />
     {:else}
-      <div class="ex-list">
+      <Stack gap={10} style="padding:0 20px">
         {#each filtered as e}
           {@const last = getLastWeight(e.logs)}
           {@const delta = getDelta(e.logs)}
@@ -263,7 +264,7 @@
             </div>
           {/if}
         {/each}
-      </div>
+      </Stack>
     {/if}
   {/if}
 </div>
@@ -288,7 +289,7 @@
 {/if}
 
 <style>
-  .page {
+  #history {
     display: flex;
     flex-direction: column;
   }
@@ -301,12 +302,6 @@
     padding: 0 20px 16px;
   }
 
-  .ex-list {
-    padding: 0 20px 100px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
   .ex-card {
     padding: 14px;
     cursor: pointer;
