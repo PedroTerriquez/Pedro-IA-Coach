@@ -261,10 +261,50 @@ export const groups = {
   // CardRow, ProgramCreateForm, ProgramEditorIACard, NormalizeCard,
   // NewExerciseForm, ActionRow…). The old cards stay in Claude Design as
   // «Tú · v1» (vistas/tu/) and the new design lives in «Tú · Nuevo». Pedro
-  // skipped regenerating the Tú cards this round, so the walk for the new view
-  // (vistas/tu2/) is still to be written; until then this group captures nothing.
-  async tu() {
-    console.log('· Tú: recorrido pendiente para Tú v2 (vistas/tu2/); no se genera nada')
+  // skipped regenerating the Tú cards this round. The walk for the new view
+  // (vistas/tu2/) only covers Ejercicios (Tú · Nuevo 03, 2026-10-14) so far;
+  // the hub, Programas, Ajustes and Copia are still to be written.
+  async tu({ open, S }) {
+    // «Actual» = what the app looks like today, next to «Tú · Nuevo» (proposals) and «Tú · v1» (archive)
+    const G = 'Tú · Actual'
+    const at = (p) => `vistas/tu2/${p}`
+    const src = C + 'ExercisesScreen.svelte'
+    const shot = (p, path, name, subtitle, file = 'ExercisesScreen.svelte') => p.card({ path: at(path), group: G, name, subtitle, source: C + file, screen: true, fold: true })
+    const page = await open(world(S))
+    await page.go('you')
+    await page.locator('#you-row-ejercicios').click()
+    await page.waitForTimeout(500)
+    await page.card({ path: at('ejercicios'), group: G, name: 'Tú · Ejercicios', subtitle: 'miniatura, nombre y músculo; buscador y + abajo', source: src, screen: true })
+
+    const card = page.locator(comp('ExerciseCard'))
+    await page.locator(comp('ExerciseListItem'), { hasText: 'Curl con Barra EZ' }).locator('.exercise-toggle').click()
+    await page.waitForTimeout(400)
+    await page.card({ path: at('ejercicios-abierto'), group: G, name: 'Tú · Ejercicio abierto', subtitle: 'solo muestra: consejos y alternativas con foto; el lápiz edita', source: C + 'ExerciseCard.svelte', screen: true })
+    await page.card({ path: at('exercise-card'), group: G, name: 'ExerciseCard', subtitle: 'tarjeta abierta de solo lectura', source: C + 'ExerciseCard.svelte', specimens: [{ label: 'ExerciseCard', selector: comp('ExerciseCard'), width: 366 }], viewport: '440x620' })
+    await page.card({ path: at('exercise-mini-card'), group: G, name: 'ExerciseMiniCard', subtitle: 'un ejercicio en foto y nombre (foto por defecto si no tiene)', source: C + 'ExerciseMiniCard.svelte', specimens: [{ label: 'ExerciseMiniCard', selector: comp('ExerciseMiniCard'), max: 2, width: 342 }], viewport: '420x260' })
+    await page.card({ path: at('exercise-list-item'), group: G, name: 'ExerciseListItem', subtitle: 'fila cerrada: miniatura, nombre y músculo', source: C + 'ExerciseListItem.svelte', specimens: [{ label: 'ExerciseListItem', selector: comp('ExerciseListItem'), max: 2, width: 366 }], viewport: '440x260' })
+
+    const editor = page.locator('#edit-exercise-sheet')
+    await card.getByRole('button', { name: 'Editar ejercicio' }).click()
+    await shot(page, 'editar-ejercicio', 'Tú · Editar ejercicio', 'nombre, músculo en chips e imagen; consejos y alternativas debajo', 'EditExerciseSheet.svelte')
+    // The capture ignores scroll: the end of the editor goes as specimens
+    await page.card({ path: at('editar-ejercicio-listas'), group: G, name: 'Editar ejercicio · consejos, alternativas y eliminar', subtitle: 'TipsEditor, AlternativesEditor y Eliminar ejercicio en rojo al final', source: C + 'EditExerciseSheet.svelte', specimens: [
+      { label: 'TipsEditor', selector: comp('TipsEditor'), width: 350 },
+      { label: 'AlternativesEditor', selector: comp('AlternativesEditor'), width: 350 },
+      { label: 'Eliminar ejercicio', selector: '#edit-exercise-sheet .far', width: 350 },
+    ], viewport: '420x900' })
+    await editor.getByLabel('Nombre').fill('')
+    await shot(page, 'editar-ejercicio-error', 'Tú · Editar ejercicio sin nombre', '«Ponle un nombre.» y Guardar desactivado', 'EditExerciseSheet.svelte')
+    await editor.getByLabel('Nombre').fill('Curl con Barra EZ')
+
+    await editor.getByRole('button', { name: 'Añadir alternativa' }).click()
+    await page.locator('#alt-search').fill('curl')
+    await shot(page, 'ejercicios-alternativa', 'Tú · Añadir alternativa', 'diccionario y tus ejercicios en mini cards; las que ya están, atenuadas', 'AltSearchSheet.svelte')
+    await page.locator('#alt-search-sheet [aria-label="Cerrar"]').click()
+
+    await editor.getByRole('button', { name: 'Eliminar ejercicio' }).click()
+    await shot(page, 'eliminar-ejercicio', 'Tú · Eliminar ejercicio', 'dice cuántos registros se borran con él', 'ConfirmSheet.svelte')
+    await page.context().close()
   },
 
   // ───────────────────────────────── Shell ─────────────────────────────────

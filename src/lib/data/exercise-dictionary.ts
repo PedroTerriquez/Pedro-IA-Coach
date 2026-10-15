@@ -550,7 +550,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/barbell-bench-press'),
     muscle: 'Pecho (Global)',
     tips: ['Retrae fuertemente las escápulas y apoya los pies con firmeza en el suelo (leg drive).', 'Baja la barra controlada hasta el esternón y empuja en arco natural.'],
-    alternatives: [{ name: 'Press de Banca con Mancuernas', reason: '' }, { name: 'Press en Máquina Chest Press', reason: '' }],
+    alternatives: [{ name: 'Press de Banca con Mancuernas' }, { name: 'Press en Máquina Chest Press' }],
   },
   {
     id: 'press-banca-mancuernas',
@@ -561,7 +561,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/dumbbell-bench-press'),
     muscle: 'Pecho',
     tips: ['Acuéstate en banco plano sosteniendo las mancuernas sobre el pecho.', 'Baja controlado abriendo los codos a unos 45 grados respecto al torso (evita los 90 grados).', 'Empuja firmemente juntando las mancuernas arriba sin chocarlas.'],
-    alternatives: [{ name: 'Press de Banca con Barra', reason: '' }, { name: 'Fondos Lastrados', reason: '' }],
+    alternatives: [{ name: 'Press de Banca con Barra' }, { name: 'Fondos Lastrados' }],
   },
   {
     id: 'press-inclinado-barra',
@@ -572,7 +572,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/barbell-incline-bench-press'),
     muscle: 'Pecho (Superior)',
     tips: ['Banco a 30°. La barra baja a la parte superior del pecho.', 'Retrae las escápulas. Baja la barra controlada al tercio superior del pecho, no al cuello.'],
-    alternatives: [{ name: 'Press Inclinado con Mancuernas', reason: '' }, { name: 'Press Inclinado en Máquina Smith', reason: '' }],
+    alternatives: [{ name: 'Press Inclinado con Mancuernas' }, { name: 'Press Inclinado en Máquina Smith' }],
   },
   {
     id: 'press-inclinado-mancuernas',
@@ -583,7 +583,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/dumbbell-incline-alternate-press'),
     muscle: 'Pecho (Superior)',
     tips: ['Permite ajustar libremente la rotación del antebrazo reduciendo tensiones innecesarias en el hombro.', 'Baja controlado 2-3 segundos hasta sentir máximo estiramiento del pecho.'],
-    alternatives: [{ name: 'Press Inclinado con Barra', reason: '' }, { name: 'Press Inclinado en Máquina Smith', reason: '' }],
+    alternatives: [{ name: 'Press Inclinado con Barra' }, { name: 'Press Inclinado en Máquina Smith' }],
   },
   {
     id: 'press-inclinado-smith',
@@ -594,7 +594,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/smith-incline-bench-press'),
     muscle: 'Pecho (Superior)',
     tips: ['La trayectoria guiada rígida permite focalizarse puramente en la aducción horizontal del pectoral superior sin gastar energía estabilizando.'],
-    alternatives: [{ name: 'Press Inclinado con Barra', reason: '' }, { name: 'Press Inclinado con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Press Inclinado con Barra' }, { name: 'Press Inclinado con Mancuernas' }],
   },
   {
     id: 'press-banca-declinado',
@@ -605,7 +605,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/barbell-decline-bench-press'),
     muscle: 'Pecho (Inferior)',
     tips: ['El ángulo declinado favorece mecánicamente al pectoral inferior y reduce el estrés de rotación anterior en los hombros.'],
-    alternatives: [{ name: 'Fondos Lastrados', reason: '' }, { name: 'Fondos en Máquina Asistida', reason: '' }],
+    alternatives: [{ name: 'Fondos Lastrados' }, { name: 'Fondos en Máquina Asistida' }],
   },
   {
     id: 'chest-press-maquina',
@@ -616,7 +616,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/machine-inner-chest-press'),
     muscle: 'Pecho',
     tips: ['Deprime y retrae las escápulas antes de iniciar.', 'Los codos deben viajar en un ángulo de ~45 grados respecto al torso; evita que se alineen con los hombros.'],
-    alternatives: [{ name: 'Incline Chest Press (Máquina)', reason: '' }, { name: 'Chest Fly Machine', reason: '' }],
+    alternatives: [{ name: 'Incline Chest Press (Máquina)' }, { name: 'Chest Fly Machine' }],
   },
   {
     id: 'aperturas-mancuernas-plano',
@@ -627,7 +627,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/dumbbell-fly'),
     muscle: 'Pecho',
     tips: ['Abre dibujando un arco amplio. Detén el descenso cuando tus manos estén alineadas con el pecho para no forzar la cápsula articular.'],
-    alternatives: [{ name: 'Aperturas en Pec Deck', reason: '' }, { name: 'Cruces de Polea Alta a Baja', reason: '' }],
+    alternatives: [{ name: 'Aperturas en Pec Deck' }, { name: 'Cruces de Polea Alta a Baja' }],
   },
   {
     id: 'aperturas-mancuernas-declinado',
@@ -638,7 +638,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/dumbbell-decline-fly'),
     muscle: 'Pecho (Inferior)',
     tips: ['Mantén los codos fijos con flexión sutil. El ángulo declinado reduce la tensión dañina en la porción anterior del hombro.'],
-    alternatives: [{ name: 'Cruces de Polea Alta a Baja', reason: '' }, { name: 'Aperturas en Pec Deck', reason: '' }],
+    alternatives: [{ name: 'Cruces de Polea Alta a Baja' }, { name: 'Aperturas en Pec Deck' }],
   },
   {
     id: 'aperturas-pec-deck',
@@ -649,7 +649,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/machine-inner-chest-press'),
     muscle: 'Pecho',
     tips: ['Mantén una ligera flexión de codos inamovible durante el recorrido.', 'Concéntrate en acercar los bíceps al centro del pecho, en lugar de chocar las manos.'],
-    alternatives: [{ name: 'Pulley Module (High Cable Chest Crossover)', reason: '' }, { name: 'Chest Press (Máquina)', reason: '' }],
+    alternatives: [{ name: 'Pulley Module (High Cable Chest Crossover)' }, { name: 'Chest Press (Máquina)' }],
   },
   {
     id: 'cruces-polea-alta-baja',
@@ -660,7 +660,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/cable-standing-up-straight-crossovers'),
     muscle: 'Pecho',
     tips: ['De pie entre poleas altas, tirando hacia abajo y al frente de la cintura.', 'Cruza las manos (una sobre la otra) al frente al final del movimiento para una contracción extra.'],
-    alternatives: [{ name: 'Aperturas con Mancuernas en Banco Declinado', reason: '' }, { name: 'Aperturas en Pec Deck', reason: '' }],
+    alternatives: [{ name: 'Aperturas con Mancuernas en Banco Declinado' }, { name: 'Aperturas en Pec Deck' }],
   },
   {
     id: 'cruces-polea-media-alta',
@@ -671,7 +671,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/cable-middle-fly'),
     muscle: 'Pecho',
     tips: ['Cruza los cables al frente cruzando las manos ligeramente al final.', 'Mantén el pecho inflado y una ligera flexión de codos durante todo el recorrido.'],
-    alternatives: [{ name: 'Cruces de Polea Alta a Baja', reason: '' }, { name: 'Aperturas con Mancuernas en Banco Plano', reason: '' }],
+    alternatives: [{ name: 'Cruces de Polea Alta a Baja' }, { name: 'Aperturas con Mancuernas en Banco Plano' }],
   },
   {
     id: 'fondos-lastrados',
@@ -682,7 +682,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/weighted-tricep-dips'),
     muscle: 'Pecho, Tríceps',
     tips: ['Usa los manerales de fondos. Baja controlado sin que los hombros bajen excesivamente de los 90 grados.', 'Inclina el torso hacia adelante para enfatizar el pectoral inferior.'],
-    alternatives: [{ name: 'Press de Banca Declinado', reason: '' }, { name: 'Fondos en Máquina Asistida', reason: '' }],
+    alternatives: [{ name: 'Press de Banca Declinado' }, { name: 'Fondos en Máquina Asistida' }],
   },
   {
     id: 'fondos-maquina-asistida',
@@ -693,7 +693,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/assisted-chest-dip-kneeling'),
     muscle: 'Pecho',
     tips: ['Permite regular con total precisión el peso real manejado, asegurando una fase excéntrica lenta y controlada en rangos profundos.'],
-    alternatives: [{ name: 'Fondos Lastrados', reason: '' }, { name: 'Press de Banca Declinado', reason: '' }],
+    alternatives: [{ name: 'Fondos Lastrados' }, { name: 'Press de Banca Declinado' }],
   },
 
   // ── ESPALDA ───────────────────────────────────────────────────────
@@ -706,7 +706,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/pull-up'),
     muscle: 'Espalda',
     tips: ['Colgado de barra, palmas afuera, barbilla por encima.', 'Saca el pecho hacia la barra; jala visualizando tus dorsales bajando y retrayéndose.'],
-    alternatives: [{ name: 'Jalón al Pecho en Polea', reason: '' }, { name: 'Dominadas Asistidas en Máquina', reason: '' }],
+    alternatives: [{ name: 'Jalón al Pecho en Polea' }, { name: 'Dominadas Asistidas en Máquina' }],
   },
   {
     id: 'dominadas-asistidas-maquina',
@@ -717,7 +717,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/assisted-pull-up'),
     muscle: 'Espalda',
     tips: ['Excelente para mantener una sobrecarga progresiva exacta y un control biomecánico estricto del tempo de ejecución sin balanceos.'],
-    alternatives: [{ name: 'Dominadas Lastradas', reason: '' }, { name: 'Jalón al Pecho en Polea', reason: '' }],
+    alternatives: [{ name: 'Dominadas Lastradas' }, { name: 'Jalón al Pecho en Polea' }],
   },
   {
     id: 'dominadas-asistidas-neutro',
@@ -728,7 +728,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/assisted-pull-up'),
     muscle: 'Espalda',
     tips: ['Ideal para mantener una sobrecarga progresiva exacta y un control biomecánico estricto del tempo de ejecución sin balanceos del cuerpo.'],
-    alternatives: [{ name: 'Jalón al Pecho en Polea (Agarre Neutro)', reason: '' }, { name: 'Jalón Amplio', reason: '' }],
+    alternatives: [{ name: 'Jalón al Pecho en Polea (Agarre Neutro)' }, { name: 'Jalón Amplio' }],
   },
   {
     id: 'dominadas-supinas',
@@ -739,7 +739,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/chin-up'),
     muscle: 'Espalda, Bíceps',
     tips: ['Colgado con palmas hacia ti. Gran acoplamiento de tracción multiarticular con alta demanda funcional en bíceps y dorsal ancho.'],
-    alternatives: [{ name: 'Jalón al Pecho Supino', reason: '' }, { name: 'Jalón al Pecho en Polea (Agarre Neutro)', reason: '' }],
+    alternatives: [{ name: 'Jalón al Pecho Supino' }, { name: 'Jalón al Pecho en Polea (Agarre Neutro)' }],
   },
   {
     id: 'jalon-pecho-neutro',
@@ -750,7 +750,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/band-close-grip-pulldown'),
     muscle: 'Espalda',
     tips: ['Agarre en V o paralelo, tirando hacia la parte superior del pecho.', 'Inicia el movimiento bajando los hombros (depresión escapular), luego jala con los codos.'],
-    alternatives: [{ name: 'Jalón Amplio', reason: '' }, { name: 'Dominadas Asistidas con Agarre Neutro', reason: '' }],
+    alternatives: [{ name: 'Jalón Amplio' }, { name: 'Dominadas Asistidas con Agarre Neutro' }],
   },
   {
     id: 'jalon-pecho-supino',
@@ -761,7 +761,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/cable-underhand-pulldown'),
     muscle: 'Espalda',
     tips: ['Jalón al pecho con las palmas mirando hacia ti.', 'Concéntrate en llevar los codos hacia tus bolsillos traseros para exprimir el dorsal inferior.'],
-    alternatives: [{ name: 'Dominadas Supinas', reason: '' }, { name: 'Jalón al Pecho en Polea (Agarre Neutro)', reason: '' }],
+    alternatives: [{ name: 'Dominadas Supinas' }, { name: 'Jalón al Pecho en Polea (Agarre Neutro)' }],
   },
   {
     id: 'jalon-pecho-lat-pulldown',
@@ -772,7 +772,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/cable-pulldown'),
     muscle: 'Espalda',
     tips: ['Tracciona la barra hacia el pecho inclinado sutilmente hacia atrás para permitir un paso libre de la barra sin forzar cervicales.', 'Inicia con depresión escapular antes de flexionar codos.'],
-    alternatives: [{ name: 'Dominadas Lastradas', reason: '' }, { name: 'Dominadas Asistidas en Máquina', reason: '' }],
+    alternatives: [{ name: 'Dominadas Lastradas' }, { name: 'Dominadas Asistidas en Máquina' }],
   },
   {
     id: 'jalon-amplio',
@@ -783,7 +783,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/reverse-grip-machine-lat-pulldown'),
     muscle: 'Espalda',
     tips: ['El agarre ancho involucra en mayor medida las fibras redondas y del trapecio superior. Evita traccionar por detrás de la nuca.'],
-    alternatives: [{ name: 'Jalón al Pecho en Polea (Agarre Neutro)', reason: '' }, { name: 'Dominadas Asistidas con Agarre Neutro', reason: '' }],
+    alternatives: [{ name: 'Jalón al Pecho en Polea (Agarre Neutro)' }, { name: 'Dominadas Asistidas con Agarre Neutro' }],
   },
   {
     id: 'remo-barra',
@@ -794,7 +794,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/barbell-bent-over-row'),
     muscle: 'Espalda',
     tips: ['Sujeta la barra libre con agarre prono o supino, flexiona el torso unos 45-60 grados.', 'Mantén la espalda perfectamente recta y neutra.', 'Jala la barra hacia tu ombligo llevando los codos hacia atrás.'],
-    alternatives: [{ name: 'Remo con Apoyo en el Pecho con Mancuernas', reason: '' }, { name: 'Remo en T', reason: '' }],
+    alternatives: [{ name: 'Remo con Apoyo en el Pecho con Mancuernas' }, { name: 'Remo en T' }],
   },
   {
     id: 'remo-mancuerna-unilateral',
@@ -805,7 +805,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/dumbbell-one-arm-bent-over-row'),
     muscle: 'Espalda',
     tips: ['Jala llevando la mancuerna hacia tu cadera, no al pecho, manteniendo el hombro deprimido para enfocar el esfuerzo en el dorsal inferior.'],
-    alternatives: [{ name: 'Remo en T', reason: '' }, { name: 'Remo con Barra', reason: '' }],
+    alternatives: [{ name: 'Remo en T' }, { name: 'Remo con Barra' }],
   },
   {
     id: 'remo-t',
@@ -816,7 +816,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/lever-t-bar-row'),
     muscle: 'Espalda',
     tips: ['Barra anclada al suelo, tirando de un agarre en V hacia el pecho.', 'Usa discos pequeños (10 kg / 25 lbs) en lugar de los grandes para tener mayor rango de movimiento.'],
-    alternatives: [{ name: 'Remo con Barra', reason: '' }, { name: 'Remo a una Mano con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Remo con Barra' }, { name: 'Remo a una Mano con Mancuerna' }],
   },
   {
     id: 'remo-apoyo-pecho',
@@ -827,7 +827,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/dumbbell-incline-row'),
     muscle: 'Espalda',
     tips: ['Banco inclinado a 30-45 grados. Acuéstate boca abajo y jala las mancuernas llevando los codos hacia la cadera.', 'Elimina la fatiga lumbar por completo, permitiendo aislar la espalda alta.'],
-    alternatives: [{ name: 'Remo con Barra', reason: '' }, { name: 'Remo en T', reason: '' }],
+    alternatives: [{ name: 'Remo con Barra' }, { name: 'Remo en T' }],
   },
   {
     id: 'remo-sentado-polea',
@@ -838,7 +838,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/cable-seated-row'),
     muscle: 'Espalda',
     tips: ['Mantén una ligera flexión de rodillas. Concéntrate en abrir el pecho al final de la tracción liberando los hombros atrás.'],
-    alternatives: [{ name: 'Remo con Apoyo en el Pecho con Mancuernas', reason: '' }, { name: 'Remo en T', reason: '' }],
+    alternatives: [{ name: 'Remo con Apoyo en el Pecho con Mancuernas' }, { name: 'Remo en T' }],
   },
   {
     id: 'remo-pendlay',
@@ -849,7 +849,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/barbell-pendlay-row'),
     muscle: 'Espalda',
     tips: ['Cada repetición inicia muerta desde el suelo con torso estrictamente paralelo al piso. Desarrolla una gran potencia explosiva dorsal.'],
-    alternatives: [{ name: 'Remo con Barra', reason: '' }, { name: 'Remo en T', reason: '' }],
+    alternatives: [{ name: 'Remo con Barra' }, { name: 'Remo en T' }],
   },
 
   // ── HOMBROS ───────────────────────────────────────────────────────
@@ -862,7 +862,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/barbell-seated-overhead-press'),
     muscle: 'Hombro (Anterior)',
     tips: ['Contrae firmemente glúteos y core para evitar una hiperextensión lumbar severa.', 'Gran demanda de fuerza general de empuje.'],
-    alternatives: [{ name: 'Press Arnold Sentado', reason: '' }, { name: 'Press de Hombros en Máquina', reason: '' }],
+    alternatives: [{ name: 'Press Arnold Sentado' }, { name: 'Press de Hombros en Máquina' }],
   },
   {
     id: 'press-arnold',
@@ -873,7 +873,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-arnold-press'),
     muscle: 'Hombro (Anterior)',
     tips: ['Sentado en el banco con soporte en la espalda. Comienza con las mancuernas a la altura del pecho con las palmas mirando hacia ti.', 'Sube rotando las muñecas de modo que arriba las palmas miren al frente.'],
-    alternatives: [{ name: 'Press Militar con Barra', reason: '' }, { name: 'Press de Hombros en Máquina', reason: '' }],
+    alternatives: [{ name: 'Press Militar con Barra' }, { name: 'Press de Hombros en Máquina' }],
   },
   {
     id: 'press-hombros-maquina',
@@ -884,7 +884,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/lever-shoulder-press-v-2'),
     muscle: 'Hombro (Anterior)',
     tips: ['Excelente opción de empuje pesado. Permite empujar al fallo con total seguridad al eliminar las demandas complejas de balance dinámico.'],
-    alternatives: [{ name: 'Press Arnold Sentado', reason: '' }, { name: 'Press Militar con Barra', reason: '' }],
+    alternatives: [{ name: 'Press Arnold Sentado' }, { name: 'Press Militar con Barra' }],
   },
   {
     id: 'elevaciones-laterales-mancuernas',
@@ -895,7 +895,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-lateral-raise'),
     muscle: 'Hombro (Lateral)',
     tips: ['De pie, inclina el torso sutilmente hacia adelante.', "Eleva las mancuernas hacia los lados formando una 'V' sutil al frente (plano escapular).", 'No subas los hombros (no encojas los trapecios), empuja hacia afuera.'],
-    alternatives: [{ name: 'Elevaciones Laterales con Polea', reason: '' }, { name: 'Elevaciones Laterales en Máquina', reason: '' }],
+    alternatives: [{ name: 'Elevaciones Laterales con Polea' }, { name: 'Elevaciones Laterales en Máquina' }],
   },
   {
     id: 'elevaciones-laterales-polea',
@@ -906,7 +906,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/cable-one-arm-lateral-raise'),
     muscle: 'Hombro (Lateral)',
     tips: ['De pie junto a la polea, tirando del agarre D hasta brazo paralelo al suelo.', 'Piensa en empujar la mano hacia afuera, no hacia arriba. Esto aísla el deltoides lateral.'],
-    alternatives: [{ name: 'Elevaciones Laterales con Mancuernas', reason: '' }, { name: 'Elevaciones Laterales en Máquina', reason: '' }],
+    alternatives: [{ name: 'Elevaciones Laterales con Mancuernas' }, { name: 'Elevaciones Laterales en Máquina' }],
   },
   {
     id: 'elevaciones-laterales-polea-detras',
@@ -917,7 +917,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/cable-one-arm-lateral-raise'),
     muscle: 'Hombro (Lateral)',
     tips: ['Sujeta la polea baja colocando el cable por detrás de tu cuerpo.', 'Eleva el brazo de forma lateral hacia afuera.', 'Este ángulo modifica el perfil de resistencia dando máxima tensión al inicio del recorrido.'],
-    alternatives: [{ name: 'Elevaciones Laterales con Polea', reason: '' }, { name: 'Elevaciones Laterales con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Elevaciones Laterales con Polea' }, { name: 'Elevaciones Laterales con Mancuernas' }],
   },
   {
     id: 'elevaciones-laterales-maquina',
@@ -928,7 +928,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/lever-lateral-raise'),
     muscle: 'Hombro (Lateral)',
     tips: ['Ajuste el asiento para alinear perfectamente el eje de rotación de la máquina con tu articulación glenohumeral, aislando el deltoides medio.'],
-    alternatives: [{ name: 'Elevaciones Laterales con Mancuernas', reason: '' }, { name: 'Elevaciones Laterales con Polea', reason: '' }],
+    alternatives: [{ name: 'Elevaciones Laterales con Mancuernas' }, { name: 'Elevaciones Laterales con Polea' }],
   },
   {
     id: 'elevaciones-frontales',
@@ -939,7 +939,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-front-raise'),
     muscle: 'Hombro (Anterior)',
     tips: ['Eleva la mancuerna al frente con el codo ligeramente flexionado hasta la altura del hombro.', 'Controla la bajada para evitar inercia.'],
-    alternatives: [{ name: 'Press Militar con Barra', reason: '' }, { name: 'Press Arnold Sentado', reason: '' }],
+    alternatives: [{ name: 'Press Militar con Barra' }, { name: 'Press Arnold Sentado' }],
   },
   {
     id: 'face-pulls',
@@ -950,7 +950,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/cable-rear-delt-row-with-rope'),
     muscle: 'Hombro (Posterior)',
     tips: ['Tirando de la cuerda hacia la nariz, rotando nudillos hacia atrás.', 'La rotación externa es clave; tus manos deben terminar más atrás que la línea de tus codos.'],
-    alternatives: [{ name: 'Pec Deck Invertido', reason: '' }, { name: 'Pájaros con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Pec Deck Invertido' }, { name: 'Pájaros con Mancuernas' }],
   },
   {
     id: 'pec-deck-invertido',
@@ -961,7 +961,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/lever-seated-reverse-fly'),
     muscle: 'Hombro (Posterior)',
     tips: ['Frente a la máquina pec deck, empujando los agarres hacia atrás.', 'Imagina que quieres juntar los dorsos de tus manos detrás de ti; rango de movimiento corto.'],
-    alternatives: [{ name: 'Pájaros con Mancuernas', reason: '' }, { name: 'Face Pulls', reason: '' }],
+    alternatives: [{ name: 'Pájaros con Mancuernas' }, { name: 'Face Pulls' }],
   },
   {
     id: 'pajaros-mancuerna-banco',
@@ -972,7 +972,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-rear-lateral-raise-support-head'),
     muscle: 'Hombro (Posterior)',
     tips: ['Acuéstate boca abajo en banco inclinado a 30 grados.', 'Eleva las mancuernas hacia los lados manteniendo los brazos casi rectos.', 'Enfócate en activar el deltoides posterior sin juntar excesivamente las escápulas.'],
-    alternatives: [{ name: 'Face Pulls', reason: '' }, { name: 'Pájaros con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Face Pulls' }, { name: 'Pájaros con Mancuernas' }],
   },
   {
     id: 'pajaros-mancuernas-pie',
@@ -983,7 +983,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-rear-lateral-raise'),
     muscle: 'Hombro (Posterior)',
     tips: ['Inclina el torso horizontal. Jala abriendo los brazos hacia los lados en lugar de hacia atrás para aislar mecánicamente el deltoides posterior.'],
-    alternatives: [{ name: 'Pec Deck Invertido', reason: '' }, { name: 'Face Pulls', reason: '' }],
+    alternatives: [{ name: 'Pec Deck Invertido' }, { name: 'Face Pulls' }],
   },
   {
     id: 'pulley-rear-fly',
@@ -994,7 +994,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/cable-standing-cross-over-high-reverse-fly'),
     muscle: 'Hombro (Posterior)',
     tips: ['Poleas en posición alta, jala hacia atrás activando deltoides posterior.', 'Controla la excéntrica y no uses impulso del torso.'],
-    alternatives: [{ name: 'Pec Deck Invertido', reason: '' }, { name: 'Pájaros con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Pec Deck Invertido' }, { name: 'Pájaros con Mancuernas' }],
   },
   {
     id: 'encogimientos-hombros',
@@ -1005,7 +1005,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('traps/barbell-shrug'),
     muscle: 'Trapecio',
     tips: ['Sostén la barra con agarre prono. Eleva los hombros hacia las orejas y aprieta arriba 1 segundo.'],
-    alternatives: [{ name: 'Face Pulls', reason: '' }],
+    alternatives: [{ name: 'Face Pulls' }],
   },
 
   // ── BÍCEPS ─────────────────────────────────────────────────────────
@@ -1018,7 +1018,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/barbell-curl'),
     muscle: 'Bíceps',
     tips: ['El ejercicio rey de flexión libre. La angulación de la barra respeta el ángulo de carga natural del codo evitando tendinitis.'],
-    alternatives: [{ name: 'Curl Predicador con Mancuerna', reason: '' }, { name: 'Curl en Polea Baja con Agarre Recto', reason: '' }],
+    alternatives: [{ name: 'Curl Predicador con Mancuerna' }, { name: 'Curl en Polea Baja con Agarre Recto' }],
   },
   {
     id: 'curl-alterno-mancuernas',
@@ -1029,7 +1029,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/dumbbell-alternate-biceps-curl'),
     muscle: 'Bíceps',
     tips: ['Curl de pie, rotando muñeca para que la palma mire arriba al final.', 'Supina (gira) la muñeca gradualmente desde el inicio del movimiento, no solo al llegar arriba.'],
-    alternatives: [{ name: 'Curl con Barra EZ', reason: '' }, { name: 'Curl Concentrado con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Curl con Barra EZ' }, { name: 'Curl Concentrado con Mancuerna' }],
   },
   {
     id: 'curl-martillo-mancuernas',
@@ -1040,7 +1040,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/dumbbell-hammer-curl'),
     muscle: 'Bíceps',
     tips: ['De pie o sentado, sostén las mancuernas con agarre neutro (palmas mirándose entre sí).', 'Flexiona manteniendo los codos fijos.', 'Excelente constructor del braquial y braquiorradial (grosor de brazo).'],
-    alternatives: [{ name: 'Curl Martillo Cruzado con Mancuernas', reason: '' }, { name: 'Curl Alterno con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Curl Martillo Cruzado con Mancuernas' }, { name: 'Curl Alterno con Mancuernas' }],
   },
   {
     id: 'curl-martillo-cruzado',
@@ -1051,7 +1051,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/dumbbell-cross-body-hammer-curl'),
     muscle: 'Bíceps',
     tips: ['De pie, realiza la flexión con agarre neutro pero llevando la mancuerna de forma diagonal hacia el hombro opuesto.', 'Mantiene la tensión mecánica constante aislando el braquiorradial.'],
-    alternatives: [{ name: 'Curl Martillo con Mancuernas', reason: '' }, { name: 'Curl Alterno con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Curl Martillo con Mancuernas' }, { name: 'Curl Alterno con Mancuernas' }],
   },
   {
     id: 'curl-martillo-polea-cuerda',
@@ -1062,7 +1062,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/cable-hammer-curl-with-rope'),
     muscle: 'Bíceps',
     tips: ['El uso del cable asegura una tensión mecánica continua uniforme, eliminando los puntos muertos de pérdida de carga de las mancuernas.'],
-    alternatives: [{ name: 'Curl Martillo Cruzado con Mancuernas', reason: '' }, { name: 'Curl Martillo con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Curl Martillo Cruzado con Mancuernas' }, { name: 'Curl Martillo con Mancuernas' }],
   },
   {
     id: 'curl-predicador-mancuerna',
@@ -1073,7 +1073,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/barbell-preacher-curl'),
     muscle: 'Bíceps',
     tips: ['Brazo apoyado en el banco predicador, flexionando la mancuerna hacia arriba.', 'Controla la bajada en 3 segundos; no dejes caer el peso de golpe para proteger el tendón.'],
-    alternatives: [{ name: 'Curl con Barra EZ', reason: '' }, { name: 'Curl en Polea Baja con Agarre Recto', reason: '' }],
+    alternatives: [{ name: 'Curl con Barra EZ' }, { name: 'Curl en Polea Baja con Agarre Recto' }],
   },
   {
     id: 'curl-predicador-barra-ez',
@@ -1084,7 +1084,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/barbell-preacher-curl'),
     muscle: 'Bíceps',
     tips: ['Apoya por completo las axilas contra el banco predicador. Evita extender bruscamente el codo abajo para proteger los tendones.'],
-    alternatives: [{ name: 'Curl Bayesiano en Polea', reason: '' }, { name: 'Curl en Banco Inclinado con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Curl Bayesiano en Polea' }, { name: 'Curl en Banco Inclinado con Mancuernas' }],
   },
   {
     id: 'curl-bayesiano',
@@ -1095,7 +1095,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/cable-one-arm-curl'),
     muscle: 'Bíceps',
     tips: ['Ponte de espaldas a la polea baja sujetando el maneral D.', 'Comienza con el brazo extendido hacia atrás en estiramiento máximo.', 'Flexiona el codo manteniendo el hombro inmóvil para máxima tensión mecánica.'],
-    alternatives: [{ name: 'Curl de Bíceps en Banco Inclinado con Mancuernas', reason: '' }, { name: 'Curl Alterno con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Curl de Bíceps en Banco Inclinado con Mancuernas' }, { name: 'Curl Alterno con Mancuernas' }],
   },
   {
     id: 'curl-polea-unilateral',
@@ -1106,7 +1106,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/cable-reverse-one-arm-curl'),
     muscle: 'Bíceps',
     tips: ['Trabaja un brazo a la vez frente a la polea baja para igualar la fuerza entre lados y maximizar la concentración mente-músculo.', 'Mantén el codo fijo al costado; solo se mueve el antebrazo.'],
-    alternatives: [{ name: 'Curl Bayesiano en Polea', reason: '' }, { name: 'Curl en Polea Baja con Agarre Recto', reason: '' }],
+    alternatives: [{ name: 'Curl Bayesiano en Polea' }, { name: 'Curl en Polea Baja con Agarre Recto' }],
   },
   {
     id: 'curl-banco-inclinado',
@@ -1117,7 +1117,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/dumbbell-incline-curl'),
     muscle: 'Bíceps',
     tips: ['Siéntate en el banco inclinado a 45-60 grados.', 'Deja colgar los brazos verticalmente; esto pone la cabeza larga del bíceps en máximo estiramiento.', 'Realiza la flexión supinando la muñeca al subir.'],
-    alternatives: [{ name: 'Curl Bayesiano en Polea', reason: '' }, { name: 'Curl Alterno con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Curl Bayesiano en Polea' }, { name: 'Curl Alterno con Mancuernas' }],
   },
   {
     id: 'curl-concentrado',
@@ -1128,7 +1128,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/dumbbell-concentration-curl'),
     muscle: 'Bíceps',
     tips: ['Apoya el codo firmemente contra la cara interna del muslo. Bloquea el resto de tu cuerpo para suprimir cualquier inercia.'],
-    alternatives: [{ name: 'Curl Alterno con Mancuernas', reason: '' }, { name: 'Curl con Barra EZ', reason: '' }],
+    alternatives: [{ name: 'Curl Alterno con Mancuernas' }, { name: 'Curl con Barra EZ' }],
   },
   {
     id: 'curl-polea-recto',
@@ -1139,7 +1139,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/cable-curl'),
     muscle: 'Bíceps',
     tips: ['La resistencia constante de la polea desafía al bíceps incluso en la fase final de acortamiento completo arriba.'],
-    alternatives: [{ name: 'Curl Predicador con Mancuerna', reason: '' }, { name: 'Curl con Barra EZ', reason: '' }],
+    alternatives: [{ name: 'Curl Predicador con Mancuerna' }, { name: 'Curl con Barra EZ' }],
   },
 
   // ── TRÍCEPS ────────────────────────────────────────────────────────
@@ -1152,7 +1152,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/cable-pushdown'),
     muscle: 'Tríceps',
     tips: ['En polea alta, empujando la barra recta hacia abajo hasta los muslos.', 'Haz una pausa de 1 segundo abajo y aprieta el tríceps a muerte en cada repetición.'],
-    alternatives: [{ name: 'Jalón con Cuerda', reason: '' }, { name: 'Fondos en Banco', reason: '' }],
+    alternatives: [{ name: 'Jalón con Cuerda' }, { name: 'Fondos en Banco' }],
   },
   {
     id: 'jalon-cuerda',
@@ -1163,7 +1163,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/cable-pushdown-with-rope-attachment'),
     muscle: 'Tríceps',
     tips: ['Abre los extremos de la cuerda hacia afuera al final de la fase concéntrica para forzar un rango completo de extensión acortada.'],
-    alternatives: [{ name: 'Jalón de Tríceps en Polea (Barra Recta)', reason: '' }, { name: 'Fondos en Banco', reason: '' }],
+    alternatives: [{ name: 'Jalón de Tríceps en Polea (Barra Recta)' }, { name: 'Fondos en Banco' }],
   },
   {
     id: 'extension-triceps-overhead-polea',
@@ -1174,7 +1174,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/cable-overhead-triceps-extension-rope-attachment'),
     muscle: 'Tríceps',
     tips: ['Ponte de espaldas a la polea alta sujetando la cuerda por detrás de tu cabeza.', 'Da un paso adelante e inclina el torso.', 'Extiende los codos hacia el frente, poniendo énfasis en la cabeza larga del tríceps por el estiramiento inicial.', 'La flexibilidad de la cuerda permite una cómoda rotación terminal que mitiga dolores agudos en los codos comunes con barras rígidas.'],
-    alternatives: [{ name: 'Rompecráneos Inclinado con Mancuernas', reason: '' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)', reason: '' }],
+    alternatives: [{ name: 'Rompecráneos Inclinado con Mancuernas' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)' }],
   },
   {
     id: 'extension-triceps-mancuerna-overhead',
@@ -1185,7 +1185,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/dumbbell-standing-one-arm-extension'),
     muscle: 'Tríceps',
     tips: ['Mantén los hombros estables. La flexión del brazo estira la cabeza larga del tríceps optimizando la relación longitud-tensión de sus fibras.'],
-    alternatives: [{ name: 'Extensión de Tríceps sobre la Cabeza en Polea', reason: '' }, { name: 'Rompecráneos con Barra EZ', reason: '' }],
+    alternatives: [{ name: 'Extensión de Tríceps sobre la Cabeza en Polea' }, { name: 'Rompecráneos con Barra EZ' }],
   },
   {
     id: 'rompecraneos-barra-ez',
@@ -1196,7 +1196,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/ez-barbell-decline-triceps-extension'),
     muscle: 'Tríceps',
     tips: ['De pie o sentado, realiza extensiones controlando la fase excéntrica.', 'Mantén los codos fijos y alineados.', 'Busca un rango completo sin balancear el torso.'],
-    alternatives: [{ name: 'Extensión de Tríceps sobre la Cabeza en Polea', reason: '' }, { name: 'Rompecráneos Inclinado con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Extensión de Tríceps sobre la Cabeza en Polea' }, { name: 'Rompecráneos Inclinado con Mancuernas' }],
   },
   {
     id: 'rompecraneos-inclinado-mancuernas',
@@ -1207,7 +1207,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/ez-barbell-decline-triceps-extension'),
     muscle: 'Tríceps',
     tips: ['Banco inclinado a unos 30 grados.', 'Lleva los brazos extendidos ligeramente hacia atrás para mantener tensión constante.', 'Flexiona los codos bajando las mancuernas a los lados de tu cabeza y extiende.'],
-    alternatives: [{ name: 'Rompecráneos con Barra EZ', reason: '' }, { name: 'Extensión de Tríceps sobre la Cabeza en Polea', reason: '' }],
+    alternatives: [{ name: 'Rompecráneos con Barra EZ' }, { name: 'Extensión de Tríceps sobre la Cabeza en Polea' }],
   },
   {
     id: 'extension-triceps-acostado',
@@ -1218,7 +1218,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/barbell-lying-extension'),
     muscle: 'Tríceps',
     tips: ['Acuéstate en banco plano. Brazos extendidos verticalmente.', 'Flexiona los codos bajando las mancuernas hacia tus hombros o costados de la cara y extiende de forma estricta.'],
-    alternatives: [{ name: 'Rompecráneos con Barra EZ', reason: '' }, { name: 'Patada de Tríceps en Polea', reason: '' }],
+    alternatives: [{ name: 'Rompecráneos con Barra EZ' }, { name: 'Patada de Tríceps en Polea' }],
   },
   {
     id: 'patada-triceps-mancuerna',
@@ -1229,7 +1229,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/dumbbell-kickback'),
     muscle: 'Tríceps',
     tips: ['Torso paralelo al piso. Mantén el codo firmemente elevado; la resistencia efectiva real solo ocurre al final del movimiento.'],
-    alternatives: [{ name: 'Patada de Tríceps en Polea', reason: '' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)', reason: '' }],
+    alternatives: [{ name: 'Patada de Tríceps en Polea' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)' }],
   },
   {
     id: 'patada-triceps-polea',
@@ -1240,7 +1240,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/cable-kickback'),
     muscle: 'Tríceps',
     tips: ['Inclinado en polea baja, estirando el codo hacia atrás.', 'Asegúrate de alinear el cable para que haya tensión constante desde el inicio, no solo al final.'],
-    alternatives: [{ name: 'Patada de Tríceps con Mancuerna', reason: '' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)', reason: '' }],
+    alternatives: [{ name: 'Patada de Tríceps con Mancuerna' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)' }],
   },
   {
     id: 'fondos-banco',
@@ -1251,7 +1251,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/triceps-dip-bench-leg'),
     muscle: 'Tríceps',
     tips: ['Mantén la espalda pegada al banco de soporte para evitar rotaciones internas lesivas del hombro. Enfoque puro en extensión de codo.'],
-    alternatives: [{ name: 'Jalón con Cuerda', reason: '' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)', reason: '' }],
+    alternatives: [{ name: 'Jalón con Cuerda' }, { name: 'Jalón de Tríceps en Polea (Barra Recta)' }],
   },
 
   // ── CUÁDRICEPS / GLÚTEOS / PIERNAS ────────────────────────────────
@@ -1264,7 +1264,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-full-squat'),
     muscle: 'Cuádriceps',
     tips: ['Barra apoyada sólidamente en los trapecios dentro del rack.', 'Baja controlando el peso hasta romper el paralelo (90 grados o más).', 'Empuja el suelo firmemente manteniendo las rodillas alineadas con las puntas de los pies.'],
-    alternatives: [{ name: 'Sentadilla Frontal con Barra', reason: '' }, { name: 'Sentadilla en Máquina Smith', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Frontal con Barra' }, { name: 'Sentadilla en Máquina Smith' }],
   },
   {
     id: 'sentadilla-frontal',
@@ -1275,7 +1275,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-front-squat'),
     muscle: 'Cuádriceps',
     tips: ['Coloca la barra en la parte delantera de tus hombros (agarre olímpico o de culturista cruzado).', 'Mantén los codos altos en todo momento.', 'Baja de forma vertical, maximizando la flexión de rodilla y minimizando la flexión de cadera.'],
-    alternatives: [{ name: 'Sentadilla con Barra', reason: '' }, { name: 'Sentadilla Ciclista con Barra', reason: '' }],
+    alternatives: [{ name: 'Sentadilla con Barra' }, { name: 'Sentadilla Ciclista con Barra' }],
   },
   {
     id: 'sentadilla-smith',
@@ -1286,7 +1286,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/smith-full-squat'),
     muscle: 'Cuádriceps',
     tips: ['Sentadilla dentro de los rieles. Pies ligeramente hacia adelante.', 'Pon los pies un poco adelantados y baja hasta romper los 90 grados. Usa la máquina para recargarte.'],
-    alternatives: [{ name: 'Sentadilla con Barra', reason: '' }, { name: 'Sentadilla Hack', reason: '' }],
+    alternatives: [{ name: 'Sentadilla con Barra' }, { name: 'Sentadilla Hack' }],
   },
   {
     id: 'sentadilla-hack',
@@ -1297,7 +1297,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/sled-hack-squat'),
     muscle: 'Cuádriceps',
     tips: ['Espalda apoyada en trineo de la máquina en ángulo de 45°.', 'Mantén toda la planta del pie pegada a la plataforma, especialmente los talones.', 'Rodillas alineadas.'],
-    alternatives: [{ name: 'Sentadilla Frontal con Barra', reason: '' }, { name: 'Prensa de Piernas', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Frontal con Barra' }, { name: 'Prensa de Piernas' }],
   },
   {
     id: 'sentadilla-goblet',
@@ -1308,7 +1308,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/dumbbell-goblet-squat'),
     muscle: 'Cuádriceps',
     tips: ['Sostén la carga pegada al esternón. La posición de contrapeso te ayuda a bajar con un torso mucho más vertical y cómodo.'],
-    alternatives: [{ name: 'Sentadilla Frontal con Barra', reason: '' }, { name: 'Sentadilla en Máquina Smith', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Frontal con Barra' }, { name: 'Sentadilla en Máquina Smith' }],
   },
   {
     id: 'sentadilla-sissy',
@@ -1319,7 +1319,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/sissy-squat'),
     muscle: 'Cuádriceps',
     tips: ['Desplaza las rodillas hacia adelante mientras reclinas el torso atrás. Genera una tensión excéntrica masiva y pura en el cuádriceps.'],
-    alternatives: [{ name: 'Extensión de Piernas', reason: '' }, { name: 'Sentadilla Goblet con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Extensión de Piernas' }, { name: 'Sentadilla Goblet con Mancuerna' }],
   },
   {
     id: 'sentadilla-ciclista',
@@ -1330,7 +1330,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-full-squat'),
     muscle: 'Cuádriceps',
     tips: ['Coloca la barra en tu espalda dentro del rack.', 'Eleva los talones de manera notable sobre un bloque o discos sólidos de hierro.', 'Al bajar de forma vertical, tus rodillas viajarán muy adelante emulando el patrón de una Sentadilla Hack comercial.'],
-    alternatives: [{ name: 'Sentadilla con Barra', reason: '' }, { name: 'Sentadilla Frontal con Barra', reason: '' }],
+    alternatives: [{ name: 'Sentadilla con Barra' }, { name: 'Sentadilla Frontal con Barra' }],
   },
   {
     id: 'sentadilla-bulgara-cuadriceps',
@@ -1341,7 +1341,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/barbell-single-leg-split-squat'),
     muscle: 'Cuádriceps',
     tips: ['Un pie apoyado atrás en el banco plano.', 'Mantén el torso completamente vertical mientras bajas.', 'Permite que la rodilla delantera viaje libremente hacia adelante para priorizar el cuádriceps.'],
-    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }, { name: 'Zancadas con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)' }, { name: 'Zancadas con Mancuernas' }],
   },
   {
     id: 'sentadilla-bulgara-gluteo',
@@ -1352,7 +1352,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/barbell-single-leg-split-squat'),
     muscle: 'Glúteos',
     tips: ['Un pie apoyado atrás en el banco plano.', 'A diferencia del enfoque de cuádriceps, inclina el torso hacia adelante unos 30 grados.', 'Baja mandando la cadera ligeramente hacia atrás para estirar al máximo las fibras del glúteo.'],
-    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Cuádriceps)', reason: '' }, { name: 'Zancadas Caminando o Estáticas con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Cuádriceps)' }, { name: 'Zancadas Caminando o Estáticas con Mancuernas' }],
   },
   {
     id: 'prensa-piernas',
@@ -1363,7 +1363,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/sled-45-leg-press'),
     muscle: 'Cuádriceps',
     tips: ['Sentado en la máquina, empujando el peso con los pies (pies al medio de la plataforma).', 'Baja profundo sin que tu cadera se despegue del asiento.', 'No bloquees las rodillas bruscamente arriba.'],
-    alternatives: [{ name: 'Sentadilla Hack', reason: '' }, { name: 'Sentadilla Goblet con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Hack' }, { name: 'Sentadilla Goblet con Mancuerna' }],
   },
   {
     id: 'extension-piernas',
@@ -1374,7 +1374,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/lever-leg-extension'),
     muscle: 'Cuádriceps',
     tips: ['Sentado en máquina, pateando hacia arriba para estirar las rodillas.', 'Agárrate fuerte de las asas laterales para que tus glúteos no se levanten del asiento al patear.'],
-    alternatives: [{ name: 'Sentadilla Sissy', reason: '' }, { name: 'Sentadilla Goblet con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Sissy' }, { name: 'Sentadilla Goblet con Mancuerna' }],
   },
   {
     id: 'zancadas-mancuernas',
@@ -1385,7 +1385,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/dumbbell-lunge'),
     muscle: 'Glúteos, Cuádriceps',
     tips: ['Da un paso adelante con una mancuerna en cada mano.', 'Baja de forma controlada hasta que la rodilla trasera casi toque el piso.', 'Empuja con la pierna delantera para regresar a la posición inicial.'],
-    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }, { name: 'Zancadas con Barra Trasera', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)' }, { name: 'Zancadas con Barra Trasera' }],
   },
   {
     id: 'zancadas-barra-trasera',
@@ -1396,7 +1396,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-lunge'),
     muscle: 'Glúteos',
     tips: ['Demanda una alta estabilidad de tu core. Ideal para transferir de forma directa la fuerza hacia las sentadillas tradicionales.'],
-    alternatives: [{ name: 'Zancadas con Mancuernas', reason: '' }, { name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }],
+    alternatives: [{ name: 'Zancadas con Mancuernas' }, { name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)' }],
   },
   {
     id: 'zancada-inversa',
@@ -1407,7 +1407,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-rear-lunge-v-2'),
     muscle: 'Glúteos',
     tips: ['Paso largo hacia atrás. Maximiza la flexión interna de la cadera, induciendo un gran estiramiento bajo tensión en las fibras del glúteo mayor.'],
-    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }, { name: 'Step-Ups a Cajón con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)' }, { name: 'Step-Ups a Cajón con Mancuernas' }],
   },
   {
     id: 'zancada-cruzada-curtsy-lunge',
@@ -1418,7 +1418,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-rear-lunge-v-2'),
     muscle: 'Glúteos',
     tips: ['Cruzando la pierna trasera por detrás de la delantera en diagonal.', 'Cruza la pierna trasera por detrás de la delantera. Activa fuertemente el glúteo medio.'],
-    alternatives: [{ name: 'Zancada Lateral (Side Lunge)', reason: '' }, { name: 'Sentadilla Cossack (lateral profunda)', reason: '' }],
+    alternatives: [{ name: 'Zancada Lateral (Side Lunge)' }, { name: 'Sentadilla Cossack (lateral profunda)' }],
   },
   {
     id: 'prensa-de-piernas-pies-altos',
@@ -1429,7 +1429,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/sled-one-leg-calf-press-on-leg-press'),
     muscle: 'Glúteos',
     tips: ['Pies en la parte alta y separados de la plataforma, enfocando glúteo y femoral.', 'Colocar los pies más altos y separados cambia el enfoque del cuádriceps hacia el glúteo y femoral.'],
-    alternatives: [{ name: 'Hack Squat con pies altos', reason: '' }, { name: 'Sentadilla Sumo con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Hack Squat con pies altos' }, { name: 'Sentadilla Sumo con Mancuerna' }],
   },
   {
     id: 'step-ups',
@@ -1440,7 +1440,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/dumbbell-step-up'),
     muscle: 'Glúteos',
     tips: ['Controla rigurosamente el descenso (3 segundos). No te impulses con la pierna pasiva que se encuentra en el suelo.'],
-    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }, { name: 'Zancada Inversa con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)' }, { name: 'Zancada Inversa con Mancuernas' }],
   },
   {
     id: 'hip-thrust',
@@ -1451,7 +1451,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-lying-lifting-on-hip'),
     muscle: 'Glúteos',
     tips: ['Apoya los escapulares en el banco y la barra sobre la cadera (con almohadilla).', 'Empuja con los talones y bloquea los glúteos arriba 1 segundo.'],
-    alternatives: [{ name: 'Puente de Glúteo con Barra', reason: '' }, { name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }],
+    alternatives: [{ name: 'Puente de Glúteo con Barra' }, { name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)' }],
   },
   {
     id: 'puente-gluteo',
@@ -1462,7 +1462,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-glute-bridge'),
     muscle: 'Glúteos',
     tips: ['Acostado en el suelo con la barra sobre la cadera. Empuja con los talones elevando la pelvis hasta extensión completa.'],
-    alternatives: [{ name: 'Hip Thrust con Barra', reason: '' }],
+    alternatives: [{ name: 'Hip Thrust con Barra' }],
   },
   {
     id: 'patada-gluteo',
@@ -1473,7 +1473,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/cable-standing-hip-extension'),
     muscle: 'Glúteos',
     tips: ['Sujeta el cable con tobillera. Estira la pierna atrás contrayendo el glúteo y aguanta 1 segundo arriba.'],
-    alternatives: [{ name: 'Hip Thrust con Barra', reason: '' }],
+    alternatives: [{ name: 'Hip Thrust con Barra' }],
   },
   {
     id: 'abductor-cadera',
@@ -1484,7 +1484,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abductors/lever-seated-hip-abduction'),
     muscle: 'Glúteos',
     tips: ['Inclina ligeramente torso al frente y controla la excéntrica lentamente.'],
-    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Búlgara con Mancuernas (Enfoque Glúteo)' }],
   },
   {
     id: 'aductor-cadera',
@@ -1495,7 +1495,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('adductors/lever-seated-hip-adduction'),
     muscle: 'Aductores',
     tips: ['Siéntate con la espalda apoyada y las almohadillas en la cara interna de los muslos.', 'Junta las piernas de forma controlada y resiste la vuelta sin dejar caer el peso de golpe.'],
-    alternatives: [{ name: 'Aducción de Cadera en Polea', reason: '' }, { name: 'Butterfly (Mariposa)', reason: '' }],
+    alternatives: [{ name: 'Aducción de Cadera en Polea' }, { name: 'Butterfly (Mariposa)' }],
   },
   {
     id: 'pull-through-en-polea',
@@ -1506,7 +1506,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/cable-pull-through-with-rope'),
     muscle: 'Glúteos',
     tips: ['De espaldas a la polea baja, pasando la cuerda entre las piernas y empujando la cadera.', 'Es un movimiento de empujar la cadera, NO una sentadilla.'],
-    alternatives: [{ name: 'Kettlebell Swing (con kettlebell o mancuerna)', reason: '' }, { name: 'Buenos Días (Good Mornings)', reason: '' }],
+    alternatives: [{ name: 'Kettlebell Swing (con kettlebell o mancuerna)' }, { name: 'Buenos Días (Good Mornings)' }],
   },
   {
     id: 'abduccion-de-cadera-en-polea',
@@ -1517,7 +1517,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abductors/side-hip-abduction'),
     muscle: 'Glúteos',
     tips: ['Con tobillera en polea baja, abriendo la pierna hacia el lado.', 'Pasa el cable por delante de ti. Movimiento controlado para aislar el glúteo lateral.'],
-    alternatives: [{ name: 'Abductor en Máquina', reason: '' }, { name: 'Banded Lateral Walks (caminata lateral con liga)', reason: '' }],
+    alternatives: [{ name: 'Abductor en Máquina' }, { name: 'Banded Lateral Walks (caminata lateral con liga)' }],
   },
   {
     id: 'aduccion-de-cadera-en-polea',
@@ -1528,7 +1528,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('adductors/cable-hip-adduction'),
     muscle: 'Aductores',
     tips: ['Con tobillera en polea baja, llevando la pierna hacia el centro del cuerpo.', 'Torso estable y sin balanceo: el movimiento nace de la cadera, no de la espalda.'],
-    alternatives: [{ name: 'Aductor en Máquina', reason: '' }, { name: 'Butterfly (Mariposa)', reason: '' }],
+    alternatives: [{ name: 'Aductor en Máquina' }, { name: 'Butterfly (Mariposa)' }],
   },
 
   // ── ISQUIOSURALES / POSTERIORES ───────────────────────────────────
@@ -1541,7 +1541,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-romanian-deadlift'),
     muscle: 'Isquiotibiales, Glúteos',
     tips: ['De pie con la barra cargada.', 'Inicia el movimiento empujando la cadera hacia atrás como si quisieras tocar la pared.', 'Baja la barra rozando tus muslos hasta la altura de las espinillas sin perder la neutralidad lumbar.'],
-    alternatives: [{ name: 'Peso Muerto Convencional con Barra', reason: '' }, { name: 'Curl de Piernas Acostado', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Convencional con Barra' }, { name: 'Curl de Piernas Acostado' }],
   },
   {
     id: 'rdl-mancuernas',
@@ -1552,7 +1552,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/dumbbell-romanian-deadlift'),
     muscle: 'Isquiotibiales',
     tips: ['Desciende las mancuernas pegadas a tus piernas. Permite ajustar la línea de gravedad de manera más orgánica e individual que la barra rígida.'],
-    alternatives: [{ name: 'Peso Muerto Rumano con Barra', reason: '' }, { name: 'Buenos Días con Barra', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Rumano con Barra' }, { name: 'Buenos Días con Barra' }],
   },
   {
     id: 'smith-machine-rdl',
@@ -1562,7 +1562,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/smith-deadlift'),
     muscle: 'Isquiotibiales, Glúteos',
     tips: ['Coloca la barra de la smith a media altura, tipo RDL.', 'Empuja cadera atrás deslizando la barra por los muslos.'],
-    alternatives: [{ name: 'Peso Muerto Rumano con Barra', reason: '' }, { name: 'RDL con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Rumano con Barra' }, { name: 'RDL con Mancuernas' }],
   },
 
   {
@@ -1574,7 +1574,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('hamstrings/barbell-good-morning'),
     muscle: 'Isquiotibiales',
     tips: ['Bisagra de cadera estricta con carga axial trasera. Requiere mantener un core sumamente rígido para transferir la fuerza a los femorales.'],
-    alternatives: [{ name: 'Peso Muerto Rumano con Barra', reason: '' }, { name: 'RDL con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Rumano con Barra' }, { name: 'RDL con Mancuernas' }],
   },
   {
     id: 'curl-piernas-acostado',
@@ -1585,7 +1585,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('hamstrings/lever-lying-leg-curl'),
     muscle: 'Isquiotibiales',
     tips: ['Acuéstate boca abajo en el banco plano.', 'Sujeta firmemente una mancuerna entre los arcos de tus pies (o usa la máquina).', 'Flexiona las rodillas subiendo el peso con control, frena la bajada de forma estricta (3 segundos).'],
-    alternatives: [{ name: 'Curl Nórdico', reason: '' }, { name: 'Peso Muerto Rumano con Barra', reason: '' }],
+    alternatives: [{ name: 'Curl Nórdico' }, { name: 'Peso Muerto Rumano con Barra' }],
   },
   {
     id: 'curl-piernas-sentado',
@@ -1596,7 +1596,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('hamstrings/lever-seated-leg-curl'),
     muscle: 'Isquiotibiales',
     tips: ['Sentado en la máquina, empujando la palanca hacia abajo con los talones.', 'Empuja tus caderas fuertemente contra el asiento mientras jalas para aislar los isquiosurales.'],
-    alternatives: [{ name: 'Curl de Piernas Acostado', reason: '' }, { name: 'Curl Nórdico', reason: '' }],
+    alternatives: [{ name: 'Curl de Piernas Acostado' }, { name: 'Curl Nórdico' }],
   },
   {
     id: 'curl-nordico',
@@ -1607,7 +1607,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('hamstrings/glute-ham-raise'),
     muscle: 'Isquiotibiales',
     tips: ['Coloca una colchoneta en el suelo de rodillas.', 'Atora tus talones firmemente debajo de la barra cargada con discos pesados dentro del rack como contrapeso.', 'Déjate caer hacia adelante lo más lento posible usando tus isquiotibiales para frenar el descenso.'],
-    alternatives: [{ name: 'Curl de Piernas Acostado', reason: '' }, { name: 'Peso Muerto Rumano con Barra', reason: '' }],
+    alternatives: [{ name: 'Curl de Piernas Acostado' }, { name: 'Peso Muerto Rumano con Barra' }],
   },
   {
     id: 'peso-muerto-convencional',
@@ -1618,7 +1618,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-deadlift'),
     muscle: 'Isquiotibiales, Glúteos',
     tips: ['Barra en el suelo pegada a las espinillas.', 'Flexiona las rodillas sutilmente y empuja la cadera atrás para agarrar la barra.', 'Ponte de pie empujando el suelo con las piernas y bloqueando los glúteos arriba de forma segura.'],
-    alternatives: [{ name: 'Peso Muerto Rumano con Barra', reason: '' }, { name: 'Peso Muerto Hexagonal', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Rumano con Barra' }, { name: 'Peso Muerto Hexagonal' }],
   },
   {
     id: 'peso-muerto-sumo',
@@ -1629,7 +1629,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-sumo-deadlift'),
     muscle: 'Cuádriceps, Glúteos',
     tips: ['Postura de piernas abierta. Reduce la longitud del brazo de momento en la zona lumbar y desplaza parte de la carga inicial hacia aductores y cuádriceps.'],
-    alternatives: [{ name: 'Peso Muerto Convencional con Barra', reason: '' }, { name: 'Peso Muerto Hexagonal', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Convencional con Barra' }, { name: 'Peso Muerto Hexagonal' }],
   },
   {
     id: 'peso-muerto-hexagonal',
@@ -1640,7 +1640,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/trap-bar-deadlift'),
     muscle: 'Cuádriceps, Glúteos',
     tips: ['De pie dentro de la barra hexagonal, agarrando asas y poniéndose de pie.', 'Piensa en empujar el suelo lejos de ti con las piernas, en lugar de "jalar" la barra con la espalda.'],
-    alternatives: [{ name: 'Peso Muerto Convencional con Barra', reason: '' }, { name: 'Peso Muerto Sumo con Barra', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Convencional con Barra' }, { name: 'Peso Muerto Sumo con Barra' }],
   },
   {
     id: 'hiperextensiones',
@@ -1651,7 +1651,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('spine/hyperextension'),
     muscle: 'Erectores Espinales, Glúteos',
     tips: ['Sube solo hasta alinearte con la cadera. No hiperextiendas zona lumbar.'],
-    alternatives: [{ name: 'Curl Nórdico', reason: '' }, { name: 'Peso Muerto Rumano con Barra', reason: '' }],
+    alternatives: [{ name: 'Curl Nórdico' }, { name: 'Peso Muerto Rumano con Barra' }],
   },
   {
     id: 'b-stance-rdl-semi-unilateral',
@@ -1662,7 +1662,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/dumbbell-romanian-deadlift'),
     muscle: 'Isquiotibiales',
     tips: ['Un pie atrás solo de apoyo (pata de cabra), el peso en la pierna delantera.', 'Concentra el 80% del peso en estirar el glúteo de la pierna delantera.'],
-    alternatives: [{ name: 'Peso Muerto Rumano Unilateral (RDL a una pierna)', reason: '' }, { name: 'Buenos Días con Barra (Good Mornings)', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Rumano Unilateral (RDL a una pierna)' }, { name: 'Buenos Días con Barra (Good Mornings)' }],
   },
 
   // ── PANTORRILLAS ──────────────────────────────────────────────────
@@ -1675,7 +1675,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/barbell-standing-calf-raise'),
     muscle: 'Pantorrillas',
     tips: ['Barra en la espalda dentro del rack.', 'Opcional: Coloca un disco de hierro bajo las puntas de tus pies para aumentar el rango de estiramiento.', 'Eleva los talones de manera explosiva y aguanta 1 segundo arriba.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas de Pie con Mancuerna', reason: '' }, { name: 'Elevación de Pantorrillas Sentado', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas de Pie con Mancuerna' }, { name: 'Elevación de Pantorrillas Sentado' }],
   },
   {
     id: 'pantorrillas-mancuerna-pie',
@@ -1686,7 +1686,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/barbell-standing-calf-raise'),
     muscle: 'Pantorrillas',
     tips: ['Sostén una mancuerna pesada con el brazo del mismo lado de la pantorrilla a trabajar.', 'Apóyate con la otra mano en el rack para mantener el equilibrio.', 'Realiza el movimiento de manera unilateral controlando la bajada.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas de Pie con Barra', reason: '' }, { name: 'Elevación de Pantorrillas Sentado', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas de Pie con Barra' }, { name: 'Elevación de Pantorrillas Sentado' }],
   },
   {
     id: 'pantorrillas-maquina-pie',
@@ -1697,7 +1697,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/lever-standing-calf-raise'),
     muscle: 'Pantorrillas',
     tips: ['Fija las almohadillas sólidamente sobre tus hombros. Ejecuta una pausa estricta abajo para forzar la contracción pura del gastrocnemio.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas en Prensa', reason: '' }, { name: 'Elevación con Mancuerna a una Pierna', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas en Prensa' }, { name: 'Elevación con Mancuerna a una Pierna' }],
   },
   {
     id: 'pantorrillas-sentado',
@@ -1708,7 +1708,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/lever-seated-calf-raise'),
     muscle: 'Pantorrillas',
     tips: ['Siéntate en el banco plano.', 'Coloca un bloque o disco bajo la punta de tus pies y pon la barra cargada (o mancuernas pesadas) sobre tus muslos.', 'Eleva los talones aislando de forma perfecta el sóleo.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas de Pie con Barra', reason: '' }, { name: 'Elevación de Pantorrillas de Pie con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas de Pie con Barra' }, { name: 'Elevación de Pantorrillas de Pie con Mancuerna' }],
   },
   {
     id: 'pantorrillas-prensa',
@@ -1719,7 +1719,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/lever-calf-press'),
     muscle: 'Pantorrillas',
     tips: ['En la misma prensa, empujando solo con las puntas de los pies.', 'Crucial: Pausa de 2 segundos en el máximo estiramiento (abajo) para anular el reflejo de Aquiles.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas de Pie en Máquina', reason: '' }, { name: 'Elevación con Mancuerna a una Pierna', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas de Pie en Máquina' }, { name: 'Elevación con Mancuerna a una Pierna' }],
   },
   {
     id: 'pantorrillas-unilateral',
@@ -1730,7 +1730,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/barbell-standing-leg-calf-raise'),
     muscle: 'Pantorrillas',
     tips: ['Sostén la carga del mismo lado de la pierna trabajada. Una excelente alternativa unilateral para corregir asimetrías de fuerza de los tobillos.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas en Prensa', reason: '' }, { name: 'Elevación de Pantorrillas de Pie en Máquina', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas en Prensa' }, { name: 'Elevación de Pantorrillas de Pie en Máquina' }],
   },
   {
     id: 'pantorrillas-sentado-mancuernas',
@@ -1741,7 +1741,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/dumbbell-seated-calf-raise'),
     muscle: 'Pantorrillas',
     tips: ['Coloca una almohadilla o toalla bajo la carga en tus rodillas para evitar dolores estructurales directos. Foco exclusivo en el sóleo.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas Sentado', reason: '' }, { name: 'Elevación de Pantorrillas en Prensa', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas Sentado' }, { name: 'Elevación de Pantorrillas en Prensa' }],
   },
 
   // ── ABDOMEN / CORE / OTROS (orphans del legacy) ───────────────────
@@ -1754,7 +1754,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/power-point-plank'),
     muscle: 'Abdomen',
     tips: ['Mantén una línea recta del talón a la cabeza. Contrae glúteos y abdomen activamente.'],
-    alternatives: [{ name: 'Crunch Abdominal', reason: '' }],
+    alternatives: [{ name: 'Crunch Abdominal' }],
   },
   {
     id: 'crunch-abdominal',
@@ -1765,7 +1765,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/crunch-floor'),
     muscle: 'Abdomen',
     tips: ['Redondea columna torácica activamente. Exhala fuerte al cerrar costillas hacia pelvis.'],
-    alternatives: [{ name: 'Crunch en Polea', reason: '' }, { name: 'Elevación de Piernas', reason: '' }],
+    alternatives: [{ name: 'Crunch en Polea' }, { name: 'Elevación de Piernas' }],
   },
   {
     id: 'crunch-polea',
@@ -1776,7 +1776,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/cable-kneeling-crunch'),
     muscle: 'Abdomen',
     tips: ['Arrodillado frente a la polea alta. Lleva los codos hacia las rodillas redondeando la espalda.'],
-    alternatives: [{ name: 'Crunch Abdominal', reason: '' }, { name: 'Rueda Abdominal', reason: '' }],
+    alternatives: [{ name: 'Crunch Abdominal' }, { name: 'Rueda Abdominal' }],
   },
   {
     id: 'elevacion-piernas',
@@ -1787,7 +1787,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/assisted-lying-leg-raise-with-lateral-throw-down'),
     muscle: 'Abdomen',
     tips: ['Acostado boca arriba, eleva las piernas controladamente sin arquear la espalda baja.'],
-    alternatives: [{ name: 'Elevación de Rodillas Colgado', reason: '' }, { name: 'Crunch Abdominal', reason: '' }],
+    alternatives: [{ name: 'Elevación de Rodillas Colgado' }, { name: 'Crunch Abdominal' }],
   },
   {
     id: 'elevacion-rodillas-colgado',
@@ -1798,7 +1798,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/hanging-leg-raise'),
     muscle: 'Abdomen',
     tips: ['Colgado de la barra, sube las rodillas controladamente hasta el pecho. Evita balancearte.'],
-    alternatives: [{ name: 'Elevación de Piernas', reason: '' }, { name: 'V-Ups', reason: '' }],
+    alternatives: [{ name: 'Elevación de Piernas' }, { name: 'V-Ups' }],
   },
   {
     id: 'rueda-abdominal',
@@ -1809,7 +1809,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/wheel-rollerout'),
     muscle: 'Abdomen',
     tips: ['Rueda hacia adelante manteniendo el core firmísimo. Regresa contrayendo el abdomen sin arquear lumbar.'],
-    alternatives: [{ name: 'Plancha', reason: '' }, { name: 'Crunch en Polea', reason: '' }],
+    alternatives: [{ name: 'Plancha' }, { name: 'Crunch en Polea' }],
   },
   {
     id: 'v-ups',
@@ -1820,7 +1820,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/band-v-up'),
     muscle: 'Abdomen',
     tips: ['Acostado, sube simultáneamente piernas y torso formando una V. Controla la bajada.'],
-    alternatives: [{ name: 'Crunch Abdominal', reason: '' }, { name: 'Elevación de Piernas', reason: '' }],
+    alternatives: [{ name: 'Crunch Abdominal' }, { name: 'Elevación de Piernas' }],
   },
   {
     id: 'bicicleta-abdominal',
@@ -1831,7 +1831,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/air-bike'),
     muscle: 'Abdomen, Oblicuos',
     tips: ['Lleva el codo opuesto a la rodilla alternando. Mantén la zona lumbar pegada al suelo.'],
-    alternatives: [{ name: 'Crunch Abdominal', reason: '' }],
+    alternatives: [{ name: 'Crunch Abdominal' }],
   },
   {
     id: 'dead-bug-bicho-muerto',
@@ -1842,7 +1842,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/dead-bug'),
     muscle: 'Abdomen',
     tips: ['Acostada boca arriba, extendiendo brazo y pierna opuestos alternadamente.', 'Excelente para aplanar el abdomen sin dañar la espalda. La zona lumbar JAMÁS debe despegarse del suelo.'],
-    alternatives: [{ name: 'Plancha Abdominal (Plank)', reason: '' }, { name: 'Bird Dog (en cuadrupedia, alternando brazo y pierna)', reason: '' }],
+    alternatives: [{ name: 'Plancha Abdominal (Plank)' }, { name: 'Bird Dog (en cuadrupedia, alternando brazo y pierna)' }],
   },
   {
     id: 'plancha-lateral',
@@ -1853,7 +1853,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('adductors/side-plank-hip-adduction'),
     muscle: 'Abdomen',
     tips: ['De costado, apoyada en un antebrazo, cuerpo en línea recta.', 'Levanta bien la cadera para trabajar los oblicuos y estabilizar el core.'],
-    alternatives: [{ name: 'Russian Twists (sentada, girando torso)', reason: '' }, { name: 'Plancha Lateral con Elevación de Cadera', reason: '' }],
+    alternatives: [{ name: 'Russian Twists (sentada, girando torso)' }, { name: 'Plancha Lateral con Elevación de Cadera' }],
   },
   {
     id: 'flexiones',
@@ -1864,7 +1864,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/push-up'),
     muscle: 'Pecho, Tríceps',
     tips: ['Línea recta del cuerpo, codos a 45° del torso. Baja el pecho casi al suelo.'],
-    alternatives: [{ name: 'Press de Banca con Mancuernas', reason: '' }, { name: 'Fondos en Banco', reason: '' }],
+    alternatives: [{ name: 'Press de Banca con Mancuernas' }, { name: 'Fondos en Banco' }],
   },
   {
     id: 'pullover-mancuerna',
@@ -1875,7 +1875,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/dumbbell-pullover'),
     muscle: 'Pecho, Espalda',
     tips: ['Acostado en banco con mancuerna sostenida sobre el pecho. Baja por detrás de la cabeza con codos ligeramente flexionados.'],
-    alternatives: [{ name: 'Aperturas con Mancuernas en Banco Plano', reason: '' }, { name: 'Pull Over en Polea', reason: '' }],
+    alternatives: [{ name: 'Aperturas con Mancuernas en Banco Plano' }, { name: 'Pull Over en Polea' }],
   },
   {
     id: 'pullover-polea',
@@ -1886,7 +1886,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/cable-straight-arm-pulldown'),
     muscle: 'Espalda',
     tips: ['Brazos extendidos sosteniendo barra en polea alta. Jala hacia los muslos sin flexionar codos.'],
-    alternatives: [{ name: 'Jalón al Pecho en Polea', reason: '' }, { name: 'Pullover con Mancuerna', reason: '' }],
+    alternatives: [{ name: 'Jalón al Pecho en Polea' }, { name: 'Pullover con Mancuerna' }],
   },
   {
     id: 'curl-muneca',
@@ -1897,7 +1897,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('forearms/barbell-palms-down-wrist-curl-over-a-bench'),
     muscle: 'Antebrazos',
     tips: ['Sentado con antebrazos apoyados en muslos. Flexiona las muñecas hacia arriba controladamente.'],
-    alternatives: [{ name: 'Curl Martillo con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Curl Martillo con Mancuernas' }],
   },
   {
     id: 'farmers-walk',
@@ -1908,7 +1908,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/farmers-walk'),
     muscle: 'Antebrazos, Trapecio, Core',
     tips: ['Carga dos mancuernas pesadas y camina con postura erguida y core firme.'],
-    alternatives: [{ name: 'Encogimientos de Hombros', reason: '' }],
+    alternatives: [{ name: 'Encogimientos de Hombros' }],
   },
   {
     id: 'cargada',
@@ -1919,7 +1919,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-deadlift'),
     muscle: 'Cadena Posterior',
     tips: ['Movimiento olímpico explosivo. Inicia como peso muerto y termina llevando la barra a los hombros.'],
-    alternatives: [{ name: 'Peso Muerto Convencional con Barra', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Convencional con Barra' }],
   },
   {
     id: 'arrancada',
@@ -1930,7 +1930,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/dumbbell-one-arm-snatch'),
     muscle: 'Cadena Posterior',
     tips: ['Movimiento olímpico explosivo: desde el suelo a sobre la cabeza en un solo tirón.'],
-    alternatives: [{ name: 'Cargada de Potencia', reason: '' }],
+    alternatives: [{ name: 'Cargada de Potencia' }],
   },
   {
     id: 'clean-and-jerk',
@@ -1941,7 +1941,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/barbell-clean-and-press'),
     muscle: 'Cadena Posterior, Hombros',
     tips: ['Combinación olímpica: cargada al pecho seguida de empuje explosivo sobre la cabeza.'],
-    alternatives: [{ name: 'Cargada de Potencia', reason: '' }],
+    alternatives: [{ name: 'Cargada de Potencia' }],
   },
   {
     id: 'agarre-dead-hang',
@@ -1952,7 +1952,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('traps/scapular-pull-up'),
     muscle: 'Antebrazos, Espalda',
     tips: ['Cuélgate de la barra durante el máximo tiempo posible. Mejora fuerza de agarre y resistencia escapular.'],
-    alternatives: [{ name: 'Paseo del Granjero', reason: '' }],
+    alternatives: [{ name: 'Paseo del Granjero' }],
   },
   // ── ENTRADAS NUEVAS (agregadas desde la lista del usuario) ──────────
   {
@@ -1964,7 +1964,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/lever-incline-chest-press'),
     muscle: 'Pecho (Superior)',
     tips: ['Mantén el pecho elevado y la zona lumbar con su curvatura natural.', 'Presiona alineando los codos con las fibras claviculares del pectoral sin extender completamente el codo al final para no perder tensión.'],
-    alternatives: [{ name: 'Incline Bench + Olympic Bars (Incline Press)', reason: '' }, { name: 'Chest Press (Máquina)', reason: '' }],
+    alternatives: [{ name: 'Incline Bench + Olympic Bars (Incline Press)' }, { name: 'Chest Press (Máquina)' }],
   },
   {
     id: 'tricep-press-maquina',
@@ -1975,7 +1975,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/lever-overhand-triceps-dip'),
     muscle: 'Tríceps',
     tips: ['Mantén los codos pegados a las costillas o en el plano de la máquina.', 'Enfócate en extender el codo sin utilizar impulso del torso.'],
-    alternatives: [{ name: 'Tricep Press (Máquina - Unilateral)', reason: '' }],
+    alternatives: [{ name: 'Tricep Press (Máquina - Unilateral)' }],
   },
   {
     id: 'ab-crunch-maquina',
@@ -1986,7 +1986,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/lever-seated-crunch'),
     muscle: 'Abdomen',
     tips: ['Inicia el movimiento flexionando la columna dorsal, pensando en acercar el esternón a la pelvis, en lugar de flexionar la cadera.'],
-    alternatives: [{ name: 'Abdominal Crunch (Máquina)', reason: '' }],
+    alternatives: [{ name: 'Abdominal Crunch (Máquina)' }],
   },
   {
     id: 'biceps-curl-maquina',
@@ -1997,7 +1997,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/lever-bicep-curl'),
     muscle: 'Bíceps',
     tips: ['Alinea el eje de rotación de tu codo con el eje de la máquina.', 'Evita flexionar los hombros durante la fase concéntrica.'],
-    alternatives: [{ name: 'Pulley Module (Cable Bicep Curl)', reason: '' }, { name: 'Olympic Bars (Barbell Bicep Curl)', reason: '' }],
+    alternatives: [{ name: 'Pulley Module (Cable Bicep Curl)' }, { name: 'Olympic Bars (Barbell Bicep Curl)' }],
   },
   {
     id: 'row-maquina',
@@ -2008,7 +2008,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/lever-reverse-grip-vertical-row'),
     muscle: 'Dorsal, Romboides',
     tips: ['Ajusta el asiento para que el pecho esté firmemente apoyado.', 'Tracciona llevando los codos perpendicularmente al torso.'],
-    alternatives: [{ name: 'Cable Row', reason: '' }, { name: 'Plate-Loaded Pull Down', reason: '' }],
+    alternatives: [{ name: 'Cable Row' }, { name: 'Plate-Loaded Pull Down' }],
   },
   {
     id: 'hip-thrust-maquina',
@@ -2019,7 +2019,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-glute-bridge'),
     muscle: 'Glúteos',
     tips: ['Asegúrate de que la bisagra principal ocurra en la cadera.', 'Mantén la barbilla metida y la mirada hacia adelante para evitar la hiperextensión lumbar en la parte alta.'],
-    alternatives: [{ name: 'Leg Glute (Máquina)', reason: '' }, { name: 'Hack Squat', reason: '' }],
+    alternatives: [{ name: 'Leg Glute (Máquina)' }, { name: 'Hack Squat' }],
   },
   {
     id: 'leg-glute-maquina',
@@ -2030,7 +2030,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/band-bent-over-hip-extension'),
     muscle: 'Glúteos',
     tips: ['Extiende la cadera con un recorrido completo, apretando el glúteo al final.', 'Mantén el core estable para no usar la zona lumbar en la extensión.'],
-    alternatives: [{ name: 'Hip Thrust Machine', reason: '' }, { name: 'Hip Abductor', reason: '' }],
+    alternatives: [{ name: 'Hip Thrust Machine' }, { name: 'Hip Abductor' }],
   },
   {
     id: 'shoulder-press-maquina-prono',
@@ -2041,7 +2041,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-seated-shoulder-press-parallel-grip'),
     muscle: 'Hombro (Anterior/Medio)',
     tips: ['Empuja ligeramente hacia arriba y adelante usando el agarre prono.', 'Evita arquear excesivamente la zona lumbar; la fuerza debe provenir de la flexión del hombro.'],
-    alternatives: [{ name: 'Shoulder Press (Máquina - Agarre Neutro)', reason: '' }, { name: 'Pulley Module (Cable Lateral Raise)', reason: '' }],
+    alternatives: [{ name: 'Shoulder Press (Máquina - Agarre Neutro)' }, { name: 'Pulley Module (Cable Lateral Raise)' }],
   },
   {
     id: 'shoulder-press-maquina-neutro',
@@ -2052,7 +2052,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-seated-shoulder-press-parallel-grip'),
     muscle: 'Hombro (Anterior)',
     tips: ['Utiliza las asas verticales.', 'Este agarre posiciona tus codos en el plano escapular disminuyendo el estrés articular anterior y aislando el deltoides frontal.'],
-    alternatives: [{ name: 'Shoulder Press (Máquina - Agarre Prono)', reason: '' }],
+    alternatives: [{ name: 'Shoulder Press (Máquina - Agarre Prono)' }],
   },
   {
     id: 'incline-chest-press-maquina-unilateral',
@@ -2063,7 +2063,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/lever-incline-chest-press'),
     muscle: 'Pecho (Superior)',
     tips: ['Trabaja un solo lado a la vez.', 'Sujétate firmemente con el brazo libre para maximizar la estabilidad y presiona cruzando ligeramente la línea media.'],
-    alternatives: [{ name: 'Incline Chest Press (Máquina)', reason: '' }],
+    alternatives: [{ name: 'Incline Chest Press (Máquina)' }],
   },
   {
     id: 'pulley-module-high-cable-chest-crossover',
@@ -2074,7 +2074,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/cable-cross-over-variation'),
     muscle: 'Pecho (Inferior/Aislamiento)',
     tips: ['Ajusta las poleas en la posición alta.', 'Cruza las manos hacia abajo y adelante frente a tu pelvis inferior, manteniendo una ligera flexión de codo constante.'],
-    alternatives: [{ name: 'Chest Fly Machine', reason: '' }],
+    alternatives: [{ name: 'Chest Fly Machine' }],
   },
   {
     id: 'tricep-press-maquina-unilateral',
@@ -2085,7 +2085,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('triceps/lever-overhand-triceps-dip'),
     muscle: 'Tríceps',
     tips: ['Ejecuta el movimiento de forma unilateral para asegurar que cada brazo maneje la misma tensión mecánica sin compensaciones del lado dominante.'],
-    alternatives: [{ name: 'Tricep Press (Máquina)', reason: '' }],
+    alternatives: [{ name: 'Tricep Press (Máquina)' }],
   },
   {
     id: 'cable-row-unilateral',
@@ -2096,7 +2096,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/cable-seated-one-arm-alternate-row'),
     muscle: 'Dorsal',
     tips: ['Siéntate de lado si es necesario para alinear el cable con tus dorsales.', 'Jala llevando el codo pegado al torso hacia tu cadera de manera unilateral.'],
-    alternatives: [{ name: 'Cable Row', reason: '' }, { name: 'Row (Máquina Chest-Supported)', reason: '' }],
+    alternatives: [{ name: 'Cable Row' }, { name: 'Row (Máquina Chest-Supported)' }],
   },
   {
     id: 'biceps-curl-maquina-unilateral',
@@ -2107,7 +2107,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/lever-bicep-curl'),
     muscle: 'Bíceps',
     tips: ['Aísla cada brazo individualmente alineando el codo perfectamente con el pivote de la máquina para evitar asimetrías.'],
-    alternatives: [{ name: 'Biceps Curl (Máquina)', reason: '' }],
+    alternatives: [{ name: 'Biceps Curl (Máquina)' }],
   },
   {
     id: 'leg-press-unilateral',
@@ -2118,7 +2118,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/sled-45-leg-press-side-pov'),
     muscle: 'Cuádriceps',
     tips: ['Coloca un solo pie bajo en la plataforma amplia.', 'Desciende controladamente permitiendo un ROM profundo sin despegar la pelvis del respaldo.'],
-    alternatives: [{ name: 'Leg Press', reason: '' }, { name: 'Hack Squat', reason: '' }],
+    alternatives: [{ name: 'Leg Press' }, { name: 'Hack Squat' }],
   },
   {
     id: 'plate-loaded-pull-down-unilateral',
@@ -2129,7 +2129,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/alternate-lateral-pulldown'),
     muscle: 'Dorsal',
     tips: ['Tracciona de forma unilateral llevando el codo directamente hacia el bolsillo de tu cadera del mismo lado, incrementando la contracción de las fibras ilíacas.'],
-    alternatives: [{ name: 'Plate-Loaded Pull Down', reason: '' }],
+    alternatives: [{ name: 'Plate-Loaded Pull Down' }],
   },
   {
     id: 'pulley-cable-lateral-raise-crossover-detras',
@@ -2140,7 +2140,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/cable-one-arm-lateral-raise'),
     muscle: 'Hombro (Medio)',
     tips: ['Cruza los cables por detrás de tu cuerpo para modificar el perfil de resistencia, maximizando la tensión en el rango medio-acortado del deltoides.'],
-    alternatives: [{ name: 'Pulley Module (Cable Lateral Raise)', reason: '' }],
+    alternatives: [{ name: 'Pulley Module (Cable Lateral Raise)' }],
   },
   {
     id: 'prone-leg-curl-unilateral',
@@ -2151,7 +2151,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('hamstrings/lever-lying-leg-curl'),
     muscle: 'Isquiotibiales',
     tips: ['Aísla cada pierna de forma individual en la camilla prona.', 'Mantén la pelvis presionadas firmemente contra el soporte para evitar balanceos.'],
-    alternatives: [{ name: 'Prone Leg Curl', reason: '' }],
+    alternatives: [{ name: 'Prone Leg Curl' }],
   },
   {
     id: 'hack-squat-rango-completo-profundo',
@@ -2162,7 +2162,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/sled-hack-squat'),
     muscle: 'Cuádriceps',
     tips: ['Aprovecha la máxima estabilidad del carro para descender hasta el límite articular de tus rodillas de manera segura, maximizando la hipertrofia mediada por estiramiento.'],
-    alternatives: [{ name: 'Hack Squat', reason: '' }],
+    alternatives: [{ name: 'Hack Squat' }],
   },
   {
     id: 'leg-extension-unilateral',
@@ -2173,7 +2173,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/lever-leg-extension'),
     muscle: 'Cuádriceps (Aislamiento)',
     tips: ['Extiende una sola pierna manteniendo la dorsiflexión del tobillo.', 'Sostén un segundo arriba para maximizar el reclutamiento del vasto medial.'],
-    alternatives: [{ name: 'Leg Extension', reason: '' }],
+    alternatives: [{ name: 'Leg Extension' }],
   },
 
   // ── VARIANTES CON MODIFICADOR (agarre/stance/tempo) ─────────────────
@@ -2186,7 +2186,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/machine-inner-chest-press'),
     muscle: 'Pecho',
     tips: ['Trabaja un brazo a la vez para igualar la tensión entre lados y eliminar la compensación del lado dominante.', 'Sujétate del asiento con la mano libre para fijar el torso.'],
-    alternatives: [{ name: 'Aperturas en Pec Deck', reason: '' }, { name: 'Cruces de Polea Media/Alta', reason: '' }],
+    alternatives: [{ name: 'Aperturas en Pec Deck' }, { name: 'Cruces de Polea Media/Alta' }],
   },
   {
     id: 'chest-press-maquina-neutro',
@@ -2197,7 +2197,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/machine-inner-chest-press'),
     muscle: 'Pecho',
     tips: ['El agarre neutro (palmas enfrentadas) reduce el estrés en el hombro y desplaza algo de carga al pectoral interno y tríceps.', 'Mantén las escápulas retraídas y deprimidas durante todo el recorrido.'],
-    alternatives: [{ name: 'Press en Máquina Chest Press', reason: '' }, { name: 'Aperturas en Pec Deck', reason: '' }],
+    alternatives: [{ name: 'Press en Máquina Chest Press' }, { name: 'Aperturas en Pec Deck' }],
   },
   {
     id: 'hack-squat-stance-estrecho',
@@ -2208,7 +2208,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/sled-hack-squat'),
     muscle: 'Cuádriceps',
     tips: ['Pies juntos y altos en la plataforma para maximizar el énfasis en el vasto externo (barrido del cuádriceps).', 'Controla la fase excéntrica y desciende profundo sin despegar la cadera del respaldo.'],
-    alternatives: [{ name: 'Sentadilla Hack', reason: '' }, { name: 'Extensión de Piernas', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Hack' }, { name: 'Extensión de Piernas' }],
   },
   {
     id: 'row-maquina-agarre-amplio',
@@ -2219,7 +2219,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/lever-reverse-grip-vertical-row'),
     muscle: 'Dorsal, Romboides',
     tips: ['El agarre amplio prono enfatiza la espalda alta: romboides, trapecio medio y deltoides posterior.', 'Lleva los codos hacia afuera y aprieta las escápulas al final de la tracción.'],
-    alternatives: [{ name: 'Remo en Máquina', reason: '' }, { name: 'Pec Deck Invertido', reason: '' }],
+    alternatives: [{ name: 'Remo en Máquina' }, { name: 'Pec Deck Invertido' }],
   },
   {
     id: 'elevaciones-laterales-polea-leaning',
@@ -2230,7 +2230,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/cable-one-arm-lateral-raise'),
     muscle: 'Hombro (Lateral)',
     tips: ['Inclínate alejándote de la polea sujetándote con la mano libre; esto aumenta el rango y mantiene tensión en el deltoides lateral desde abajo.', 'Sube empujando la mano hacia afuera, no hacia arriba.'],
-    alternatives: [{ name: 'Elevaciones Laterales con Polea', reason: '' }, { name: 'Elevaciones Laterales con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Elevaciones Laterales con Polea' }, { name: 'Elevaciones Laterales con Mancuernas' }],
   },
   {
     id: 'remo-sentado-polea-neutro',
@@ -2241,7 +2241,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('upper-back/cable-seated-row'),
     muscle: 'Espalda',
     tips: ['El agarre neutro (palmas enfrentadas) es el más cómodo para el hombro y carga fuerte el dorsal y la espalda media.', 'Abre el pecho al final de la tracción y evita encorvar la lumbar.'],
-    alternatives: [{ name: 'Remo Sentado en Polea', reason: '' }, { name: 'Remo en Máquina', reason: '' }],
+    alternatives: [{ name: 'Remo Sentado en Polea' }, { name: 'Remo en Máquina' }],
   },
   {
     id: 'plate-loaded-pull-down-neutral',
@@ -2252,7 +2252,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('lats/reverse-grip-machine-lat-pulldown'),
     muscle: 'Espalda',
     tips: ['Máquina cargada por discos con agarre neutro: gran rango y tensión sobre el dorsal con poco estrés en el hombro.', 'Inicia con depresión escapular antes de flexionar codos y lleva los codos hacia los bolsillos.'],
-    alternatives: [{ name: 'Jalón al Pecho en Polea', reason: '' }, { name: 'Jalón al Pecho en Polea (Agarre Neutro)', reason: '' }],
+    alternatives: [{ name: 'Jalón al Pecho en Polea' }, { name: 'Jalón al Pecho en Polea (Agarre Neutro)' }],
   },
   {
     id: 'cruces-polea-baja-alta',
@@ -2263,7 +2263,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/cable-low-fly'),
     muscle: 'Pecho (Superior)',
     tips: ['Poleas en posición baja; sube las manos en arco hacia arriba y al centro para enfatizar el pectoral superior.', 'Mantén una ligera flexión de codos fija durante todo el recorrido.'],
-    alternatives: [{ name: 'Cruces de Polea Media/Alta', reason: '' }, { name: 'Press Inclinado con Barra', reason: '' }],
+    alternatives: [{ name: 'Cruces de Polea Media/Alta' }, { name: 'Press Inclinado con Barra' }],
   },
   {
     id: 'cruces-polea-midline',
@@ -2274,7 +2274,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/cable-middle-fly'),
     muscle: 'Pecho',
     tips: ['Poleas a la altura del pecho; cruza las manos a la línea media del torso para máxima contracción del pectoral.', 'Pecho inflado y codos con flexión constante.'],
-    alternatives: [{ name: 'Cruces de Polea Media/Alta', reason: '' }, { name: 'Aperturas en Pec Deck', reason: '' }],
+    alternatives: [{ name: 'Cruces de Polea Media/Alta' }, { name: 'Aperturas en Pec Deck' }],
   },
   {
     id: 'hip-thrust-maquina-pausado',
@@ -2285,7 +2285,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/barbell-glute-bridge'),
     muscle: 'Glúteos',
     tips: ['Mantén una pausa de 1-2 segundos en la máxima contracción (cadera totalmente extendida) apretando el glúteo.', 'Barbilla metida y mirada al frente para evitar hiperextensión lumbar arriba.'],
-    alternatives: [{ name: 'Hip Thrust en Máquina', reason: '' }, { name: 'Hip Thrust con Barra', reason: '' }],
+    alternatives: [{ name: 'Hip Thrust en Máquina' }, { name: 'Hip Thrust con Barra' }],
   },
   {
     id: 'peso-muerto-rumano-hexagonal',
@@ -2296,7 +2296,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/trap-bar-deadlift'),
     muscle: 'Isquiotibiales, Glúteos',
     tips: ['Patrón de bisagra (no sentadilla): empuja la cadera atrás manteniendo la espalda neutra y las asas pegadas a los costados.', 'La barra hexagonal centra la carga y reduce el estrés lumbar respecto a la barra recta.'],
-    alternatives: [{ name: 'Peso Muerto Rumano con Barra', reason: '' }, { name: 'Peso Muerto Hexagonal', reason: '' }],
+    alternatives: [{ name: 'Peso Muerto Rumano con Barra' }, { name: 'Peso Muerto Hexagonal' }],
   },
 
   // ── ENTRADAS NUEVAS (ejercicios del programa "Fuerza Funcional Adultos Mayores") ──
@@ -2309,7 +2309,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/dumbbell-bench-squat'),
     muscle: 'Cuádriceps, Glúteos',
     tips: ['De pie frente a una silla. Baja controlado hasta sentarte brevemente, luego sube empujando con los talones.', 'Mantén el pecho erguido y las rodillas alineadas con los pies.'],
-    alternatives: [{ name: 'Sentadilla Goblet con Mancuerna', reason: '' }, { name: 'Sentadilla con Barra', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Goblet con Mancuerna' }, { name: 'Sentadilla con Barra' }],
   },
   {
     id: 'press-hombros-mancuernas-sentado',
@@ -2320,7 +2320,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-seated-shoulder-press'),
     muscle: 'Hombro (Anterior)',
     tips: ['Sentado en banco con soporte vertical. Empuja las mancuernas arriba sin chocarlas.', 'Controla la bajada hasta la altura de los oídos.'],
-    alternatives: [{ name: 'Press de Hombros en Máquina', reason: '' }, { name: 'Press Arnold Sentado', reason: '' }],
+    alternatives: [{ name: 'Press de Hombros en Máquina' }, { name: 'Press Arnold Sentado' }],
   },
   {
     id: 'flexiones-pared',
@@ -2331,7 +2331,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/push-up-wall'),
     muscle: 'Pecho, Tríceps',
     tips: ['Apoya las manos en la pared a la altura de los hombros. Inclina el cuerpo y baja acercando el pecho a la pared.', 'Excelente para principiantes o como calentamiento.'],
-    alternatives: [{ name: 'Flexiones', reason: '' }, { name: 'Flexiones Inclinadas (con apoyo en silla)', reason: '' }],
+    alternatives: [{ name: 'Flexiones' }, { name: 'Flexiones Inclinadas (con apoyo en silla)' }],
   },
   {
     id: 'elevacion-talones-pie-sin-maquina',
@@ -2342,7 +2342,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('calves/dumbbell-standing-calf-raise'),
     muscle: 'Pantorrillas',
     tips: ['De pie, eleva los talones contrayendo las pantorrillas. Aguanta 1 segundo arriba.', 'Puedes apoyarte en una pared para mantener el equilibrio.'],
-    alternatives: [{ name: 'Elevación de Pantorrillas de Pie en Máquina', reason: '' }, { name: 'Elevación de Pantorrillas Sentado', reason: '' }],
+    alternatives: [{ name: 'Elevación de Pantorrillas de Pie en Máquina' }, { name: 'Elevación de Pantorrillas Sentado' }],
   },
   {
     id: 'curl-biceps-mancuernas-sentado',
@@ -2353,7 +2353,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('biceps/dumbbell-seated-inner-biceps-curl'),
     muscle: 'Bíceps',
     tips: ['Sentado en un banco, sostén una mancuerna en cada mano.', 'Flexiona un brazo a la vez rotando la muñeca (supinación).', 'Controla la bajada evitando balanceos.'],
-    alternatives: [{ name: 'Curl Alterno con Mancuernas', reason: '' }, { name: 'Curl con Barra EZ', reason: '' }],
+    alternatives: [{ name: 'Curl Alterno con Mancuernas' }, { name: 'Curl con Barra EZ' }],
   },
   {
     id: 'step-ups-sin-peso',
@@ -2364,7 +2364,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/dumbbell-step-up'),
     muscle: 'Cuádriceps, Glúteos',
     tips: ['Sube a un cajón o escalón empujando con toda la planta del pie.', 'Controla el descenso de forma lenta (3 segundos).', 'No te impulses con la pierna de abajo.'],
-    alternatives: [{ name: 'Step-Ups a Cajón con Mancuernas', reason: '' }, { name: 'Zancadas con Mancuernas', reason: '' }],
+    alternatives: [{ name: 'Step-Ups a Cajón con Mancuernas' }, { name: 'Zancadas con Mancuernas' }],
   },
   {
     id: 'elevaciones-frontales-sentado',
@@ -2375,7 +2375,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('delts/dumbbell-seated-front-raise'),
     muscle: 'Hombro (Anterior)',
     tips: ['Sentado en un banco con respaldo. Eleva las mancuernas al frente alternadamente.', 'Controla la bajada para evitar inercia.'],
-    alternatives: [{ name: 'Elevaciones Frontales con Mancuernas', reason: '' }, { name: 'Press Militar con Barra', reason: '' }],
+    alternatives: [{ name: 'Elevaciones Frontales con Mancuernas' }, { name: 'Press Militar con Barra' }],
   },
   {
     id: 'bicicleta-estacionaria',
@@ -2386,7 +2386,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('cardio/stationary-bike-run-v-3'),
     muscle: 'Cardio, Cuádriceps, Glúteos',
     tips: ['Mantén la espalda recta y las manos firmes en el manillar manteniendo un ritmo constante.', 'Ajusta el asiento a la altura de tu cadera para evitar tensión en las rodillas.'],
-    alternatives: [{ name: 'Bicicleta Abdominal', reason: '' }],
+    alternatives: [{ name: 'Bicicleta Abdominal' }],
   },
   {
     id: 'caminadora',
@@ -2397,7 +2397,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('cardio/walking-on-incline-treadmill'),
     muscle: 'Cardio, Cuádriceps, Glúteos',
     tips: ['Comienza con un calentamiento caminando a baja velocidad e incrementa de forma progresiva.', 'Mantén un ritmo constante y una postura erguida sin agarrarte de los pasamanos.'],
-    alternatives: [{ name: 'Bicicleta Estacionaria', reason: '' }],
+    alternatives: [{ name: 'Bicicleta Estacionaria' }],
   },
   {
     id: 'curl-muneca-mancuerna',
@@ -2408,7 +2408,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('forearms/dumbbell-seated-palms-up-wrist-curl'),
     muscle: 'Antebrazos',
     tips: ['Apoya el antebrazo en el muslo con la palma hacia arriba y flexiona la muñeca hacia el techo.', 'Mueve solo la muñeca, manteniendo el antebrazo fijo.'],
-    alternatives: [{ name: 'Curl de Muñeca', reason: '' }],
+    alternatives: [{ name: 'Curl de Muñeca' }],
   },
   {
     id: 'flexiones-rodillas',
@@ -2419,7 +2419,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/incline-push-up'),
     muscle: 'Pecho, Tríceps, Hombro (Anterior)',
     tips: ['Apoya las rodillas en el suelo y mantén el core firme bajando el pecho hacia el suelo.', 'Mantén el cuerpo alineado desde las rodillas hasta la cabeza.'],
-    alternatives: [{ name: 'Flexiones', reason: '' }, { name: 'Flexiones en Pared', reason: '' }],
+    alternatives: [{ name: 'Flexiones' }, { name: 'Flexiones en Pared' }],
   },
   {
     id: 'pallof-press',
@@ -2430,7 +2430,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('abs/band-horizontal-pallof-press'),
     muscle: 'Core',
     tips: ['De pie con la polea al costado, extiende los brazos frente al pecho resistiendo la rotación del torso.', 'Aprieta los glúteos y el core evitando girar la cadera.'],
-    alternatives: [{ name: 'Plancha Abdominal', reason: '' }],
+    alternatives: [{ name: 'Plancha Abdominal' }],
   },
   {
     id: 'prensa-piernas-rango-limitado',
@@ -2441,7 +2441,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('glutes/sled-45-leg-press'),
     muscle: 'Cuádriceps',
     tips: ['Baja solo hasta un rango medio sin forzar la profundidad, manteniendo tensión constante en el cuádriceps.', 'No bloquees las rodillas arriba y controla el movimiento en ambos sentidos.'],
-    alternatives: [{ name: 'Prensa de Piernas', reason: '' }, { name: 'Sentadilla Hack', reason: '' }],
+    alternatives: [{ name: 'Prensa de Piernas' }, { name: 'Sentadilla Hack' }],
   },
   {
     id: 'press-inclinado-mancuernas-rango-limitado',
@@ -2452,7 +2452,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('pectorals/dumbbell-incline-alternate-press'),
     muscle: 'Pecho (Superior)',
     tips: ['Baja las mancuernas hasta un rango medio sin llevar los codos demasiado abajo, manteniendo tensión en el pecho.', 'Controla el descenso y sube sin bloquear los codos.'],
-    alternatives: [{ name: 'Press Inclinado con Mancuernas', reason: '' }, { name: 'Press Inclinado con Barra', reason: '' }],
+    alternatives: [{ name: 'Press Inclinado con Mancuernas' }, { name: 'Press Inclinado con Barra' }],
   },
   {
     id: 'sentadilla-goblet-rango-limitado',
@@ -2463,7 +2463,7 @@ export const EXERCISE_DICTIONARY = [
     gif: _GIF('quads/dumbbell-goblet-squat'),
     muscle: 'Cuádriceps',
     tips: ['Realiza la sentadilla hasta un rango medio sin llegar a la profundidad completa, manteniendo tensión en el cuádriceps.', 'Sostén la carga pegada al esternón y mantén el torso vertical.'],
-    alternatives: [{ name: 'Sentadilla Goblet con Mancuerna', reason: '' }, { name: 'Sentadilla Frontal con Barra', reason: '' }],
+    alternatives: [{ name: 'Sentadilla Goblet con Mancuerna' }, { name: 'Sentadilla Frontal con Barra' }],
   },
 ]
 

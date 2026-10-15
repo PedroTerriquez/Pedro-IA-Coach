@@ -23,6 +23,7 @@
     trash: { d: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>', w: 1.9 },
     spark: { d: '<path d="M12 2.5l2.1 6.2a2 2 0 001.2 1.2l6.2 2.1-6.2 2.1a2 2 0 00-1.2 1.2L12 21.5l-2.1-6.2a2 2 0 00-1.2-1.2L2.5 12l6.2-2.1a2 2 0 001.2-1.2z"/>', fill: true },
     send: { d: '<path d="M12 19V5M6 11l6-6 6 6"/>', w: 2.3 },
+    pen: { d: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>', w: 1.9 },
     save: { d: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/>', w: 2.1 },
     // Kept from the old set for the views that still use them
     pencil: { d: '<path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>' },

@@ -83,7 +83,7 @@ AGENTS.md                ← This file
 | `gifUrl` | string | Optional, editable |
 | `dictId` | string | Optional FK → dictionary entry id (set by Normalizar) |
 | `tips` | string[] | Form cue list |
-| `alternatives` | { name, reason }[] | |
+| `alternatives` | { name }[] | `reason` dropped 2026-10-14; `getExercise(s)` strips it from old data |
 
 ### `exerciseLogs`
 | Field | Type | Notes |

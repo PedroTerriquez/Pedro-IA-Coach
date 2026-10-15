@@ -14,9 +14,9 @@
   import IconButton from './IconButton.svelte'
   import Button from './Button.svelte'
   import Icon from './Icon.svelte'
-  import ExerciseListItem, { type ExerciseEditKind } from './ExerciseListItem.svelte'
+  import ExerciseListItem from './ExerciseListItem.svelte'
+  import ExerciseCard from './ExerciseCard.svelte'
   import EditExerciseSheet, { type ExerciseEdits } from './EditExerciseSheet.svelte'
-  import ExerciseTipsSheet from './ExerciseTipsSheet.svelte'
   import NewExerciseSheet from './NewExerciseSheet.svelte'
   import ExerciseImporter from './ExerciseImporter.svelte'
 
@@ -29,10 +29,7 @@
 
   let query = $state('')
   let expandedId = $state<string | null>(null)
-  let selected = $state<Exercise | null>(null)
-  let datosOpen = $state(false)
-  let listOpen = $state(false)
-  let listKind = $state<'consejos' | 'alternativas'>('consejos')
+  let editOpen = $state(false)
   let newOpen = $state(false)
   let newName = $state('')
   let importer: ExerciseImporter | null = $state(null)
@@ -44,7 +41,8 @@
 
   let q = $derived(query.trim().toLowerCase())
   let filtered = $derived(q ? exercises.filter(ex => matches(ex, q)) : exercises)
-  let muscles = $derived([...new Set(exercises.map(e => muscleLabel(e.muscle)).filter(Boolean))].slice(0, 8))
+  let muscles = $derived([...new Set(exercises.map(e => muscleLabel(e.muscle)).filter(Boolean))])
+  let selected = $derived(exercises.find(e => e.id === expandedId) ?? null)
   let logCount = $derived(selected ? logs.filter(l => l.exerciseId === selected!.id).length : 0)
 
   function capitalize(s: string): string {
@@ -55,36 +53,22 @@
     expandedId = expandedId === id ? null : id
   }
 
-  function edit(ex: Exercise, kind: ExerciseEditKind) {
-    selected = ex
-    if (kind === 'datos') { datosOpen = true; return }
-    listKind = kind
-    listOpen = true
-  }
-
-  async function update(patch: Partial<Exercise>, message: string) {
+  // The card stays open with the new data
+  async function save(edits: ExerciseEdits) {
     if (!selected) return
-    await Storage.saveExercise({ ...$state.snapshot(selected), ...patch })
-    toast.show(message)
+    await Storage.patchExercise(selected.id, $state.snapshot(edits) as ExerciseEdits)
+    editOpen = false
+    toast.show('Ejercicio actualizado')
     onchanged()
-  }
-
-  async function saveDatos(edits: ExerciseEdits) {
-    await update(edits, 'Ejercicio actualizado')
-    datosOpen = false
-  }
-
-  async function saveList(patch: Partial<Exercise>) {
-    await update(patch, listKind === 'consejos' ? 'Consejos guardados' : 'Alternativas guardadas')
-    listOpen = false
   }
 
   async function remove() {
     if (!selected) return
+    const name = selected.name
     await Storage.deleteExercise(selected.id)
-    datosOpen = false
+    editOpen = false
     expandedId = null
-    toast.show('Ejercicio eliminado')
+    toast.show(`«${name}» eliminado`, false, 3000)
     onchanged()
   }
 
@@ -124,7 +108,16 @@
   {:else}
     <Stack gap={8}>
       {#each filtered as ex (ex.id)}
-        <ExerciseListItem exercise={ex} expanded={expandedId === ex.id} ontoggle={toggle} onedit={(kind) => edit(ex, kind)} />
+        {#if expandedId === ex.id}
+          <ExerciseCard
+            exercise={ex}
+            {exercises}
+            onclose={() => expandedId = null}
+            onedit={() => editOpen = true}
+          />
+        {:else}
+          <ExerciseListItem exercise={ex} dimmed={expandedId !== null} ontoggle={toggle} />
+        {/if}
       {/each}
     </Stack>
   {/if}
@@ -141,9 +134,8 @@
   </NextStepDock>
 </YouScreen>
 
-<EditExerciseSheet bind:open={datosOpen} exercise={selected} deletable {logCount} onsave={saveDatos} ondelete={remove} />
-<ExerciseTipsSheet bind:open={listOpen} exercise={selected} kind={listKind} onsave={saveList} />
-<NewExerciseSheet bind:open={newOpen} initialName={newName} {muscles} onsave={create} />
+<EditExerciseSheet bind:open={editOpen} exercise={selected} {exercises} {muscles} {logCount} onsave={save} ondelete={remove} />
+<NewExerciseSheet bind:open={newOpen} initialName={newName} muscles={muscles.slice(0, 8)} onsave={create} />
 <ExerciseImporter bind:this={importer} {onchanged} />
 
 <style>

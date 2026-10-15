@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.84'
-const _VER_DESC = 'iOS: sin zoom automático al escribir en el chat e inputs'
-const _VER_TIME = '2026-10-14 17:39'
+const _VER_BASE = 'v2.85'
+const _VER_DESC = 'Ejercicios: editor completo, tarjeta destacada, alternativas con foto, sin motivo'
+const _VER_TIME = '2026-10-14 20:21'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

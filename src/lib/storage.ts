@@ -1,5 +1,5 @@
 import { getAll, get, put, del, getByIndex, generateId } from './db'
-import type { Exercise, ExerciseLog, ExerciseLogBlock, GymSession, Program, Settings } from './types'
+import type { Alternative, Exercise, ExerciseLog, ExerciseLogBlock, GymSession, Program, Settings } from './types'
 
 import { findExerciseEntry, findExerciseEntryFuzzy } from '$lib/data/exercise-dictionary'
 import { mondayOf } from '$lib/calendar-utils'
@@ -54,16 +54,33 @@ export async function restoreFromBackup(): Promise<void> {
 }
 
 // ── Exercises ──
+/** Only the name: drops the old `reason` (and anything else) from stored or imported data */
+export function cleanAlternatives(alts: { name: string }[] | undefined): Alternative[] {
+  return (alts || []).map(a => ({ name: a.name }))
+}
+
+// Exercises saved before 2026-10-14 still carry `reason`; it goes away on read and on the next save
+function cleanExercise(ex: Exercise): Exercise {
+  return { ...ex, alternatives: cleanAlternatives(ex.alternatives) }
+}
+
 export async function getExercises(): Promise<Exercise[]> {
-  return getAll<Exercise>('exercises')
+  return (await getAll<Exercise>('exercises')).map(cleanExercise)
 }
 
 export async function getExercise(id: string): Promise<Exercise | undefined> {
-  return get<Exercise>('exercises', id)
+  const ex = await get<Exercise>('exercises', id)
+  return ex && cleanExercise(ex)
 }
 
 export async function saveExercise(exercise: Exercise): Promise<IDBValidKey> {
   return put('exercises', exercise)
+}
+
+/** Merge `patch` onto the stored exercise (not a possibly stale copy) */
+export async function patchExercise(id: string, patch: Partial<Exercise>): Promise<void> {
+  const current = await getExercise(id)
+  if (current) await saveExercise({ ...current, ...patch, id })
 }
 
 export async function deleteExercise(id: string): Promise<void> {
@@ -132,7 +149,7 @@ export async function findOrCreateExerciseByName(name: string, muscle: string, o
     id: await generateId(), name, dictId: dictId || undefined,
     muscle: muscle || dictEntry?.muscle || '', imgUrl, gifUrl,
     tips: dictEntry?.tips ? [...dictEntry.tips] : [],
-    alternatives: dictEntry?.alternatives ? dictEntry.alternatives.map((a: any) => ({ ...a })) : []
+    alternatives: cleanAlternatives(dictEntry?.alternatives)
   }
   await put('exercises', exercise)
   return exercise
@@ -326,7 +343,7 @@ export async function _assignDictIdsAndNormalize(exercises: Exercise[], force: b
       ex.tips = [...dictEntry.tips]; changed = true
     }
     if ((force || !ex.alternatives || ex.alternatives.length === 0) && dictEntry.alternatives && dictEntry.alternatives.length > 0) {
-      ex.alternatives = dictEntry.alternatives.map((a: any) => ({ ...a })); changed = true
+      ex.alternatives = cleanAlternatives(dictEntry.alternatives); changed = true
     }
     if (ex.alternatives && ex.alternatives.length > 0) {
       for (const alt of ex.alternatives) {
@@ -477,7 +494,7 @@ export async function importExercisesKeepingExisting(data: unknown): Promise<{ a
   for (const item of list) {
     const name = item.name.trim().toLowerCase()
     if ((item.id && ids.has(item.id)) || names.has(name)) continue
-    const ex: Exercise = { imgUrl: '', gifUrl: '', tips: [], alternatives: [], muscle: '', ...item, id: item.id || await generateId() }
+    const ex: Exercise = { imgUrl: '', gifUrl: '', tips: [], muscle: '', ...item, alternatives: cleanAlternatives(item.alternatives), id: item.id || await generateId() }
     await put('exercises', ex)
     ids.add(ex.id)
     names.add(name)

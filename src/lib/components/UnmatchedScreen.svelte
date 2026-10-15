@@ -3,6 +3,7 @@
   import * as Storage from '$lib/storage'
   import { toast } from '$lib/stores/ui'
   import { plural } from '$lib/program-utils'
+  import { muscleLabel } from '$lib/exercise-utils'
   import YouScreen from './YouScreen.svelte'
   import SubpageHeader from './SubpageHeader.svelte'
   import Stack from './Stack.svelte'
@@ -18,6 +19,7 @@
   } = $props()
 
   let list = $derived(exercises.filter(e => names.includes(e.name)))
+  let muscles = $derived([...new Set(exercises.map(e => muscleLabel(e.muscle)).filter(Boolean))])
   let selected = $state<Exercise | null>(null)
   let open = $state(false)
 
@@ -49,4 +51,4 @@
   </Stack>
 </YouScreen>
 
-<EditExerciseSheet bind:open exercise={selected} onsave={save} />
+<EditExerciseSheet bind:open exercise={selected} {exercises} {muscles} onsave={save} />

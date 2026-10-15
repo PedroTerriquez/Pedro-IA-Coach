@@ -25,7 +25,6 @@
 
   interface Alternative {
     name: string
-    reason: string
     muscle?: string
   }
 

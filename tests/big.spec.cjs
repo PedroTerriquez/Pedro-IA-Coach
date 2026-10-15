@@ -1387,7 +1387,9 @@ test.describe('You — Datos tab', () => {
     await subscreen.locator('[data-component="ExerciseListItem"]', { hasText: 'Ejercicio Inventado X7' }).click()
     const editSheet = page.locator('#edit-exercise-sheet')
     await expect(editSheet).toBeVisible()
-    await editSheet.getByRole('button', { name: 'Cancelar' }).click()
+    // Changed 2026-10-14 with Tú · Nuevo 03 (approved by Pedro): «Cancelar»
+    // under Guardar is gone; ✕ closes without saving (same promise).
+    await editSheet.getByRole('button', { name: 'Cerrar' }).click()
     await expect(editSheet).toHaveCount(0)
     await page.getByRole('button', { name: 'Copia de seguridad', exact: true }).click()
     await expect(page.locator('#you-copia')).toBeVisible()
@@ -1446,22 +1448,25 @@ test.describe('You — Ejercicios tab CRUD', () => {
     const newItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra' })
     await expect(newItem).toBeVisible()
 
-    // Edit it (Datos)
+    // Edit it. Changed 2026-10-14 with Tú · Nuevo 03 (approved by Pedro): it
+    // was the «Datos» button of the open row. Same promise — edit the name,
+    // then delete after a confirmation from that same editor — now from the pencil.
     await newItem.locator('.exercise-toggle').click()
     await page.waitForTimeout(300)
-    await newItem.getByRole('button', { name: 'Datos' }).click()
+    const card = page.locator('[data-component="ExerciseCard"]')
+    await card.getByRole('button', { name: 'Editar ejercicio' }).click()
     const editSheet = page.locator('#edit-exercise-sheet')
     await editSheet.getByLabel('Nombre').fill('Remo con Barra (editado)')
     await editSheet.getByRole('button', { name: 'Guardar' }).click()
     await page.waitForTimeout(400)
-    const editedItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra (editado)' })
-    await expect(editedItem).toBeVisible()
+    await expect(card).toContainText('Remo con Barra (editado)')
 
-    // Delete it — still open from the edit step above; the sheet asks first
-    await editedItem.getByRole('button', { name: 'Datos' }).click()
+    // Delete it — the card stays open after saving; the editor asks first
+    await card.getByRole('button', { name: 'Editar ejercicio' }).click()
     await editSheet.getByRole('button', { name: 'Eliminar ejercicio' }).click()
-    await expect(editSheet).toContainText('¿Eliminar «Remo con Barra (editado)»?')
-    await editSheet.getByRole('button', { name: 'Eliminar', exact: true }).click()
+    const deleteSheet = page.locator('#delete-exercise-sheet')
+    await expect(deleteSheet).toContainText('¿Eliminar «Remo con Barra (editado)»?')
+    await deleteSheet.getByRole('button', { name: 'Eliminar', exact: true }).click()
     await page.waitForTimeout(400)
     await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
   })
@@ -3186,7 +3191,11 @@ test.describe('Today — Alternative exercise swap', () => {
     await expect(altCards).toHaveCount(2)
     const dumbbellCard = altCards.filter({ hasText: 'Mancuernas' })
     await expect(dumbbellCard).toBeVisible()
-    await expect(page.locator('[data-component="AlternativesTab"]')).toContainText('activa estabilizadores')
+    // Changed 2026-10-14 (approved by Pedro): it also expected the alternative's
+    // reason («activa estabilizadores»); `reason` was dropped from the model, so
+    // an alternative is its name and photo.
+    await expect(page.locator('[data-component="AlternativesTab"]')).not.toContainText('activa estabilizadores')
+    await expect(dumbbellCard.locator('img')).toHaveAttribute('src', /.+/)
 
     // ── Step 3: Selecting one swaps the sheet's whole identity and jumps to Registrar ──
     await dumbbellCard.click()
@@ -4821,5 +4830,130 @@ test.describe('iOS — el teclado no hace zoom al escribir', () => {
     await page.goto('today')
     // iOS Safari zooms into any focused field under 16px; maximum-scale=1 stops it (pinch-zoom still works on iOS)
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /maximum-scale=1/)
+  })
+})
+
+test.describe('Tú — Ejercicios: un editor para todo (Nuevo 03)', () => {
+  test('la tarjeta muestra, el editor cambia nombre, músculo, consejos y alternativas, y eliminar avisa los registros', async ({ page }) => {
+    test.setTimeout(60000)
+    const errors = []
+    page.on('pageerror', (e) => errors.push(e.message))
+
+    await page.goto('you')
+    await page.waitForTimeout(400)
+    await seedIndexedDB(page, {
+      exercises: [
+        // Saved before `reason` was dropped from the model
+        { id: 'ex-curl', name: 'Curl con Barra EZ', muscle: 'Biceps', imgUrl: '', gifUrl: '', tips: ['Codos pegados', 'Baja en 3 segundos'], alternatives: [{ name: 'Curl Martillo', reason: 'Más braquial' }] },
+        { id: 'ex-jalon', name: 'Jalón al Pecho', muscle: 'Back', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      ],
+      exerciseLogs: [
+        { id: 'l1', exerciseId: 'ex-curl', date: '2026-10-01', weight: 20, units: 'kg' },
+        { id: 'l2', exerciseId: 'ex-curl', date: '2026-10-03', weight: 22, units: 'kg' },
+      ],
+      settings: { id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg', accentColor: '#d4ff3a', language: 'es', onboarded: true },
+    })
+    await page.reload()
+    await page.waitForTimeout(800)
+    await page.locator('#you-row-ejercicios').click()
+
+    // 1. The open card only shows: tips, and alternatives as photo + name (no reason)
+    await page.locator('[data-component="ExerciseListItem"]', { hasText: 'Curl con Barra EZ' }).locator('.exercise-toggle').click()
+    const card = page.locator('[data-component="ExerciseCard"]')
+    await expect(card).toContainText('Codos pegados')
+    const altCard = card.locator('[data-component="ExerciseMiniCard"]', { hasText: 'Curl Martillo' })
+    await expect(altCard.locator('img')).toHaveAttribute('src', /.+/)
+    await expect(card).not.toContainText('Más braquial')
+    await expect(card.locator('input')).toHaveCount(0)
+
+    // 2. The pencil opens the editor with every field
+    await card.getByRole('button', { name: 'Editar ejercicio' }).click()
+    const editSheet = page.locator('#edit-exercise-sheet')
+    await expect(editSheet.getByLabel('Nombre')).toHaveValue('Curl con Barra EZ')
+    await expect(editSheet.getByRole('button', { name: 'Bíceps' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(editSheet).toContainText('Del diccionario')
+    await expect(editSheet.locator('[data-component="TipsEditor"] input')).toHaveCount(2)
+    await expect(editSheet.locator('[data-component="AlternativesEditor"]')).toContainText('Curl Martillo')
+    await expect(editSheet.getByRole('button', { name: 'Eliminar ejercicio' })).toBeVisible()
+
+    // 3. Emptying the name: error and Guardar disabled (not before)
+    await expect(editSheet).not.toContainText('Ponle un nombre.')
+    await editSheet.getByLabel('Nombre').fill('')
+    await expect(editSheet).toContainText('Ponle un nombre.')
+    await expect(editSheet.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await editSheet.getByLabel('Nombre').fill('Curl EZ')
+
+    // 4. Muscle by search (an unknown one offers «Añadir»), edit / add / remove tips
+    await page.locator('#muscle-search').fill('antebr')
+    await expect(editSheet.getByRole('button', { name: 'Añadir «Antebr»' })).toBeVisible()
+    await page.locator('#muscle-search').fill('trí')
+    await expect(editSheet.locator('[data-component="MusclePicker"] [data-component="FilterChip"]')).toHaveText(['Tríceps'])
+    await editSheet.getByRole('button', { name: 'Tríceps' }).click()
+    await expect(page.locator('#muscle-search')).toHaveValue('')
+
+    // Image: «Pegar URL» shows the field; the thumbnail follows; «Volver a la del diccionario» undoes
+    const imageField = editSheet.locator('[data-component="ImageField"]')
+    await imageField.getByRole('button', { name: 'Pegar URL' }).click()
+    await imageField.locator('input').fill('https://example.com/mi-curl.jpg')
+    await expect(imageField.locator('img')).toHaveAttribute('src', 'https://example.com/mi-curl.jpg')
+    await imageField.getByRole('button', { name: 'Volver a la del diccionario' }).click()
+    await expect(imageField).toContainText('Del diccionario')
+    await imageField.getByRole('button', { name: 'Pegar URL' }).click()
+    await imageField.locator('input').fill('https://example.com/mi-curl.jpg')
+    const tipInputs = editSheet.locator('[data-component="TipsEditor"] input')
+    await tipInputs.first().fill('Codos pegados al torso')
+    await editSheet.getByRole('button', { name: 'Añadir consejo' }).click()
+    await expect(tipInputs.nth(2)).toBeFocused()
+    await tipInputs.nth(2).fill('Sin balancear la espalda')
+    await editSheet.getByRole('button', { name: 'Quitar consejo' }).nth(1).click()
+    await expect(tipInputs).toHaveCount(2)
+
+    // 5. Alternatives: search the dictionary first (the ones already added say «Ya está»), or type by hand
+    await editSheet.getByRole('button', { name: 'Añadir alternativa' }).click()
+    const altSheet = page.locator('#alt-search-sheet')
+    await page.locator('#alt-search').fill('martillo')
+    await altSheet.getByRole('button', { name: /Curl Martillo con Mancuernas/ }).click()
+    await expect(altSheet).toHaveCount(0)
+    await editSheet.getByRole('button', { name: 'Añadir alternativa' }).click()
+    await page.locator('#alt-search').fill('martillo')
+    await expect(altSheet.getByRole('button', { name: /Curl Martillo con Mancuernas.*Ya está/ })).toBeDisabled()
+    await page.locator('#alt-search').fill('curl araña')
+    await altSheet.getByRole('button', { name: 'Escribir «curl araña» a mano' }).click()
+    await editSheet.getByRole('button', { name: 'Quitar alternativa' }).first().click()
+    await expect(editSheet.locator('[data-component="ExerciseMiniCard"]')).toHaveCount(2)
+
+    // 6. Guardar: the card stays open with the new data, and it survives a reload
+    await editSheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(editSheet).toHaveCount(0)
+    await expect(card).toContainText('Curl EZ')
+    await expect(card).toContainText('Tríceps')
+    await expect(card.locator('.thumb')).toHaveAttribute('src', 'https://example.com/mi-curl.jpg')
+    await page.reload()
+    await page.waitForTimeout(800)
+    await page.locator('#you-row-ejercicios').click()
+    await page.locator('[data-component="ExerciseListItem"]', { hasText: 'Curl EZ' }).locator('.exercise-toggle').click()
+    await expect(card).toContainText('Codos pegados al torso')
+    await expect(card).toContainText('Sin balancear la espalda')
+    await expect(card).not.toContainText('Baja en 3 segundos')
+    await expect(card.locator('[data-component="ExerciseMiniCard"]')).toHaveText(['Curl Martillo con Mancuernas', 'curl araña'])
+    const stored = await page.evaluate(() => new Promise((resolve) => {
+      const req = indexedDB.open('coach-pedro-ai')
+      req.onsuccess = () => {
+        const get = req.result.transaction('exercises').objectStore('exercises').get('ex-curl')
+        get.onsuccess = () => resolve(get.result.alternatives)
+      }
+    }))
+    expect(stored.every((a) => !('reason' in a))).toBe(true)
+
+    // 7. Delete (red, in the editor) says how many logs go with it
+    await card.getByRole('button', { name: 'Editar ejercicio' }).click()
+    await editSheet.getByRole('button', { name: 'Eliminar ejercicio' }).click()
+    const del = page.locator('#delete-exercise-sheet')
+    await expect(del).toContainText('Se borran también sus 2 registros del historial. No se puede deshacer.')
+    await del.getByRole('button', { name: 'Eliminar', exact: true }).click()
+    await expect(page.locator('[data-component="Toast"]')).toContainText('«Curl EZ» eliminado')
+    await expect(page.locator('#ex-count')).toHaveText('1 ejercicio')
+
+    expect(errors).toEqual([])
   })
 })

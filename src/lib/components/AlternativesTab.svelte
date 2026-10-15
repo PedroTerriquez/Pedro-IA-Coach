@@ -2,7 +2,7 @@
   import { resolveExerciseMedia, getExerciseDisplayName, searchExerciseEntries, normalizeExerciseName } from '$lib/data/exercise-dictionary'
   import Icon from './Icon.svelte'
 
-  type Alt = { name: string; reason: string; muscle?: string }
+  type Alt = { name: string; muscle?: string }
 
   let {
     alternatives = [],
@@ -30,7 +30,7 @@
   let results = $derived<Alt[]>(searching
     ? searchExerciseEntries(query)
         .filter(e => normalizeExerciseName(e.es) !== normalizeExerciseName(currentName))
-        .map(e => ({ name: e.es, reason: e.muscle, muscle: e.muscle }))
+        .map(e => ({ name: e.es, muscle: e.muscle }))
     : [])
   let shown = $derived(searching ? results : alternatives)
 
@@ -99,7 +99,7 @@
         </div>
         <div class="alt-info">
           <div class="alt-name">{displayName(alt)}</div>
-          {#if alt.reason}<div class="alt-reason">{alt.reason}</div>{/if}
+          {#if alt.muscle}<div class="alt-muscle">{alt.muscle}</div>{/if}
         </div>
         <div class="alt-chevron" style="color:{accent}">
           <Icon name="swap" size={15} color={accent} />
@@ -265,7 +265,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .alt-reason {
+  .alt-muscle {
     margin-top: 2px;
     font-family: var(--font-sans);
     font-size: 12px;

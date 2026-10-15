@@ -10,7 +10,7 @@
   interface ExerciseCoach {
     name: string
     muscle: string
-    alternatives?: { name: string; reason: string }[]
+    alternatives?: { name: string }[]
   }
 
   let { exercise, accent = 'var(--accent)', onclose }: {

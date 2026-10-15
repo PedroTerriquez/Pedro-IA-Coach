@@ -20,22 +20,22 @@ const ex = (id, name, dictId, muscle, tips, alternatives) => ({
 export const exercises = [
   ex('ex-bench', 'Press Banca', 'press-banca-barra', 'Chest',
     ['Hombros atrás y abajo', 'No rebotes la barra en el pecho', 'Pies firmes en el piso'],
-    [{ name: 'Press Banca con Mancuernas', reason: 'Más rango de movimiento' }, { name: 'Press Banca Declinado', reason: 'Menos carga en el hombro' }]),
+    [{ name: 'Press Banca con Mancuernas' }, { name: 'Press Banca Declinado' }]),
   ex('ex-military', 'Press Militar', 'press-militar-barra', 'Shoulders',
     ['Core apretado', 'No arquees la espalda', 'La barra baja a la clavícula'],
-    [{ name: 'Elevaciones Laterales', reason: 'Aísla el deltoides medio' }]),
+    [{ name: 'Elevaciones Laterales' }]),
   ex('ex-lateral', 'Elevaciones Laterales', 'elevaciones-laterales-mancuernas', 'Shoulders',
     ['Codos ligeramente flexionados', 'Sube hasta la altura del hombro'],
-    [{ name: 'Elevaciones Laterales en Polea', reason: 'Tensión constante' }]),
+    [{ name: 'Elevaciones Laterales en Polea' }]),
   ex('ex-row', 'Remo con Barra', 'remo-barra', 'Back',
     ['Espalda neutra', 'Lleva la barra al ombligo', 'No uses impulso'],
-    [{ name: 'Remo en T', reason: 'Menos carga lumbar' }]),
+    [{ name: 'Remo en T' }]),
   ex('ex-pulldown', 'Jalón al Pecho', 'jalon-pecho-lat-pulldown', 'Back',
     ['Pecho arriba', 'Codos hacia las costillas'],
-    [{ name: 'Dominadas Asistidas', reason: 'Mismo patrón, peso corporal' }]),
+    [{ name: 'Dominadas Asistidas' }]),
   ex('ex-curl', 'Curl con Barra EZ', 'curl-barra-ez', 'Biceps',
     ['Codos pegados al torso', 'Baja controlado'],
-    [{ name: 'Curl Martillo', reason: 'Más braquial' }]),
+    [{ name: 'Curl Martillo con Mancuernas' }, { name: 'Curl Predicador con Barra EZ' }]),
 ]
 
 const pe = (exerciseId, sets, reps, rest) => ({ exerciseId, sets, reps, rest })

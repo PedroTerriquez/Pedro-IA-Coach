@@ -5,8 +5,13 @@ export interface Exercise {
   imgUrl: string
   gifUrl?: string
   tips: string[]
-  alternatives: { name: string; reason: string }[]
+  alternatives: Alternative[]
   dictId?: string
+}
+
+/** Another exercise to do instead; only its name (it used to carry a «reason», dropped 2026-10-14) */
+export interface Alternative {
+  name: string
 }
 
 export interface ExerciseLogBlock {
