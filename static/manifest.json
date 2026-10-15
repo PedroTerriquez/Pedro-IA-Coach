@@ -1,6 +1,6 @@
 {
-  "name": "Coach Pedro AI",
-  "short_name": "Coach AI",
+  "name": "FitFriends",
+  "short_name": "FitFriends",
   "description": "App de entrenamiento personal con IA",
   "start_url": ".",
   "scope": ".",

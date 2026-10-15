@@ -24,17 +24,24 @@
   .back {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 6px;
     width: fit-content;
-    height: 44px;
-    padding: 0 14px 0 4px;
-    margin-left: -10px;
+    height: 48px;
+    min-width: 72px;
+    padding: 0 16px 0 4px;
     border: 0;
     background: none;
     cursor: pointer;
     font-size: 16px;
     font-weight: 500;
     color: var(--text-secondary);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: var(--radius-md);
+  }
+  .back:active {
+    background: var(--cv-fill-2);
+    color: var(--text);
   }
   .ttl2 { font-size: 32px; font-weight: 700; letter-spacing: -1.2px; line-height: 1.05; }
   .lead { margin-top: 2px; font-size: 15px; line-height: 1.45; color: var(--text-secondary); text-wrap: pretty; }

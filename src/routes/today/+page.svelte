@@ -744,7 +744,7 @@
 {/if}
 
 <style>
-  #today { padding: 56px 16px 104px; display: flex; flex-direction: column; }
+  #today { padding: calc(var(--safe-top) + 56px) 16px 104px; display: flex; flex-direction: column; }
   .phase-list { flex: 1; min-height: 0; margin-top: 16px; display: flex; flex-direction: column; gap: 11px; }
   .coach-complete { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
   .footer-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }

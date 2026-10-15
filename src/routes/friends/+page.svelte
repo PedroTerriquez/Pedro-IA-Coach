@@ -492,7 +492,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: calc(48px + env(safe-area-inset-top, 0px)) 20px 120px;
+    padding: calc(var(--safe-top) + 48px) 20px 120px;
     text-align: center;
   }
   .first-time h1 {

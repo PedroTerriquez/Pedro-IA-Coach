@@ -248,6 +248,52 @@ async function seedSetCounter(page, exerciseId, setsDone) {
   }, [exerciseId, setsDone])
 }
 
+// The app has mounted once its tab bar is on screen: by then the page's
+// onMount ran, so Hoy's focus/visibilitychange listeners are in place.
+async function waitForApp(page) {
+  await expect(page.locator('[data-component="TabBar"]')).toBeVisible()
+}
+
+// On its first load Amigos saves settings (userName → username); a seed that
+// lands before that write gets overwritten. The week card or the username
+// prompt only render once it's done.
+async function gotoFriendsLoaded(page) {
+  await page.goto('friends')
+  await expect(page.locator('[data-component="WeekCard"], #username-prompt').first()).toBeVisible()
+}
+
+// Settings as persisted in IndexedDB. A goto/reload right after a tap can beat
+// settings.update()'s write; polling this is the real "it's saved" signal.
+function storedSettings(page) {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('coach-pedro-ai', 2)
+    req.onsuccess = () => {
+      const db = req.result
+      const get = db.transaction('settings', 'readonly').objectStore('settings').get('settings')
+      get.onsuccess = () => { db.close(); resolve(get.result || null) }
+      get.onerror = () => reject(get.error)
+    }
+    req.onerror = () => reject(req.error)
+  }))
+}
+
+// Warmup/stretch hold a `swiping` lock (~550ms) after Anterior/Siguiente, and
+// a tap inside it is a silent no-op. The slide's inline transition goes back
+// to `none` exactly when the lock clears.
+async function waitWarmupIdle(page) {
+  await expect(page.locator('[data-sw]')).toHaveAttribute('style', /transition:\s*none/)
+}
+
+// Saltar hides the timer first and clears its caches after. A rest staged
+// before that finishes would be wiped, or ignored as "already running".
+async function waitRestCleared(page) {
+  await expect.poll(() => page.evaluate(async () => {
+    const timer = await (await caches.open('rest-timer')).match('/pending')
+    const pending = await (await caches.open('rest-pending')).match('/pending')
+    return !timer && !pending
+  })).toBe(true)
+}
+
 // Generic /api/ interceptor shared by the sub-tab suites below — mirrors the
 // default branch of the main flow's route handler (coach-style JSON), since
 // most of these tests don't care about AI response shape, only that the UI
@@ -270,7 +316,7 @@ async function mockApiRoutes(page) {
 }
 
 test('full user flow: profile → warmup → week switch (A→B) → training → stretch → coach → history → friends', async ({ page }) => {
-  test.setTimeout(90000)
+  test.setTimeout(60000)
 
   // ── Fail on ANY uncaught JS error (hydration / runtime) ──
   const jsErrors = []
@@ -280,12 +326,9 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const program = SEED.getProgram()
   const settings = SEED.getSettings()
   await page.goto('today')
-  await page.waitForTimeout(600)
   await seedIndexedDB(page, { exercises: SEED.exercises, program, settings })
 
-  await page.waitForTimeout(200)
   await page.reload()
-  await page.waitForTimeout(1000)
   // No appRefresh hook needed — SvelteKit re-reads IndexedDB on every route's
   // onMount, so a plain reload (or goto) is enough to pick up seeded data.
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null, { timeout: 5000 }).catch(() => {})
@@ -364,7 +407,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // ── Step 3: Visit Today — Phase Cards ──
   await page.goto('today')
-  await page.waitForTimeout(500)
 
   // Warmup + training are PhaseCards; stretch is a LockedCard (locked by warmup)
   await expect(page.locator('[data-phase="warmup"]')).toBeVisible()
@@ -373,7 +415,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // ── Step 4: Warmup — Navigate Prev/Next, Mark Done ──
   await page.locator('[data-phase="warmup"]').click()
-  await page.waitForTimeout(400)
 
   const hechoBtn = page.getByRole('button', { name: 'Hecho' })
   await expect(hechoBtn).toBeVisible({ timeout: 3000 })
@@ -384,15 +425,17 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // Click Siguiente → counter changes
   // (Warmup's swipe transition holds a `swiping` lock for ~550ms; clicking
-  // again before it clears is a silent no-op, so these waits must clear it.)
+  // again before it clears is a silent no-op, so each tap waits it out.)
   await page.getByRole('button', { name: 'Siguiente' }).first().click()
-  await page.waitForTimeout(700)
+  await expect(getCounter()).not.toHaveText(counter1)
+  await waitWarmupIdle(page)
   const counter2 = await getCounter().textContent()
   expect(counter2).not.toBe(counter1)
 
   // Click Anterior → counter reverts
   await page.getByRole('button', { name: 'Anterior' }).first().click()
-  await page.waitForTimeout(700)
+  await expect(getCounter()).toHaveText(counter1)
+  await waitWarmupIdle(page)
   const counter3 = await getCounter().textContent()
   expect(counter3).toBe(counter1)
 
@@ -400,7 +443,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // (now completed) alongside the training card, not swap it away.
   await hechoBtn.click()
   await expect(hechoBtn).not.toBeVisible({ timeout: 2000 })
-  await page.waitForTimeout(400)
 
   const warmupCard = page.locator('[data-phase="warmup"]')
   await expect(warmupCard).toBeVisible()
@@ -409,24 +451,22 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // ── Step 5: Plan — Switch Week ──
   // Wait for persistPhase() from warmup completion to settle in IndexedDB
-  await page.waitForTimeout(800)
+  await expect.poll(async () => (await storedSettings(page))?.sessionState?.phase).toBeGreaterThanOrEqual(2)
   await page.goto('plan')
-  await page.waitForTimeout(500)
 
   const week2Tab = page.locator('button:has-text("Semana 2")').first()
   await expect(week2Tab).toBeVisible()
   await week2Tab.click()
-  await page.waitForTimeout(500)
 
   // After switching weeks, the current day must auto-expand showing exercises
   // from the NEW week (not the previous one).
   const planDaysGrid = page.locator('#plan-days-grid')
   await expect(planDaysGrid).toContainText('Press de Banca')
   await expect(planDaysGrid).toContainText('Sentadilla')
+  await expect.poll(async () => (await storedSettings(page))?.currentWeekIdx).toBe(1)
 
   // ── Step 6: Back to Today — Training Card ──
   await page.goto('today')
-  await page.waitForTimeout(800)
 
   const trainingCard = page.locator('[data-phase="training"]').first()
   await expect(trainingCard).toBeVisible()
@@ -447,7 +487,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // Click training card → open detail sheet
   await trainingCard.click()
-  await page.waitForTimeout(500)
 
   // Verify Google + TikTok exercise-search buttons (video search is intentional —
   // exercise demo videos, not a plain web search). Los search links ya no son
@@ -470,7 +509,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // Click to open Coach IA overlay
   await coachBtn.click()
-  await page.waitForTimeout(400)
 
   // Verify overlay shows close button + exercise-specific greeting
   await expect(page.locator('.coach-close-btn')).toBeVisible()
@@ -480,7 +518,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // Close overlay via close button
   await page.locator('.coach-close-btn').click()
-  await page.waitForTimeout(200)
 
   // Verify overlay is gone
   await expect(page.locator('.coach-close-btn')).not.toBeVisible()
@@ -490,9 +527,9 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const stepperInc = page.getByRole('button', { name: 'Más peso' }).first()
   await expect(stepperInc).toBeVisible()
   await stepperInc.click()
-  await page.waitForTimeout(100)
 
   const weightInput = page.locator('input[inputmode="decimal"]').first()
+  await expect(weightInput).toHaveValue(/^5(\.0*)?$/)
   const weightVal = await weightInput.inputValue()
   expect(parseFloat(weightVal)).toBe(5)
 
@@ -500,7 +537,8 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const registerBtn = page.getByRole('button', { name: /Registrar ·/ })
   await expect(registerBtn).toBeVisible()
   await registerBtn.click()
-  await page.waitForTimeout(600)
+  const savedBtn = page.getByRole('button', { name: /Guardado ·/ })
+  await expect(savedBtn).toBeVisible()
 
   // Merged from the former tests/notifications.spec.cjs — a real user taps
   // "Iniciar" right after logging a set, to start resting before the next one.
@@ -536,11 +574,9 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // Back to the sheet to keep the journey going.
   await restTimer.locator('.rtf-skip').click()
   await expect(restTimer).toHaveCount(0)
-  await page.waitForTimeout(300)
 
   // Navigate to exercise 2 via Siguiente nav pill
   await page.getByRole('button', { name: 'Siguiente' }).first().click()
-  await page.waitForTimeout(400)
 
   // Exercise 2: Should show Sentadilla (from Week B), NOT Press Militar (from Week A)
   // This verifies the week-switch navigation bug: the detail sheet must search
@@ -550,17 +586,15 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // Increment stepper + register
   const stepperInc2 = page.getByRole('button', { name: 'Más peso' }).first()
   await stepperInc2.click()
-  await page.waitForTimeout(100)
   const registerBtn2 = page.getByRole('button', { name: /Registrar ·/ })
   await expect(registerBtn2).toBeVisible()
   await registerBtn2.click()
-  await page.waitForTimeout(600)
+  await expect(savedBtn).toBeVisible()
 
   // Close detail sheet → triggers refresh() which recalculates today's done count
   const sheetCloseBtn = page.getByRole('button', { name: 'Cerrar' }).first()
   await expect(sheetCloseBtn).toBeVisible()
   await sheetCloseBtn.click()
-  await page.waitForTimeout(500)
 
   // Finishing all exercises must NOT force-launch the stretch overlay — the
   // Hoy tab keeps showing the completed Calentamiento + Entrenamiento cards
@@ -570,7 +604,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const stretchCard = page.locator('[data-phase="stretch"]')
   await expect(stretchCard).toBeVisible({ timeout: 5000 })
   await stretchCard.click()
-  await page.waitForTimeout(400)
 
   const stretchHecho = page.getByRole('button', { name: 'Hecho' })
   await expect(stretchHecho).toBeVisible({ timeout: 5000 })
@@ -579,16 +612,15 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const stretchNext = page.getByRole('button', { name: 'Siguiente' })
   if (await stretchNext.isVisible()) {
     await stretchNext.click()
-    await page.waitForTimeout(500)
+    await waitWarmupIdle(page)
   }
   const stretchPrev = page.getByRole('button', { name: 'Anterior' })
   if (await stretchPrev.isVisible()) {
     await stretchPrev.click()
-    await page.waitForTimeout(500)
+    await waitWarmupIdle(page)
   }
 
   await stretchHecho.click()
-  await page.waitForTimeout(500)
 
   // ── Step 9: Streak Celebration ──
   const streakOverlay = page.locator('#streak-overlay')
@@ -619,14 +651,12 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // Regression guard: reloading must keep showing the coach's analysis for
   // today, not fall back to just the bare "Racha/Volumen/PRs" stat grid.
   await page.reload()
-  await page.waitForTimeout(1000)
   const coachCardAfterReload = page.locator('[data-component="CoachResultCard"]')
   await expect(coachCardAfterReload).toBeVisible({ timeout: 10000 })
   await expect(coachCardAfterReload).toContainText('Buen trabajo hoy, TestUser.')
 
   // ── Step 11: History Verification ──
   await page.goto('history')
-  await page.waitForTimeout(500)
 
   // History shows the completed session with exercise names (from Week B)
   await expect(page.locator('body')).toContainText('Press de Banca')
@@ -645,7 +675,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // No window overrides — the real Friends page calls the API directly;
   // routes are intercepted above.
   await page.goto('friends')
-  await page.waitForTimeout(500)
 
   // Changed 2026-10-07 with Amigos v2 (approved by Pedro). This step used to
   // promise: a `.friends-my-streak` banner saying "Racha", the username in
@@ -671,7 +700,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const searchInput = page.locator('#friend-search-input')
   await expect(searchInput).toBeVisible()
   await searchInput.fill('Ana')
-  await page.waitForTimeout(500)
 
   // Search result shows mock friend
   const searchResult = page.locator('.sr-item')
@@ -682,7 +710,7 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const addBtn = searchResult.getByRole('button', { name: 'Agregar' })
   await expect(addBtn).toBeVisible()
   await addBtn.click()
-  await page.waitForTimeout(500)
+  await expect(page.locator('#backup-toast')).toContainText('Ana está en tu liga')
   await friendsSheet.getByRole('button', { name: 'Cerrar' }).click()
 
   // Verify friend appears in the league with her streak and the "trained today" dot.
@@ -694,7 +722,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
   // ── Step 13: Language Toggle — Exercise Names ──
   await page.goto('you')
-  await page.waitForTimeout(500)
 
   // Changed 2026-10-13 with Tú v2 (approved by Pedro): #lang-toggle-btn used to
   // flip the language on tap. It's now the Idioma row of Ajustes, which opens a
@@ -707,34 +734,30 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   // Switch to English
   await langBtn.click()
   await page.locator('#language-sheet').getByRole('radio', { name: 'English' }).click()
-  await page.waitForTimeout(500)
+  await expect.poll(async () => (await storedSettings(page))?.language).toBe('en')
 
   // Navigate to History — exercise names should be in English
   await page.goto('history')
-  await page.waitForTimeout(500)
   await expect(page.locator('body')).toContainText('Barbell Bench Press')
   await expect(page.locator('body')).toContainText('Barbell Full Squat')
 
   // Toggle back to Spanish
   await page.goto('you')
-  await page.waitForTimeout(500)
   await page.locator('#you-row-ajustes').click()
   const langBtn2 = page.locator('#lang-toggle-btn')
   await expect(langBtn2).toContainText('English')
   await langBtn2.click()
   await page.locator('#language-sheet').getByRole('radio', { name: 'Español' }).click()
-  await page.waitForTimeout(500)
+  await expect.poll(async () => (await storedSettings(page))?.language).toBe('es')
 
   // Verify Spanish names restored
   await page.goto('history')
-  await page.waitForTimeout(500)
   await expect(page.locator('body')).toContainText('Press de Banca')
 
   // ── Step 14: Tab Bar Always Visible — on every page, without scrolling ──
   const tabBarPages = ['today', 'plan', 'history', 'you']
   for (const tabPage of tabBarPages) {
     await page.goto(tabPage)
-    await page.waitForTimeout(400)
 
     const hoyBtn = page.getByRole('link', { name: 'Hoy' })
     await expect(hoyBtn).toBeVisible()
@@ -742,7 +765,6 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
 
     // After scrolling content, tab bar must stay fixed at the bottom
     await page.evaluate(() => window.scrollTo(0, 9999))
-    await page.waitForTimeout(200)
     await expect(hoyBtn).toBeInViewport()
   }
 
@@ -763,11 +785,8 @@ test.describe('You — Tamaño de texto (accessibility)', () => {
 
   test('cycles Normal → Grande → Extra grande, scales the whole app, and persists', async ({ page }) => {
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro): #font-size-toggle-btn
     // used to cycle Normal → Grande → Extra grande on each tap. It's now the
@@ -782,18 +801,15 @@ test.describe('You — Tamaño de texto (accessibility)', () => {
 
     await fontBtn.click()
     await fontSheet.getByRole('radio', { name: 'Grande', exact: true }).click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.15')
 
     await fontSheet.getByRole('radio', { name: 'Extra grande' }).click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
     await fontSheet.getByRole('button', { name: 'Cerrar' }).click()
     await expect(fontBtn).toContainText('Extra grande')
 
     // Persisted to Settings — survives a reload, not just local component state
     await page.reload()
-    await page.waitForTimeout(600)
     await page.locator('#you-row-ajustes').click()
     await expect(page.locator('#font-size-toggle-btn')).toContainText('Extra grande')
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
@@ -801,7 +817,6 @@ test.describe('You — Tamaño de texto (accessibility)', () => {
     // Back to Normal
     await page.locator('#font-size-toggle-btn').click()
     await fontSheet.getByRole('radio', { name: 'Normal' }).click()
-    await page.waitForTimeout(300)
     await fontSheet.getByRole('button', { name: 'Cerrar' }).click()
     await expect(page.locator('#font-size-toggle-btn')).toContainText('Normal')
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
@@ -845,19 +860,15 @@ test.describe('Warmup detail sheet rendering', () => {
     }
 
     await page.goto('today')
-    await page.waitForTimeout(600)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', tips: [], alternatives: [] }],
       program,
       settings: { ...BASE_SETTINGS },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(1000)
 
     // The warmup sheet doesn't auto-open — the user opens it via the phase card.
     await page.locator('[data-phase="warmup"]').click()
-    await page.waitForTimeout(500)
 
     // Chest warmup items from WARMUP_DATA have all 4 sections
     await expect(page.getByText('Posición Inicial').first()).toBeVisible({ timeout: 3000 })
@@ -885,18 +896,14 @@ test.describe('Warmup detail sheet rendering', () => {
     }
 
     await page.goto('today')
-    await page.waitForTimeout(600)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-squat', name: 'Sentadilla', muscle: 'Quadriceps', imgUrl: '', tips: [], alternatives: [] }],
       program,
       settings: { ...BASE_SETTINGS },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(1000)
 
     await page.locator('[data-phase="warmup"]').click()
-    await page.waitForTimeout(500)
 
     // GENERIC_WARMUP items have a desc field, not sections
     // "Cómo hacerlo" label shows in the fallback path
@@ -928,7 +935,6 @@ test.describe('Warmup detail sheet rendering', () => {
     const today = getTodayStr()
 
     await page.goto('today')
-    await page.waitForTimeout(600)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', tips: [], alternatives: [] }],
       program,
@@ -937,22 +943,19 @@ test.describe('Warmup detail sheet rendering', () => {
       exerciseLogs: [{ id: 'log-bench-today', exerciseId: 'ex-bench', date: today, weight: 60, units: 'kg' }],
       settings: { ...BASE_SETTINGS, sessionState: { date: today, phase: 3, todayExDone: 1 } },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(1000)
 
     // The Estiramiento card is now visible and active on the Hoy tab — tap it to open.
     await page.locator('[data-phase="stretch"]').click()
-    await page.waitForTimeout(500)
 
     // Chest stretch: 3rd item "Apertura de Pecho Pasiva en Espaldera" has stallbar: true
     // Navigate Siguiente twice (same ~550ms swipe-lock as the main flow's warmup step)
     const nextBtn = page.getByRole('button', { name: 'Siguiente' }).first()
     await expect(nextBtn).toBeVisible({ timeout: 3000 })
     await nextBtn.click()
-    await page.waitForTimeout(700)
+    await expect(page.getByText(/\d+ \/ \d+/).first()).toHaveText(/^2 \//)
+    await waitWarmupIdle(page)
     await nextBtn.click()
-    await page.waitForTimeout(700)
 
     // STALLBAR badge should now be visible
     await expect(page.getByText('STALLBAR').first()).toBeVisible({ timeout: 2000 })
@@ -977,15 +980,11 @@ test.describe('You — Programas tab', () => {
   }
 
   test('create, activate, duplicate, delete a program', async ({ page }) => {
-    test.setTimeout(60000)
     await mockApiRoutes(page)
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], program: PROGRAM_A, settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro): the Programas tab had a
     // name field + "+ Nuevo" and every card carried Activar / Duplicar /
@@ -993,7 +992,6 @@ test.describe('You — Programas tab', () => {
     // activate, duplicate and delete — now through Crear programa › Desde cero,
     // Activar in «Otros programas», and ⋯ with the confirmation in the sheet.
     await page.locator('#you-row-programas').click()
-    await page.waitForTimeout(300)
 
     // Create a new program from scratch
     await page.locator('#create-program-btn').click()
@@ -1008,7 +1006,6 @@ test.describe('You — Programas tab', () => {
 
     // Activate it — "Programa activo" should move off "Programa Activo"
     await newCard.getByRole('button', { name: 'Activar' }).click()
-    await page.waitForTimeout(400)
     const activeCard = page.locator('[data-component="ProgramCard"].active')
     await expect(activeCard).toContainText('Programa Nuevo')
     // (by id: the «Programa activo» label of the active card would match the name too)
@@ -1018,7 +1015,6 @@ test.describe('You — Programas tab', () => {
     // Duplicate (from ⋯)
     await activeCard.getByRole('button', { name: 'Más opciones' }).click()
     await page.locator('#program-options').getByRole('button', { name: 'Duplicar' }).click()
-    await page.waitForTimeout(400)
     const dupCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })
     await expect(dupCard).toBeVisible()
 
@@ -1028,12 +1024,10 @@ test.describe('You — Programas tab', () => {
     await options.getByRole('button', { name: 'Eliminar', exact: true }).click()
     await expect(options).toContainText('¿Eliminar «Programa Nuevo (copia)»?')
     await options.getByRole('button', { name: 'Eliminar', exact: true }).click()
-    await page.waitForTimeout(400)
     await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })).toHaveCount(0)
   })
 
   test('Coach de programa: chat multi-turno → Aplicar cambios crea y activa programa', async ({ page }) => {
-    test.setTimeout(60000)
     await mockApiRoutes(page)
 
     const chatBodies = []
@@ -1060,11 +1054,8 @@ test.describe('You — Programas tab', () => {
     })
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], program: PROGRAM_A, settings: { ...SETTINGS, userName: 'Pedro' } })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro): the chat used to open
     // from Programas › IA Powered › "Mejorar programa actual", titled "Coach de
@@ -1075,7 +1066,6 @@ test.describe('You — Programas tab', () => {
     // version («Programa Activo · v2») and whether to use it from today.
     // Same request bodies to the Worker; reopening still starts from scratch.
     await page.locator('#you-row-programas').click()
-    await page.waitForTimeout(300)
 
     // Open chat: personalized greeting, quick replies, apply disabled until the coach replies
     await page.locator('#improve-program-row').click()
@@ -1127,7 +1117,6 @@ test.describe('You — Programas tab', () => {
   })
 
   test('Generar programa: el coach propone con perfil + selecciones, se discute y Crear programa usa lo acordado', async ({ page }) => {
-    test.setTimeout(60000)
     await mockApiRoutes(page)
 
     const chatBodies = []
@@ -1153,11 +1142,8 @@ test.describe('You — Programas tab', () => {
     })
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], program: PROGRAM_A, settings: { ...SETTINGS, userName: 'Pedro', occupation: 'Programador', age: '35' } })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro): the selections lived
     // in Programas › IA Powered (chips "4d", "Rodilla") and "Generar programa
@@ -1167,7 +1153,6 @@ test.describe('You — Programas tab', () => {
     // coach's proposal is the first message, and «Crear este programa» ends on
     // the «Listo» screen. Same request bodies to the Worker.
     await page.locator('#you-row-programas').click()
-    await page.waitForTimeout(300)
     await page.locator('#create-program-btn').click()
     await page.locator('#create-coach').click()
     const setup = page.locator('#coach-setup-sheet')
@@ -1224,7 +1209,6 @@ test.describe('You — Datos tab', () => {
   }
 
   test('AI import, dictionary migration, and JSON export/import', async ({ page }) => {
-    test.setTimeout(60000)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro). It used to promise:
     // Programas › IA Powered › "Importar con IA" (POST /api/ai/import) creates
@@ -1256,11 +1240,8 @@ test.describe('You — Datos tab', () => {
     }))
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Pega tu rutina → chat → Crear este programa
     await page.locator('#you-step-programa').click()
@@ -1355,11 +1336,8 @@ test.describe('You — Datos tab', () => {
     ]
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises, settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro): "Sobrescribir" in the
     // Ejercicios tab used to show "sin match 1" in #dict-migrate-status, a
@@ -1404,10 +1382,8 @@ test.describe('You — Ejercicios tab CRUD', () => {
   }
 
   test('search, add, edit, delete an exercise', async ({ page }) => {
-    test.setTimeout(60000)
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [
         { id: 'ex-a', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
@@ -1415,9 +1391,7 @@ test.describe('You — Ejercicios tab CRUD', () => {
       ],
       settings: SETTINGS,
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro): the Ejercicios tab had
     // "+ Nuevo" with an inline form, the open exercise edited inline under
@@ -1426,16 +1400,13 @@ test.describe('You — Ejercicios tab CRUD', () => {
     // and + in the dock, the «Nuevo ejercicio» sheet, Datos (Editar ejercicio)
     // and «Eliminar ejercicio» confirmed inside that sheet.
     await page.locator('#you-row-ejercicios').click()
-    await page.waitForTimeout(300)
     await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
 
     // Search filters the list down to one match
     await page.locator('#exercise-search').fill('sentad')
-    await page.waitForTimeout(300)
     await expect(page.locator('[data-component="ExerciseListItem"]')).toHaveCount(1)
     await expect(page.locator('[data-component="ExerciseListItem"]')).toContainText('Sentadilla')
     await page.locator('#exercise-search').fill('')
-    await page.waitForTimeout(300)
 
     // Add a new exercise
     await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
@@ -1443,7 +1414,6 @@ test.describe('You — Ejercicios tab CRUD', () => {
     await newSheet.getByLabel('Nombre').fill('Remo con Barra')
     await newSheet.getByLabel('Músculo').fill('Espalda')
     await newSheet.getByRole('button', { name: 'Guardar' }).click()
-    await page.waitForTimeout(400)
     await expect(page.locator('#ex-count')).toHaveText('3 ejercicios')
     const newItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra' })
     await expect(newItem).toBeVisible()
@@ -1452,13 +1422,11 @@ test.describe('You — Ejercicios tab CRUD', () => {
     // was the «Datos» button of the open row. Same promise — edit the name,
     // then delete after a confirmation from that same editor — now from the pencil.
     await newItem.locator('.exercise-toggle').click()
-    await page.waitForTimeout(300)
     const card = page.locator('[data-component="ExerciseCard"]')
     await card.getByRole('button', { name: 'Editar ejercicio' }).click()
     const editSheet = page.locator('#edit-exercise-sheet')
     await editSheet.getByLabel('Nombre').fill('Remo con Barra (editado)')
     await editSheet.getByRole('button', { name: 'Guardar' }).click()
-    await page.waitForTimeout(400)
     await expect(card).toContainText('Remo con Barra (editado)')
 
     // Delete it — the card stays open after saving; the editor asks first
@@ -1467,7 +1435,6 @@ test.describe('You — Ejercicios tab CRUD', () => {
     const deleteSheet = page.locator('#delete-exercise-sheet')
     await expect(deleteSheet).toContainText('¿Eliminar «Remo con Barra (editado)»?')
     await deleteSheet.getByRole('button', { name: 'Eliminar', exact: true }).click()
-    await page.waitForTimeout(400)
     await expect(page.locator('#ex-count')).toHaveText('2 ejercicios')
   })
 })
@@ -1497,23 +1464,17 @@ test.describe('Plan — Reprogramar mode', () => {
   }
 
   test('drag days, cancel on release outside, reset, shift, and persist a reschedule', async ({ page }) => {
-    test.setTimeout(60000)
 
     await page.goto('plan')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], program: PROGRAM_PLAN, settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     await page.locator('#plan-reprogram-btn').click()
-    await page.waitForTimeout(300)
     await expect(page.getByText('Reprogramando esta semana')).toBeVisible()
 
     // Enter drag mode via the "Mover" button; every day (including Rest days)
     // shows a handle ⠿
     await page.locator('#plan-move-btn').click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.drag-handle')).toHaveCount(7)
 
     // Swap Empuje (Mon, slot 0) and Tirón (Wed, slot 2) by dragging the handle
@@ -1533,7 +1494,6 @@ test.describe('Plan — Reprogramar mode', () => {
     await page.mouse.down()
     await page.mouse.move(cx, targetY, { steps: 12 })
     await page.mouse.up()
-    await page.waitForTimeout(300)
     await expect(slots.nth(2).getByText('Empuje')).toBeVisible()
     await expect(slots.nth(2).locator('.moved-chip')).toContainText('desde Lun')
     await expect(slots.nth(0).getByText('Tirón')).toBeVisible()
@@ -1549,31 +1509,26 @@ test.describe('Plan — Reprogramar mode', () => {
     await page.mouse.move(ecx, ecy + step, { steps: 5 })
     await page.mouse.move(5, 5)
     await page.mouse.up()
-    await page.waitForTimeout(300)
     await expect(slots.nth(2).getByText('Empuje')).toBeVisible()
     await expect(page.locator('.moved-chip')).toHaveCount(2)
 
     // Reset clears the reorder
     await page.locator('#plan-reset-btn').click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.moved-chip')).toHaveCount(0)
 
     // "Me salté un día" rotates every workout forward by one day
     await page.locator('#plan-shift-btn').click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.drag-slot', { hasText: 'Empuje' }).locator('.moved-chip')).toContainText('desde Lun')
     await expect(page.locator('.drag-slot', { hasText: 'Tirón' }).locator('.moved-chip')).toContainText('desde Mié')
 
     // Save — a persistent "changes" banner should appear outside edit mode
     await page.locator('#plan-reprogram-btn').click()
-    await page.waitForTimeout(400)
     await expect(page.locator('#plan-changes-banner')).toBeVisible()
     await expect(page.locator('#plan-changes-banner')).toContainText('cambios')
 
     // Reload — the reschedule must have actually persisted to settings, not
     // just local component state
     await page.reload()
-    await page.waitForTimeout(800)
     await expect(page.locator('#plan-changes-banner')).toBeVisible()
   })
 })
@@ -1600,18 +1555,12 @@ test.describe('Plan — drag onto a free slot', () => {
   }
 
   test('dragging a workout onto a free slot repositions it', async ({ page }) => {
-    test.setTimeout(60000)
     await page.goto('plan')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], program: PROGRAM, settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     await page.locator('#plan-reprogram-btn').click()
-    await page.waitForTimeout(300)
     await page.locator('#plan-move-btn').click()
-    await page.waitForTimeout(300)
 
     // natural order = [Lun libre, Mar Pecho, Mié Espalda, Jue Pierna, Vie Hombro, Sáb libre, Dom Full Body]
     // drags SWAP slots: dragging a day onto another slot exchanges their positions
@@ -1629,7 +1578,6 @@ test.describe('Plan — drag onto a free slot', () => {
       const safe = window.innerHeight - 110
       if (h.bottom > safe) window.scrollBy(0, h.bottom - safe)
     })
-    await page.waitForTimeout(100)
 
     const box0 = await slots.nth(0).boundingBox()
     const box1 = await slots.nth(1).boundingBox()
@@ -1644,7 +1592,6 @@ test.describe('Plan — drag onto a free slot', () => {
     await page.mouse.down()
     await page.mouse.move(cx, targetY, { steps: 12 })
     await page.mouse.up()
-    await page.waitForTimeout(300)
 
     // Pierna (Jue) swaps with the free Lun slot
     await expect(slots.nth(0).getByText('Pierna')).toBeVisible()
@@ -1653,7 +1600,6 @@ test.describe('Plan — drag onto a free slot', () => {
 
     // Listo → persists as a temporary reschedule
     await page.locator('#plan-reprogram-btn').click()
-    await page.waitForTimeout(400)
     await expect(page.locator('#plan-changes-banner')).toBeVisible()
     await expect(page.locator('#plan-changes-banner')).toContainText('2 cambios')
   })
@@ -1683,14 +1629,10 @@ test.describe('Plan — weekday mapping (Mar-Vie + Dom)', () => {
   }
 
   test('places days on their real weekday slots; Mon and Sat stay free', async ({ page }) => {
-    test.setTimeout(60000)
 
     await page.goto('plan')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], program: PROGRAM, settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     const slotCard = (day) => page.locator('#plan-days-grid .day-card')
       .filter({ has: page.locator('.badge-day', { hasText: day }) })
@@ -1709,18 +1651,18 @@ test.describe('Plan — weekday mapping (Mar-Vie + Dom)', () => {
     // Today respects the same mapping: a fixed Monday (2026-08-17) is a rest day
     await page.clock.setFixedTime(new Date('2026-08-17T10:00:00'))
     await page.goto('today')
-    await page.waitForTimeout(1000)
     await expect(page.locator('.hero-title', { hasText: 'Descanso' })).toBeVisible()
 
     // ── Regression: Reprogramar + Listo WITHOUT changes must NOT persist an
     // identity override — that used to mask the intrinsic weekdays forever and
     // snap the routine back to Mon–Fri. Back to Plan (clock still Monday).
     await page.goto('plan')
-    await page.waitForTimeout(600)
+    // The week has to be on screen first, or "no banner" proves nothing.
+    await expect(slotCard('Mar').locator('.day-title')).toHaveText('Pecho · Tríceps')
     await expect(page.locator('#plan-changes-banner')).toHaveCount(0)
     await page.locator('#plan-reprogram-btn').click()
-    await page.waitForTimeout(300)
     await page.locator('#plan-reprogram-btn').click() // "Listo" with zero edits
+    // Deliberate: proves a write does NOT happen, so there is no event to wait on.
     await page.waitForTimeout(400)
     const rs = await page.evaluate(() => new Promise((resolve) => {
       const rq = indexedDB.open('coach-pedro-ai', 2)
@@ -1734,10 +1676,9 @@ test.describe('Plan — weekday mapping (Mar-Vie + Dom)', () => {
 
     // Placement survives the reload — weekdays keep controlling, not overrides
     await page.reload()
-    await page.waitForTimeout(800)
-    await expect(page.locator('#plan-changes-banner')).toHaveCount(0)
     await expect(slotCard('Mar').locator('.day-title')).toHaveText('Pecho · Tríceps')
     await expect(slotCard('Dom').locator('.day-title')).toHaveText('Full Body')
+    await expect(page.locator('#plan-changes-banner')).toHaveCount(0)
   })
 })
 
@@ -1761,15 +1702,12 @@ test.describe('Plan — exercise detail sheet', () => {
     }
 
     await page.goto('plan')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       program,
       settings: SETTINGS,
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // "Banca" (not the full seeded name) — the dictionary auto-normalizes
     // display names by name-match even without an explicit dictId, e.g.
@@ -1777,7 +1715,6 @@ test.describe('Plan — exercise detail sheet', () => {
     const exerciseRow = page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })
     await expect(exerciseRow).toBeVisible({ timeout: 3000 })
     await exerciseRow.click()
-    await page.waitForTimeout(400)
 
     // Same shared ExerciseDetail/ExerciseHero used on Today — proves Plan's
     // wiring (openExerciseDetailAt) actually opens the real sheet, not a stub
@@ -1785,7 +1722,6 @@ test.describe('Plan — exercise detail sheet', () => {
     const closeBtn = page.getByRole('button', { name: 'Cerrar' }).first()
     await expect(closeBtn).toBeVisible()
     await closeBtn.click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.hero-google-btn')).not.toBeVisible()
   })
 
@@ -1802,24 +1738,19 @@ test.describe('Plan — exercise detail sheet', () => {
     }
 
     await page.goto('plan')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       program,
       settings: { ...SETTINGS, activeProgramId: 'prog-blocks' },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     const exerciseRow = page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })
     await expect(exerciseRow).toBeVisible({ timeout: 3000 })
     await exerciseRow.click()
-    await page.waitForTimeout(400)
 
     // Enter the multi-block editor
     await page.getByRole('button', { name: /Series y repeticiones por bloque/ }).click()
-    await page.waitForTimeout(200)
     await expect(page.locator('.block-card')).toHaveCount(1)
 
     // Block 1 defaults to the plan's 3 sets × 10 reps — just set the weight to 10kg
@@ -1828,14 +1759,12 @@ test.describe('Plan — exercise detail sheet', () => {
 
     // Duplicate block 1 → edit into block 2 (3×12·8kg)
     await page.locator('.block-card').nth(0).locator('.block-actions button').nth(0).click()
-    await page.waitForTimeout(150)
     await expect(page.locator('.block-card')).toHaveCount(2)
     await page.locator('.block-card').nth(1).locator('.block-field-input').nth(1).fill('12')
     await page.locator('.block-card').nth(1).locator('.block-field-input').nth(2).fill('8')
 
     // Duplicate block 2 → edit into block 3 (3×8·12kg)
     await page.locator('.block-card').nth(1).locator('.block-actions button').nth(0).click()
-    await page.waitForTimeout(150)
     await expect(page.locator('.block-card')).toHaveCount(3)
     await page.locator('.block-card').nth(2).locator('.block-field-input').nth(1).fill('8')
     await page.locator('.block-card').nth(2).locator('.block-field-input').nth(2).fill('12')
@@ -1849,12 +1778,10 @@ test.describe('Plan — exercise detail sheet', () => {
     const logBtn = page.locator('.log-btn')
     await expect(logBtn).toContainText('Registrar · 3 bloques · máx 12kg')
     await logBtn.click()
-    await page.waitForTimeout(400)
     await expect(logBtn).toContainText('Guardado · 3 bloques · máx 12kg')
 
     // Historial should read the same blocks back for today's breakdown
     await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Historial' }).click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.session-sr').first()).toHaveText('3×10@10 · 3×12@8 · 3×8@12')
     await expect(page.locator('.stat-block', { hasText: 'Máx total' })).toContainText('12')
   })
@@ -1880,27 +1807,22 @@ test.describe('Historial — Constancia day detail', () => {
     }
 
     await page.goto('history')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       program,
       settings: SETTINGS,
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     const exerciseRow = page.locator('.cal-detail .exercise-row', { hasText: 'Banca' })
     await expect(exerciseRow).toBeVisible({ timeout: 3000 })
     await exerciseRow.click()
-    await page.waitForTimeout(400)
 
     // Same shared ExerciseDetail used on Plan/Today — proves Calendar's
     // day-detail wiring opens the real sheet, not just a static row.
     await expect(page.locator('.hero-google-btn')).toBeVisible()
     const closeBtn = page.getByRole('button', { name: 'Cerrar' }).first()
     await closeBtn.click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.hero-google-btn')).not.toBeVisible()
   })
 })
@@ -1956,7 +1878,6 @@ test.describe('Exercise detail navigation', () => {
     const today = getTodayStr()
 
     await page.goto('today')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [
         { id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
@@ -1970,14 +1891,11 @@ test.describe('Exercise detail navigation', () => {
       // phase 2 = warmup already done, so the training card is tappable immediately.
       settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0 } },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     const trainingCard = page.locator('[data-phase="training"]').first()
     await expect(trainingCard).toBeVisible()
     await trainingCard.click()
-    await page.waitForTimeout(400)
 
     const heroName = page.locator('.hero-name')
     const anteriorBtn = page.getByRole('button', { name: 'Anterior' }).first()
@@ -1994,7 +1912,6 @@ test.describe('Exercise detail navigation', () => {
     await expect(logBtn).toContainText('Registrar · 50kg')
 
     await siguienteBtn.click()
-    await page.waitForTimeout(300)
     await expect(heroName).toContainText('Militar')
     await expect(anteriorBtn).toBeEnabled()
     await expect(siguienteBtn).toBeDisabled()
@@ -2002,28 +1919,23 @@ test.describe('Exercise detail navigation', () => {
     await expect(logBtn).toContainText('Registrar · 0kg')
 
     await historialTab.click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.empty-history')).toBeVisible()
 
     await anteriorBtn.click()
-    await page.waitForTimeout(300)
     await expect(heroName).toContainText('Banca')
     await expect(page.locator('.empty-history')).not.toBeVisible()
     await expect(actualStat).toContainText('50')
 
     await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Registrar' }).click()
-    await page.waitForTimeout(300)
     await expect(weightInput).toHaveValue('50')
     await expect(logBtn).toContainText('Registrar · 50kg')
 
     await swipe(page, -150)
-    await page.waitForTimeout(300)
     await expect(heroName).toContainText('Militar')
     await expect(weightInput).toHaveValue('')
     await expect(logBtn).toContainText('Registrar · 0kg')
 
     await swipe(page, 150)
-    await page.waitForTimeout(300)
     await expect(heroName).toContainText('Banca')
     await expect(weightInput).toHaveValue('50')
     await expect(logBtn).toContainText('Registrar · 50kg')
@@ -2039,7 +1951,6 @@ test.describe('Historial — Ejercicios sub-tab', () => {
 
   test('filters by muscle and shows sparkline + delta stats', async ({ page }) => {
     await page.goto('history')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [
         { id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
@@ -2052,12 +1963,9 @@ test.describe('Historial — Ejercicios sub-tab', () => {
       ],
       settings: SETTINGS,
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     await page.getByRole('button', { name: 'Ejercicios' }).click()
-    await page.waitForTimeout(400)
 
     await expect(page.locator('.ex-card')).toHaveCount(2)
     // "Banca" (not the full seeded name) — display names are dictionary-
@@ -2069,13 +1977,11 @@ test.describe('Historial — Ejercicios sub-tab', () => {
 
     // Filter to Chest only
     await page.locator('.chips-row').getByText('Chest', { exact: true }).click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.ex-card')).toHaveCount(1)
     await expect(page.locator('.ex-card')).toContainText('Banca')
 
     // Back to all
     await page.locator('.chips-row').getByText('Todos', { exact: true }).click()
-    await page.waitForTimeout(300)
     await expect(page.locator('.ex-card')).toHaveCount(2)
   })
 })
@@ -2103,7 +2009,7 @@ test.describe('Rest timer notification flow', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     // The SW writes the exercise payload + flag when a start notification is tapped.
     await page.evaluate(async () => {
@@ -2119,14 +2025,13 @@ test.describe('Rest timer notification flow', () => {
       window.dispatchEvent(new Event('focus'))
       await new Promise(r => setTimeout(r, 300))
     })
-    await page.waitForTimeout(1000)
 
     // Tapping the start notification now opens the timer full screen.
     const timer = page.locator('[data-component="RestTimerFullscreen"]')
     await expect(timer).toBeVisible({ timeout: 3000 })
     await expect(timer).toContainText('Press de Banca con Barra')
 
-    expect(startTimerPayload).not.toBeNull()
+    await expect.poll(() => startTimerPayload).not.toBeNull()
     const payload = JSON.parse(startTimerPayload)
     // endTime targets ~10s before the real rest end (latency compensation).
     expect(typeof payload.endTime).toBe('number')
@@ -2152,6 +2057,7 @@ test.describe('Rest timer notification flow', () => {
       window.dispatchEvent(new Event('focus'))
       await new Promise(r => setTimeout(r, 400))
     })
+    // Deliberate: proves the clock is NOT restarted, so there is no event to wait on.
     await page.waitForTimeout(600)
     expect(startTimerCalls).toBe(1)
     const endTimeAfter = await page.evaluate(async () => {
@@ -2163,8 +2069,7 @@ test.describe('Rest timer notification flow', () => {
     // The "Saltar" button cancels the queued delayed push (tapping the card
     // itself no longer cancels — avoids accidental cancels).
     await timer.locator('.rtf-skip').click()
-    await page.waitForTimeout(500)
-    expect(cancelPayload).not.toBeNull()
+    await expect.poll(() => cancelPayload).not.toBeNull()
     const cancelData = JSON.parse(cancelPayload)
     expect(cancelData.tag).toBeTruthy()
     expect(cancelData.deviceId).toBeTruthy()
@@ -2178,7 +2083,7 @@ test.describe('Rest timer notification flow', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     await page.evaluate(async () => {
       const cache = await caches.open('rest-timer')
@@ -2192,7 +2097,6 @@ test.describe('Rest timer notification flow', () => {
       document.dispatchEvent(new Event('visibilitychange'))
       await new Promise(r => setTimeout(r, 100))
     })
-    await page.waitForTimeout(1500)
 
     // The rest is over but the screen stays: that's where the serie is
     // registered and the next one starts. The timer itself never re-arms —
@@ -2239,7 +2143,7 @@ test.describe('Rest timer notification flow', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     await page.evaluate(async () => {
       const cache = await caches.open('rest-pending')
@@ -2253,9 +2157,10 @@ test.describe('Rest timer notification flow', () => {
       window.dispatchEvent(new Event('focus'))
       await new Promise(r => setTimeout(r, 500))
     })
-    await page.waitForTimeout(1000)
 
     await expect(page.locator('[data-component="RestTimerFullscreen"]')).toBeVisible({ timeout: 3000 })
+    // Deliberate: proves no SECOND cycle is scheduled, so there is no event to wait on.
+    await page.waitForTimeout(1000)
     expect(startCalls).toBe(1)
   })
 })
@@ -2274,7 +2179,7 @@ test.describe('Rest timer — pantalla completa', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     // Same payload the SW caches on notification tap — now carrying everything
     // the full-screen timer renders (serie, músculo, última, récord, siguiente).
@@ -2289,7 +2194,6 @@ test.describe('Rest timer — pantalla completa', () => {
       window.dispatchEvent(new Event('focus'))
       await new Promise(r => setTimeout(r, 300))
     })
-    await page.waitForTimeout(1000)
 
     const timer = page.locator('[data-component="RestTimerFullscreen"]')
     await expect(timer).toBeVisible({ timeout: 3000 })
@@ -2305,8 +2209,7 @@ test.describe('Rest timer — pantalla completa', () => {
     // "+30 s" pushes the end back and re-queues the delayed push under a new tag.
     const beforeAdjust = startPayloads.length
     await timer.getByRole('button', { name: '+30 s' }).click()
-    await page.waitForTimeout(800)
-    expect(startPayloads.length).toBe(beforeAdjust + 1)
+    await expect.poll(() => startPayloads.length).toBe(beforeAdjust + 1)
     const [first, second] = [startPayloads[beforeAdjust - 1], startPayloads[beforeAdjust]]
     expect(second.endTime - first.endTime).toBeGreaterThan(25000)
     expect(second.tag).not.toBe(first.tag)
@@ -2318,8 +2221,7 @@ test.describe('Rest timer — pantalla completa', () => {
     // delayed push, same as any other rest.
     const beforeRestart = startPayloads.length
     await timer.getByRole('button', { name: 'Reiniciar descanso' }).click()
-    await page.waitForTimeout(800)
-    expect(startPayloads.length).toBe(beforeRestart + 1)
+    await expect.poll(() => startPayloads.length).toBe(beforeRestart + 1)
     const restarted = startPayloads[beforeRestart]
     expect(restarted.restSec).toBe(150)
     expect(restarted.tag).not.toBe(second.tag)
@@ -2338,8 +2240,7 @@ test.describe('Rest timer — pantalla completa', () => {
 
     // Saltar still cancels the queued push and clears the timer.
     await page.locator('[data-component="RestTimerFullscreen"] .rtf-skip').click()
-    await page.waitForTimeout(500)
-    expect(cancelPayload).not.toBeNull()
+    await expect.poll(() => cancelPayload).not.toBeNull()
     await expect(page.locator('[data-component="RestTimerFullscreen"]')).toHaveCount(0)
   })
 })
@@ -2365,7 +2266,6 @@ test.describe('Rest timer — registro de series', () => {
         window.dispatchEvent(new Event('focus'))
         await new Promise(r => setTimeout(r, 300))
       }, setIndex)
-      await page.waitForTimeout(900)
       const timer = page.locator('[data-component="RestTimerFullscreen"]')
       await expect(timer).toBeVisible({ timeout: 3000 })
       return timer
@@ -2383,7 +2283,7 @@ test.describe('Rest timer — registro de series', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     // Serie 1 — seeded from "última" (60kg) and the prescribed reps (10).
     let timer = await openRestForSet(1)
@@ -2392,10 +2292,11 @@ test.describe('Rest timer — registro de series', () => {
     await expect(timer.locator('.rtf-field-input').nth(1)).toHaveValue('10')
 
     await timer.getByRole('button', { name: 'Más peso' }).click()
-    await page.waitForTimeout(900)
     await expect(timer.locator('.rtf-log-saved')).toBeVisible()
     await expect(timer.locator('.rtf-log-recap')).toContainText('S1 62.5kg×10')
 
+    // The write is debounced: wait for it to land, then check all of it.
+    await expect.poll(async () => (await todayLog())?.weight).toBe(62.5)
     let log = await todayLog()
     expect(log).not.toBeNull()
     expect(log.weight).toBe(62.5)
@@ -2405,13 +2306,13 @@ test.describe('Rest timer — registro de series', () => {
 
     // Serie 2 with the same peso/reps — still one record, now 2 series.
     await timer.locator('.rtf-skip').click()
-    await page.waitForTimeout(400)
+    await waitRestCleared(page)
     timer = await openRestForSet(2)
     // Seeded from serie 1, so a single tap up and back down leaves it identical.
     await expect(timer.locator('.rtf-field-input').first()).toHaveValue('62.5')
     await timer.getByRole('button', { name: 'Más peso' }).click()
     await timer.getByRole('button', { name: 'Menos peso' }).click()
-    await page.waitForTimeout(900)
+    await expect.poll(async () => (await todayLog())?.sets).toBe(2)
     log = await todayLog()
     expect(log.weight).toBe(62.5)
     expect(log.sets).toBe(2)
@@ -2419,14 +2320,14 @@ test.describe('Rest timer — registro de series', () => {
 
     // Serie 3 heavier and shorter — now the log has to keep the detail.
     await timer.locator('.rtf-skip').click()
-    await page.waitForTimeout(400)
+    await waitRestCleared(page)
     timer = await openRestForSet(3)
     await timer.getByRole('button', { name: 'Más peso' }).click()
     await timer.getByRole('button', { name: 'Menos reps' }).click()
     await timer.getByRole('button', { name: 'Menos reps' }).click()
-    await page.waitForTimeout(900)
     await expect(timer.locator('.rtf-log-recap')).toContainText('S3 65kg×8')
 
+    await expect.poll(async () => (await todayLog())?.reps).toBe('8')
     log = await todayLog()
     expect(log.blocks).toEqual([
       { sets: 2, reps: 10, weight: 62.5 },
@@ -2438,7 +2339,7 @@ test.describe('Rest timer — registro de series', () => {
 
     // Reopening the same set shows what was registered, not a fresh guess.
     await timer.locator('.rtf-skip').click()
-    await page.waitForTimeout(400)
+    await waitRestCleared(page)
     timer = await openRestForSet(3)
     await expect(timer.locator('.rtf-field-input').first()).toHaveValue('65')
     await expect(timer.locator('.rtf-field-input').nth(1)).toHaveValue('8')
@@ -2454,7 +2355,6 @@ test.describe('Rest timer — registro de series', () => {
       { width: 430, height: 932 },  // iPhone 15 Pro Max
     ]) {
       await page.setViewportSize(size)
-      await page.waitForTimeout(350)
       const ring = await timer.locator('.rtf-ring-wrap').boundingBox()
       const actions = await timer.locator('.rtf-actions').boundingBox()
       const minus = await timer.locator('.rtf-nudge-minus').boundingBox()
@@ -2491,7 +2391,7 @@ test.describe('Rest timer — registro de series', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     const today = await page.evaluate(() => {
       const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
@@ -2503,7 +2403,7 @@ test.describe('Rest timer — registro de series', () => {
       settings: { id: 'settings', units: 'kg', accentColor: '#d4ff3a', language: 'es' },
     })
     await page.reload()
-    await page.waitForTimeout(800)
+    await waitForApp(page)
 
     await seedSetCounter(page, 'ex-bench', 1)
     await page.evaluate(async () => {
@@ -2516,14 +2416,12 @@ test.describe('Rest timer — registro de series', () => {
       window.dispatchEvent(new Event('focus'))
       await new Promise(r => setTimeout(r, 300))
     })
-    await page.waitForTimeout(900)
 
     const timer = page.locator('[data-component="RestTimerFullscreen"]')
     await expect(timer).toBeVisible({ timeout: 3000 })
     await timer.getByRole('button', { name: 'Más peso' }).click()
-    await page.waitForTimeout(900)
 
-    const log = await page.evaluate(async (date) => {
+    const readLog = () => page.evaluate(async (date) => {
       const req = indexedDB.open('coach-pedro-ai', 2)
       const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error) })
       const store = db.transaction('exerciseLogs', 'readonly').objectStore('exerciseLogs')
@@ -2531,6 +2429,9 @@ test.describe('Rest timer — registro de series', () => {
       db.close()
       return all.find(l => l.exerciseId === 'ex-bench' && l.date === date) || null
     }, today)
+    // The write is debounced: wait for it to land.
+    await expect.poll(async () => (await readLog())?.weight).toBe(62.5)
+    const log = await readLog()
 
     // Set 1 (the old plain 60kg) inherits the 10 reps being registered.
     expect(log.blocks).toEqual([
@@ -2547,7 +2448,7 @@ test.describe('Rest timer — registro de series', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     const openRest = async (exerciseId) => {
       await seedSetCounter(page, exerciseId, 0)
@@ -2561,23 +2462,12 @@ test.describe('Rest timer — registro de series', () => {
         window.dispatchEvent(new Event('focus'))
         await new Promise(r => setTimeout(r, 300))
       }, exerciseId)
-      await page.waitForTimeout(900)
       const t = page.locator('[data-component="RestTimerFullscreen"]')
       await expect(t).toBeVisible({ timeout: 3000 })
       return t
     }
 
-    const timer = await openRest('ex-first')
-    // Tap and skip immediately — inside the debounce window.
-    await timer.getByRole('button', { name: 'Más peso' }).click()
-    await timer.locator('.rtf-skip').click()
-    await page.waitForTimeout(1200)
-
-    // A different exercise's rest starts right after.
-    await openRest('ex-second')
-    await page.waitForTimeout(1200)
-
-    const logs = await page.evaluate(async () => {
+    const readLogs = () => page.evaluate(async () => {
       const req = indexedDB.open('coach-pedro-ai', 2)
       const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error) })
       const store = db.transaction('exerciseLogs', 'readonly').objectStore('exerciseLogs')
@@ -2585,6 +2475,20 @@ test.describe('Rest timer — registro de series', () => {
       db.close()
       return all.map(l => ({ exerciseId: l.exerciseId, weight: l.weight }))
     })
+
+    const timer = await openRest('ex-first')
+    // Tap and skip immediately — inside the debounce window.
+    await timer.getByRole('button', { name: 'Más peso' }).click()
+    await timer.locator('.rtf-skip').click()
+    await expect.poll(async () => (await readLogs()).some(l => l.exerciseId === 'ex-first')).toBe(true)
+    await waitRestCleared(page)
+
+    // A different exercise's rest starts right after.
+    await openRest('ex-second')
+    // Deliberate: proves nothing is written for ex-second, so there is no event to wait on.
+    await page.waitForTimeout(1200)
+
+    const logs = await readLogs()
 
     expect(logs.find(l => l.exerciseId === 'ex-first')).toEqual({ exerciseId: 'ex-first', weight: 62.5 })
     // Nothing was written for the exercise that merely came next.
@@ -2618,7 +2522,7 @@ test.describe('Rest timer — ciclo de series', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     // Serie 1 starts from a notification tap. A 3s rest so the whole cycle
     // fits in a test; everything else is the real machinery.
@@ -2704,7 +2608,7 @@ test.describe('Rest timer — confirmar series al terminar', () => {
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
 
     await seedSetCounter(page, 'ex-bench', 0)
     await page.evaluate(async () => {
@@ -2807,7 +2711,6 @@ test.describe('Rest timer — confirmar series al terminar', () => {
       { width: 390, height: 844 },
     ]) {
       await page.setViewportSize(size)
-      await page.waitForTimeout(300)
       const box = await save.boundingBox()
       expect(box.y + box.height, `save off screen at ${size.width}`).toBeLessThanOrEqual(size.height)
       const head = await timer.locator('.rs-title').boundingBox()
@@ -2868,18 +2771,14 @@ test.describe('Rest timer — "Iniciar" arranca el descanso al instante', () => 
     }
 
     await page.goto('plan')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       program,
       settings: SETTINGS,
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     await page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' }).click()
-    await page.waitForTimeout(400)
 
     const iniciar = page.locator('.iniciar-btn')
     await expect(iniciar).toBeEnabled()
@@ -2898,6 +2797,7 @@ test.describe('Rest timer — "Iniciar" arranca el descanso al instante', () => 
 
     // It follows on its own, once.
     await expect.poll(() => startPushes, { timeout: 6000 }).toBe(1)
+    // Deliberate: proves no second notification follows, so there is no event to wait on.
     await page.waitForTimeout(1500)
     expect(startPushes).toBe(1)
     expect(delayedPushes).toBe(1)
@@ -2923,7 +2823,7 @@ test.describe('Rest timer — el push de inicio nunca dice "Descanso terminado"'
     })
 
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await waitForApp(page)
     const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope)
 
     // Delivers a push to the real Service Worker, payload-less like the ones
@@ -2986,7 +2886,6 @@ test.describe('Rest timer — el push de inicio nunca dice "Descanso terminado"'
 
 test.describe('You — Datos export/import roundtrip', () => {
   test('exports logs+settings, clears stores, reimports, verifies integrity', async ({ page }) => {
-    test.setTimeout(60000)
     const fs = require('fs')
 
     const exercises = [
@@ -3011,11 +2910,8 @@ test.describe('You — Datos export/import roundtrip', () => {
     }
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises, exerciseLogs, program, settings })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-13 with Tú v2 (approved by Pedro): the backup used to be
     // exported/imported from the Datos tab ("Exportar JSON" / file input of
@@ -3025,7 +2921,6 @@ test.describe('You — Datos export/import roundtrip', () => {
     // copia (same file name) → wipe → Restaurar una copia → everything is back,
     // checked in Ejercicios and Mis datos.
     await page.locator('#you-row-copia').click()
-    await page.waitForTimeout(300)
 
     // Guardar copia: downloads everything
     const [download] = await Promise.all([
@@ -3039,7 +2934,6 @@ test.describe('You — Datos export/import roundtrip', () => {
     // Read file and verify content matches seeded data
     const filePath = await download.path()
     expect(filePath).not.toBeNull()
-    await page.waitForTimeout(500)
     const raw = fs.readFileSync(filePath, 'utf8')
     const data = JSON.parse(raw)
     expect(data.exercises).toHaveLength(2)
@@ -3072,12 +2966,10 @@ test.describe('You — Datos export/import roundtrip', () => {
       })
     })
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Verify empty state
     await page.waitForSelector('#you-row-ejercicios')
     await page.locator('#you-row-ejercicios').click()
-    await page.waitForTimeout(300)
     await expect(page.locator('#you-ejercicios')).toContainText('Aún no hay ejercicios')
 
     // Restore the saved file
@@ -3098,18 +2990,15 @@ test.describe('You — Datos export/import roundtrip', () => {
 
     // Reload so the app picks up restored settings
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Verify exercises restored
     await page.locator('#you-row-ejercicios').click()
-    await page.waitForTimeout(300)
     await expect(page.locator('#ex-count')).toContainText('2 ejercicios')
     await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Banca' })).toBeVisible()
     await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Muerto' })).toBeVisible()
 
     // Verify settings survived roundtrip (Mis datos)
     await page.goto('you')
-    await page.waitForTimeout(500)
     await page.locator('#you-row-datos').click()
     await expect(page.locator('#profile-row-height')).toContainText('175 cm')
     await expect(page.locator('#profile-row-weight')).toContainText('78 kg')
@@ -3121,7 +3010,6 @@ test.describe('You — Datos export/import roundtrip', () => {
     // from `.username-editor .name-text` on the page; the username now lives in
     // the Mi perfil sheet behind the header avatar.
     await page.goto('friends')
-    await page.waitForTimeout(800)
     await page.getByRole('button', { name: 'Mi perfil' }).click()
     await expect(page.locator('[data-component="ProfileSheet"]')).toContainText('RoundTripUser')
   })
@@ -3158,7 +3046,6 @@ test.describe('Today — Alternative exercise swap', () => {
     // alternatives) and Press Militar (has none) — everything from here on
     // builds on this same state, no re-seeding mid-test ──
     await page.goto('today')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [
         SEED.exercises[0], // ex-bench, has 2 curated alternatives
@@ -3168,14 +3055,11 @@ test.describe('Today — Alternative exercise swap', () => {
       // phase 2 = warmup already done, so the training card is tappable immediately.
       settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0 } },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     const trainingCard = page.locator('[data-phase="training"]').first()
     await expect(trainingCard).toBeVisible()
     await trainingCard.click()
-    await page.waitForTimeout(400)
 
     const heroName = page.locator('.hero-name')
     const altTab = page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Alternativas' })
@@ -3185,7 +3069,6 @@ test.describe('Today — Alternative exercise swap', () => {
     await expect(heroName).toContainText('Banca')
     await expect(altTab).toBeVisible()
     await altTab.click()
-    await page.waitForTimeout(300)
 
     const altCards = page.locator('[data-component="AlternativesTab"] .alt-card')
     await expect(altCards).toHaveCount(2)
@@ -3199,7 +3082,6 @@ test.describe('Today — Alternative exercise swap', () => {
 
     // ── Step 3: Selecting one swaps the sheet's whole identity and jumps to Registrar ──
     await dumbbellCard.click()
-    await page.waitForTimeout(500)
     await expect(registrarTab).toHaveClass(/seg-active/)
     await expect(heroName).toContainText('Mancuernas')
 
@@ -3207,32 +3089,27 @@ test.describe('Today — Alternative exercise swap', () => {
     const weightInput = page.locator('input[inputmode="decimal"]').first()
     await weightInput.fill('45')
     await page.getByRole('button', { name: /Registrar ·/ }).click()
-    await page.waitForTimeout(500)
+    await expect(page.getByRole('button', { name: /Guardado ·/ })).toBeVisible()
 
     // ── Step 5: Reload the app (closing/reopening) — the swap and the logged
     // weight must both survive, proving they're persisted, not in-memory state ──
     await page.reload()
-    await page.waitForTimeout(800)
     await expect(trainingCard).toBeVisible()
     await trainingCard.click()
-    await page.waitForTimeout(400)
     await expect(heroName).toContainText('Mancuernas')
     await expect(weightInput).toHaveValue('45')
 
     // ── Step 6: Revert back to the original exercise for today ──
     await altTab.click()
-    await page.waitForTimeout(300)
     const revertBtn = page.locator('.revert-row')
     await expect(revertBtn).toContainText('Volver a Press Banca')
     await revertBtn.click()
-    await page.waitForTimeout(500)
     await expect(heroName).toContainText('Banca')
     await expect(heroName).not.toContainText('Mancuernas')
 
     // ── Step 7: Move to Press Militar in the SAME sheet via Siguiente — it
     // has no curated alternatives, so the tab must not be offered for it ──
     await page.getByRole('button', { name: 'Siguiente' }).first().click()
-    await page.waitForTimeout(300)
     await expect(heroName).toContainText('Militar')
     await expect(altTab).toHaveCount(0)
 
@@ -3240,14 +3117,11 @@ test.describe('Today — Alternative exercise swap', () => {
     // tab must ALSO show there: the detail always offers curated alternatives
     // regardless of where it's opened from (no isToday gating) ──
     await page.getByRole('button', { name: 'Cerrar' }).first().click()
-    await page.waitForTimeout(300)
     await page.goto('history')
-    await page.waitForTimeout(400)
 
     const exerciseRow = page.locator('.cal-detail .exercise-row', { hasText: 'Banca' })
     await expect(exerciseRow).toBeVisible({ timeout: 3000 })
     await exerciseRow.click()
-    await page.waitForTimeout(400)
 
     await expect(page.locator('.hero-google-btn')).toBeVisible()
     await expect(altTab).toBeVisible()
@@ -3284,12 +3158,10 @@ test.describe('Hoy — alternativa registrada cuenta como hecha', () => {
   }
 
   test('la alternativa marca la fila en verde, desbloquea estiramiento y corta el timer', async ({ page }) => {
-    test.setTimeout(90000)
     await mockApiRoutes(page)
     const today = getTodayStr()
 
     await page.goto('today')
-    await page.waitForTimeout(600)
     await seedIndexedDB(page, {
       exercises: [
         SEED.exercises[0], // ex-bench, con alternativas curadas
@@ -3311,26 +3183,20 @@ test.describe('Hoy — alternativa registrada cuenta como hecha', () => {
       // phase 2 = calentamiento hecho; la sesión arrancó hace 5 min.
       settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0, startedAt: Date.now() - 5 * 60000, endedAt: null } },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(1000)
 
     const timerRing = page.locator('[data-component="TimerRing"]')
     await expect(timerRing).toBeVisible()
 
     // ── Cambiar Press Banca por la alternativa y registrar su peso ──
     await page.locator('[data-phase="training"]').first().click()
-    await page.waitForTimeout(400)
     await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Alternativas' }).click()
-    await page.waitForTimeout(300)
     await page.locator('[data-component="AlternativesTab"] .alt-card').filter({ hasText: 'Mancuernas' }).click()
-    await page.waitForTimeout(500)
     await expect(page.locator('.hero-name')).toContainText('Mancuernas')
     await page.locator('input[inputmode="decimal"]').first().fill('45')
     await page.getByRole('button', { name: /Registrar ·/ }).click()
-    await page.waitForTimeout(500)
+    await expect(page.getByRole('button', { name: /Guardado ·/ })).toBeVisible()
     await page.getByRole('button', { name: 'Cerrar' }).first().click()
-    await page.waitForTimeout(500)
 
     // ── La fila muestra la alternativa y queda marcada en verde ──
     const altRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Mancuernas' })
@@ -3344,11 +3210,10 @@ test.describe('Hoy — alternativa registrada cuenta como hecha', () => {
 
     // ── Registrar el segundo ejercicio → Fase 02 terminada ──
     await militaryRow.click()
-    await page.waitForTimeout(400)
     await expect(page.locator('.hero-name')).toContainText('Militar')
     await page.locator('input[inputmode="decimal"]').first().fill('30')
     await page.getByRole('button', { name: /Registrar ·/ }).click()
-    await page.waitForTimeout(500)
+    await expect(page.getByRole('button', { name: /Guardado ·/ })).toBeVisible()
     await page.getByRole('button', { name: 'Cerrar' }).first().click()
 
     await expect(page.locator('[data-component="CenterToast"]', { hasText: 'Estira bb' })).toBeVisible({ timeout: 3000 })
@@ -3363,11 +3228,11 @@ test.describe('Hoy — alternativa registrada cuenta como hecha', () => {
     // ── Estirar no mueve el tiempo final ──
     await expect(page.locator('[data-component="CenterToast"]')).toHaveCount(0, { timeout: 6000 })
     await stretchCard.click()
-    await page.waitForTimeout(500)
     const hecho = page.getByRole('button', { name: 'Hecho' })
     await expect(hecho).toBeVisible({ timeout: 3000 })
     await hecho.click()
-    await page.waitForTimeout(800)
+    // Stretch done is persisted (phase 4); endedAt must survive that write untouched.
+    await expect.poll(async () => (await storedSettings(page))?.sessionState?.phase).toBeGreaterThanOrEqual(4)
     expect(await readEndedAt(page)).toBe(endedAt)
   })
 })
@@ -3389,7 +3254,6 @@ test.describe('Alternativas — buscador de ejercicios', () => {
   test('busca en el diccionario, muestra vacío sin coincidencias y cambia al elegido', async ({ page }) => {
     const today = getTodayStr()
     await page.goto('today')
-    await page.waitForTimeout(600)
     await seedIndexedDB(page, {
       exercises: [SEED.exercises[0]], // ex-bench, con 2 alternativas curadas
       program: {
@@ -3404,14 +3268,10 @@ test.describe('Alternativas — buscador de ejercicios', () => {
       },
       settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 0 } },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(1000)
 
     await page.locator('[data-phase="training"]').first().click()
-    await page.waitForTimeout(400)
     await page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Alternativas' }).click()
-    await page.waitForTimeout(300)
 
     const altTab = page.locator('[data-component="AlternativesTab"]')
     const cards = altTab.locator('.alt-card')
@@ -3436,7 +3296,6 @@ test.describe('Alternativas — buscador de ejercicios', () => {
 
     // Elegirlo cambia el ejercicio de hoy y vuelve a Registrar.
     await cards.first().click()
-    await page.waitForTimeout(500)
     await expect(page.locator('.hero-name')).toContainText('Sentadilla Hack')
     await expect(page.locator('[data-component="ExerciseDetail"] .seg-btn', { hasText: 'Registrar' })).toHaveClass(/seg-active/)
   })
@@ -3460,7 +3319,6 @@ test.describe('Hoy — ejercicios completados marcados', () => {
   test('marks rows of logged exercises as done and persists after reload', async ({ page }) => {
     const today = getTodayStr()
     await page.goto('today')
-    await page.waitForTimeout(600)
     await seedIndexedDB(page, {
       // ex-bench con imgUrl para que el thumb renderice un <img> y así poder
       // verificar el borde verde sobre la imagen (regla d0f6a55).
@@ -3487,9 +3345,7 @@ test.describe('Hoy — ejercicios completados marcados', () => {
       // directamente en el tab Hoy (sin interactuar con overlays).
       settings: { ...SETTINGS, sessionState: { date: today, phase: 2, todayExDone: 1 } },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(1000)
 
     const benchRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Press de Banca con Barra' })
     const militaryRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Press Militar' })
@@ -3515,7 +3371,6 @@ test.describe('Hoy — ejercicios completados marcados', () => {
 
     // El marcado se recalcula desde IndexedDB en cada carga — sobrevive reload.
     await page.reload()
-    await page.waitForTimeout(1000)
     await expect(page.locator('[data-component="ExerciseRow"]', { hasText: 'Press de Banca con Barra' })).toHaveAttribute('data-done', 'true')
   })
 })
@@ -3532,11 +3387,9 @@ test.describe('Hoy — timer de sesión y momentos', () => {
   }
 
   test('watch moment tras warmup, Estira bb al completar, duración en coach card', async ({ page }) => {
-    test.setTimeout(90000)
     await mockApiRoutes(page)
 
     await page.goto('today')
-    await page.waitForTimeout(600)
     await seedIndexedDB(page, {
       exercises: SEED.exercises,
       program: {
@@ -3557,13 +3410,10 @@ test.describe('Hoy — timer de sesión y momentos', () => {
       },
       settings: { ...SETTINGS },
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(1000)
 
     // ── Warmup → momento watch ──
     await page.locator('[data-phase="warmup"]').click()
-    await page.waitForTimeout(500)
     const hechoBtn = page.getByRole('button', { name: 'Hecho' })
     await expect(hechoBtn).toBeVisible({ timeout: 3000 })
     await hechoBtn.click()
@@ -3574,23 +3424,21 @@ test.describe('Hoy — timer de sesión y momentos', () => {
 
     // ── Loguear ambos ejercicios ──
     await page.locator('[data-phase="training"]').click()
-    await page.waitForTimeout(500)
 
     const stepperInc = page.getByRole('button', { name: 'Más peso' }).first()
     await expect(stepperInc).toBeVisible()
     await stepperInc.click()
-    await page.waitForTimeout(100)
     await page.getByRole('button', { name: /Registrar ·/ }).click()
-    await page.waitForTimeout(600)
+    const savedBtn = page.getByRole('button', { name: /Guardado ·/ })
+    await expect(savedBtn).toBeVisible()
 
     // Si aparece el botón Iniciar (prompt de descanso), ignorarlo: Siguiente navega igual.
     await page.getByRole('button', { name: 'Siguiente' }).first().click()
-    await page.waitForTimeout(400)
+    await expect(page.locator('.hero-name')).toContainText('Militar')
 
     await page.getByRole('button', { name: 'Más peso' }).first().click()
-    await page.waitForTimeout(100)
     await page.getByRole('button', { name: /Registrar ·/ }).click()
-    await page.waitForTimeout(600)
+    await expect(savedBtn).toBeVisible()
 
     // Cerrar sheet → la rama de completado dispara el overlay Estira bb
     await page.getByRole('button', { name: 'Cerrar' }).first().click()
@@ -3602,11 +3450,9 @@ test.describe('Hoy — timer de sesión y momentos', () => {
 
     // ── Stretch → esfuerzo → coach card con Duración ──
     await page.locator('[data-phase="stretch"]').click()
-    await page.waitForTimeout(500)
     const stretchHecho = page.getByRole('button', { name: 'Hecho' })
     await expect(stretchHecho).toBeVisible({ timeout: 3000 })
     await stretchHecho.click()
-    await page.waitForTimeout(600)
 
     // Streak se auto-descarta (~2.6s) y abre el selector de esfuerzo
     await expect(page.locator('#streak-overlay')).not.toBeVisible({ timeout: 6000 })
@@ -3634,7 +3480,6 @@ test.describe('ExerciseDetail — botón coach cyberpunk', () => {
   }
 
   test('renders the cyberpunk coach button and opens the coach chat', async ({ page }) => {
-    test.setTimeout(90000)
     const program = {
       id: 'prog-coach-btn', name: 'Programa Coach',
       weeks: [{
@@ -3647,20 +3492,16 @@ test.describe('ExerciseDetail — botón coach cyberpunk', () => {
     }
 
     await page.goto('plan')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       program,
       settings: SETTINGS,
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     const exerciseRow = page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })
     await expect(exerciseRow).toBeVisible({ timeout: 3000 })
     await exerciseRow.click()
-    await page.waitForTimeout(400)
 
     // El botón cyberpunk real (no el #coach-fab eliminado) debe renderizar
     // dentro del ExerciseDetail con su etiqueta + subtexto.
@@ -3671,7 +3512,6 @@ test.describe('ExerciseDetail — botón coach cyberpunk', () => {
 
     // Click → abre el overlay real con su close button y chips.
     await coachBtn.click()
-    await page.waitForTimeout(400)
     await expect(page.locator('.coach-close-btn')).toBeVisible()
     await expect(page.locator('text=Mejorar técnica')).toBeVisible()
   })
@@ -3690,13 +3530,9 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
   }
 
   test('renders rank with medals + Yo badge, edits username, removes friend with 2-step confirm', async ({ page }) => {
-    test.setTimeout(90000)
-    await page.goto('friends')
-    await page.waitForTimeout(500)
+    await gotoFriendsLoaded(page)
     await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(500)
 
     // Changed 2026-10-07 with Amigos v2 (approved by Pedro). This test used to
     // promise: a `.friends-my-streak` banner with "Racha"; the empty message
@@ -3712,8 +3548,9 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     // sheet with Cancelar / Quitar.
 
     // username ya presente → sin prompt, se muestra la tarjeta de la semana
-    await expect(page.locator('#username-prompt')).not.toBeVisible()
+    // (la tarjeta primero: antes de cargar, "sin prompt" no probaría nada)
     await expect(page.locator('[data-component="WeekCard"]')).toContainText('Racha', { timeout: 15000 })
+    await expect(page.locator('#username-prompt')).not.toBeVisible()
 
     // Estado vacío: sin amigos listados → se invita a agregar.
     await page.route(/\/api\/user\/rename/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
@@ -3723,7 +3560,6 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.route(/\/api\/user\/sync/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
     await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) }))
     await page.reload()
-    await page.waitForTimeout(800)
     await expect(page.locator('#friends-list')).toContainText('Entrena con tu gente')
 
     // Con amigos: orden por tiempo en el gym y "Tú" en mi lugar.
@@ -3736,7 +3572,6 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     ]
     await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends }) }))
     await page.reload()
-    await page.waitForTimeout(800)
 
     const podium = page.locator('[data-component="Leaderboard"] .podium .col')
     await expect(podium).toHaveCount(3) // Luis, Ana + yo (TestUser)
@@ -3787,18 +3622,13 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await expect(page.locator('#friends-list [data-user="Ana"]')).toHaveCount(1)
     await detail.getByRole('button', { name: 'Quitar de mi liga' }).click()
     await detail.getByRole('button', { name: 'Quitar', exact: true }).click()
-    await page.waitForTimeout(600)
     await expect(page.locator('#friends-list [data-user="Ana"]')).toHaveCount(0)
   })
 
   test('registro manual: botón junto al lápiz aparece si el usuario no existe y avisa si ya existe', async ({ page }) => {
-    test.setTimeout(90000)
-    await page.goto('friends')
-    await page.waitForTimeout(500)
+    await gotoFriendsLoaded(page)
     await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(500)
 
     // No existe en el servidor → se muestra el botón junto al lápiz.
     await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) }))
@@ -3806,7 +3636,6 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
     await page.route(/\/api\/user\/sync/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }))
     await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends: [] }) }))
     await page.reload()
-    await page.waitForTimeout(800)
 
     // Changed 2026-10-07 with Amigos v2 (approved by Pedro). The button used to
     // be "Registrar usuario", on the page next to the pencil. It is now
@@ -3819,18 +3648,14 @@ test.describe('Friends — ranking, username y eliminar amigo', () => {
 
     // Al registrarlo se oculta el botón (ya registrado).
     await registerBtn.click()
-    await page.waitForTimeout(600)
     await expect(page.getByRole('button', { name: 'Registrar mi usuario' })).not.toBeVisible()
     await expect(profile).toContainText('Así te encuentran tus amigos')
 
     // Si el nombre ya existe en el servidor, el botón NO aparece (ya está registrado).
     await page.route(/\/api\/user\/check/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true }) }))
-    await page.goto('friends')
-    await page.waitForTimeout(500)
+    await gotoFriendsLoaded(page)
     await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     await page.getByRole('button', { name: 'Mi perfil' }).click()
     await expect(profile).toContainText('Así te encuentran tus amigos')
@@ -3868,21 +3693,17 @@ test.describe('Hoy — sobreescribir peso tras registrar', () => {
     }
 
     await page.goto('today')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       exerciseLogs: [{ id: 'log-overwrite', exerciseId: 'ex-bench', date: today, weight: 41, units: 'kg' }],
       program,
       settings: baseSettings,
     })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     const trainingCard = page.locator('[data-phase="training"]').first()
     await expect(trainingCard).toBeVisible()
     await trainingCard.click()
-    await page.waitForTimeout(400)
 
     const weightInput = page.locator('input[inputmode="decimal"]').first()
     await expect(weightInput).toHaveValue('41')
@@ -3892,7 +3713,6 @@ test.describe('Hoy — sobreescribir peso tras registrar', () => {
     await weightInput.click()
     await page.keyboard.press('ControlOrMeta+a')
     await page.keyboard.type('40')
-    await page.waitForTimeout(500)
     await expect(weightInput).toHaveValue('40')
     await expect(page.getByRole('button', { name: /Actualizar · 40kg/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Guardado/ })).toHaveCount(0)
@@ -3901,7 +3721,6 @@ test.describe('Hoy — sobreescribir peso tras registrar', () => {
     //    41. Como 41 coincide con el log de hoy, el botón vuelve a "Guardado".
     await page.keyboard.press('ControlOrMeta+a')
     await page.keyboard.type('41')
-    await page.waitForTimeout(500)
     await expect(weightInput).toHaveValue('41')
     await expect(page.getByRole('button', { name: /Guardado · 41kg/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Actualizar/ })).toHaveCount(0)
@@ -3909,15 +3728,12 @@ test.describe('Hoy — sobreescribir peso tras registrar', () => {
     // 3) Dejar 40 (sobreescribiendo) y guardar: verificar que 40 persiste.
     await page.keyboard.press('ControlOrMeta+a')
     await page.keyboard.type('40')
-    await page.waitForTimeout(500)
     await expect(weightInput).toHaveValue('40')
     await page.getByRole('button', { name: /Actualizar · 40kg/ }).click()
-    await page.waitForTimeout(600)
+    await expect(page.getByRole('button', { name: /Guardado · 40kg/ })).toBeVisible()
     await page.reload()
-    await page.waitForTimeout(800)
     await expect(trainingCard).toBeVisible()
     await trainingCard.click()
-    await page.waitForTimeout(400)
     await expect(weightInput).toHaveValue('40')
   })
 })
@@ -3931,8 +3747,10 @@ test.describe('Red — widget sin conexión', () => {
     // The connectivity check pings the Worker; answer it so the run doesn't
     // depend on the real Worker being reachable.
     await page.route(/\/api\/ping/, (route) => route.fulfill({ status: 405, headers: { 'Access-Control-Allow-Origin': '*' } }))
+    // The open-time ping is what could raise the banner; "no banner" counts once it's answered.
+    const firstPing = page.waitForResponse(/\/api\/ping/)
     await page.goto('today')
-    await page.waitForTimeout(600)
+    await firstPing
     const banner = page.locator('#offline-banner')
     await expect(banner).toHaveCount(0)
 
@@ -3975,6 +3793,7 @@ test.describe('Red — datos prendidos pero sin internet', () => {
 
     // Online: no periodic polling — no extra pings while nothing happens.
     const count = pings.length
+    // Deliberate: proves there is no polling, so there is no event to wait on.
     await page.waitForTimeout(3000)
     expect(pings.length).toBe(count)
   })
@@ -3993,7 +3812,6 @@ test.describe('Offline — las vistas abren sin internet', () => {
   }
 
   test('plan, history and reload work offline; uncached images use the placeholder', async ({ page, context }) => {
-    test.setTimeout(60000)
     const program = {
       id: 'prog-offline', name: 'Programa Offline',
       weeks: [{
@@ -4006,7 +3824,6 @@ test.describe('Offline — las vistas abren sin internet', () => {
     }
 
     await page.goto('today')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       program,
@@ -4054,7 +3871,6 @@ test.describe('Offline — funciones que requieren internet', () => {
   }
 
   test('friends shows the cached list and AI coach is disabled offline', async ({ page, context }) => {
-    test.setTimeout(60000)
     const errors = []
     page.on('pageerror', (err) => errors.push(err.message))
     const program = {
@@ -4072,8 +3888,7 @@ test.describe('Offline — funciones que requieren internet', () => {
     await page.route(/\/api\/friends\/list/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ friends }) }))
     await page.route(/\/api\/user\//, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true }) }))
 
-    await page.goto('friends')
-    await page.waitForTimeout(400)
+    await gotoFriendsLoaded(page)
     await seedIndexedDB(page, {
       exercises: [{ id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] }],
       program,
@@ -4126,7 +3941,7 @@ test.describe('Offline — funciones que requieren internet', () => {
 // (acepta y nunca responde) y exige que la app arranque igual.
 test.describe('Offline — la red que se cuelga sin responder', () => {
   test('la app arranca desde caché cuando la red conecta pero no contesta', async ({ page }) => {
-    test.setTimeout(120000)
+    test.setTimeout(60000)
     const http = require('http')
     const fs = require('fs')
     const path = require('path')
@@ -4300,23 +4115,18 @@ async function mockFriendsWorker(page, api) {
 }
 
 async function openFriends(page, data) {
-  await page.goto('friends')
-  await page.waitForTimeout(400)
+  await gotoFriendsLoaded(page)
   await seedIndexedDB(page, { exercises: LEAGUE.exercises, ...data })
-  await page.waitForTimeout(200)
   await page.reload()
-  await page.waitForTimeout(800)
 }
 
 // Logs one weight on today's first exercise through Hoy, like a user would.
 async function logWeightToday(page) {
   await page.goto('today')
-  await page.waitForTimeout(800)
   await page.locator('[data-phase="training"] .exercise-row').first().click()
-  await page.waitForTimeout(500)
   await page.getByRole('button', { name: 'Más peso' }).first().click()
   await page.getByRole('button', { name: /Registrar ·/ }).click()
-  await page.waitForTimeout(600)
+  await expect(page.getByRole('button', { name: /Guardado ·/ })).toBeVisible()
 }
 
 test.describe('Amigos v2 — liga con podio, tarjeta y detalle', () => {
@@ -4662,7 +4472,6 @@ test.describe('Amigos v2 — datos viejos', () => {
 
 test.describe('Amigos v2 — sin conexión', () => {
   test('keeps the saved league and disables what needs the Worker, each with its reason', async ({ page, context }) => {
-    test.setTimeout(60000)
     const errors = []
     page.on('pageerror', (err) => errors.push(err.message))
     const api = { friends: [LEAGUE.friend('Ana', 130, { streak: 12 })] }
@@ -4719,17 +4528,13 @@ test.describe('Tú v2 — primera vez, programa desde cero y ajustes', () => {
   }
 
   test('guides the data, creates a program from scratch, keeps lb and creates the searched exercise', async ({ page }) => {
-    test.setTimeout(90000)
     const errors = []
     page.on('pageerror', (err) => errors.push(err.message))
     await mockApiRoutes(page)
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, { exercises: [], settings: SETTINGS })
-    await page.waitForTimeout(200)
     await page.reload()
-    await page.waitForTimeout(800)
 
     // 1. First time: «Hola.», two steps and «Completar mis datos»; no onboarding banner here
     const first = page.locator('#you-first-time')
@@ -4798,16 +4603,14 @@ test.describe('Tú v2 — primera vez, programa desde cero y ajustes', () => {
 
     // 6. Plan shows the computed duration
     await page.goto('plan')
-    await page.waitForTimeout(600)
     await expect(page.locator('.meta-label', { hasText: '10m' }).first()).toBeVisible()
 
     // 7. Ajustes › Unidades lb survives a reload
     await page.goto('you')
     await page.locator('#you-row-ajustes').click()
     await page.locator('#units-lb').click()
-    await page.waitForTimeout(300)
+    await expect.poll(async () => (await storedSettings(page))?.units).toBe('lb')
     await page.reload()
-    await page.waitForTimeout(800)
     await page.locator('#you-row-ajustes').click()
     await expect(page.locator('#units-lb')).toHaveAttribute('aria-pressed', 'true')
 
@@ -4835,12 +4638,10 @@ test.describe('iOS — el teclado no hace zoom al escribir', () => {
 
 test.describe('Tú — Ejercicios: un editor para todo (Nuevo 03)', () => {
   test('la tarjeta muestra, el editor cambia nombre, músculo, consejos y alternativas, y eliminar avisa los registros', async ({ page }) => {
-    test.setTimeout(60000)
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
 
     await page.goto('you')
-    await page.waitForTimeout(400)
     await seedIndexedDB(page, {
       exercises: [
         // Saved before `reason` was dropped from the model
@@ -4854,7 +4655,6 @@ test.describe('Tú — Ejercicios: un editor para todo (Nuevo 03)', () => {
       settings: { id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg', accentColor: '#d4ff3a', language: 'es', onboarded: true },
     })
     await page.reload()
-    await page.waitForTimeout(800)
     await page.locator('#you-row-ejercicios').click()
 
     // 1. The open card only shows: tips, and alternatives as photo + name (no reason)
@@ -4929,7 +4729,6 @@ test.describe('Tú — Ejercicios: un editor para todo (Nuevo 03)', () => {
     await expect(card).toContainText('Tríceps')
     await expect(card.locator('.thumb')).toHaveAttribute('src', 'https://example.com/mi-curl.jpg')
     await page.reload()
-    await page.waitForTimeout(800)
     await page.locator('#you-row-ejercicios').click()
     await page.locator('[data-component="ExerciseListItem"]', { hasText: 'Curl EZ' }).locator('.exercise-toggle').click()
     await expect(card).toContainText('Codos pegados al torso')

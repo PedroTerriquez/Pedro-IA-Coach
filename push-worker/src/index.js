@@ -1,7 +1,16 @@
+// Only the app (GitHub Pages) and local dev may call the Worker. Origin can be
+// faked outside a browser, so this stops other sites, not determined scripts.
+const ALLOWED_ORIGINS = ['https://pedroterriquez.github.io']
+const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
+
+function isAllowedOrigin(origin) {
+  return !!origin && (ALLOWED_ORIGINS.includes(origin) || LOCALHOST_ORIGIN.test(origin))
+}
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
+  Vary: 'Origin',
 }
 
 const AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast'
@@ -350,19 +359,25 @@ async function renameInFriendLists(env, oldName, newName) {
 
 export default {
   async fetch(req, env) {
+    const origin = req.headers.get('Origin')
+    if (!isAllowedOrigin(origin)) {
+      return new Response('Forbidden', { status: 403 })
+    }
+    const cors = { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
+
     if (req.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders })
+      return new Response(null, { headers: cors })
     }
 
     if (req.method !== 'POST' && req.method !== 'GET') {
-      return new Response('Method Not Allowed', { status: 405, headers: corsHeaders })
+      return new Response('Method Not Allowed', { status: 405, headers: cors })
     }
 
     const url = new URL(req.url)
 
     function respond(data, status = 200) {
       const body = typeof data === 'string' ? data : JSON.stringify(data)
-      const headers = { ...corsHeaders }
+      const headers = { ...cors }
       if (typeof data !== 'string') headers['Content-Type'] = 'application/json'
       return new Response(body, { status, headers })
     }
