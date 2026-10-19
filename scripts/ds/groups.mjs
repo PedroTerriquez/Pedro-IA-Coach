@@ -22,110 +22,13 @@ async function clearToasts(page) {
 
 export const groups = {
   // ───────────────────────── Hoy + Detalle de ejercicio ─────────────────────────
+  // Hoy v2 + Detalle v2 (2026-10-15). Writes «Hoy · Actual» (vistas/hoy2/) and
+  // «Detalle de ejercicio · Actual» (vistas/detalle-ejercicio2/); the old
+  // vistas/hoy and vistas/detalle-ejercicio stay as «· v1».
   async hoy({ open, S }) {
-    const G = 'Hoy'
-    const D = 'Detalle de ejercicio'
-    const page = await open(world(S))
-    const at = (p) => `vistas/hoy/${p}`
-    const det = (p) => `vistas/detalle-ejercicio/${p}`
-
-    await page.go('today')
-    await page.card({ path: at('pantalla-inicio'), group: G, name: 'Hoy · Inicio de sesión', subtitle: 'calentamiento sigue, entrenamiento y estiramiento bloqueados', source: 'src/routes/today/+page.svelte', screen: true })
-    const phaseStart = await grab(page, [
-      { label: 'PhaseCard · sigue', selector: '[data-phase="warmup"]' },
-      { label: 'PhaseCard · bloqueada', selector: '[data-phase="training"]' },
-    ])
-    await page.card({ path: at('phase-header'), group: G, name: 'PhaseHeader', subtitle: 'título del día + chip de semana (+ TimerRing con sesión en curso)', source: C + 'PhaseHeader.svelte', specimens: [{ label: 'PhaseHeader', selector: comp('PhaseHeader') }], viewport: '420x220' })
-    await page.card({ path: at('locked-card'), group: G, name: 'LockedCard', subtitle: 'fase que aún no se puede abrir', source: C + 'LockedCard.svelte', specimens: [{ label: 'LockedCard', selector: comp('LockedCard') }], viewport: '420x280' })
-
-    // Calentamiento
-    await page.locator('[data-phase="warmup"]').click()
-    await page.card({ path: at('warmup'), group: G, name: 'Warmup · Calentamiento', subtitle: 'un movimiento a la vez, Anterior / Hecho / Siguiente', source: C + 'Warmup.svelte', screen: true, fold: true, settle: 900 })
-    await btn(page, 'Hecho').click()
-    await page.locator(comp('CenterToast')).waitFor({ timeout: 3000 })
-    await page.card({ path: at('center-toast'), group: G, name: 'CenterToast', subtitle: 'aviso centrado que se cierra solo (aquí: inicia tu Watch)', source: C + 'CenterToast.svelte', screen: true, fold: true })
-    await clearToasts(page)
-
-    await page.card({ path: at('pantalla-entrenando'), group: G, name: 'Hoy · Entrenando', subtitle: 'calentamiento hecho, TrainingCard con la lista del día', source: 'src/routes/today/+page.svelte', screen: true })
-    await page.card({ path: at('training-card'), group: G, name: 'TrainingCard', subtitle: 'ejercicios del día con progreso', source: C + 'TrainingCard.svelte', specimens: [{ label: 'TrainingCard · 0 de 3', selector: '[data-phase="training"]' }], viewport: '420x520' })
-    const phaseDone = await grab(page, [{ label: 'PhaseCard · completada', selector: '[data-phase="warmup"]' }])
-    const timerRing = await grab(page, [{ label: 'PhaseHeader con sesión en curso', selector: comp('PhaseHeader'), width: 390 }, { label: 'TimerRing', selector: comp('TimerRing'), optional: true }])
-
-    // Detalle de ejercicio
-    await page.locator('[data-phase="training"] .exercise-row').first().click()
-    await page.waitForTimeout(700)
-    await page.card({ path: det('pantalla-entreno'), group: D, name: 'Detalle · Entreno', subtitle: 'hoja completa: hero, coach IA, stats y registro de bloques', source: C + 'ExerciseDetail.svelte', screen: true })
-    await page.card({ path: det('exercise-hero'), group: D, name: 'ExerciseHero', subtitle: 'imagen/gif, nombre, músculo y búsquedas', source: C + 'ExerciseHero.svelte', specimens: [{ label: 'ExerciseHero', selector: comp('ExerciseHero'), width: 390 }], viewport: '460x520' })
-    await page.card({ path: det('workout-tab'), group: D, name: 'WorkoutTab', subtitle: 'bloques series × reps × peso, Registrar e Iniciar descanso', source: C + 'WorkoutTab.svelte', specimens: [{ label: 'WorkoutTab · sin registrar', selector: '.detail-scroll .tab-content, .detail-scroll [data-component="WorkoutTab"]', width: 390 }], viewport: '460x640' })
-    await page.card({ path: det('number-stepper'), group: D, name: 'NumberStepper + StepButton', subtitle: '− valor + para peso, reps y series', source: C + 'NumberStepper.svelte', specimens: [{ label: 'NumberStepper', selector: comp('NumberStepper'), distinct: true }, { label: 'StepButton', selector: '.detail-scroll .step-btn', distinct: true, row: true }], viewport: '460x420' })
-
-    await btn(page, 'Más peso').click()
-    await btn(page, /Registrar ·/).click()
-    await page.waitForTimeout(700)
-    await page.card({ path: det('pantalla-registrado'), group: D, name: 'Detalle · Registrado', subtitle: 'después de Registrar: aparece Iniciar descanso', source: C + 'ExerciseDetail.svelte', screen: true })
-
-    await page.getByRole('button', { name: 'Historial' }).last().click()
-    await page.waitForTimeout(500)
-    await page.card({ path: det('pantalla-historial'), group: D, name: 'Detalle · Historial', subtitle: 'gráfica de progreso, récord y registros', source: C + 'HistoryTab.svelte', screen: true })
-    await page.card({ path: det('history-tab'), group: D, name: 'HistoryTab + LineChart', subtitle: 'gráfica + stats + lista de registros', source: C + 'HistoryTab.svelte', specimens: [{ label: 'HistoryTab', selector: comp('HistoryTab'), width: 390 }], viewport: '460x640' })
-
-    await page.getByRole('button', { name: /Alternativas/ }).last().click()
-    await page.waitForTimeout(500)
-    await page.card({ path: det('pantalla-alternativas'), group: D, name: 'Detalle · Alternativas', subtitle: 'buscador arriba + alternativas sugeridas', source: C + 'AlternativesTab.svelte', screen: true })
-    await page.card({ path: det('alternatives-tab'), group: D, name: 'AlternativesTab', subtitle: 'buscador sobre todo el diccionario + lista', source: C + 'AlternativesTab.svelte', specimens: [{ label: 'AlternativesTab', selector: comp('AlternativesTab'), width: 390 }], viewport: '460x560' })
-
-    // Coach IA del ejercicio
-    await page.locator('.coach-cyber-btn').click()
-    await page.waitForTimeout(700)
-    await page.card({ path: det('coach-chat'), group: D, name: 'ExerciseCoachChat · inicio', subtitle: 'saludo + chips rápidos', source: C + 'ExerciseCoachChat.svelte', screen: true, fold: true })
-    await page.getByText('Me duele algo').first().click()
-    await page.waitForTimeout(500)
-    await page.card({ path: det('coach-chat-dolor'), group: D, name: 'ExerciseCoachChat · Me duele algo', subtitle: 'selector de parte del cuerpo según el músculo', source: C + 'ExerciseCoachChat.svelte', screen: true, fold: true })
-    await page.locator('.coach-close-btn').click()
-    await page.waitForTimeout(400)
-
-    // Terminar los tres ejercicios
-    await page.locator('.seg-btn', { hasText: 'Registrar' }).click()
-    for (let i = 0; i < 2; i++) {
-      await btn(page, 'Siguiente').click()
-      await page.waitForTimeout(500)
-      await btn(page, 'Más peso').click()
-      await btn(page, /Registrar ·/).click()
-      await page.waitForTimeout(700)
-    }
-    await btn(page, 'Cerrar').click()
-    await clearToasts(page)
-    await page.card({ path: at('pantalla-estiramiento'), group: G, name: 'Hoy · Falta estirar', subtitle: 'entrenamiento completo, estiramiento desbloqueado', source: 'src/routes/today/+page.svelte', screen: true })
-    await page.card({
-      path: at('phase-card'), group: G, name: 'PhaseCard', subtitle: 'sigue / bloqueada / completada, con StatusBadge y ProgressBar', source: C + 'PhaseCard.svelte', viewport: '820x760',
-      snaps: [phaseStart, phaseDone, await grab(page, [{ label: 'PhaseCard · entrenamiento completo', selector: '[data-phase="training"]' }, { label: 'PhaseCard · estiramiento sigue', selector: '[data-phase="stretch"]' }])],
-    })
-    await page.card({ path: at('timer-ring'), group: G, name: 'TimerRing', subtitle: 'tiempo de sesión dentro del PhaseHeader', source: C + 'TimerRing.svelte', snaps: [timerRing], viewport: '420x320' })
-
-    await page.locator('[data-phase="stretch"]').click()
-    await page.card({ path: at('stretch'), group: G, name: 'Warmup · Estiramiento', subtitle: 'mismo componente en modo stretch', source: C + 'Warmup.svelte', screen: true, fold: true, settle: 900 })
-    await btn(page, 'Hecho').click()
-    await page.locator('#streak-overlay').waitFor({ timeout: 6000 })
-    await page.card({ path: at('streak-overlay'), group: G, name: 'StreakOverlay', subtitle: 'celebración de racha al terminar', source: C + 'StreakOverlay.svelte', screen: true, fold: true, settle: 700 })
-    await page.locator('#effort-overlay').waitFor({ timeout: 8000 })
-    await page.card({ path: at('effort-selector'), group: G, name: 'EffortSelector', subtitle: '¿cómo estuvo? dentro de CenterDialog', source: C + 'EffortSelector.svelte', screen: true, fold: true, settle: 600 })
-    await page.locator('#effort-overlay [data-effort="Justo"]').click()
-    await page.locator(comp('CoachResultCard')).waitFor({ timeout: 10000 })
-    await page.card({ path: at('pantalla-coach'), group: G, name: 'Hoy · Análisis del coach', subtitle: 'CoachResultCard con veredicto, objetivo y recomendaciones', source: C + 'CoachResultCard.svelte', screen: true, settle: 1200 })
-
-    await page.context().close()
-
-    // Día de descanso
-    const rest = await open(world(S, { programs: [S.restDayProgram()] }))
-    await rest.go('today')
-    await rest.card({ path: at('pantalla-descanso'), group: G, name: 'Hoy · Día de descanso', subtitle: 'RestDayView con tips de recuperación', source: C + 'RestDayView.svelte', screen: true })
-    await rest.context().close()
-
-    // Sin programa
-    const empty = await open({ exercises: [], settings: S.settings({ activeProgramId: null }) })
-    await empty.go('today')
-    await empty.card({ path: at('pantalla-sin-programa'), group: G, name: 'Hoy · Sin programa', subtitle: 'OnboardingView dentro de GlowCard', source: C + 'OnboardingView.svelte', screen: true })
-    await empty.context().close()
+    await hoyScreens({ open, S })
+    await moveSheets({ open, S })
+    await detailScreens({ open, S })
   },
 
   // ───────────────────────────────── Plan ─────────────────────────────────
@@ -315,23 +218,22 @@ export const groups = {
     await page.go('today')
     await page.card({ path: at('tab-bar'), group: G, name: 'TabBar', subtitle: 'barra flotante con blur, tab activo en acento', source: C + 'TabBar.svelte', specimens: [{ label: 'TabBar · Hoy activo', selector: comp('TabBar'), width: 390, unfix: true }], viewport: '460x200' })
 
-    await page.locator('[data-phase="warmup"]').click()
-    await btn(page, 'Hecho').click()
-    await clearToasts(page)
+    // Hoy v2: training waits folded under the warmup; open it and register.
+    await page.locator('[data-phase="training"] .ph-row').click()
     await page.locator('[data-phase="training"] .exercise-row').first().click()
     await btn(page, 'Más peso').click()
-    await btn(page, /Registrar ·/).click()
+    await btn(page, /^Registrar \d/).click()
     await page.locator(comp('Toast')).waitFor({ timeout: 3000 })
-    await page.card({ path: at('toast'), group: G, name: 'Toast', subtitle: 'confirmación breve arriba de la pantalla', source: C + 'Toast.svelte', specimens: [{ label: 'Toast', selector: comp('Toast'), unfix: true }], viewport: '420x160' })
+    await page.card({ path: at('toast'), group: G, name: 'Toast', subtitle: 'confirmación breve arriba, bajo la barra de estado', source: C + 'Toast.svelte', specimens: [{ label: 'Toast', selector: comp('Toast'), unfix: true }], viewport: '420x160' })
     await clearToasts(page)
-    await btn(page, 'Iniciar').click()
-    await page.locator(comp('RestTimerFullscreen')).waitFor({ timeout: 3000 })
+    await btn(page, /Descansar/).click()
+    await page.locator(comp('SeriesModeScreen')).waitFor({ timeout: 3000 })
     await page.getByRole('button', { name: 'Minimizar' }).click()
     await page.locator(comp('RestTimerBanner')).waitFor({ timeout: 3000 })
     await btn(page, 'Cerrar').click().catch(() => {})
     await page.waitForTimeout(500)
-    await page.card({ path: at('rest-timer-banner-pantalla'), group: G, name: 'RestTimerBanner · en contexto', subtitle: 'descanso minimizado flotando sobre Hoy', source: C + 'RestTimerBanner.svelte', screen: true, fold: true })
-    await page.card({ path: at('rest-timer-banner'), group: G, name: 'RestTimerBanner', subtitle: 'anillo + tiempo + ejercicio + saltar', source: C + 'RestTimerBanner.svelte', specimens: [{ label: 'RestTimerBanner', selector: comp('RestTimerBanner'), width: 366, unfix: true }], viewport: '440x240' })
+    await page.card({ path: at('rest-timer-banner-pantalla'), group: G, name: 'RestTimerBanner · en contexto', subtitle: 'descanso minimizado abajo, sobre la TabBar, en lugar del dock', source: C + 'RestTimerBanner.svelte', screen: true, fold: true })
+    await page.card({ path: at('rest-timer-banner'), group: G, name: 'RestTimerBanner', subtitle: 'anillo blanco + tiempo + ejercicio + «Sigue la serie» + saltar', source: C + 'RestTimerBanner.svelte', specimens: [{ label: 'RestTimerBanner', selector: comp('RestTimerBanner'), width: 366, unfix: true }], viewport: '440x240' })
 
     await page.context().setOffline(true)
     await page.evaluate(() => window.dispatchEvent(new Event('offline')))
@@ -375,34 +277,28 @@ export const groups = {
     await tab('Ejercicios')
     await collect('chips', [{ label: 'ChipRow con scroll + FilterChip sm', selector: comp('ChipRow'), width: 366 }])
 
+    // Hoy v2 (2026-10-15): PhaseCard, StatusBadge and ProgressBar are gone;
+    // the detail's segmented control is the 44 `tabs` variant.
     await page.go('today')
-    await collect('chips', [{ label: 'Chip (pill de estado)', selector: comp('Chip'), distinct: true, row: true }])
-    await collect('progress', [{ label: 'StatusBadge', selector: comp('StatusBadge'), distinct: true, row: true }, { label: 'ProgressBar · 0 %', selector: comp('ProgressBar'), width: 300 }])
     await collect('icons', [{ label: 'Icon', selector: comp('Icon'), distinct: 'html', row: true, max: 40 }])
-    await page.locator('[data-phase="warmup"]').click()
-    await btn(page, 'Hecho').click()
-    await clearToasts(page)
-    await collect('progress', [{ label: 'StatusBadge · completado', selector: comp('StatusBadge'), distinct: true, row: true }])
+    await page.locator('[data-phase="training"] .ph-row').click()
     await page.locator('[data-phase="training"] .exercise-row').first().click()
     await page.waitForTimeout(600)
-    await collect('stats', [{ label: 'StatsGrid card · StatBlock con acento', selector: `${comp('ExerciseDetail')} ${comp('StatsGrid')}`, width: 366 }])
-    await collect('segmented', [{ label: 'SegmentedControl · 3 opciones', selector: `${comp('ExerciseDetail')} ${comp('SegmentedControl')}`, width: 366 }])
+    await collect('segmented', [{ label: 'SegmentedControl · tabs (Detalle v2)', selector: `${comp('ExerciseDetail')} ${comp('SegmentedControl')}`, width: 366 }])
     await collect('icons', [{ label: 'Icon', selector: comp('Icon'), distinct: 'html', row: true, max: 40 }])
-    await btn(page, 'Más peso').click()
-    await btn(page, /Registrar ·/).click()
     await btn(page, 'Cerrar').click()
-    await clearToasts(page)
-    await collect('progress', [{ label: 'ProgressBar · 1 de 3', selector: comp('ProgressBar'), width: 300 }])
     for (const r of ['plan', 'friends', 'you']) {
       await page.go(r)
       await collect('icons', [{ label: 'Icon', selector: comp('Icon'), distinct: 'html', row: true, max: 40 }])
     }
     await page.context().close()
 
-    const empty = await open({ exercises: [], settings: S.settings({ activeProgramId: null }) })
-    await empty.go('today')
-    bag.glow = [await grab(empty, [{ label: 'GlowCard', selector: comp('GlowCard'), width: 366 }])]
-    await empty.context().close()
+    // Chip and GlowCard only live on the rest day now
+    const rest = await open(world(S, { programs: [S.restDayProgram()] }))
+    await rest.go('today')
+    ;(bag.chips ??= []).push(await grab(rest, [{ label: 'Chip (pill de estado)', selector: comp('Chip'), distinct: true, row: true, optional: true }]))
+    bag.glow = [await grab(rest, [{ label: 'GlowCard', selector: comp('GlowCard'), width: 366, optional: true }])]
+    await rest.context().close()
 
     const cards = [
       ['button', 'Button', 'primary, secondary, danger, ghost, text, dashed · md y sm', 'Button.svelte', '820x900'],
@@ -410,7 +306,6 @@ export const groups = {
       ['segmented', 'SegmentedControl', '2, 3 y 4 opciones', 'SegmentedControl.svelte', '820x360'],
       ['inputs', 'TextInput y SearchInput', 'campos de texto', 'TextInput.svelte', '820x640'],
       ['stats', 'StatsGrid + StatBlock', 'cuadrícula de cifras', 'StatBlock.svelte', '820x280'],
-      ['progress', 'ProgressBar + StatusBadge', 'avance y estado de fase', 'ProgressBar.svelte', '820x360'],
       ['page-header', 'PageHeader', 'eyebrow + título de vista', 'PageHeader.svelte', '460x220'],
       ['section-label', 'SectionLabel', 'rótulo de sección con barra de acento', 'SectionLabel.svelte', '420x220'],
       ['empty', 'EmptyState', 'mensaje centrado para listas vacías o carga', 'EmptyState.svelte', '420x220'],
@@ -436,3 +331,226 @@ function dedupeIcons(snaps) {
 import { card } from './capture.mjs'
 const card0 = (snaps, path, group) =>
   card(null, { path, group, name: 'OnboardingBanner', subtitle: 'los 4 pasos del primer arranque', source: C + 'OnboardingBanner.svelte', snaps, viewport: '860x640' })
+
+// ───────────────────────── Hoy v2 / Detalle v2 ─────────────────────────
+const HOY = 'Hoy · Actual'
+const DET = 'Detalle de ejercicio · Actual'
+const HOY_SRC = 'src/routes/today/+page.svelte'
+const hoyAt = (p) => `vistas/hoy2/${p}`
+const detAt = (p) => `vistas/detalle-ejercicio2/${p}`
+const isoToday = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+const todayLog = (id, weight, extra = {}) => ({ id: `log-9999-${id}`, exerciseId: id, date: isoToday(), weight, units: 'kg', ...extra })
+const session = (S, over = {}) => S.settings({ hasWatch: false, sessionState: { date: isoToday(), phase: 1, todayExDone: 0, ...over } })
+const dock = (page) => page.locator(comp('NextStepDock'))
+const logDock = (page) => page.locator(comp('LogDock'))
+const hoyScreen = (page, path, name, subtitle, source = HOY_SRC) =>
+  page.card({ path: hoyAt(path), group: HOY, name, subtitle, source, screen: true, fold: true })
+const detScreen = (page, path, name, subtitle, source = C + 'ExerciseDetail.svelte') =>
+  page.card({ path: detAt(path), group: DET, name, subtitle, source, screen: true, fold: true })
+
+/** Opens Hoy on a seeded world; `logs` are today's extra logs */
+async function openHoy(open, S, settings, logs = [], over = {}) {
+  const page = await open(world(S, { settings, exerciseLogs: [...S.logs(), ...logs], ...over }))
+  await page.go('today')
+  return page
+}
+
+async function hoyScreens({ open, S }) {
+  const bench = todayLog('ex-bench', 80)
+  const militaryOne = todayLog('ex-military', 40, { sets: 1, reps: '10' })
+  const started = Date.now() - 11 * 60000
+
+  // Antes de empezar + calentamiento a mitad
+  let page = await openHoy(open, S, session(S))
+  await hoyScreen(page, 'pantalla-inicio', 'Hoy · Antes de empezar', 'calentamiento abierto; entrenamiento y estiramiento en «Después»')
+  const stepsOpen = await grab(page, [{ label: 'SessionSteps · antes de empezar', selector: comp('SessionSteps'), width: 390 }])
+  const dockStart = await grab(page, [{ label: 'NextStepDock · empezar calentamiento', selector: comp('NextStepDock'), width: 390, unfix: true }])
+  await btn(page, /Empezar calentamiento/).click()
+  await btn(page, 'Hecho').click()
+  await btn(page, 'Hecho').click()
+  await btn(page, 'Cerrar').click()
+  await hoyScreen(page, 'pantalla-calentamiento-a-mitad', 'Hoy · Calentamiento a mitad', 'dos movimientos hechos, el dock sigue con el siguiente')
+  await page.context().close()
+
+  // Entrenando (calentamiento hecho, nada registrado)
+  page = await openHoy(open, S, session(S, { phase: 2, startedAt: started }))
+  await hoyScreen(page, 'pantalla-entrenando', 'Hoy · Entrenando', 'entrenamiento abierto, el dock empieza con el primer ejercicio')
+  await page.context().close()
+
+  // En curso: un ejercicio hecho, otro con una serie
+  page = await openHoy(open, S, session(S, { phase: 2, startedAt: started }), [bench, militaryOne])
+  await hoyScreen(page, 'pantalla-en-curso', 'Hoy · Ejercicio en curso', 'hecho con acento, en curso con sus marcas, dock «Registrar serie»')
+  const rows = await grab(page, [{ label: 'ExerciseRow session · hecho / en curso / siguiente', selector: '[data-phase="training"] .exercise-row', max: 3, width: 366 }])
+  const stepsTraining = await grab(page, [{ label: 'SessionSteps · entrenando', selector: comp('SessionSteps'), width: 390 }])
+  const clock = await grab(page, [{ label: 'PageHeader · con reloj de sesión', selector: comp('PageHeader'), width: 390 }])
+
+  // Descansando: el banner minimizado toma el lugar del dock
+  await page.locator('[data-phase="training"] .exercise-row').nth(1).click()
+  await btn(page, /Descansar|Iniciar descanso/).click()
+  await btn(page, 'Minimizar descanso').click()
+  await btn(page, 'Cerrar').click()
+  await page.locator(comp('RestTimerBanner')).waitFor({ timeout: 3000 })
+  await page.waitForTimeout(600)
+  await hoyScreen(page, 'pantalla-descansando', 'Hoy · Descansando', 'banner del descanso abajo, sobre la TabBar, en lugar del dock', C + 'RestTimerBanner.svelte')
+  await page.context().close()
+
+  // Sin conexión
+  page = await openHoy(open, S, session(S, { phase: 2, startedAt: started }), [bench, militaryOne])
+  await page.context().setOffline(true)
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+  await page.waitForTimeout(500)
+  await hoyScreen(page, 'pantalla-sin-conexion', 'Hoy · Sin conexión', 'el dock avisa que todo se guarda en el teléfono')
+  await page.context().close()
+
+  // Falta estirar → estiramiento → racha → esfuerzo → resumen
+  const allDone = [bench, todayLog('ex-military', 40), todayLog('ex-lateral', 10)]
+  page = await openHoy(open, S, session(S, { phase: 2, startedAt: started }), allDone)
+  await clearToasts(page)
+  await hoyScreen(page, 'pantalla-falta-estirar', 'Hoy · Falta estirar', 'calentamiento y entrenamiento hechos, estiramiento abierto')
+  const stepsStretch = await grab(page, [{ label: 'SessionSteps · falta estirar', selector: comp('SessionSteps'), width: 390 }])
+  await btn(page, /Empezar estiramiento/).click()
+  const next = page.getByRole('button', { name: 'Siguiente', exact: true }).first()
+  while (await next.isEnabled()) await next.click()
+  await btn(page, 'Terminar estiramiento').click()
+  await page.locator(comp('LogDock')).getByRole('button', { name: 'Terminar sesión' }).click()
+  await page.locator('#streak-overlay').waitFor({ timeout: 6000 })
+  await hoyScreen(page, 'racha', 'StreakScreen', 'racha a pantalla completa; espera a «Seguir»', C + 'StreakScreen.svelte')
+  await btn(page, 'Seguir').click()
+  await page.locator('#effort-overlay').waitFor({ timeout: 6000 })
+  await hoyScreen(page, 'esfuerzo', 'EffortSheet', '¿Cómo sentiste la sesión? con barras de intensidad', C + 'EffortSheet.svelte')
+  await page.locator('#effort-overlay [data-effort="Justo"]').click()
+  await page.locator(comp('SessionSummary')).getByText('Para la próxima').waitFor({ timeout: 10000 })
+  await page.card({ path: hoyAt('pantalla-resumen'), group: HOY, name: 'Hoy · Resumen', subtitle: 'Tu coach, para la próxima y tres cifras', source: C + 'SessionSummary.svelte', screen: true })
+  await page.context().close()
+
+  // Ahora no: resumen sin análisis
+  page = await openHoy(open, S, S.settings({ hasWatch: false, streakShownDate: isoToday(), sessionState: { date: isoToday(), phase: 5, todayExDone: 3, startedAt: started, endedAt: Date.now() } }), allDone)
+  await hoyScreen(page, 'pantalla-resumen-sin-analisis', 'Hoy · Resumen sin análisis', 'tras «Ahora no»: duración y «Pedir análisis al coach»', C + 'SessionSummary.svelte')
+  await page.context().close()
+
+  // Primer entreno y sin programa
+  page = await openHoy(open, S, session(S), [], { exerciseLogs: [] })
+  await hoyScreen(page, 'pantalla-primer-entreno', 'Hoy · Primer entreno', 'sin ningún registro: el dock da la bienvenida')
+  await page.context().close()
+  page = await open({ exercises: [], settings: S.settings({ activeProgramId: null }) })
+  await page.go('today')
+  await hoyScreen(page, 'pantalla-sin-programa', 'Hoy · Sin programa', 'tres pasos, privacidad y «Armar mi rutina»', C + 'FirstRunView.svelte')
+  await page.context().close()
+
+  await card(null, { path: hoyAt('session-steps'), group: HOY, name: 'SessionSteps', subtitle: 'fase abierta, hecha (68, acento) y después', source: C + 'SessionSteps.svelte', snaps: [stepsOpen, stepsTraining, stepsStretch], viewport: '820x1400' })
+  await card(null, { path: hoyAt('exercise-row'), group: HOY, name: 'ExerciseRow · session', subtitle: '76: hecho, en curso con marcas, siguiente', source: C + 'ExerciseRow.svelte', snaps: [rows], viewport: '460x420' })
+  await card(null, { path: hoyAt('page-header-reloj'), group: HOY, name: 'PageHeader · reloj de sesión', subtitle: 'día en un renglón, músculos y reloj en texto', source: HOY_SRC, snaps: [clock], viewport: '460x220' })
+  await card(null, { path: hoyAt('next-step-dock'), group: HOY, name: 'NextStepDock', subtitle: 'un botón principal con caption', source: C + 'NextStepDock.svelte', snaps: [dockStart], viewport: '460x220' })
+}
+
+async function moveSheets({ open, S }) {
+  const pieces = []
+  // Calentamiento: movimiento, cómo se hace, último, completado
+  let page = await openHoy(open, S, session(S))
+  await btn(page, /Empezar calentamiento/).click()
+  await page.waitForTimeout(600)
+  await hoyScreen(page, 'calentamiento', 'Calentamiento', 'un movimiento en la hoja de Detalle: objetivo en frase, Siguiente / Hecho', C + 'MovementSheet.svelte')
+  pieces.push(await grab(page, [
+    { label: 'DetailSheetHead · posición', selector: comp('DetailSheetHead'), width: 390 },
+    { label: 'ExerciseMedia · GIF de movimiento', selector: comp('ExerciseMedia'), width: 350 },
+    { label: 'TitleNav', selector: comp('TitleNav'), width: 350 },
+    { label: 'TargetPanel · one', selector: comp('TargetPanel'), width: 350 },
+    { label: 'DetailRow · Cómo se hace (cerrada)', selector: `${comp('MovementSheet')} button[aria-expanded]`, width: 350 },
+    { label: 'LogDock · Siguiente + Hecho', selector: comp('LogDock'), width: 390, unfix: true },
+  ]))
+  await btn(page, /Cómo se hace/).click()
+  await hoyScreen(page, 'calentamiento-como-se-hace', 'Calentamiento · Cómo se hace', 'posición inicial, ejecución y respiración', C + 'MovementSheet.svelte')
+  const next = page.getByRole('button', { name: 'Siguiente', exact: true }).first()
+  while (await next.isEnabled()) await next.click()
+  await hoyScreen(page, 'calentamiento-ultimo', 'Calentamiento · Último', 'Siguiente apagado y «Terminar calentamiento»', C + 'MovementSheet.svelte')
+  await btn(page, 'Terminar calentamiento').click()
+  await hoyScreen(page, 'calentamiento-completado', 'Calentamiento · Listo', 'los marcados y «Empezar con …»', C + 'MovementSheet.svelte')
+  await page.context().setOffline(true)
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+  await btn(page, 'Cerrar').click()
+  await page.locator('[data-phase="warmup"] .ph-row').click()
+  await page.locator('[data-phase="warmup"] .exercise-row').first().click()
+  await page.waitForTimeout(500)
+  await hoyScreen(page, 'movimiento-sin-conexion', 'Movimiento · Sin conexión', 'aviso en la posición; Hecho sigue funcionando', C + 'MovementSheet.svelte')
+  await page.context().close()
+
+  // Estiramiento y sin imagen (Jalón: bíceps tiene estiramientos sin media)
+  const pull = [todayLog('ex-row', 60), todayLog('ex-pulldown', 55), todayLog('ex-curl', 30)]
+  page = await openHoy(open, S, session(S, { phase: 2 }), pull, { programs: [S.pullProgram(), S.secondProgram()] })
+  await clearToasts(page)
+  if (await page.getByRole('button', { name: /Empezar estiramiento/ }).count()) {
+    await btn(page, /Empezar estiramiento/).click()
+    await page.waitForTimeout(600)
+    await hoyScreen(page, 'estiramiento', 'Estiramiento', 'misma hoja, sin morado', C + 'MovementSheet.svelte')
+    const nxt = page.getByRole('button', { name: 'Siguiente', exact: true }).first()
+    for (let i = 0; i < 20 && !(await page.getByText('Sin imagen para este movimiento').count()) && await nxt.isEnabled(); i++) await nxt.click()
+    if (await page.getByText('Sin imagen para este movimiento').count()) {
+      await hoyScreen(page, 'movimiento-sin-imagen', 'Movimiento · Sin imagen', 'hueco de 112 con Google y TikTok', C + 'MovementSheet.svelte')
+      pieces.push(await grab(page, [{ label: 'ExerciseMedia · sin imagen', selector: comp('ExerciseMedia'), width: 350 }]))
+    }
+  }
+  await page.context().close()
+
+  await card(null, { path: hoyAt('piezas-detalle'), group: HOY, name: 'Piezas de Detalle v2 · movimiento', subtitle: 'DetailSheetHead, ExerciseMedia, TitleNav, TargetPanel, DetailRow, LogDock', source: C + 'MovementSheet.svelte', snaps: pieces, viewport: '820x1300' })
+}
+
+async function detailScreens({ open, S }) {
+  const pieces = []
+  let page = await openHoy(open, S, session(S, { phase: 2 }))
+  await page.locator('[data-phase="training"] .exercise-row').first().click()
+  await page.waitForTimeout(700)
+  await detScreen(page, 'pantalla-principal', 'Detalle · Principal', 'media 112, TitleNav, objetivo, coach IA, peso de hoy y dock')
+  pieces.push(await grab(page, [
+    { label: 'ExerciseMedia · foto + Ver animación', selector: comp('ExerciseMedia'), width: 350 },
+    { label: 'TargetPanel · dos celdas', selector: comp('TargetPanel'), width: 350 },
+    { label: 'DetailRow · coach IA', selector: `${comp('ExerciseDetail')} .row.ai`, width: 350 },
+    { label: 'SegmentedControl · tabs', selector: `${comp('ExerciseDetail')} ${comp('SegmentedControl')}`, width: 350 },
+    { label: 'WeightPanel', selector: comp('WeightPanel'), width: 350 },
+    { label: 'LogDock · ⏱ + Registrar', selector: comp('LogDock'), width: 390, unfix: true },
+  ]))
+  await btn(page, /^Registrar \d/).click()
+  await page.locator(comp('Toast')).waitFor({ timeout: 3000 })
+  await detScreen(page, 'pantalla-registrado', 'Detalle · Registrado', 'borde de acento, Toast arriba, Siguiente + Descansar')
+  pieces.push(await grab(page, [{ label: 'WeightPanel · registrado', selector: comp('WeightPanel'), width: 350 }, { label: 'LogDock · Siguiente + Descansar', selector: comp('LogDock'), width: 390, unfix: true }]))
+  await clearToasts(page)
+
+  // A changed weight brings the editor back, with its link to the blocks
+  await btn(page, 'Más peso').click()
+  await btn(page, /Series con pesos distintos/).click()
+  await page.locator(`${comp('BlockRow')} .block-field-input`).nth(2).click()
+  await btn(page, 'Agregar bloque').click()
+  await detScreen(page, 'pantalla-bloques', 'Detalle · Series por bloque', 'tres valores por bloque, − / + del elegido', C + 'BlocksPanel.svelte')
+  pieces.push(await grab(page, [{ label: 'BlockRow · peso elegido', selector: comp('BlockRow'), width: 350 }]))
+  await btn(page, 'Un solo peso').click()
+
+  await page.locator('.seg-btn', { hasText: 'Historial' }).click()
+  await detScreen(page, 'pantalla-historial', 'Detalle · Historial', 'récord, cuánto subiste, gráfica y sesiones por semana', C + 'ProgressHero.svelte')
+  await page.locator('.seg-btn', { hasText: 'Alternativas' }).click()
+  await detScreen(page, 'pantalla-alternativas', 'Detalle · Alternativas', 'sugeridas como filas; el buscador baja al dock', C + 'AlternativesTab.svelte')
+  await page.locator(`${comp('LogDock')} input`).fill('press chino')
+  await detScreen(page, 'pantalla-sin-resultados', 'Detalle · Sin resultados', 'No encontramos «…» + Borrar búsqueda', C + 'AlternativesTab.svelte')
+  await btn(page, 'Borrar búsqueda').click()
+
+  await btn(page, /Pregúntale al coach/).click()
+  await page.waitForTimeout(600)
+  await detScreen(page, 'pantalla-coach', 'Detalle · Coach', 'saludo sin emojis y preguntas rápidas de 52', C + 'ExerciseCoachChat.svelte')
+  await btn(page, 'Me duele algo').click()
+  await detScreen(page, 'pantalla-me-duele', 'Detalle · Me duele algo', 'partes del cuerpo en dos columnas + Cancelar', C + 'ExerciseCoachChat.svelte')
+  await btn(page, 'Volver').click()
+
+  await page.context().setOffline(true)
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+  await page.locator('.seg-btn', { hasText: 'Registrar' }).click()
+  await page.waitForTimeout(500)
+  await detScreen(page, 'pantalla-sin-conexion', 'Detalle · Sin conexión', 'aviso en la posición, coach apagado, se guarda en el teléfono')
+  await page.context().close()
+
+  // Primera vez: sin ningún registro del ejercicio
+  page = await openHoy(open, S, session(S, { phase: 2 }), [], { exerciseLogs: [] })
+  await page.locator('[data-phase="training"] .exercise-row').first().click()
+  await page.waitForTimeout(700)
+  await detScreen(page, 'pantalla-primera-vez', 'Detalle · Primera vez', 'nota, peso en 0 y Registrar apagado')
+  await page.context().close()
+
+  await card(null, { path: detAt('piezas'), group: DET, name: 'Piezas de Detalle v2 · ejercicio', subtitle: 'media, objetivo, coach, tabs, WeightPanel, BlockRow y LogDock', source: C + 'ExerciseDetail.svelte', snaps: pieces, viewport: '820x1600' })
+}

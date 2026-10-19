@@ -1,7 +1,21 @@
 <script lang="ts">
-  let { name, muscle, imgUrl, sets, reps, weight, units = 'kg', accent = 'var(--accent)', weightIsTarget = false, selectable = false, selected = false, done = false, onclick, actions }: {
+  import Icon from './Icon.svelte'
+
+  let { name, muscle = '', imgUrl, sets, reps, weight, units = 'kg', accent = 'var(--accent)', weightIsTarget = false, selectable = false, selected = false, done = false, onclick, actions, variant = 'default', sub = '', right = '', state = '', pips = undefined, chevron = false }: {
+    /** default = Plan / Historial row · session = 76 row of Hoy v2 and Detalle v2 */
+    variant?: 'default' | 'session'
+    /** session: second line */
+    sub?: string
+    /** session: mono text at the right («4 × 8-10») */
+    right?: string
+    /** session: done = accent border + check · now = in progress · next = up next */
+    state?: 'done' | 'now' | 'next' | ''
+    /** session: one mark per planned set, `on` already done */
+    pips?: { total: number; on: number }
+    /** session: chevron at the right (alternatives) */
+    chevron?: boolean
     name: string
-    muscle: string
+    muscle?: string
     imgUrl?: string
     sets?: number
     reps?: string
@@ -17,6 +31,29 @@
   } = $props()
 </script>
 
+{#if variant === 'session'}
+<button class="exercise-row xc {state}" data-component="ExerciseRow" data-done={state === 'done' ? 'true' : 'false'} data-state={state || 'pending'} {onclick} type="button">
+  {#if imgUrl}<img class="xc-img" src={imgUrl} alt="" />{:else}<span class="xc-img ph"></span>{/if}
+  <span class="xc-text">
+    <span class="xc-n">{name}</span>
+    {#if sub}<span class="xc-s">{sub}</span>{/if}
+    {#if pips}
+      <span class="pips" aria-label="{pips.on} de {pips.total} series">
+        {#each Array(pips.total) as _, i}<i class:on={i < pips.on}></i>{/each}
+      </span>
+    {/if}
+  </span>
+  {#if state === 'done'}
+    <span class="xc-ok"><Icon name="check" size={16} /></span>
+  {:else if chevron}
+    <span class="xc-chev"><Icon name="chev" size={16} /></span>
+  {:else if right}
+    <span class="xc-r">{right}</span>
+  {:else}
+    <span></span>
+  {/if}
+</button>
+{:else}
 <button class="exercise-row" class:selected class:row-done={done} data-component="ExerciseRow" data-done={done ? 'true' : 'false'} {onclick} type="button">
   <div class="ex-thumb">
     {#if imgUrl}
@@ -56,8 +93,49 @@
     <div class="ex-actions">{@render actions()}</div>
   {/if}
 </button>
+{/if}
 
 <style>
+  /* ── session (Hoy v2 / Detalle v2) ── */
+  .exercise-row.xc {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    min-height: 76px;
+    padding: 12px 16px 12px 12px;
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+  }
+  .exercise-row.xc.next { background: var(--surface-hover); }
+  .exercise-row.xc.now { background: var(--surface-hover); box-shadow: inset 0 0 0 1.5px var(--cv-ring-current); }
+  .exercise-row.xc.done { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  /* Inside a sheet the rows sit on the sheet's surface */
+  :global(.ds-body) .exercise-row.xc { background: var(--cv-fill-1); }
+  .xc-img { width: 52px; height: 52px; border-radius: var(--radius-md); object-fit: cover; display: block; background: var(--media-bg); }
+  .xc-img.ph { background: repeating-linear-gradient(135deg, var(--cv-fill-5) 0 6px, var(--cv-placeholder-stripe) 6px 12px); }
+  .xc-text { min-width: 0; }
+  /* Long names end in «…» after two lines */
+  .xc-n {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .xc-s { display: block; font-size: 13px; color: var(--text-tertiary); margin-top: 3px; }
+  .xc-r { font-family: var(--font-mono); font-size: 15px; letter-spacing: -0.03em; white-space: nowrap; }
+  .xc-chev { display: grid; color: var(--text-muted); }
+  .xc-ok { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; }
+  .pips { display: flex; gap: 4px; margin-top: 8px; }
+  .pips i { width: 22px; height: 4px; border-radius: 2px; background: var(--cv-line-strong); }
+  .pips i.on { background: var(--accent); }
+
   .exercise-row {
     display: flex;
     align-items: center;

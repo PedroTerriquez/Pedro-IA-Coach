@@ -2,6 +2,9 @@
   import { online } from '$lib/stores/network'
   import { fly } from 'svelte/transition'
 
+  // inline = inside a detail sheet's head, in place of its position line
+  let { inline = false }: { inline?: boolean } = $props()
+
   const RECONNECTED_MS = 2500
 
   // `idle` on first load while online: nothing to announce. It only turns
@@ -38,6 +41,7 @@
     id="offline-banner"
     class="offline-banner"
     class:back={status === 'back'}
+    class:inline
     role="status"
     data-component="OfflineBanner"
     transition:fly={{ y: -20, duration: 200 }}
@@ -72,6 +76,7 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
+  .offline-banner.inline { position: static; margin: 0 auto; }
   .offline-banner.back {
     background: #141414;
     color: var(--accent);

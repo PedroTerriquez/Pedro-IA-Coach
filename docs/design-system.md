@@ -46,12 +46,12 @@ Con la herramienta DesignSync, desde `design-system/` como `localDir`: `list_fil
 | Shell | `shell/` | TabBar, Toast, banners |
 | Compartidos | `compartidos/` | Button, chips, inputs, etc. |
 | Foundations, Rest timer | `foundations/`, `components/rest-timer-*` | Hechas a mano, no las genera el script |
-| `<Vista> · Actual` | `vistas/<vista>2/` | Lo que la app muestra hoy, generado por el script (por ahora solo `Tú · Actual`). Junto a `· Nuevo` (propuestas) y `· v1` (archivo) |
+| `<Vista> · Actual` | `vistas/<vista>2/` | Lo que la app muestra hoy, generado por el script (`Tú · Actual`, `Hoy · Actual` en `vistas/hoy2/` y `Detalle de ejercicio · Actual` en `vistas/detalle-ejercicio2/`). Junto a `· Nuevo` (propuestas) y `· v1` (archivo) |
 | Nuevo · … | `components/<tema>/` | Propuestas todavía no implementadas (ej. `Nuevo · Hoy`). No tienen copia local: se listan en `handMade` de `manifest.mjs`. Al implementarse se conservan como referencia (no se borran) y su vista se regenera en una carpeta nueva; las cards viejas quedan como «· v1» |
 
 ## Sin card todavía
 
-`/admin` y sus componentes (solo desarrollo), `LoadingSpinner`, `DebugAIToggle` (solo visible con debug IA activo) y `RestTimerFullscreen`/`RestSetsSummary` (viven a mano en `Rest timer`).
+`/admin` y sus componentes (solo desarrollo), `DebugAIToggle` (solo visible con debug IA activo) y `RestTimerFullscreen`/`RestSetsSummary` (viven a mano en `Rest timer`).
 
 ## Pendiente — arreglar en Claude Design a mano (2026-10-14)
 

@@ -56,6 +56,8 @@ export const program = (today = PUSH) => ({
   weeks: [week('Semana 1 · Volumen', 'BUILD', today), week('Semana 2 · Fuerza', 'STRENGTH', today)],
 })
 export const restDayProgram = () => program(REST)
+/** Jalón today: Bíceps brings stretches without image (Hoy v2 «sin imagen») */
+export const pullProgram = () => program(PULL)
 export const secondProgram = () => ({ id: 'prog-full', name: 'Full Body 3 días', weeks: [week('Semana única', 'BASE', PULL)] })
 
 export const settings = (over = {}) => ({

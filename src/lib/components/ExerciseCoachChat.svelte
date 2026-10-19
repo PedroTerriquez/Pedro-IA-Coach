@@ -3,9 +3,7 @@
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { settings } from '$lib/stores/settings'
   import CoachChat, { type ChatTurn } from './CoachChat.svelte'
-  import Button from './Button.svelte'
-  import ChipRow from './ChipRow.svelte'
-  import FilterChip from './FilterChip.svelte'
+  import QuickAskList from './QuickAskList.svelte'
 
   interface ExerciseCoach {
     name: string
@@ -19,10 +17,20 @@
     onclose?: () => void
   } = $props()
 
+  const PAIN = 'Me duele algo'
+  // What each quick question actually asks the coach
+  const QUICK: Record<string, string> = {
+    'Mejorar técnica': '¿Cómo mejoro mi técnica en este ejercicio?',
+    [PAIN]: '',
+    '¿Voy muy pesado?': '¿Cómo sé si estoy usando demasiado peso?',
+    'Dame una variante': 'Dame 2-3 alternativas reales para este ejercicio. Dame el nombre en inglés y en español.',
+  }
+
   let showBodyParts = $state(false)
+  let loading = $state(false)
   let bodyParts = $derived(bodyPartsFor(exercise.muscle))
   let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
-  let greeting = $derived(`¡Qué onda! 👋 Soy tu coach para «${exercise.name}». Pregúntame sobre técnica, peso, o si algo te molesta y lo ajustamos.`)
+  let greeting = $derived(`Hola. Soy tu coach para ${displayName}. Pregúntame de técnica, de peso o si algo te molesta, y lo ajustamos.`)
 
   async function send(thread: ChatTurn[]) {
     showBodyParts = false
@@ -34,62 +42,19 @@
   function painMessage(part: string) {
     return `Siento molestia en ${part.toLowerCase()} al hacer este ejercicio. ¿Qué ajusto?`
   }
+
+  function ask(item: string, sendMessage: (msg: string) => void) {
+    if (item === PAIN) showBodyParts = true
+    else sendMessage(QUICK[item])
+  }
 </script>
 
-<CoachChat subtitle={displayName} {greeting} {accent} {send} {onclose}>
+<CoachChat title="Coach · {displayName}" {greeting} {accent} {send} {onclose} placeholder="Escribe tu pregunta" bind:loading>
   {#snippet chips(sendMessage)}
     {#if showBodyParts}
-      <div class="pain-picker">
-        <div class="pain-header">
-          <span class="pain-title">¿Dónde lo sientes?</span>
-          <Button variant="text" onclick={() => showBodyParts = false}>× cancelar</Button>
-        </div>
-        <ChipRow gap={7}>
-          {#each bodyParts as part}
-            <FilterChip variant="sans" size="lg" style="background:{accent}14;border-color:{accent}3a;color:{accent}" onclick={() => sendMessage(painMessage(part))}>
-              {part}
-            </FilterChip>
-          {/each}
-        </ChipRow>
-      </div>
+      <QuickAskList label="¿Dónde lo sientes?" items={bodyParts} layout="grid" disabled={loading} onpick={(part) => sendMessage(painMessage(part))} oncancel={() => (showBodyParts = false)} />
     {:else}
-      <ChipRow class="coach-chips" gap={7} scroll>
-        <FilterChip variant="sans" size="lg" onclick={() => sendMessage('¿Cómo mejoro mi técnica en este ejercicio?')}>
-          Mejorar técnica
-        </FilterChip>
-        <FilterChip variant="sans" size="lg" style="background:{accent}16;border-color:{accent}3a;color:{accent}" onclick={() => showBodyParts = true}>
-          ⚠️ Me duele algo
-        </FilterChip>
-        <FilterChip variant="sans" size="lg" onclick={() => sendMessage('¿Cómo sé si estoy usando demasiado peso?')}>
-          ¿Voy muy pesado?
-        </FilterChip>
-        <FilterChip variant="sans" size="lg" onclick={() => sendMessage('Dame 2-3 alternativas reales para este ejercicio. Dame el nombre en inglés y en español.')}>
-          Variante
-        </FilterChip>
-      </ChipRow>
+      <QuickAskList label="Preguntas rápidas" items={Object.keys(QUICK)} disabled={loading} onpick={(item) => ask(item, sendMessage)} />
     {/if}
   {/snippet}
 </CoachChat>
-
-<style>
-  .pain-picker {
-    flex-shrink: 0;
-    padding: 12px 16px;
-    border-top: 0.5px solid var(--border);
-    background: rgba(255, 255, 255, 0.015);
-  }
-  .pain-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 9px;
-  }
-  .pain-title {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    font-weight: 600;
-  }
-</style>

@@ -14,8 +14,11 @@
     sendDisabled = false,
     onsend,
     onchip,
+    top,
     children
   }: {
+    /** Above the field, under the caption (the exercise coach's quick questions) */
+    top?: Snippet
     value?: string
     placeholder?: string
     caption?: string
@@ -49,6 +52,7 @@
 
 <div class="cd" data-component="ChatDock">
   {#if caption}<p class="cap">{caption}</p>{/if}
+  {@render top?.()}
   {#if chips.length}
     <div class="qr">
       {#each chips as chip}

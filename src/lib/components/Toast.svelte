@@ -26,8 +26,9 @@
 
 <style>
   .toast {
+    /* Top, under the status bar: the bottom belongs to docks and the rest banner */
     position: fixed;
-    bottom: 100px;
+    top: calc(var(--safe-top) + 10px);
     left: 50%;
     transform: translateX(-50%);
     padding: 10px 18px;
@@ -43,6 +44,7 @@
     -webkit-backdrop-filter: blur(12px);
     max-width: 80%;
     text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     transition: opacity 0.3s;
   }
   .toast.toast-error {

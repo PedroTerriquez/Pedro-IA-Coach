@@ -11,6 +11,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import { trainingDaysPerWeek, streakThreshold } from '$lib/streak'
   import { startRestFromExercise } from '$lib/rest-timer'
+  import { detailPosition, nextInList } from '$lib/session-steps'
   import { settings } from '$lib/stores/settings'
 
   let {
@@ -45,6 +46,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
   let showDetail = $state(false)
   let detailExercises = $state<any[]>([])
   let detailIdx = $state(0)
+  let detailDayName = $state('')
 
   const CAL_DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
   const CAL_DOW_LONG = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -97,7 +99,8 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
     selected = date
   }
 
-  async function openExerciseDetailAt(dayExercises: any[], idx: number) {
+  async function openExerciseDetailAt(dayExercises: any[], idx: number, dayName: string) {
+    detailDayName = dayName
     const resolvedList = await Promise.all(dayExercises.map(async (ex) => {
       const resolved = { ...ex, ...(exercisesMap[ex.exerciseId] || {}) } as any
       const logs = await storage.getLogsForExercise(ex.exerciseId)
@@ -313,7 +316,7 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
                 sets={e.sets}
                 reps={e.reps}
                 {accent}
-                onclick={() => openExerciseDetailAt(selRec.exercises, j)}
+                onclick={() => openExerciseDetailAt(selRec.exercises, j, selRec.day?.name || '')}
               />
             {/each}
           </div>
@@ -331,6 +334,8 @@ export { calStripTime, calKey, calDowMon, calMonday, calAddDays, toLocalDateStr,
     {units}
     hasPrev={detailIdx > 0}
     hasNext={detailIdx < detailExercises.length - 1}
+    positionLabel={detailPosition(detailDayName, detailIdx, detailExercises.length)}
+    nextExercise={nextInList(detailExercises, detailIdx)}
     isToday={false}
     onNavigate={onDetailNavigate}
     onClose={onDetailClose}

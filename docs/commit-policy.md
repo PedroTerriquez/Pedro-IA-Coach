@@ -20,4 +20,4 @@ Never commit untracked files outside the scope of the task (e.g. `docs/`, `train
 - **Update `_VER_DESC`** to a concise (~10 words) description of actual changes
 - SW cache scoped by build hash via SvelteKit's `$service-worker` (`cache-${version}`) — updates automatically, no manual CACHE bump needed
 - **`bump-version.sh` runs the tests ITSELF and ABORTS the bump if they fail.** It runs `npm run check` and `npx playwright test` BEFORE touching the version. Never bypass this gate (`BUMP_SKIP_TESTS=1` is only for quick diagnostics; never commit a bump with failing tests)
-- Version shows in `src/routes/today/+page.svelte` (imports `APP_VERSION` from `$lib/pwa`)
+- `APP_VERSION` is no longer shown in Hoy (removed with Hoy v2, 2026-10-15); where it goes next is pending Pedro's call

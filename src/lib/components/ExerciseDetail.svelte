@@ -1,22 +1,31 @@
 <script lang="ts">
   import { logWeight, getSettings, findOrCreateExerciseByName, swapExerciseForToday, revertExerciseSwapForToday } from '$lib/storage'
+import { saveSetEntry, getTodaySets } from '$lib/set-log'
+import type { SetEntry } from '$lib/set-log'
   import { toast } from '$lib/stores/ui'
   import { settings } from '$lib/stores/settings'
-  import { parseRepsDefault } from '$lib/exercise-utils'
-  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
-  import type { ExerciseLogBlock } from '$lib/types'
-  import Sheet from './Sheet.svelte'
-  import SegmentedControl from './SegmentedControl.svelte'
-  import ExerciseCoachChat from './ExerciseCoachChat.svelte'
-  import ExerciseHero from './ExerciseHero.svelte'
-  import WorkoutTab from './WorkoutTab.svelte'
-  import HistoryTab from './HistoryTab.svelte'
-  import AlternativesTab from './AlternativesTab.svelte'
-  import Icon from './Icon.svelte'
-  import StatsGrid from './StatsGrid.svelte'
-  import StatBlock from './StatBlock.svelte'
-  import DebugAIToggle from './DebugAIToggle.svelte'
   import { online } from '$lib/stores/network'
+  import { parseRepsDefault, muscleLabel } from '$lib/exercise-utils'
+  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+  import { formatWeight } from '$lib/exercise-history'
+  import { restClock, weightsList } from '$lib/session-steps'
+  import type { ExerciseLogBlock } from '$lib/types'
+  import DetailSheet from './DetailSheet.svelte'
+  import ExerciseMedia from './ExerciseMedia.svelte'
+  import TitleNav from './TitleNav.svelte'
+  import TargetPanel from './TargetPanel.svelte'
+  import DetailRow from './DetailRow.svelte'
+  import LogDock from './LogDock.svelte'
+  import SegmentedControl from './SegmentedControl.svelte'
+  import WeightPanel from './WeightPanel.svelte'
+  import BlocksPanel from './BlocksPanel.svelte'
+  import ProgressHero from './ProgressHero.svelte'
+  import AlternativesTab from './AlternativesTab.svelte'
+  import ExerciseCoachChat from './ExerciseCoachChat.svelte'
+  import DebugAIToggle from './DebugAIToggle.svelte'
+  import SearchInput from './SearchInput.svelte'
+  import Button from './Button.svelte'
+  import Icon from './Icon.svelte'
 
   function getToday(): string {
     const d = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
@@ -56,6 +65,13 @@
     originalExerciseName?: string
   }
 
+  interface NextExercise {
+    name: string
+    sets: number
+    reps: string
+    dictId?: string
+  }
+
   let {
     exercise,
     open,
@@ -64,6 +80,8 @@
     hasPrev = false,
     hasNext = false,
     isToday = false,
+    positionLabel = '',
+    nextExercise = null,
     onNavigate = null,
     onClose = null,
     onLog = null,
@@ -78,6 +96,10 @@
     hasPrev?: boolean
     hasNext?: boolean
     isToday?: boolean
+    /** «Empuje · 1 de 3» when opened from a list; the «k de N» part goes bold */
+    positionLabel?: string
+    /** The one after this in the list, for «Después: …» */
+    nextExercise?: NextExercise | null
     onNavigate?: ((dir: 'prev' | 'next') => void) | null
     onClose?: (() => void) | null
     onLog?: (() => void) | null
@@ -88,36 +110,46 @@
 
   let todayStr = $derived(getToday())
   let todayLog = $derived(exercise.logs?.find(l => l.date === todayStr) || null)
+  let pastLogs = $derived((exercise.logs || []).filter(l => l.date !== todayStr && l.weight > 0))
   let lastLog = $derived(exercise.logs?.length ? exercise.logs[exercise.logs.length - 1] : null)
+  let lastPastWeight = $derived(pastLogs.length ? pastLogs[pastLogs.length - 1].weight : 0)
+  let prevMax = $derived(pastLogs.length ? Math.max(...pastLogs.map(l => l.weight)) : 0)
+  let firstTime = $derived(!(exercise.logs || []).some(l => l.weight > 0))
 
   let tab = $state<'workout' | 'history' | 'alternatives'>('workout')
-  let pendingWeight = $state(todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0))
-  let loggedToday = $state(!!todayLog)
+  let pendingWeight = $state(0)
+  let loggedToday = $state(false)
   let iniciarLoading = false
-  let showGif = $state(true)
-
   let chatOpen = $state(false)
+  let query = $state('')
+
+  // Modo serie fusionado
+  type SetLoggingMode = 'off' | 'loggingSet' | 'restingNextSet' | 'reviewSets'
+  let setLoggingMode = $state<SetLoggingMode>('off')
+  let currentSetIndex = $state(1)
+  let nextSetWeight = $state(0)
+  let nextSetReps = $state(0)
+  let reviewEntries = $state<SetEntry[]>([])
 
   function seedBlocks(): ExerciseLogBlock[] {
     if (todayLog?.blocks?.length) return todayLog.blocks.map(b => ({ ...b }))
     if (todayLog?.sets !== undefined && todayLog?.reps !== undefined) {
       return [{ sets: todayLog.sets, reps: parseRepsDefault(todayLog.reps), weight: todayLog.weight }]
     }
-    return [{ sets: exercise.sets, reps: parseRepsDefault(exercise.reps), weight: todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0) }]
+    return [{ sets: exercise.sets || 1, reps: parseRepsDefault(exercise.reps), weight: todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0) }]
   }
 
-  let advanced = $state(!!todayLog?.blocks?.length)
-  let blocks = $state<ExerciseLogBlock[]>(seedBlocks())
-  let savedKey = $state<string | null>(advanced ? JSON.stringify(blocks) : (loggedToday ? String(pendingWeight) : null))
+  let advanced = $state(false)
+  let blocks = $state<ExerciseLogBlock[]>([])
+  let savedKey = $state<string | null>(null)
 
   let currentExerciseKey = $derived(exercise.exerciseId || exercise.id)
   let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
   let isSwapped = $derived(!!exercise.originalExerciseId && exercise.originalExerciseId !== currentExerciseKey)
-  // The alternatives tab always shows when the exercise has curated alternatives
-  // (regardless of whether the detail is opened from Today, Plan or History).
-  // Stays visible while swapped even if the swapped-in exercise has no curated
-  // alternatives of its own — otherwise there'd be no way back to the original.
+  // The alternatives tab shows when the exercise has curated alternatives, and
+  // stays while swapped even if the swapped-in one has none: it's the way back.
   let showAlternativesTab = $derived(((exercise.alternatives?.length ?? 0) > 0) || isSwapped)
+
   $effect(() => {
     void currentExerciseKey
     const isBlockMode = !!todayLog?.blocks?.length
@@ -126,14 +158,43 @@
     pendingWeight = todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0)
     advanced = isBlockMode
     blocks = seededBlocks
-    // savedKey must only reflect the *persisted* value (todayLog/lastLog), NOT
-    // the live pendingWeight. Reading pendingWeight here would make this effect
-    // re-run on every keystroke, snapping the input back to the saved weight and
-    // keeping isDirty=false (button stuck on "Guardado") — the "can't overwrite
-    // after registering" bug.
+    // savedKey only reflects what is stored, never the live value: reading
+    // pendingWeight here would snap the field back on every keystroke.
     savedKey = isBlockMode ? JSON.stringify(seededBlocks) : (loggedToday ? String(todayLog?.weight ?? pendingWeight) : null)
     if (tab === 'alternatives' && !showAlternativesTab) tab = 'workout'
   })
+
+  let totalSets = $derived(blocks.reduce((a, b) => a + (b.sets || 0), 0))
+  let topWeight = $derived(blocks.length ? Math.max(...blocks.map(b => b.weight)) : 0)
+  let currentKey = $derived(advanced ? JSON.stringify(blocks) : String(pendingWeight))
+  let isDirty = $derived(loggedToday && currentKey !== savedKey)
+  let registered = $derived(loggedToday && !isDirty)
+  let savedWeight = $derived(advanced ? topWeight : pendingWeight)
+  let isRecord = $derived(registered && prevMax > 0 && savedWeight > prevMax)
+  let savedSets = $derived(todayLog?.sets ?? exercise.sets)
+  let restText = $derived(restClock(exercise.rest))
+  let canRegister = $derived(advanced ? blocks.length > 0 && topWeight > 0 : pendingWeight > 0)
+  let registerLabel = $derived(advanced ? `Registrar ${totalSets} series` : `Registrar ${formatWeight(pendingWeight)} ${units}`)
+  let posParts = $derived(splitPosition(positionLabel))
+
+  function splitPosition(label: string): { lead: string; bold: string } {
+    const i = label.lastIndexOf(' · ')
+    return i === -1 ? { lead: '', bold: label } : { lead: label.slice(0, i + 3), bold: label.slice(i + 3) }
+  }
+
+  function nextCaption(): string {
+    if (!nextExercise) return ''
+    const name = getExerciseDisplayName(nextExercise, $settings.language)
+    return `Después: ${name} · ${nextExercise.sets} × ${nextExercise.reps}`
+  }
+
+  function dockCaption(): string {
+    if (!$online) return 'Sin internet también se guarda en tu teléfono'
+    if (registered) return nextCaption()
+    if (firstTime && !advanced) return 'Ajusta con − y +, luego registra'
+    if (advanced) return `${totalSets} series · ${weightsList(blocks.map(b => b.weight), units)}`
+    return nextCaption()
+  }
 
   function close() {
     onClose?.()
@@ -155,26 +216,28 @@
     else if (dx > 0 && hasPrev) onNavigate?.('prev')
   }
 
-  let totalSets = $derived(blocks.reduce((a, b) => a + (b.sets || 0), 0))
-  let topWeight = $derived(blocks.length ? Math.max(...blocks.map(b => b.weight)) : 0)
-  let currentKey = $derived(advanced ? JSON.stringify(blocks) : String(pendingWeight))
-  let isDirty = $derived(loggedToday && currentKey !== savedKey)
-  let isLoggedState = $derived(loggedToday && !isDirty)
+  function savedToast(what: string) {
+    toast.show($online ? `Guardado · ${what}` : `Guardado en tu teléfono · ${what}`)
+  }
+
+  async function saveBlocks() {
+    if (!blocks.length) return
+    const top = blocks.reduce((best, b) => (b.weight > best.weight ? b : best), blocks[0])
+    await logWeight(currentExerciseKey, topWeight, units, totalSets, String(top.reps), undefined, blocks.map(b => ({ ...b })))
+    savedToast(`${totalSets} series`)
+  }
+
+  // Registrar writes today's single log and overwrites what was there.
+  async function saveSingle() {
+    if (pendingWeight === 0) return
+    await logWeight(currentExerciseKey, pendingWeight, units)
+    savedToast(`${formatWeight(pendingWeight)} ${units}`)
+  }
 
   async function handleSave() {
-    if (advanced) {
-      if (!blocks.length) return
-      const top = blocks.reduce((best, b) => (b.weight > best.weight ? b : best), blocks[0])
-      await logWeight(exercise.exerciseId || exercise.id, topWeight, units, totalSets, String(top.reps), undefined, blocks.map(b => ({ ...b })))
-      pendingWeight = topWeight
-      toast.show(`✅ ${blocks.length} bloque${blocks.length > 1 ? 's' : ''} · máx ${topWeight}${units} registrado`)
-    } else {
-      if (pendingWeight === 0) return
-      await logWeight(exercise.exerciseId || exercise.id, pendingWeight, units)
-      toast.show(`✅ ${pendingWeight}${units} registrado`)
-      blocks = [{ sets: exercise.sets, reps: parseRepsDefault(exercise.reps), weight: pendingWeight }]
-      advanced = true
-    }
+    if (!canRegister) return
+    if (advanced) await saveBlocks()
+    else await saveSingle()
     savedKey = currentKey
     loggedToday = true
     onLog?.()
@@ -185,12 +248,14 @@
     }
   }
 
-  async function handleClear() {
-    loggedToday = false
-    pendingWeight = lastLog ? lastLog.weight : 0
+  function enterBlocks() {
+    blocks = [{ sets: exercise.sets || 1, reps: parseRepsDefault(exercise.reps), weight: pendingWeight || 0 }]
+    advanced = true
+  }
+
+  function exitBlocks() {
+    pendingWeight = topWeight || pendingWeight || 0
     advanced = false
-    blocks = [{ sets: exercise.sets, reps: parseRepsDefault(exercise.reps), weight: lastLog ? lastLog.weight : 0 }]
-    savedKey = null
   }
 
   async function selectAlternative(alt: Alternative) {
@@ -198,15 +263,103 @@
     const newEx = await findOrCreateExerciseByName(alt.name, alt.muscle || exercise.muscle)
     await swapExerciseForToday(originalId, newEx.id)
     tab = 'workout'
-    toast.show(`🔄 Cambiado a ${getExerciseDisplayName(newEx, $settings.language)} por hoy`)
+    query = ''
+    toast.show(`Cambiado a ${getExerciseDisplayName(newEx, $settings.language)} por hoy`)
     onSwap?.()
   }
 
   async function revertAlternative() {
     const originalId = exercise.originalExerciseId || currentExerciseKey
     await revertExerciseSwapForToday(originalId)
-    toast.show(`↺ Vuelto a ${exercise.originalExerciseName || ''}`)
+    toast.show(`Volviste a ${exercise.originalExerciseName || ''}`)
     onRevert?.()
+  }
+
+  // ── Modo serie fusionado ──
+
+  function startFusedMode() {
+    setLoggingMode = 'loggingSet'
+    currentSetIndex = 1
+    const baseReps = parseRepsDefault(exercise.reps)
+    nextSetWeight = lastPastWeight || pendingWeight || 0
+    nextSetReps = baseReps
+  }
+
+  async function handleSetDone() {
+    if (setLoggingMode !== 'loggingSet') return
+    const entry: SetEntry = { weight: nextSetWeight, reps: nextSetReps }
+    await saveSetEntry(currentExerciseKey, currentSetIndex, entry, units)
+    reviewEntries = await getTodaySets(currentExerciseKey)
+    currentSetIndex++
+    const prevWeight = nextSetWeight
+    const prevReps = nextSetReps
+    nextSetWeight = prevWeight
+    nextSetReps = prevReps
+    setLoggingMode = 'restingNextSet'
+    if (navigator.vibrate) navigator.vibrate(40)
+    await onStartRest?.({
+      name: displayName,
+      restSec: exercise.rest,
+      tag: 'rest-' + Date.now(),
+      sets: exercise.sets,
+      reps: exercise.reps,
+      exerciseId: currentExerciseKey,
+      muscle: exercise.muscle,
+      imgUrl: exercise.imgUrl,
+      gifUrl: exercise.gifUrl,
+      units,
+      lastWeight: lastLog?.weight || 0,
+      maxWeight,
+      setIndex: currentSetIndex
+    })
+  }
+
+  function handleAdjustRest(delta: number) {
+    // The actual rest timer adjustment happens in the parent via onStartRest
+    // This is a local nudge for the fused mode UI
+  }
+
+  function goBackToLogging() {
+    setLoggingMode = 'loggingSet'
+    currentSetIndex--
+  }
+
+  async function startNextSetFromFused() {
+    if (setLoggingMode !== 'restingNextSet') return
+    const entry: SetEntry = { weight: nextSetWeight, reps: nextSetReps }
+    await saveSetEntry(currentExerciseKey, currentSetIndex, entry, units)
+    reviewEntries = await getTodaySets(currentExerciseKey)
+    currentSetIndex++
+    const prevWeight = nextSetWeight
+    const prevReps = nextSetReps
+    nextSetWeight = prevWeight
+    nextSetReps = prevReps
+    setLoggingMode = 'restingNextSet'
+    if (navigator.vibrate) navigator.vibrate(40)
+    await onStartRest?.({
+      name: displayName,
+      restSec: exercise.rest,
+      tag: 'rest-' + Date.now(),
+      sets: exercise.sets,
+      reps: exercise.reps,
+      exerciseId: currentExerciseKey,
+      muscle: exercise.muscle,
+      imgUrl: exercise.imgUrl,
+      gifUrl: exercise.gifUrl,
+      units,
+      lastWeight: lastLog?.weight || 0,
+      maxWeight,
+      setIndex: currentSetIndex
+    })
+  }
+
+  function finishFusedMode() {
+    setLoggingMode = 'off'
+    currentSetIndex = 1
+    nextSetWeight = 0
+    nextSetReps = 0
+    reviewEntries = []
+    onLog?.()
   }
 
   // The rest starts on the tap and the full-screen timer covers this sheet;
@@ -224,7 +377,7 @@
         tag: 'rest-' + Date.now(),
         sets: exercise.sets,
         reps: exercise.reps,
-        exerciseId: exercise.exerciseId || exercise.id,
+        exerciseId: currentExerciseKey,
         muscle: exercise.muscle,
         imgUrl: exercise.imgUrl,
         gifUrl: exercise.gifUrl,
@@ -237,356 +390,346 @@
     }
   }
 
-  let allLogData = $derived(
-    (exercise.logs || []).slice().sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-  )
-  let maxWeight = $derived(allLogData.length ? Math.max(...allLogData.map(l => l.weight)) : 0)
-  let weightCount = $derived(allLogData.filter(l => l.weight > 0).length)
-  let firstLog = $derived(allLogData.length ? allLogData[0] : null)
-  let totalGain = $derived(firstLog && lastLog ? lastLog.weight - firstLog.weight : 0)
-  let pctChange = $derived(firstLog ? ((totalGain / firstLog.weight) * 100).toFixed(1) : '0')
-  let reversedLogs = $derived([...allLogData].reverse())
+  let maxWeight = $derived((exercise.logs || []).reduce((m, l) => Math.max(m, l.weight), 0))
 </script>
 
-{#if open}
-  <Sheet bind:open={open} onclose={close}>
-    <div class="detail-scroll" data-component="ExerciseDetail" ontouchstart={onTouchStart} ontouchend={onTouchEnd}>
-        <!-- Navigation pills -->
-        <div class="nav-pills">
-          <div class="nav-pill-row">
-            <button class="pill-btn pill-prev" disabled={!hasPrev} onclick={() => onNavigate?.('prev')} aria-label="Anterior">
-              <div class="pill-icon">
-                <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M10 5H1m0 0l4-4M1 5l4 4" stroke={hasPrev ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </div>
-              <div class="pill-label-col">
-                <span class="pill-label">Anterior</span>
-                <span class="pill-name">Anterior</span>
-              </div>
-            </button>
-            <button
-              class="iniciar-btn"
-              style="background:{accent}"
-              onclick={handleIniciar}
-            >
-              <span class="iniciar-icon">⚡</span> Iniciar
-            </button>
-            <button class="pill-btn pill-next" disabled={!hasNext} onclick={() => onNavigate?.('next')} aria-label="Siguiente">
-              <div class="pill-label-col pill-label-col-end">
-                <span class="pill-label">Siguiente</span>
-                <span class="pill-name">Siguiente</span>
-              </div>
-              <div class="pill-icon">
-                <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M1 5h9m0 0L6 1m4 4L6 9" stroke={hasNext ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </div>
-            </button>
+{#snippet fusedModeContent()}
+  {#if setLoggingMode === 'loggingSet'}
+    <div class="fused-logging">
+      <header class="fused-header">
+        <div class="fused-ex-info">
+          {#if exercise.imgUrl}
+            <img class="fused-thumb" src={exercise.imgUrl} alt="" />
+          {:else}
+            <div class="fused-thumb placeholder">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/></svg>
+            </div>
+          {/if}
+          <div class="fused-ex-meta">
+            <div class="fused-ex-name">{displayName}</div>
+            {#if lastPastWeight > 0}
+              <div class="fused-last">Última vez <b>{formatWeight(lastPastWeight)} {units}</b></div>
+            {/if}
           </div>
         </div>
+        <div class="fused-chips">
+          <button class="fused-chip" type="button" onclick={() => tab = 'history'}>Historial</button>
+          <button class="fused-chip" type="button" onclick={() => tab = 'alternatives'}>Alternativas</button>
+          <button class="fused-chip coach" type="button" onclick={() => (chatOpen = true)}>Coach IA</button>
+        </div>
+      </header>
 
-        <!-- Hero -->
-        <ExerciseHero {exercise} {accent} {loggedToday} bind:showGif={showGif} />
+      <section class="fused-progress" aria-label="Progreso de series">
+        <div class="fused-progress-label">Serie <b>{currentSetIndex}</b> de <b>{exercise.sets}</b></div>
+        <div class="fused-dots" role="img" aria-label={currentSetIndex > 1 ? `${currentSetIndex - 1} de ${exercise.sets} series completadas` : 'Primera serie'}>
+          {#each Array(exercise.sets) as _, i (i)}
+            <span class="fused-dot" class:done={i + 1 < currentSetIndex} class:current={i + 1 === currentSetIndex}></span>
+          {/each}
+        </div>
+      </section>
 
-        <!-- Coach IA button -->
-        <div class="coach-bar" data-component="CoachBar">
-          <button class="coach-cyber-btn" style="--cyber-accent:{accent};border-color:color-mix(in srgb, {accent} 22%, transparent);background:color-mix(in srgb, {accent} 6%, var(--surface))" disabled={!$online} onclick={() => chatOpen = true}>
-            <span class="coach-cyber-scanline"></span>
-            <span class="coach-cyber-topline"></span>
-            <div class="coach-cyber-inner">
-              <span class="coach-cyber-icon" style="color:{accent}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>
-              </span>
-              <div class="coach-cyber-text">
-                <span class="coach-cyber-label">{'>'} Preguntar al coach</span>
-                <span class="coach-cyber-sub">{$online ? 'Técnica · Variantes · Dolor' : 'Requiere internet'}</span>
-              </div>
-              <span class="coach-cyber-arrow" style="color:{accent}">›</span>
+      <section class="fused-inputs">
+        <div class="fused-weight-group">
+          <label class="fused-weight-label">Peso</label>
+          <div class="fused-weight-stepper">
+            <button class="fused-btn-weight" type="button" aria-label="Menos 5 kg" disabled={nextSetWeight <= 0} onclick={() => nextSetWeight = Math.max(0, +(nextSetWeight - 5).toFixed(1))}>−5</button>
+            <input
+              type="number"
+              class="fused-weight-input"
+              inputmode="decimal"
+              step="0.5"
+              min="0"
+              value={nextSetWeight || ''}
+              oninput={(e) => { const v = (e.target as HTMLInputElement).value; nextSetWeight = v === '' ? 0 : parseFloat(v) || 0 }}
+              onfocus={(e) => (e.target as HTMLInputElement).select()}
+              aria-label="Peso en kg"
+            />
+            <button class="fused-btn-weight" type="button" aria-label="Más 5 kg" onclick={() => nextSetWeight = +(nextSetWeight + 5).toFixed(1)}>+5</button>
+          </div>
+          <div class="fused-reps-group">
+            <label class="fused-reps-label">Reps</label>
+            <div class="fused-reps-stepper">
+              <button class="fused-btn-reps" type="button" aria-label="Menos rep" disabled={nextSetReps <= 0} onclick={() => nextSetReps = Math.max(0, nextSetReps - 1)}>−</button>
+              <input
+                type="number"
+                class="fused-reps-input"
+                inputmode="numeric"
+                min="0"
+                value={nextSetReps || ''}
+                oninput={(e) => { const v = (e.target as HTMLInputElement).value; nextSetReps = v === '' ? 0 : parseInt(v) || 0 }}
+                onfocus={(e) => (e.target as HTMLInputElement).select()}
+                aria-label="Repeticiones"
+              />
+              <button class="fused-btn-reps" type="button" aria-label="Más rep" onclick={() => nextSetReps = nextSetReps + 1}>+</button>
             </div>
-          </button>
-          <DebugAIToggle label="Exercise Coach IA" {accent} />
+          </div>
         </div>
+      </section>
 
-        <!-- Prescription strip -->
-        <StatsGrid columns={4} variant="card">
-          <StatBlock value={exercise.sets} label="series" {accent} size="md" />
-          <StatBlock value={exercise.reps} label="reps" {accent} size="md" />
-          <StatBlock value={`${exercise.rest}s`} label="desc." {accent} size="md" />
-          <StatBlock value={lastLog && lastLog.weight > 0 ? `${lastLog.weight}${units}` : '—'} label="última" accent={lastLog && lastLog.weight > 0 ? accent : '#fafafa'} size="md" />
-        </StatsGrid>
-
-        <!-- Tab selector -->
-        <div class="tab-selector-wrap">
-          <SegmentedControl
-            options={[
-              { label: 'Registrar', value: 'workout' },
-              { label: 'Historial', value: 'history' },
-              ...(showAlternativesTab ? [{ label: 'Alternativas', value: 'alternatives' }] : [])
-            ]}
-            bind:value={tab}
-            {accent}
-          />
+      <button class="fused-main-btn" type="button" onclick={handleSetDone} disabled={nextSetWeight <= 0}>
+        <span class="fused-btn-text">Serie {currentSetIndex} hecha · descansar</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  {:else if setLoggingMode === 'restingNextSet'}
+    <div class="fused-resting">
+      <section class="fused-timer-section">
+        <div class="fused-timer-wrap">
+          <div class="fused-ring-container">
+            <div class="fused-nudge-minus" onclick={() => handleAdjustRest(-15)}>
+              <span>−15 s</span>
+            </div>
+            <svg class="fused-ring" viewBox="0 0 220 220" aria-hidden="true">
+              <circle class="fused-ring-track" cx="110" cy="110" r="100"></circle>
+              <circle class="fused-ring-prog" cx="110" cy="110" r="100" pathLength="100" style="stroke-dashoffset: 0;"></circle>
+            </svg>
+            <div class="fused-ring-center">
+              <div class="fused-timer-time">--:--</div>
+              <div class="fused-timer-sub">de descanso</div>
+            </div>
+            <div class="fused-nudge-plus" onclick={() => handleAdjustRest(30)}>
+              <span>+30 s</span>
+            </div>
+          </div>
         </div>
-
-        <!-- Workout tab -->
-        {#if tab === 'workout'}
-          <WorkoutTab
-            {exercise}
-            {accent}
-            {units}
-            {loggedToday}
-            {isDirty}
-            {isLoggedState}
-            bind:pendingWeight
-            bind:blocks
-            bind:advanced
-            onSave={handleSave}
-            onClear={handleClear}
-          />
-
-        <!-- History tab -->
-        {:else if tab === 'history'}
-          <HistoryTab
-            {allLogData}
-            {reversedLogs}
-            {maxWeight}
-            {lastLog}
-            {totalGain}
-            {pctChange}
-            {weightCount}
-            {accent}
-            {units}
-            {todayStr}
-          />
-
-        <!-- Alternatives tab -->
-        {:else if tab === 'alternatives'}
-          <AlternativesTab
-            alternatives={exercise.alternatives || []}
-            {accent}
-            language={$settings.language}
-            {isSwapped}
-            originalName={exercise.originalExerciseName || ''}
-            currentName={exercise.name}
-            onSelect={selectAlternative}
-            onRevert={revertAlternative}
-          />
+        {#if nextExercise}
+          <div class="fused-next-ex">Después: {getExerciseDisplayName(nextExercise, $settings.language)} · {nextExercise.sets} × {nextExercise.reps}</div>
         {/if}
-      </div>
+      </section>
 
-    {#if chatOpen}
-      <ExerciseCoachChat {exercise} {accent} onclose={() => chatOpen = false} />
+      <section class="fused-next-set-inputs">
+        <div class="fused-next-weight-group">
+          <label class="fused-next-label">Peso próxima serie</label>
+          <div class="fused-next-weight-stepper">
+            <button class="fused-btn-next-weight" type="button" aria-label="Menos 5 kg" disabled={nextSetWeight <= 0} onclick={() => nextSetWeight = Math.max(0, +(nextSetWeight - 5).toFixed(1))}>−5</button>
+            <input
+              type="number"
+              class="fused-next-weight-input"
+              inputmode="decimal"
+              step="0.5"
+              min="0"
+              value={nextSetWeight || ''}
+              oninput={(e) => { const v = (e.target as HTMLInputElement).value; nextSetWeight = v === '' ? 0 : parseFloat(v) || 0 }}
+              onfocus={(e) => (e.target as HTMLInputElement).select()}
+              aria-label="Peso próxima serie en kg"
+            />
+            <button class="fused-btn-next-weight" type="button" aria-label="Más 5 kg" onclick={() => nextSetWeight = +(nextSetWeight + 5).toFixed(1)}>+5</button>
+          </div>
+          <div class="fused-next-reps-group">
+            <label class="fused-next-reps-label">Reps</label>
+            <div class="fused-next-reps-stepper">
+              <button class="fused-btn-next-reps" type="button" aria-label="Menos rep" disabled={nextSetReps <= 0} onclick={() => nextSetReps = Math.max(0, nextSetReps - 1)}>−</button>
+              <input
+                type="number"
+                class="fused-next-reps-input"
+                inputmode="numeric"
+                min="0"
+                value={nextSetReps || ''}
+                oninput={(e) => { const v = (e.target as HTMLInputElement).value; nextSetReps = v === '' ? 0 : parseInt(v) || 0 }}
+                onfocus={(e) => (e.target as HTMLInputElement).select()}
+                aria-label="Repeticiones próxima serie"
+              />
+              <button class="fused-btn-next-reps" type="button" aria-label="Más rep" onclick={() => nextSetReps = nextSetReps + 1}>+</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {#if reviewEntries.length > 0}
+        <section class="fused-saved-log">
+          {#each reviewEntries.slice(-1) as entry (entry)}
+            <div class="fused-saved-entry">
+              <svg class="fused-check" width="16" height="12" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4 8-8.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="fused-saved-text">Serie {currentSetIndex - 1} guardada · {formatWeight(entry.weight)} {units} × {entry.reps}</span>
+              <button class="fused-change-btn" type="button" onclick={goBackToLogging}>Cambiar</button>
+            </div>
+          {/each}
+        </section>
+      {/if}
+
+      <button class="fused-main-btn" type="button" onclick={startNextSetFromFused} disabled={nextSetWeight <= 0}>
+        <span class="fused-btn-text">Empezar serie {currentSetIndex}</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet position()}
+  {#if positionLabel}{posParts.lead}<b>{posParts.bold}</b>{/if}
+{/snippet}
+
+{#snippet dock()}
+  {#if tab === 'alternatives'}
+    <LogDock layout="search">
+      <SearchInput value={query} placeholder="Buscar otro ejercicio" oninput={(v) => (query = v)} />
+    </LogDock>
+  {:else if registered}
+    <LogDock caption={dockCaption()} layout="even">
+      <Button variant="secondary" size="lg" disabled={!hasNext} onclick={() => onNavigate?.('next')}>
+        <span class="one-line">Siguiente</span><Icon name="chev" size={18} />
+      </Button>
+      <Button variant="primary" size="lg" {accent} onclick={handleIniciar}>
+        <Icon name="timer" size={18} /><span class="one-line">Descansar <span class="mono">{restText}</span></span>
+      </Button>
+    </LogDock>
+  {:else}
+    <LogDock caption={dockCaption()} layout="timer">
+      <Button variant="secondary" size="lg" ariaLabel="Iniciar descanso" onclick={handleIniciar}>
+        <Icon name="timer" size={18} /><span class="mono">{restText}</span>
+      </Button>
+      <Button variant="primary" size="lg" {accent} disabled={!canRegister} onclick={handleSave}>
+        <span class="one-line">{registerLabel}</span>
+      </Button>
+    </LogDock>
+  {/if}
+{/snippet}
+
+{#snippet overlay()}
+  {#if chatOpen}
+    <ExerciseCoachChat {exercise} {accent} onclose={() => (chatOpen = false)} />
+  {/if}
+{/snippet}
+
+{#if open}
+  <DetailSheet name="ExerciseDetail" onclose={close} {position} {dock} {overlay} ontouchstart={onTouchStart} ontouchend={onTouchEnd}>
+    {#if setLoggingMode !== 'off'}
+      {@render fusedModeContent()}
+    {:else}
+      <ExerciseMedia imgUrl={exercise.imgUrl} gifUrl={exercise.gifUrl} searchName={displayName} />
+      <TitleNav name={displayName} muscle={muscleLabel(exercise.muscle)} {hasPrev} {hasNext} onprev={() => onNavigate?.('prev')} onnext={() => onNavigate?.('next')} />
+      {#if exercise.sets > 0}
+        <TargetPanel sets={exercise.sets} reps={exercise.reps} rest={restText} />
+      {/if}
+      <DetailRow variant="ai" label={$online ? 'Pregúntale al coach' : 'El coach necesita internet'} disabled={!$online} onclick={() => (chatOpen = true)} />
+      <DebugAIToggle label="Exercise Coach IA" {accent} />
+      <SegmentedControl
+        size="tabs"
+        options={[
+          { label: 'Registrar', value: 'workout' },
+          { label: 'Historial', value: 'history' },
+          ...(showAlternativesTab ? [{ label: 'Alternativas', value: 'alternatives' }] : [])
+        ]}
+        bind:value={tab}
+      />
+
+      {#if tab === 'workout'}
+        {#if firstTime && !loggedToday}
+          <div class="first">
+            <b>Tu primera vez con {displayName}</b>
+            <p>Elige un peso con el que hagas {exercise.reps} repeticiones limpias. Lo puedes cambiar la próxima vez.</p>
+          </div>
+        {/if}
+        {#if advanced}
+          <BlocksPanel bind:blocks {units} saved={registered} onsingle={exitBlocks} />
+        {:else}
+          <WeightPanel bind:weight={pendingWeight} {units} lastWeight={lastPastWeight} sets={exercise.sets} saved={registered} {savedSets} {isRecord} onblocks={enterBlocks} />
+        {/if}
+      {:else if tab === 'history'}
+        <ProgressHero logs={exercise.logs || []} {units} today={todayStr} exerciseName={displayName} />
+      {:else if tab === 'alternatives'}
+        <AlternativesTab
+          alternatives={exercise.alternatives || []}
+          {query}
+          language={$settings.language}
+          {isSwapped}
+          originalName={exercise.originalExerciseName || ''}
+          currentName={exercise.name}
+          onSelect={selectAlternative}
+          onRevert={revertAlternative}
+          onClearQuery={() => (query = '')}
+        />
+      {/if}
     {/if}
-  </Sheet>
+  </DetailSheet>
 {/if}
 
 <style>
-  .detail-scroll {
-    overflow-y: auto;
-    color: var(--text);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 0 0 14px;
-  }
-  .nav-pills {
-    padding: 0;
-  }
-  .nav-pill-row {
-    display: flex;
-    gap: 8px;
-  }
-  .pill-btn {
-    flex: 1;
-    min-width: 0;
-    background: rgba(255,255,255,0.02);
-    border: 0.5px solid var(--border);
-    border-radius: 12px;
-    padding: 8px 12px;
-    cursor: pointer;
-    color: inherit;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    opacity: 1;
-  }
-  .pill-btn:disabled {
-    cursor: default;
-    opacity: 0.45;
-  }
-  .pill-prev {
-    flex-direction: row;
-  }
-  .pill-next {
-    flex-direction: row-reverse;
-  }
-  .pill-icon {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.03);
-    border: 0.5px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .pill-label-col {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-  .pill-label-col-end {
-    align-items: flex-end;
-  }
-  .pill-label {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 1.3px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.45);
-    font-weight: 600;
-    line-height: 1;
-  }
-  .pill-name {
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.75);
-    letter-spacing: -0.1px;
-    line-height: 1.25;
-    width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .pill-btn:disabled .pill-label,
-  .pill-btn:disabled .pill-name {
-    color: rgba(255,255,255,0.3);
-  }
-  .iniciar-btn {
-    flex-shrink: 0;
-    border: 0;
-    border-radius: 12px;
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--bg);
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: -0.1px;
-    touch-action: manipulation;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .iniciar-icon {
-    font-size: 15px;
-    line-height: 1;
-  }
-  .tab-selector-wrap {
-    padding: 0;
-  }
+  .first { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: var(--radius-xl); background: var(--cv-fill-1); }
+  .first b { font-size: 17px; letter-spacing: -0.2px; }
+  .first p { font-size: 14px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
 
-  /* Coach IA cyberpunk button */
-  /* Coach IA cyberpunk button */
-  .coach-bar {
-    display: flex;
-    align-items: center;
-  }
-  .coach-cyber-btn {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    border: 0.5px solid;
-    border-radius: var(--radius-full);
-    padding: 11px 14px;
-    cursor: pointer;
-    overflow: hidden;
-    text-align: left;
-    transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  }
-  .coach-cyber-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-  .coach-cyber-btn:hover {
-    transform: scale(1.01);
-    box-shadow: 0 0 18px color-mix(in srgb, var(--cyber-accent) 14%, transparent);
-    border-color: color-mix(in srgb, var(--cyber-accent) 35%, transparent);
-  }
-  .coach-cyber-btn:active {
-    transform: scale(0.98);
-    opacity: 0.85;
-  }
-  .coach-cyber-topline {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--cyber-accent), transparent);
-    opacity: 0.4;
-    pointer-events: none;
-  }
-  .coach-cyber-scanline {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--cyber-accent);
-    opacity: 0.12;
-    animation: coach-scanline 1.8s linear infinite;
-    pointer-events: none;
-  }
-  @keyframes coach-scanline {
-    0% { top: -2px; }
-    100% { top: calc(100% + 2px); }
-  }
-  .coach-cyber-inner {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .coach-cyber-icon {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    opacity: 0.85;
-  }
-  .coach-cyber-text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-  .coach-cyber-label {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-  }
-  .coach-cyber-sub {
-    font-family: var(--font-mono);
-    font-size: 8.5px;
-    letter-spacing: 0.6px;
-    color: var(--text-tertiary);
-    white-space: nowrap;
-  }
-  .coach-cyber-arrow {
-    flex-shrink: 0;
-    font-size: 18px;
-    font-weight: 300;
-    opacity: 0.4;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-  }
-  .coach-cyber-btn:hover .coach-cyber-arrow {
-    opacity: 0.8;
-    transform: translateX(2px);
-  }
+  /* ── Modo serie fusionado ── */
+  .fused-logging { display: flex; flex-direction: column; gap: 16px; padding: 0 20px 140px; }
+  .fused-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-top: 8px; }
+  .fused-ex-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .fused-thumb { width: 48px; height: 48px; border-radius: var(--radius-lg); object-fit: cover; background: var(--cv-fill-2); flex-shrink: 0; }
+  .fused-thumb.placeholder { display: grid; place-items: center; color: var(--text-tertiary); }
+  .fused-ex-meta { min-width: 0; }
+  .fused-ex-name { font-size: 17px; font-weight: 600; letter-spacing: -0.2px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fused-last { font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
+  .fused-last b { font-family: var(--font-mono); font-weight: 500; color: var(--text-secondary); }
+  .fused-chips { display: flex; gap: 8px; flex-shrink: 0; }
+  .fused-chip { height: 32px; padding: 0 12px; border-radius: var(--radius-full); border: 0.5px solid var(--border); background: var(--cv-fill-2); font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--text-secondary); cursor: pointer; }
+  .fused-chip:active { transform: scale(0.95); }
+  .fused-chip.coach { border-color: var(--accent); background: rgba(212, 255, 58, 0.12); color: var(--accent); }
+  .fused-progress { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0 4px; }
+  .fused-progress-label { font-size: 13px; color: var(--text-tertiary); }
+  .fused-progress-label b { color: var(--text); font-weight: 600; }
+  .fused-dots { display: flex; gap: 10px; }
+  .fused-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: all 0.2s; }
+  .fused-dot.done { background: var(--accent); }
+  .fused-dot.current { background: var(--text); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+  .fused-inputs { display: flex; flex-direction: column; gap: 16px; padding: 8px 0; }
+  .fused-weight-group { display: flex; flex-direction: column; gap: 8px; }
+  .fused-weight-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
+  .fused-weight-stepper { display: grid; grid-template-columns: 72px minmax(0, 1fr) 72px; align-items: center; gap: 12px; }
+  .fused-btn-weight { width: 72px; height: 72px; border-radius: 22px; border: 0; background: var(--cv-fill-3); color: var(--text); font-family: var(--font-mono); font-size: 20px; font-weight: 500; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+  .fused-btn-weight:disabled { opacity: 0.3; cursor: default; }
+  .fused-weight-input { text-align: center; border: 0; background: none; outline: none; padding: 0; color: var(--text); caret-color: var(--accent); font-family: var(--font-mono); font-size: 56px; font-weight: 500; letter-spacing: -0.06em; line-height: 1; width: 100%; min-width: 0; }
+  .fused-weight-input::placeholder { color: var(--text-muted); }
+  .fused-reps-group { display: flex; flex-direction: column; gap: 8px; }
+  .fused-reps-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
+  .fused-reps-stepper { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .fused-btn-reps { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--cv-fill-3); color: var(--text); font-family: var(--font-sans); font-size: 22px; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+  .fused-btn-reps:disabled { opacity: 0.3; cursor: default; }
+  .fused-reps-input { text-align: center; border: 0; background: none; outline: none; padding: 0; color: var(--text); caret-color: var(--accent); font-family: var(--font-mono); font-size: 24px; font-weight: 500; width: 56px; }
+  .fused-main-btn { position: fixed; left: 20px; right: 20px; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); height: 56px; border-radius: var(--radius-xl); border: 0; background: var(--accent); color: var(--bg); font-family: var(--font-sans); font-size: 17px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; z-index: 50; box-shadow: 0 8px 24px rgba(212, 255, 58, 0.3); }
+  .fused-main-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+  .fused-main-btn:active { transform: scale(0.98); }
 
+  .fused-resting { display: flex; flex-direction: column; gap: 20px; padding: 0 20px 140px; min-height: 100%; }
+  .fused-timer-section { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .fused-timer-wrap { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .fused-ring-container { position: relative; width: 220px; height: 220px; display: flex; align-items: center; justify-content: center; }
+  .fused-ring { width: 220px; height: 220px; transform: rotate(-90deg); }
+  .fused-ring-track { fill: none; stroke: var(--border); stroke-width: 12; }
+  .fused-ring-prog { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 0.5s linear; }
+  .fused-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; pointer-events: none; }
+  .fused-timer-time { font-family: var(--font-mono); font-size: 52px; font-weight: 500; letter-spacing: -0.04em; color: var(--text); line-height: 1; }
+  .fused-timer-sub { font-size: 14px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
+  .fused-nudge-minus, .fused-nudge-plus { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 0.5px solid var(--border); background: var(--cv-fill-2); color: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; font-weight: 500; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; z-index: 10; }
+  .fused-nudge-minus { left: -66px; }
+  .fused-nudge-plus { right: -66px; }
+  .fused-nudge-minus:active, .fused-nudge-plus:active { transform: translateY(-50%) scale(0.92); }
+  .fused-next-ex { font-size: 13px; color: var(--text-tertiary); text-align: center; max-width: 280px; }
+
+  .fused-next-set-inputs { display: flex; flex-direction: column; gap: 16px; padding: 8px 0; }
+  .fused-next-weight-group { display: flex; flex-direction: column; gap: 8px; }
+  .fused-next-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
+  .fused-next-weight-stepper { display: grid; grid-template-columns: 56px minmax(0, 60px) 56px; align-items: center; gap: 8px; justify-content: center; }
+  .fused-btn-next-weight { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--cv-fill-3); color: var(--text); font-family: var(--font-mono); font-size: 18px; font-weight: 500; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+  .fused-btn-next-weight:disabled { opacity: 0.3; cursor: default; }
+  .fused-next-weight-input { text-align: center; border: 0; background: none; outline: none; padding: 0; color: var(--text); caret-color: var(--accent); font-family: var(--font-mono); font-size: 28px; font-weight: 500; width: 60px; }
+  .fused-next-reps-group { display: flex; flex-direction: column; gap: 8px; }
+  .fused-next-reps-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
+  .fused-next-reps-stepper { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .fused-btn-next-reps { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--cv-fill-3); color: var(--text); font-family: var(--font-sans); font-size: 22px; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+  .fused-btn-next-reps:disabled { opacity: 0.3; cursor: default; }
+  .fused-next-reps-input { text-align: center; border: 0; background: none; outline: none; padding: 0; color: var(--text); caret-color: var(--accent); font-family: var(--font-mono); font-size: 24px; font-weight: 500; width: 44px; }
+
+  .fused-saved-log { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+  .fused-saved-entry { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius-lg); background: var(--cv-fill-1); border: 0.5px solid var(--border); }
+  .fused-check { flex-shrink: 0; color: var(--accent); }
+  .fused-saved-text { flex: 1; font-size: 14px; color: var(--text-secondary); font-family: var(--font-mono); }
+  .fused-saved-text b { font-weight: 500; color: var(--text); }
+  .fused-change-btn { height: 32px; padding: 0 12px; border-radius: var(--radius-full); border: 0.5px solid var(--border); background: var(--cv-fill-2); font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--text-secondary); cursor: pointer; }
+  .fused-change-btn:active { transform: scale(0.95); }
+
+  @media (max-width: 380px) {
+    .fused-nudge-minus { left: -58px; width: 48px; height: 48px; }
+    .fused-nudge-plus { right: -58px; width: 48px; height: 48px; }
+    .fused-ring-container { width: 200px; height: 200px; }
+    .fused-ring { width: 200px; height: 200px; }
+  }
 </style>

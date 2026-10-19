@@ -25,10 +25,20 @@ La URL desde la que se abre e instala la app. El teléfono guarda los datos, las
 - **No es:** el nombre de la app que sale bajo el icono (ese puede cambiar sin perder datos).
 - **En inglés / en código:** origin
 
+### Dosis
+Cuánto se hace de un movimiento de calentamiento o estiramiento, tal como lo dice su frase de duración («Realiza de 12 a 15 repeticiones…», «Sostén 20 a 30 segundos por cada pierna»). Se muestra la frase completa; no se convierte en cifra.
+- **No es:** series × repeticiones de un ejercicio, ni un temporizador.
+- **En inglés / en código:** dose (`duracion`)
+
 ### Duración del día
 Minutos estimados de un día del programa: cada serie cuenta 30 segundos de trabajo más su descanso, sumado sobre todos los ejercicios del día y redondeado al minuto. Siempre se calcula; no se escribe ni se guarda.
 - **No es:** el tiempo real de la sesión (eso son los minutos de gym), ni incluye calentamiento o estiramiento.
 - **En inglés / en código:** day duration
+
+### Ejercicio hecho
+Ejercicio del día que ya tiene su registro completo de hoy: se registró desde Registrar (cuenta todas las series) o el timer ya marcó todas sus series planeadas. Si el timer lleva menos series, el ejercicio está «en curso». El entrenamiento termina cuando todos están hechos.
+- **No es:** tener cualquier registro con peso (una serie de tres no lo termina).
+- **En inglés / en código:** done exercise
 
 ### Liga
 Tú y los amigos que agregaste, ordenados por minutos de gym de la semana en curso. Se reinicia cada lunes.
@@ -39,6 +49,11 @@ Tú y los amigos que agregaste, ordenados por minutos de gym de la semana en cur
 Tiempo de sesión acumulado de lunes a domingo de la semana en curso. Los de un amigo cuentan como 0 si su último dato es de una semana anterior.
 - **No es:** el tiempo de descanso entre series, ni un total histórico.
 - **En inglés / en código:** gym time
+
+### Movimiento
+Cada elemento de la fase de calentamiento o de estiramiento (por ejemplo «Rotaciones de brazos»). Se marca como hecho, pero no tiene peso, registro, historial ni alternativas.
+- **No es:** un ejercicio del programa (esos tienen series, repeticiones, descanso y registros).
+- **En inglés / en código:** warmup item / stretch item
 
 ### Racha
 Número de semanas seguidas completadas. Una semana se completa al entrenar los días del programa menos uno; la semana en curso suma en cuanto llega a ese número y, mientras no llega, no rompe la racha.

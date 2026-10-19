@@ -31,7 +31,7 @@ src/
       settings.ts          → settings store (reactive, persisted to IndexedDB)
       ui.ts                → toast store, confirm, prompt
       session.ts           → session (today's date, current view)
-    components/            → 58 Svelte components (TabBar, ExerciseDetail, WorkoutTab, HistoryTab, CoachChat, Calendar, Warmup, RestTimerBanner, MediaPicker, ...)
+    components/            → 58 Svelte components (TabBar, ExerciseDetail, DetailSheet, WeightPanel, ProgressHero, CoachChat, Calendar, MovementSheet, SessionSteps, RestTimerBanner, MediaPicker, ...)
     data/
       exercise-dictionary.ts → 171 entries + IMG_BASE/EX_GIF_BASE/_IMG/_GIF + resolveExerciseMedia
       warmup.ts              → warmup/stretch sequences by muscle group

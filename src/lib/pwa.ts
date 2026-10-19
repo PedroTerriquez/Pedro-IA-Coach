@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.86'
-const _VER_DESC = 'Worker solo acepta origen de la app, botón atrás más grande, docs divididos'
-const _VER_TIME = '2026-10-15 00:08'
+const _VER_BASE = 'v2.87'
+const _VER_DESC = 'Modo serie en descanso: peso 120px, ±5kg/72px, reps ±, marcas series, autollenado, confirmar v2'
+const _VER_TIME = '2026-10-19 12:00'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

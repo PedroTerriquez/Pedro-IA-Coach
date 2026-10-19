@@ -25,6 +25,11 @@
     send: { d: '<path d="M12 19V5M6 11l6-6 6 6"/>', w: 2.3 },
     pen: { d: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>', w: 1.9 },
     save: { d: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/>', w: 2.1 },
+    // Detalle v2 / Hoy v2
+    timer: { d: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5"/>' },
+    play: { d: '<path d="M8 5.5v13l10.5-6.5z"/>', w: 1.9 },
+    expand: { d: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>' },
+    book: { d: '<path d="M5 4.5h9a3 3 0 013 3V20H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h9"/>', w: 1.8 },
     // Kept from the old set for the views that still use them
     pencil: { d: '<path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>' },
     restart: { d: '<path d="M13 8a5 5 0 11-1.5-3.6M13 2v3h-3"/>' },

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+  import Icon from './Icon.svelte'
 
   let {
     visible = false,
@@ -8,7 +9,8 @@
     name = '',
     sets = 0,
     reps = '',
-    accent = 'var(--accent)',
+    setIndex = undefined,
+    inSheet = false,
     onskip = undefined,
     onexpand = undefined
   }: {
@@ -18,7 +20,10 @@
     name: string
     sets: number
     reps: string
-    accent: string
+    /** Sets already done today (the Nth Iniciar); the next one is setIndex + 1 */
+    setIndex?: number
+    /** A detail sheet is open: sit at its bottom, where its LogDock was */
+    inSheet?: boolean
     onskip?: () => void
     onexpand?: () => void
   } = $props()
@@ -27,8 +32,12 @@
   let tickId: ReturnType<typeof setInterval> | null = null
 
   let displayName = $derived(getExerciseDisplayName({ name }) || name)
-  let meta = $derived(sets && reps ? `${sets} × ${reps}` : '')
-  let isEnding = $derived(remainingMs <= 10000)
+  let meta = $derived(metaLine(setIndex, sets, reps))
+
+  function metaLine(done: number | undefined, total: number, r: string): string {
+    if (done !== undefined && total && done < total) return `Sigue la serie ${done + 1} de ${total}`
+    return total && r ? `${total} × ${r}` : ''
+  }
 
   function fmtClock(ms: number) {
     const total = Math.max(0, Math.ceil(ms / 1000))
@@ -53,64 +62,54 @@
 </script>
 
 {#if visible && remainingMs > 0}
-  <div class="rtb" class:is-ending={isEnding} data-component="RestTimerBanner" style="--accent:{accent}">
+  <div class="rtb" class:in-sheet={inSheet} data-component="RestTimerBanner">
     <button class="rtb-open" type="button" aria-label="Abrir descanso a pantalla completa" onclick={onexpand}>
-    <div class="rtb-ring-wrap">
-      <svg class="rtb-ring" viewBox="0 0 56 56" aria-hidden="true">
-        <circle class="rtb-ring-track" cx="28" cy="28" r="24"></circle>
-        <circle class="rtb-ring-prog" cx="28" cy="28" r="24" pathLength="100"
-          style="stroke-dashoffset:{ringOffset(remainingMs)}"></circle>
-      </svg>
-      <span class="rtb-time">{fmtClock(remainingMs)}</span>
-    </div>
-    <div class="rtb-info">
-      <span class="rtb-label">Descanso</span>
-      <span class="rtb-name">{displayName}</span>
-      {#if meta}<span class="rtb-meta">{meta}</span>{/if}
-    </div>
+      <span class="rtb-ring-wrap">
+        <svg class="rtb-ring" viewBox="0 0 56 56" aria-hidden="true">
+          <circle class="rtb-ring-track" cx="28" cy="28" r="24"></circle>
+          <circle class="rtb-ring-prog" cx="28" cy="28" r="24" pathLength="100" style="stroke-dashoffset:{ringOffset(remainingMs)}"></circle>
+        </svg>
+        <b class="rtb-time">{fmtClock(remainingMs)}</b>
+      </span>
+      <span class="rtb-info">
+        <span class="rtb-label">Descanso</span>
+        <span class="rtb-name">{displayName}</span>
+        {#if meta}<span class="rtb-meta">{meta}</span>{/if}
+      </span>
     </button>
     <button class="rtb-skip" type="button" aria-label="Saltar descanso" onclick={onskip}>
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 3.2l8 5.8-8 5.8V3.2z" fill="currentColor"/><rect x="12.5" y="3" width="2" height="12" rx="1" fill="currentColor"/></svg>
+      <Icon name="skip" size={22} />
     </button>
   </div>
 {/if}
 
 <style>
+  /* Thumb zone: where the dock sits, above the TabBar and over any dock */
   .rtb {
-    --rt-color: var(--accent);
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 60px);
     left: 12px;
     right: 12px;
+    bottom: 104px;
     margin: 0 auto;
     max-width: 460px;
-    z-index: 9998;
+    z-index: 150;
     display: flex;
     align-items: center;
-    gap: 18px;
-    padding: 22px 20px 22px 22px;
+    gap: 12px;
+    padding: 12px 12px 12px 14px;
     border-radius: var(--radius-2xl);
-    background:
-      radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--rt-color) 9%, transparent), transparent 55%),
-      linear-gradient(180deg, rgba(32,32,34,0.86), rgba(16,16,18,0.9));
-    -webkit-backdrop-filter: blur(22px) saturate(1.3);
-    backdrop-filter: blur(22px) saturate(1.3);
-    border: 0.5px solid color-mix(in srgb, var(--rt-color) 24%, rgba(255,255,255,0.07));
-    box-shadow:
-      0 12px 44px rgba(0,0,0,0.55),
-      inset 0 0.5px 0 rgba(255,255,255,0.06),
-      0 0 30px -10px color-mix(in srgb, var(--rt-color) 55%, transparent);
-    font-family: var(--font-sans);
-    cursor: default;
-    animation: rtb-in 0.55s var(--ease-smooth);
-    will-change: transform, opacity;
+    background: var(--surface-hover);
+    border: 0.5px solid var(--border-medium);
+    box-shadow: 0 -12px 32px rgba(10, 10, 10, 0.9);
+    animation: rtb-in 0.4s var(--ease-smooth);
   }
+  .rtb.in-sheet { bottom: max(30px, env(safe-area-inset-bottom, 0px)); }
   .rtb-open {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 14px;
     background: none;
     border: 0;
     padding: 0;
@@ -118,135 +117,40 @@
     text-align: left;
     cursor: pointer;
   }
-  .rtb-open:active { transform: scale(0.99); }
-  .rtb-ring-wrap {
-    position: relative;
-    width: 104px;
-    height: 104px;
-    flex-shrink: 0;
-    display: grid;
-    place-items: center;
-  }
-  .rtb-ring {
-    width: 104px;
-    height: 104px;
-    transform: rotate(-90deg);
-    overflow: visible;
-  }
-  .rtb-ring-track {
-    fill: none;
-    stroke: rgba(255,255,255,0.09);
-    stroke-width: 4;
-  }
+  .rtb-ring-wrap { position: relative; width: 64px; height: 64px; flex-shrink: 0; display: grid; place-items: center; }
+  .rtb-ring { position: absolute; inset: 0; width: 64px; height: 64px; transform: rotate(-90deg); }
+  .rtb-ring-track { fill: none; stroke: var(--cv-fill-on); stroke-width: 4; }
   .rtb-ring-prog {
     fill: none;
-    stroke: var(--rt-color);
+    stroke: var(--text);
     stroke-width: 4;
     stroke-linecap: round;
     stroke-dasharray: 100;
-    transition: stroke-dashoffset 1s linear, stroke 0.45s ease;
-    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--rt-color) 65%, transparent));
+    transition: stroke-dashoffset 1s linear;
   }
-  .rtb-time {
-    position: absolute;
-    font-family: var(--font-mono);
-    font-size: 26px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: -0.04em;
-    font-variant-numeric: tabular-nums;
-  }
-  .rtb-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-    min-width: 0;
-  }
-  .rtb-label {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1.8px;
-    text-transform: uppercase;
-    color: var(--rt-color);
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
-  .rtb-label::before {
-    content: "";
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--rt-color);
-    box-shadow: 0 0 10px var(--rt-color);
-    animation: rtb-blink 1.4s ease-in-out infinite;
-  }
-  .rtb-name {
-    font-size: 21px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: -0.3px;
-    line-height: 1.15;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .rtb-meta {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--text-muted);
-    letter-spacing: 0.3px;
-  }
+  .rtb-time { position: relative; font-family: var(--font-mono); font-size: 17px; font-weight: 600; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .rtb-info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .rtb-label { white-space: nowrap; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
+  .rtb-name { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rtb-meta { font-size: 13px; color: var(--text-tertiary); }
   .rtb-skip {
     flex-shrink: 0;
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius-full);
-    border: 0.5px solid var(--border-medium);
-    background: rgba(255,255,255,0.05);
-    color: var(--text-secondary);
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-lg);
+    border: 0;
+    background: var(--cv-fill-2);
+    color: var(--text);
     display: grid;
     place-items: center;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, transform 0.12s var(--ease-smooth);
   }
-  .rtb-skip svg {
-    width: 24px;
-    height: 24px;
-  }
-  .rtb-skip:active {
-    transform: scale(0.9);
-    background: rgba(255,255,255,0.1);
-    color: var(--text);
-  }
-  .is-ending {
-    --rt-color: #ff5b4d;
-    animation: rtb-in 0.55s var(--ease-smooth), rtb-pulse 1s ease-in-out infinite 0.55s;
-  }
-  .is-ending .rtb-time {
-    animation: rtb-blip 1s ease-in-out infinite;
-  }
+  .rtb-skip:active { transform: scale(0.95); }
   @keyframes rtb-in {
-    from { opacity: 0; transform: translateY(-16px) scale(0.96); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  @keyframes rtb-pulse {
-    0%, 100% { box-shadow: 0 12px 44px rgba(0,0,0,0.55), inset 0 0.5px 0 rgba(255,255,255,0.06), 0 0 30px -10px color-mix(in srgb, var(--rt-color) 55%, transparent); }
-    50%      { box-shadow: 0 12px 44px rgba(0,0,0,0.55), inset 0 0.5px 0 rgba(255,255,255,0.06), 0 0 40px -4px color-mix(in srgb, var(--rt-color) 85%, transparent); }
-  }
-  @keyframes rtb-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
-  }
-  @keyframes rtb-blip {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .rtb, .is-ending, .rtb-label::before, .is-ending .rtb-time {
-      animation: none;
-    }
+    .rtb { animation: none; }
   }
 </style>

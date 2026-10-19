@@ -57,7 +57,6 @@
 </script>
 
 <CoachChat
-  look="nuevo"
   {title}
   {eyebrow}
   {greeting}

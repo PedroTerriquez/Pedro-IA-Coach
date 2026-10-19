@@ -39,3 +39,11 @@ function createToastStore() {
 
 export const restTimer = createRestTimerStore()
 export const toast = createToastStore()
+
+// The rest timer collapsed to its banner. Hoy hides its dock under it and the
+// detail sheet hides its LogDock, since the banner takes the thumb zone.
+export const restMinimized = writable(false)
+
+// Detail-style sheets open right now: the banner and the offline notice move
+// into the sheet while one is up.
+export const detailSheetsOpen = writable(0)

@@ -46,6 +46,10 @@
   --cv-accent-wash-2: color-mix(in srgb, var(--accent) 2%, transparent);
   --cv-accent-row: color-mix(in srgb, var(--accent) 7%, transparent);
   --cv-placeholder-stripe: rgba(255,255,255,0.09);
+
+  /* Hoy v2 / Detalle v2 — exercise photos sit on white like their source images */
+  --media-bg: #f2f2f0;
+  --cv-fill-5: rgba(255,255,255,0.05);
 }
 
 *, *::before, *::after {

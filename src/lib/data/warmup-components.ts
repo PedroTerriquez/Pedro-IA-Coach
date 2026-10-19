@@ -19,13 +19,27 @@ const GENERIC_WARMUP: { name: string; imgUrl: string; tag: string; desc: string 
 const GENERIC_WARMUP_ONLY = GENERIC_WARMUP.filter(x => x.tag === 'calentar')
 const GENERIC_STRETCH_ONLY = GENERIC_WARMUP.filter(x => x.tag === 'estirar')
 
+/** Stable per-day hash so the pick (and the saved marks by index) survive a reload */
+function dailyIndex(key: string, size: number): number {
+  const seed = new Date().toDateString() + key
+  let h = 0
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) | 0
+  return Math.abs(h) % size
+}
+
+/** Warmup shows one random move per muscle (fixed for the day); stretch keeps the full pool */
+function movesForMuscle(key: string, mode: string) {
+  const pool = EXERCISE_WARMUP.filter((ex) => ex.kind === mode && ex.muscle === key)
+  if (mode !== 'warmup' || !pool.length) return pool
+  return [pool[dailyIndex(key, pool.length)]]
+}
+
 export function resolvePanelItems(muscles: string[], mode: string) {
   const keys: string[] = getUniqueWarmupMuscles(muscles)
   const items: any[] = []
   if (keys.length > 0) {
     keys.forEach((key: string) => {
-      EXERCISE_WARMUP
-        .filter((ex) => ex.kind === mode && ex.muscle === key)
+      movesForMuscle(key, mode)
         .forEach((ex) =>
           items.push({
             ...ex,

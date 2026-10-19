@@ -1,0 +1,1 @@
+# SDD ledger — plan: /Users/pedroterriquez/Documents/traingin_with_pedro/docs/superpowers/plans/2026-10-17-modo-serie-descanso.md

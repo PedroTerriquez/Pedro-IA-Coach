@@ -13,6 +13,7 @@
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import Button from '$lib/components/Button.svelte'
   import { startRestFromExercise } from '$lib/rest-timer'
+  import { detailPosition, nextInList } from '$lib/session-steps'
   import { resolveWeekOrder } from '$lib/week-order'
   import { dayDurationMin } from '$lib/program-utils'
 
@@ -31,6 +32,7 @@
   let showDetail = $state(false)
   let detailExercises = $state<any[]>([])
   let detailIdx = $state(0)
+  let detailDayName = $state('')
 
   let todayIdx = $derived((new Date().getDay() + 6) % 7)
   let accent = $derived($settings.accentColor || '#d4ff3a')
@@ -188,7 +190,8 @@
     planEditingOrder = [...committedOrder]
   }
 
-  async function openExerciseDetailAt(dayExercises: ProgramExercise[], idx: number) {
+  async function openExerciseDetailAt(dayExercises: ProgramExercise[], idx: number, dayName: string) {
+    detailDayName = dayName
     const resolvedList = await Promise.all(dayExercises.map(async (ex) => {
       const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any
       const logs = await Storage.getLogsForExercise(ex.exerciseId)
@@ -378,7 +381,7 @@
                     weight={exerciseWeights[exId]}
                     {units}
                     {accent}
-                    onclick={() => openExerciseDetailAt(day?.exercises || [], exIdx)}
+                    onclick={() => openExerciseDetailAt(day?.exercises || [], exIdx, day?.name || '')}
                   />
                 {/each}
               {/if}
@@ -398,6 +401,8 @@
     {units}
     hasPrev={detailIdx > 0}
     hasNext={detailIdx < detailExercises.length - 1}
+    positionLabel={detailPosition(detailDayName, detailIdx, detailExercises.length)}
+    nextExercise={nextInList(detailExercises, detailIdx)}
     isToday={false}
     onNavigate={onDetailNavigate}
     onClose={onDetailClose}

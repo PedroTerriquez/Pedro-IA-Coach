@@ -66,6 +66,19 @@ export interface GymSession {
   weekStart: string
 }
 
+/** Today's session. Missing marks (data saved before 2026-10-15) read as []. */
+export interface SessionState {
+  date: string
+  phase: number
+  todayExDone: number
+  startedAt?: number | null
+  endedAt?: number | null
+  /** Indexes of the warmup moves marked with Hecho */
+  warmupMarks?: number[]
+  /** Indexes of the stretch moves marked with Hecho */
+  stretchMarks?: number[]
+}
+
 export interface Settings {
   id: string
   activeProgramId: string | null
@@ -83,7 +96,7 @@ export interface Settings {
   occupation?: string
   pushSubscribed?: boolean
   pushServerUrl?: string
-  sessionState?: { date: string; phase: number; todayExDone: number; startedAt?: number | null; endedAt?: number | null } | any
+  sessionState?: SessionState | any
   lastCoachAnalysis?: any
   streakShownDate?: string
   rescheduleWeekOrder?: Record<string, number | number[]>

@@ -1,11 +1,11 @@
 <script lang="ts">
   import '$lib/../app.css'
   import { settings } from '$lib/stores/settings'
-  import { toast } from '$lib/stores/ui'
+  import { toast, restMinimized, detailSheetsOpen } from '$lib/stores/ui'
   import TabBar from '$lib/components/TabBar.svelte'
   import Toast from '$lib/components/Toast.svelte'
   import RestTimerBanner from '$lib/components/RestTimerBanner.svelte'
-  import RestTimerFullscreen from '$lib/components/RestTimerFullscreen.svelte'
+  import SeriesModeScreen from '$lib/components/SeriesModeScreen.svelte'
   import OnboardingBanner from '$lib/components/OnboardingBanner.svelte'
   import OfflineBanner from '$lib/components/OfflineBanner.svelte'
   import { restBannerState, cancelRestTimer, adjustRestTimer, restartRestTimer, startNextSet } from '$lib/rest-timer'
@@ -66,14 +66,13 @@
   // The rest timer opens full screen; "minimizar" collapses it to the floating
   // banner. Every new rest (new tag) opens full screen again, and so does the
   // end of a rest: that's where the set is registered and the next one starts.
-  let restMinimized = $state(false)
   let restTag = $derived($restBannerState.tag)
   let restPhase = $derived($restBannerState.phase)
 
   $effect(() => {
     restTag
     restPhase
-    restMinimized = false
+    restMinimized.set(false)
   })
 </script>
 
@@ -87,28 +86,29 @@
 
 <TabBar />
 
-<RestTimerFullscreen
-  visible={$restBannerState.visible && !restMinimized}
+<SeriesModeScreen
+  visible={$restBannerState.visible && !$restMinimized}
   timer={$restBannerState}
   {accent}
   onskip={() => cancelRestTimer($restBannerState.tag)}
   onclose={() => cancelRestTimer($restBannerState.tag)}
-  onminimize={() => restMinimized = true}
+  onminimize={() => restMinimized.set(true)}
   onadjust={(delta) => adjustRestTimer(delta)}
   onrestart={() => restartRestTimer()}
   onnext={() => startNextSet()}
 />
 
 <RestTimerBanner
-  visible={$restBannerState.visible && restMinimized}
+  visible={$restBannerState.visible && $restMinimized}
   endTime={$restBannerState.endTime}
   restSec={$restBannerState.restSec}
   name={$restBannerState.name}
   sets={$restBannerState.sets}
   reps={$restBannerState.reps}
-  {accent}
+  setIndex={$restBannerState.setIndex}
+  inSheet={$detailSheetsOpen > 0}
   onskip={() => cancelRestTimer($restBannerState.tag)}
-  onexpand={() => restMinimized = false}
+  onexpand={() => restMinimized.set(false)}
 />
 
 {#if bannerStep >= 0}
@@ -122,7 +122,8 @@
 
 <Toast visible={toastState.visible} message={toastState.message} isError={toastState.isError} />
 
-<OfflineBanner />
+<!-- Inside a detail sheet the notice takes the sheet's position line instead -->
+{#if $detailSheetsOpen === 0}<OfflineBanner />{/if}
 
 <style>
   .app-shell {

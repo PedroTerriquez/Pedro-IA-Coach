@@ -915,17 +915,6 @@ export const EXERCISE_WARMUP: WarmupEntry[] = [
     image: _IMG('Chin_To_Chest_Stretch'),
   },
   {
-    id: 'warmup-neck-semicirculos-cervicales-inferiores',
-    es: 'Semicírculos Cervicales Inferiores',
-    kind: 'warmup',
-    muscle: 'neck',
-    posInicial: 'De pie o sentado manteniendo el torso perfectamente erguido y los hombros fijos. Deja caer de forma relajada la barbilla hacia adelante buscando el esternón.',
-    ejecucion: 'Inicia un balanceo lento y continuo de tu cabeza hacia el lado derecho, deslizando la barbilla cerca del pecho hasta que tu oreja se aproxime al hombro derecho. De forma fluida e invirtiendo el trayecto, regresa por abajo hacia el lado izquierdo pasando por el centro, evitando realizar círculos completos hacia atrás.',
-    respiracion: 'Mantén una respiración profunda y fluida, inhalando en un extremo del recorrido y exhalando al viajar hacia el opuesto.',
-    duracion: 'Realiza el movimiento pendular continuo durante 30 segundos totales.',
-    image: _IMG('Neck-SMR'),
-  },
-  {
     id: 'stretch-neck-estiramiento-lateral-de-cuello-asistido',
     es: 'Estiramiento Lateral de Cuello Asistido',
     kind: 'stretch',

@@ -3,8 +3,8 @@
     options: { label: string; value: string; id?: string }[]
     value: string
     accent?: string
-    /** md = old full-width control (debt) · compact = 38 high, inside a NavRow (kg/lb) */
-    size?: 'md' | 'compact'
+    /** md = old full-width control (debt) · compact = 38 high, inside a NavRow (kg/lb) · tabs = 44 equal tabs of Detalle v2 */
+    size?: 'md' | 'compact' | 'tabs'
     label?: string
     onchange?: (value: string) => void
   } = $props()
@@ -16,13 +16,13 @@
   }
 </script>
 
-<div class="seg-control" class:compact={size === 'compact'} data-component="SegmentedControl" role="group" aria-label={label}>
+<div class="seg-control" class:compact={size === 'compact'} class:tabs={size === 'tabs'} data-component="SegmentedControl" role="group" aria-label={label}>
   {#each options as opt}
     <button
       id={opt.id}
       class="seg-btn"
       class:seg-active={value === opt.value}
-      style={value === opt.value && size !== 'compact' ? `color:${accent}` : ''}
+      style={value === opt.value && size === 'md' ? `color:${accent}` : ''}
       aria-pressed={value === opt.value}
       onclick={() => pick(opt.value)}
       type="button"
@@ -77,4 +77,9 @@
     background: var(--cv-line-strong);
     color: var(--text);
   }
+
+  /* ── Detalle v2: tabs ── */
+  .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; padding: 2px; background: var(--cv-fill-5); }
+  .tabs .seg-btn { height: 44px; padding: 0 8px; font-size: 15px; color: var(--text-tertiary); }
+  .tabs .seg-btn.seg-active { background: var(--cv-fill-on); color: var(--text); }
 </style>
