@@ -68,6 +68,7 @@
 
   let warmupDone = $state(false)
   let stretchDone = $state(false)
+  let trainingCompleted = $state(false)
   let showCoach = $state(false)
   let warmupMarks = $state<number[]>([])
   let stretchMarks = $state<number[]>([])
@@ -102,6 +103,7 @@
   let stage = $derived(sessionStage({
     warmupDone: warmupDone || !hasWarmup,
     trainingDone,
+    trainingCompleted,
     stretchDone: stretchDone || !hasStretch,
     complete,
   }))
@@ -298,6 +300,7 @@
       warmupMarks = ss.warmupMarks || []
       stretchMarks = ss.stretchMarks || []
       warmupDone = p >= 2
+      trainingCompleted = p >= 3
       stretchDone = p >= 4
       showCoach = p >= 5
     }
@@ -349,7 +352,7 @@
   function currentPhaseNumber(): number {
     let p = 1
     if (warmupDone) p = 2
-    if (trainingDone && warmupDone) p = 3
+    if (trainingCompleted) p = 3
     if (stretchDone) p = 4
     if (showCoach) p = 5
     return p
@@ -444,8 +447,14 @@
   // ── Dock and rows ──
 
   function goToStep(target: DockTarget) {
-    if (target.kind === 'finish') finishSession()
-    else if (target.kind === 'exercise') openExerciseDetailAt(target.idx)
+    if (target.kind === 'finish') {
+      if (stage === 'training_done') {
+        trainingCompleted = true
+        persistPhase()
+      } else {
+        finishSession()
+      }
+    } else if (target.kind === 'exercise') openExerciseDetailAt(target.idx)
     else openMoves(target.kind, target.idx)
   }
 
@@ -530,6 +539,7 @@
     coachError = false
     effortValue = null
     warmupDone = false
+    trainingCompleted = false
     stretchDone = false
     showCoach = false
     warmupMarks = []

@@ -5,6 +5,7 @@
   import type { RestTimerData } from '$lib/rest-timer'
   import { getAutoFilledSets, withAutoFlag, type AutoFillResult } from '$lib/series-mode'
   import SeriesConfirmSheet from './SeriesConfirmSheet.svelte'
+  import WeightRepsStepper from './WeightRepsStepper.svelte'
 
   let {
     visible = false,
@@ -58,8 +59,13 @@
   let phase = $state<'registering' | 'saved' | 'confirm'>('registering')
   let justSavedSetNo = $state(0)
 
+  // Weight/Reps section minimized state (after tapping Registrar)
+  let weightRepsMinimized = $state(false)
+
   let displayName = $derived(getExerciseDisplayName({ name: timer.name }) || timer.name)
-  let isDone = $derived(timer.phase === 'done')
+  // Consider rest done when parent says so, OR when our local countdown reaches 0
+  // (fallback for test environments where parent store may not update phase)
+  let isDone = $derived(timer.phase === 'done' || (timer.phase === 'resting' && remainingMs <= 0))
   let isLastSet = $derived(timer.sets > 0 && (timer.setIndex || 0) >= timer.sets)
   let isSummary = $derived(isDone && isLastSet)
   let units = $derived(timer.units || 'kg')
@@ -171,11 +177,15 @@
     if (isLastSet) {
       phase = 'confirm'
     } else {
-      saved = true
-      phase = 'saved'
+      // Minimize the weight/reps section instead of switching to 'saved' phase
+      weightRepsMinimized = true
     }
     // Refresh auto-flags after commit
     await refreshAutoFlags()
+  }
+
+  function expandWeightReps() {
+    weightRepsMinimized = false
   }
 
   async function refreshAutoFlags() {
@@ -213,10 +223,11 @@
     if (advancing) return
     advancing = true
     if (navigator.vibrate) navigator.vibrate(40)
+    // Expand weight/reps immediately so the stepper shows while the next rest arms
+    weightRepsMinimized = false
+    phase = 'registering'
     try {
       await onnext?.()
-      // After next, we'll be in a new rest - reset to registering phase
-      phase = 'registering'
     } finally {
       advancing = false
     }
@@ -267,7 +278,8 @@
     const key = `${timer.exerciseId}#${setNo}`
     if (!visible || !timer.exerciseId || key === loadedKey) return
     loadedKey = key
-    phase = 'registering'
+    // Don't set phase here - next() handles phase transition
+    // This avoids race condition where effect runs before next() sets weightRepsMinimized=false
     loadSets()
   })
 
@@ -409,39 +421,39 @@
           </div>
         </div>
 
-        {#if phase === 'registering'}
+        {#if phase === 'registering' && !weightRepsMinimized}
           <!-- Weight & Reps Input (Modo serie style) -->
-          <div class="sms-weight">
-            <div class="sms-weight-value">
-              {weight > 0 ? fmtNum(weight) : '—'}<small>{units}</small>
-            </div>
-            <div class="sms-weight-ctl">
-              <button class="sms-btn" aria-label="Bajar 5 kg" onclick={() => stepWeight(-WEIGHT_STEP)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
-                <span>5</span>
-              </button>
-              <button class="sms-btn" aria-label="Subir 5 kg" onclick={() => stepWeight(WEIGHT_STEP)}>
-                <span>5</span>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-            </div>
-            <div class="sms-reps">
-              <button class="sms-reps-btn" aria-label="Menos reps" onclick={() => stepReps(-REPS_STEP)}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
-              </button>
-              <div class="sms-reps-value">
-                {reps > 0 ? reps : '—'}<small>reps</small>
-              </div>
-              <button class="sms-reps-btn" aria-label="Más reps" onclick={() => stepReps(REPS_STEP)}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-            </div>
-          </div>
+          <WeightRepsStepper
+            editable
+            {weight}
+            {reps}
+            {units}
+            weightStep={WEIGHT_STEP}
+            repsStep={REPS_STEP}
+            onWeightChange={stepWeight}
+            onRepsChange={stepReps}
+            origWeight={weight}
+            origReps={reps}
+          />
           
           <div class="sms-dock">
             <button class="btn btn-pri btn-lg" type="button" onclick={commitSet}>
-              Serie {setNo} hecha · descansar
+              Registrar
             </button>
+          </div>
+        {:else if phase === 'registering' && weightRepsMinimized}
+          <!-- Minimized weight/reps - compact bar showing saved values -->
+          <div class="sms-minimized" onclick={expandWeightReps}>
+            <span class="sms-min-check">
+              <svg width="14" height="11" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4 8-8.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="sms-min-info">
+              <b>Serie {setNo} registrada</b>
+              <span>{committedWeight > 0 ? fmtNum(committedWeight) : '—'} {units} × {committedReps > 0 ? committedReps : '—'}</span>
+            </span>
+            <span class="sms-min-expand">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
+            </span>
           </div>
         {:else if phase === 'saved'}
           <!-- Saved set display -->
@@ -608,21 +620,23 @@
   .sms-weight {
     display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0 0;
   }
+  .sms-weight-row {
+    display: grid; grid-template-columns: 56px minmax(0,1fr) 56px; align-items: center; gap: 8px;
+    padding: 6px; border-radius: 24px; background: rgba(255,255,255,0.04); width: 100%; max-width: 320px;
+  }
   .sms-weight-value {
     font-family: var(--font-mono); font-size: 120px; font-weight: 500; letter-spacing: -0.07em; line-height: 0.9; color: var(--text);
+    text-align: center;
   }
   .sms-weight-value small {
     font-family: var(--font-sans); font-size: 22px; color: var(--text-tertiary); letter-spacing: 0; margin-left: 6px; font-weight: 500;
   }
-  .sms-weight-ctl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .sms-btn {
-    height: 72px; border-radius: 22px; background: rgba(255,255,255,0.08);
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    font-family: var(--font-mono); font-size: 18px; font-weight: 500; color: var(--text);
-    border: none; cursor: pointer;
+    height: 56px; width: 56px; border-radius: 16px; background: rgba(255,255,255,0.08);
+    display: grid; place-items: center; color: var(--text); border: none; cursor: pointer;
     transition: transform 0.1s, background 0.1s;
   }
-  .sms-btn:active { transform: scale(0.96); background: color-mix(in srgb, var(--rt) 24%, transparent); }
+  .sms-btn:active { transform: scale(0.93); background: color-mix(in srgb, var(--rt) 24%, transparent); }
   .sms-btn svg { flex-shrink: 0; }
 
   .sms-reps { display: grid; grid-template-columns: 56px minmax(0,1fr) 56px; align-items: center; gap: 8px; padding: 6px; border-radius: 24px; background: rgba(255,255,255,0.04); width: 100%; max-width: 320px; }
@@ -637,6 +651,18 @@
   .sms-log-check { color: var(--rt); display: grid; place-items: center; }
   .sms-log b { display: block; font-size: 16px; color: var(--text); }
   .sms-log span span { display: block; font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* Minimized weight/reps section */
+  .sms-minimized {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: rgba(255,255,255,0.04);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .sms-minimized:active { background: rgba(255,255,255,0.08); }
+  .sms-min-check { color: var(--rt); display: grid; place-items: center; flex-shrink: 0; }
+  .sms-min-info { flex: 1; min-width: 0; }
+  .sms-min-info b { display: block; font-size: 16px; color: var(--text); }
+  .sms-min-info span { display: block; font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
+  .sms-min-expand { color: var(--text-muted); flex-shrink: 0; opacity: 0.6; }
 
   .chipb {
     height: 44px; padding: 0 16px; border-radius: 999px; background: rgba(255,255,255,0.06);

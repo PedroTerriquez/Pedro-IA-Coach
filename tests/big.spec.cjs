@@ -32,19 +32,33 @@
 
 const EXPECTED_STEPS = [
   'Step 1: Verify Profile',
+  'Step 1b: Font Size Toggle',
+  'Step 1c: Programas — Create Activate Duplicate Delete',
+  'Step 1d: Programas — Coach Chat Multi-Turn',
+  'Step 1e: Programas — Generar Programa',
+  'Step 1f: Datos — AI Import Dict Migration Export Import',
+  'Step 1g: Datos — No Dictionary Match Overlay',
   'Step 2: Ejercicios Tab Hydration',
+  'Step 2b: Ejercicios CRUD',
   'Step 3: Visit Today — Phase Cards',
   'Step 4: Warmup — Navigate Prev/Next, Mark Done',
   'Step 5: Plan — Switch Week',
   'Step 6: Back to Today — Training Card',
+  'Step 6b: ExerciseDetail Coach Button',
   'Step 7: Coach IA FAB',
   'Step 8: Log Weights for Both Exercises',
+  'Step 8b: Completed Exercises Marked Green',
   'Step 9: Streak Celebration',
   'Step 10: Effort Modal + Coach Card',
+  'Step 10b: Session Timer And Moments',
+  'Step 10c: Coach Result Survives Reload',
   'Step 11: History Verification',
+  'Step 11b: History Day Detail Opens ExerciseDetail',
+  'Step 11c: History Ejercicios Subtab Filter Sparkline',
   'Step 12: Friends',
   'Step 13: Language Toggle',
   'Step 14: Tab Bar Always Visible',
+  'Step 14b: Long Names Truncated',
   'Step 15: No Uncaught JS Errors',
 ]
 
@@ -123,6 +137,17 @@ const SEED = {
         { name: 'Peso Muerto Rumano', reason: 'Menos rango, más isquiotibiales' },
       ],
     },
+    // Long name for truncation test (Step 14b)
+    {
+      id: 'ex-long-name',
+      name: 'Flexiones dinámicas excéntricas contra pared con pausa isométrica',
+      dictId: '',
+      muscle: 'Chest',
+      imgUrl: '',
+      gifUrl: '',
+      tips: [],
+      alternatives: [],
+    },
   ],
   getSettings() {
     return {
@@ -131,7 +156,7 @@ const SEED = {
       currentWeekIdx: 0,
       units: 'kg',
       accentColor: '#d4ff3a',
-      hasWatch: false,
+      hasWatch: true,
       userName: 'TestUser',
       height: '180',
       weight: '80',
@@ -153,6 +178,7 @@ const SEED = {
     const military = { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 }
     const benchHeavy = { exerciseId: 'ex-bench', sets: 5, reps: '5', rest: 180 }
     const squat = { exerciseId: 'ex-squat', sets: 4, reps: '8-10', rest: 120 }
+    const longName = { exerciseId: 'ex-long-name', sets: 3, reps: '10', rest: 60 }
 
     return {
       id: 'prog-sample',
@@ -166,7 +192,7 @@ const SEED = {
             name: 'Empuje',
             subtitle: 'Press Banca · Press Militar',
             duration: 60,
-            exercises: [bench, military],
+            exercises: [bench, military, longName],
           }),
         },
         {
@@ -318,7 +344,7 @@ async function mockApiRoutes(page) {
 }
 
 test('full user flow: profile → warmup → week switch (A→B) → training → stretch → coach → history → friends', async ({ page }) => {
-  test.setTimeout(60000)
+  test.setTimeout(180000)
 
   // ── Fail on ANY uncaught JS error (hydration / runtime) ──
   const jsErrors = []
@@ -396,6 +422,384 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(page.locator('#profile-row-experience')).toContainText('Intermedio')
   await expect(page.locator('#profile-row-occupation')).toContainText('Ingeniero')
 
+  // Close Mis datos subscreen to return to main You view
+  await page.locator('[data-component="Sheet"]').getByRole('button', { name: 'Cerrar' }).click()
+
+  // ── Step 1b: Font Size Toggle ──
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): #font-size-toggle-btn
+  // used to cycle Normal → Grande → Extra grande on each tap. It's now the
+  // Tamaño de texto row of Ajustes; the size is picked in its sheet. Same
+  // promise: the whole app zooms 1 / 1.15 / 1.3 and it survives a reload.
+  await page.locator('#you-row-ajustes').click()
+  const fontBtn = page.locator('#font-size-toggle-btn')
+  const fontSheet = page.locator('#font-size-sheet')
+  await expect(fontBtn).toBeVisible()
+  await expect(fontBtn).toContainText('Normal')
+  await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
+
+  await fontBtn.click()
+  await fontSheet.getByRole('radio', { name: 'Grande', exact: true }).click()
+  await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.15')
+
+  await fontSheet.getByRole('radio', { name: 'Extra grande' }).click()
+  await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
+  await fontSheet.getByRole('button', { name: 'Cerrar' }).click()
+  await expect(fontBtn).toContainText('Extra grande')
+
+  // Persisted to Settings — survives a reload, not just local component state
+  await page.reload()
+  await page.locator('#you-row-ajustes').click()
+  await expect(page.locator('#font-size-toggle-btn')).toContainText('Extra grande')
+  await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1.3')
+
+  // Back to Normal
+  await page.locator('#font-size-toggle-btn').click()
+  await fontSheet.getByRole('radio', { name: 'Normal' }).click()
+  await fontSheet.getByRole('button', { name: 'Cerrar' }).click()
+  await expect(page.locator('#font-size-toggle-btn')).toContainText('Normal')
+  await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
+
+  // ── Step 1c: Programas — Create Activate Duplicate Delete ──
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): the Programas tab had a
+  // name field + "+ Nuevo" and every card carried Activar / Duplicar /
+  // Eliminar, with a native confirm() to delete. Same promise — create,
+  // activate, duplicate and delete — now through Crear programa › Desde cero,
+  // Activar in «Otros programas», and ⋯ with the confirmation in the sheet.
+  await page.locator('#you-row-programas').click()
+
+  // Create a new program from scratch
+  await page.locator('#create-program-btn').click()
+  await page.locator('#create-scratch').click()
+  const editor = page.locator('#program-editor')
+  await editor.getByLabel('Nombre del programa').fill('Programa Nuevo')
+  await editor.getByRole('button', { name: 'Guardar' }).click()
+  await expect(editor).toHaveCount(0)
+
+  const newCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo' }).first()
+  await expect(newCard).toBeVisible()
+
+  // Activate it — "Programa activo" should move off "Programa Activo"
+  await newCard.getByRole('button', { name: 'Activar' }).click()
+  const activeCard = page.locator('[data-component="ProgramCard"].active')
+  await expect(activeCard).toContainText('Programa Nuevo')
+  const oldCard = page.locator('[data-component="ProgramCard"][data-program-id="prog-a"]')
+  await expect(oldCard).not.toHaveClass(/active/)
+
+  // Duplicate (from ⋯)
+  await activeCard.getByRole('button', { name: 'Más opciones' }).click()
+  await page.locator('#program-options').getByRole('button', { name: 'Duplicar' }).click()
+  const dupCard = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })
+  await expect(dupCard).toBeVisible()
+
+  // Delete the duplicate: ⋯ › Eliminar asks inside the sheet before deleting
+  await dupCard.getByRole('button', { name: 'Más opciones' }).click()
+  const options = page.locator('#program-options')
+  await options.getByRole('button', { name: 'Eliminar', exact: true }).click()
+  await expect(options).toContainText('¿Eliminar «Programa Nuevo (copia)»?')
+  await options.getByRole('button', { name: 'Eliminar', exact: true }).click()
+  await expect(page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Nuevo (copia)' })).toHaveCount(0)
+
+  // ── Step 1d: Programas — Coach Chat Multi-Turn ──
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): the chat used to open
+  // from Programas › IA Powered › "Mejorar programa actual", titled "Coach de
+  // programa", greeting "¡Qué onda Pedro!" + "(1 días por semana)", with NO
+  // quick chips, and "Aplicar cambios" replaced the program as
+  // «{nombre} — {fecha}». Now it opens from «Mejorar con el coach», has fixed
+  // quick replies, and «Crear versión nueva» asks for the name of the new
+  // version («Programa Activo · v2») and whether to use it from today.
+  // Same request bodies to the Worker; reopening still starts from scratch.
+  const chatBodies = []
+  let applyBody = null
+  await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+    const body = route.request().postDataJSON()
+    chatBodies.push(body)
+    const n = chatBodies.length
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: `Respuesta del coach ${n}`, _provider: 'test' }) })
+  })
+  await page.route((url) => url.href.includes('/api/ai/program-coach'), async (route) => {
+    applyBody = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        program: {
+          program_name: 'Programa Acordado',
+          weeks: [{ name: 'Semana 1', tag: '', days: [{ name: 'Pecho', subtitle: '', duration_min: 60, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }] }],
+        },
+        _provider: 'test',
+      }),
+    })
+  })
+
+  // Open chat: personalized greeting, quick replies, apply disabled until the coach replies
+  await page.locator('#improve-program-row').click()
+  const chat = page.locator('[data-component="CoachChat"]')
+  await expect(chat).toBeVisible()
+  await expect(chat).toContainText('Mejorar con el coach')
+  await expect(chat).toContainText('Qué onda, Pedro.')
+  await expect(chat).toContainText('«Programa Activo»')
+  await expect(chat.getByRole('button', { name: 'Tengo menos tiempo' })).toBeVisible()
+  const applyBtn = chat.getByRole('button', { name: 'Crear versión nueva' })
+  await expect(applyBtn).toBeDisabled()
+
+  // Two turns: the whole thread is sent each time, with program context in the system prompt
+  const input = chat.locator('textarea')
+  await input.fill('¿Está balanceada mi rutina?')
+  await input.press('Enter')
+  await expect(chat).toContainText('Respuesta del coach 1')
+  await input.fill('Agrega más pecho')
+  await input.press('Enter')
+  await expect(chat).toContainText('Respuesta del coach 2')
+  expect(chatBodies[1].messages.map(m => m.content)).toEqual(['¿Está balanceada mi rutina?', 'Respuesta del coach 1', 'Agrega más pecho'])
+  expect(chatBodies[1].systemPrompt).toContain('PROGRAMA ACTUAL:')
+  expect(chatBodies[1].systemPrompt).toContain('Programa Activo')
+
+  // Crear versión nueva: name + "use it from today", then the same apply request
+  await expect(applyBtn).toBeEnabled()
+  await applyBtn.click()
+  const versionSheet = page.locator('#new-version-sheet')
+  await expect(versionSheet).toBeVisible()
+  await expect(versionSheet.getByLabel('Nombre')).toHaveValue('Programa Activo · v2')
+  await expect(versionSheet.getByRole('switch', { name: 'Usarla desde hoy' })).toHaveAttribute('aria-checked', 'true')
+  await versionSheet.getByRole('button', { name: 'Crear versión' }).click()
+  await expect(chat).not.toBeVisible({ timeout: 10000 })
+  expect(applyBody.messages).toHaveLength(5)
+  expect(applyBody.messages[4].content).toContain('Aplica los cambios que acordamos')
+  await expect(page.locator('body')).toContainText('Versión nueva activa. La anterior sigue abajo.')
+  const newCard2 = page.locator('[data-component="ProgramCard"]', { hasText: 'Programa Activo · v2' })
+  await expect(newCard2).toBeVisible()
+  await expect(newCard2).toHaveClass(/active/)
+  // The original stays untouched, in «Otros programas»
+  await expect(page.locator('[data-component="ProgramCard"][data-program-id="prog-a"]:not(.active)')).toBeVisible()
+
+  // Reopen: conversation starts from scratch
+  await page.locator('#improve-program-row').click()
+  await expect(chat).toBeVisible()
+  await expect(chat).not.toContainText('Respuesta del coach')
+  await chat.getByRole('button', { name: 'Volver' }).click()
+  await expect(chat).not.toBeVisible()
+
+  // ── Step 1e: Programas — Generar Programa ──
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): the selections lived
+  // in Programas › IA Powered (chips "4d", "Rodilla") and "Generar programa
+  // con IA" opened a chat titled "Nuevo programa" with a "¡Qué onda Pedro!"
+  // greeting, created by "Crear programa". Now: Crear programa › Platícalo
+  // con el coach (chips "4", "Rodilla") › chat «Con el coach» where the
+  // coach's proposal is the first message, and «Crear este programa» ends on
+  // the «Listo» screen. Same request bodies to the Worker.
+  const chatBodies2 = []
+  let createBody = null
+  await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+    chatBodies2.push(route.request().postDataJSON())
+    const reply = chatBodies2.length === 1
+      ? 'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.'
+      : 'Va, bajamos piernas a 1 día.'
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply, _provider: 'test' }) })
+  })
+  await page.route((url) => url.href.includes('/api/ai/generate-program'), async (route) => {
+    createBody = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        program_name: 'Upper/Lower Acordado',
+        weeks: [{ name: 'Semana 1', tag: '', days: [{ name: 'Espalda', weekday: 1, subtitle: '', duration_min: 60, exercises: [{ exercise_name: 'Remo con Barra', muscle: 'Back', sets: 4, reps: '8-12', rest_sec: 90 }] }] }],
+        _provider: 'test',
+      }),
+    })
+  })
+
+  await page.locator('#create-program-btn').click()
+  await page.locator('#create-coach').click()
+  const setup = page.locator('#coach-setup-sheet')
+  await setup.getByRole('button', { name: '4', exact: true }).click()
+  await setup.getByRole('button', { name: 'Rodilla' }).click()
+
+  // Opening the chat: the coach speaks first with a proposal (kickoff turn is hidden)
+  await setup.getByRole('button', { name: 'Platicar con el coach' }).click()
+  const chat2 = page.locator('[data-component="CoachChat"]')
+  await expect(chat2).toContainText('Con el coach')
+  await expect(chat2).toContainText('4 días')
+  await expect(chat2).toContainText('Cuidar rodilla')
+  await expect(chat2).toContainText('Propuesta: por tu trabajo de oficina')
+  await expect(chat2).not.toContainText('dame tu propuesta inicial')
+  expect(chatBodies2[0].messages).toHaveLength(1)
+  expect(chatBodies2[0].systemPrompt).toContain('PERFIL DEL USUARIO')
+  expect(chatBodies2[0].systemPrompt).toContain('Programador')
+  expect(chatBodies2[0].systemPrompt).toContain('"daysPerWeek":4')
+  expect(chatBodies2[0].systemPrompt).toContain('Rodilla')
+
+  // Discuss
+  const input2 = chat2.locator('textarea')
+  await input2.fill('Prefiero menos pierna')
+  await input2.press('Enter')
+  await expect(chat2).toContainText('Va, bajamos piernas a 1 día.')
+
+  // Create: sends the whole conversation + preferences, activates the new program
+  await chat2.getByRole('button', { name: 'Crear este programa' }).click()
+  await expect(chat2).not.toBeVisible({ timeout: 10000 })
+  expect(createBody.messages.map(m => m.content)).toEqual([
+    chatBodies2[0].messages[0].content,
+    'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.',
+    'Prefiero menos pierna',
+    'Va, bajamos piernas a 1 día.',
+    'Crea el programa completo con el enfoque que acordamos en esta conversación.',
+  ])
+  expect(createBody.systemPrompt).toContain('"daysPerWeek":4')
+  const ready = page.locator('[data-component="ProgramReady"]')
+  await expect(ready).toContainText('Listo, Pedro.')
+  await expect(ready).toContainText('«Upper/Lower Acordado» ya es tu programa activo.')
+  await ready.getByRole('button', { name: 'Ver programa' }).click()
+  const newCard3 = page.locator('[data-component="ProgramCard"]', { hasText: 'Upper/Lower Acordado' })
+  await expect(newCard3).toBeVisible()
+  await expect(newCard3).toHaveClass(/active/)
+
+  // ── Step 1f: Datos — AI Import Dict Migration Export Import ──
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro). It used to promise:
+  // Programas › IA Powered › "Importar con IA" (POST /api/ai/import) creates
+  // "Programa IA"; Ejercicios › "Sobrescribir" shows "Actualizados" in
+  // #dict-migrate-status; Datos › "Exportar JSON" downloads ejercicios-*.json;
+  // importing an exercises file says "1 ejercicios importados" (and
+  // overwrote existing ones); importing the logs file says "Importados 1 logs".
+  // Now: Pega tu rutina opens a chat (/api/ai/program-chat) and «Crear este
+  // programa» creates it (/api/ai/generate-program); Copia de seguridad ›
+  // Ordenar con el diccionario confirms first and shows a result sheet;
+  // Exportar / Importar ejercicios show result sheets and importing NEVER
+  // overwrites an exercise you already have; Restaurar una copia merges the
+  // logs file and says what came in.
+  const chatBodies3 = []
+  await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+    chatBodies3.push(route.request().postDataJSON())
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: 'Entendí 1 día: Lunes · Press Banca 4 × 8.', _provider: 'test' }) })
+  })
+  await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      program_name: 'Programa IA',
+      weeks: [{
+        name: 'Semana 1', subtitle: '', tag: 'VOLUMEN',
+        days: [{ name: 'Pecho', subtitle: '', weekday: 1, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }],
+      }],
+    }),
+  }))
+
+  await page.locator('#you-step-programa').click()
+  await page.locator('#create-paste').click()
+  const paste = page.locator('#paste-routine-sheet')
+  await paste.getByRole('button', { name: 'Escribirla aquí' }).click()
+  await paste.getByRole('textbox', { name: 'Tu rutina' }).fill('Lunes: Press banca 4x8')
+  await paste.getByRole('button', { name: 'Ver cómo queda' }).click()
+  const chat3 = page.locator('[data-component="CoachChat"]')
+  await expect(chat3).toContainText('Tu rutina · 1 línea')
+  await expect(chat3).toContainText('Entendí 1 día')
+  expect(chatBodies3[0].messages[0].content).toBe('Lunes: Press banca 4x8')
+  await chat3.getByRole('button', { name: 'Crear este programa' }).click()
+  const ready2 = page.locator('[data-component="ProgramReady"]')
+  await expect(ready2).toContainText('«Programa IA» ya es tu programa activo.', { timeout: 5000 })
+  await ready2.getByRole('button', { name: 'Ver programa' }).click()
+  await expect(page.locator('[data-component="ProgramCard"].active', { hasText: 'Programa IA' })).toBeVisible()
+
+  // Ordenar con el diccionario: confirmation, then a result sheet
+  await page.getByRole('button', { name: 'Tú', exact: true }).click()
+  await page.locator('#you-row-copia').click()
+  await page.locator('#dictionary-row').click()
+  await page.locator('#dictionary-sheet').getByRole('button', { name: 'Ordenar 1 ejercicio' }).click()
+  const resultSheet = page.locator('[data-component="ResultSheet"]')
+  await expect(resultSheet).toContainText('de 1 ordenados')
+  await page.getByRole('button', { name: 'Listo' }).click()
+
+  // Export exercises JSON
+  const fs = require('fs')
+  const os = require('os')
+  const path = require('path')
+  const [download1] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#export-exercises-row').click(),
+  ])
+  expect(download1.suggestedFilename()).toMatch(/^ejercicios-\d{4}-\d{2}-\d{2}\.json$/)
+  await expect(resultSheet).toContainText('1 ejercicio exportado')
+  await page.getByRole('button', { name: 'Listo' }).click()
+
+  // Import exercises JSON: one new, one you already have (left as it was)
+  const exported = JSON.parse(fs.readFileSync(await download1.path(), 'utf8'))
+  const exFile = path.join(os.tmpdir(), `pw-exercises-${Date.now()}.json`)
+  fs.writeFileSync(exFile, JSON.stringify([
+    { id: 'ex-imported', name: 'Curl de Bíceps', muscle: 'Biceps', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+    { ...exported[0], muscle: 'Músculo Pisado' },
+  ]))
+  try {
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.locator('#import-exercises-row').click(),
+    ])
+    await chooser.setFiles(exFile)
+    await expect(resultSheet).toContainText('2 ejercicios en el archivo')
+    await expect(resultSheet).toContainText('Nuevos1')
+    await expect(resultSheet).toContainText('Ya los tenías')
+    await page.getByRole('button', { name: 'Listo' }).click()
+  } finally {
+    fs.unlinkSync(exFile)
+  }
+
+  // Restaurar una copia with the logs JSON (merges)
+  const logsFile = path.join(os.tmpdir(), `pw-logs-${Date.now()}.json`)
+  fs.writeFileSync(logsFile, JSON.stringify({
+    exerciseLogs: [{ id: 'log-imported', exerciseId: 'ex-imported', date: '2026-07-01', weight: 40, units: 'kg' }],
+  }))
+  try {
+    await page.locator('#restore-row').click()
+    const [chooser2] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.locator('#restore-sheet').getByRole('button', { name: 'Elegir archivo y restaurar' }).click(),
+    ])
+    await chooser2.setFiles(logsFile)
+    await expect(resultSheet).toContainText('Copia restaurada')
+    await expect(resultSheet).toContainText('entrenos')
+  } finally {
+    fs.unlinkSync(logsFile)
+  }
+
+  // The exercise you already had kept its own muscle
+  await page.goto('you')
+  await page.locator('#you-row-ejercicios').click()
+  await expect(page.locator('#you-ejercicios')).toContainText('Curl de Bíceps')
+  await expect(page.locator('#you-ejercicios')).not.toContainText('Músculo Pisado')
+
+  // ── Step 1g: Datos — No Dictionary Match Overlay ──
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): "Sobrescribir" in the
+  // Ejercicios tab used to show "sin match 1" in #dict-migrate-status, a
+  // #ver-mas-link opened the #skipped-overlay listing the name, and
+  // #skipped-close-btn closed it. Same promise — the unmatched exercise is
+  // listed and you can get out — now via Copia de seguridad › Ordenar con el
+  // diccionario › result «1 de 2 ordenados» › «Sin coincidencia» subscreen,
+  // where each row opens Editar ejercicio.
+  await page.locator('#you-row-copia').click()
+  await page.locator('#dictionary-row').click()
+  await page.locator('#dictionary-sheet').getByRole('button', { name: 'Ordenar 2 ejercicios' }).click()
+
+  const resultSheet2 = page.locator('[data-component="ResultSheet"]')
+  await expect(resultSheet2).toContainText('1 de 2 ordenados', { timeout: 10000 })
+
+  const unmatchedRow = page.locator('#unmatched-row')
+  await expect(unmatchedRow).toBeVisible()
+  await expect(unmatchedRow).toContainText('1')
+  await unmatchedRow.click()
+
+  const subscreen = page.locator('#you-sin-coincidencia')
+  await expect(subscreen).toBeVisible()
+  await expect(subscreen).toContainText('Ejercicio Inventado X7')
+
+  await subscreen.locator('[data-component="ExerciseListItem"]', { hasText: 'Ejercicio Inventado X7' }).click()
+  const editSheet2 = page.locator('#edit-exercise-sheet')
+  await expect(editSheet2).toBeVisible()
+  // Changed 2026-10-14 with Tú · Nuevo 03 (approved by Pedro): «Cancelar»
+  // under Guardar is gone; ✕ closes without saving (same promise).
+  await editSheet2.getByRole('button', { name: 'Cerrar' }).click()
+  await expect(editSheet2).toHaveCount(0)
+  await page.getByRole('button', { name: 'Copia de seguridad', exact: true }).click()
+  await expect(page.locator('#you-copia')).toBeVisible()
+
   // ── Step 2: Ejercicios Tab Hydration ──
   // Proves the view is actually interactive post-hydration by checking the
   // real effect of a tap (content swap), not a CSS color.
@@ -406,6 +810,48 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.locator('#you-row-ejercicios').click()
   await expect(page.locator('#you-ejercicios')).toBeVisible()
   await expect(page.locator('#ex-count')).toBeVisible()
+
+  // ── Step 2b: Ejercicios CRUD ──
+  // Changed 2026-10-13 with Tú v2 (approved by Pedro): the Ejercicios tab had
+  // "+ Nuevo" with an inline form, the open exercise edited inline under
+  // "Editar", and "Eliminar" used a native confirm(). Same promise — search,
+  // create, edit and delete, with the count in #ex-count — now with the search
+  // and + in the dock, the «Nuevo ejercicio» sheet, Datos (Editar ejercicio)
+  // and «Eliminar ejercicio» confirmed inside that sheet.
+  await page.locator('#exercise-search').fill('sentad')
+  await expect(page.locator('[data-component="ExerciseListItem"]')).toHaveCount(1)
+  await expect(page.locator('[data-component="ExerciseListItem"]')).toContainText('Sentadilla')
+  await page.locator('#exercise-search').fill('')
+
+  // Add a new exercise
+  await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
+  const newSheet = page.locator('#new-exercise-sheet')
+  await newSheet.getByLabel('Nombre').fill('Remo con Barra')
+  await newSheet.getByLabel('Músculo').fill('Espalda')
+  await newSheet.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.locator('#ex-count')).toHaveText('5 ejercicios')
+  const newItem = page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo con Barra' })
+  await expect(newItem).toBeVisible()
+
+  // Edit it. Changed 2026-10-14 with Tú · Nuevo 03 (approved by Pedro): it
+  // was the «Datos» button of the open row. Same promise — edit the name,
+  // then delete after a confirmation from that same editor — now from the pencil.
+  await newItem.locator('.exercise-toggle').click()
+  const card = page.locator('[data-component="ExerciseCard"]')
+  await card.getByRole('button', { name: 'Editar ejercicio' }).click()
+  let editSheet = page.locator('#edit-exercise-sheet')
+  await editSheet.getByLabel('Nombre').fill('Remo con Barra (editado)')
+  await editSheet.getByRole('button', { name: 'Guardar' }).click()
+  await expect(card).toContainText('Remo con Barra (editado)')
+
+  // Delete it — the card stays open after saving; the editor asks first
+  await card.getByRole('button', { name: 'Editar ejercicio' }).click()
+  editSheet = page.locator('#edit-exercise-sheet')
+  await editSheet.getByRole('button', { name: 'Eliminar ejercicio' }).click()
+  const deleteSheet = page.locator('#delete-exercise-sheet')
+  await expect(deleteSheet).toContainText('¿Eliminar «Remo con Barra (editado)»?')
+  await deleteSheet.getByRole('button', { name: 'Eliminar', exact: true }).click()
+  await expect(page.locator('#ex-count')).toHaveText('4 ejercicios')
 
   // ── Step 3: Visit Today — Phase Cards ──
   await page.goto('today')
@@ -610,6 +1056,38 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await page.getByRole('button', { name: 'Terminar estiramiento' }).click()
   await page.locator('[data-component="DetailSheet"]').getByRole('button', { name: 'Terminar sesión' }).click()
 
+  // ── Step 8b: Completed Exercises Marked Green ──
+  // Changed 2026-10-15 with Hoy v2 (approved by Pedro): «hecho» was the
+  // .row-done class, a green badge on the thumb and a green (#34c759) border
+  // on the image. Same promise — the logged row reads as done, the other
+  // doesn't — now the row's accent border and the accent check (.xc-ok).
+  await page.goto('today')
+  const benchRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Press de Banca con Barra' })
+  const militaryRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Press Militar' })
+  const longNameRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Flexiones dinámicas' })
+
+  // Press Banca has log from today → marked. Press Militar has log from today → marked.
+  // Long name exercise has no log → not marked.
+  await expect(benchRow).toHaveAttribute('data-done', 'true')
+  await expect(benchRow).toHaveAttribute('data-state', 'done')
+  await expect(militaryRow).toHaveAttribute('data-done', 'true')
+  await expect(militaryRow).toHaveAttribute('data-state', 'done')
+  await expect(longNameRow).toHaveAttribute('data-done', 'false')
+
+  await expect(benchRow.locator('.xc-ok')).toBeVisible()
+  await expect(militaryRow.locator('.xc-ok')).toBeVisible()
+  await expect(longNameRow.locator('.xc-ok')).toHaveCount(0)
+
+  // Accent border on the done rows only; both rows keep their photo.
+  await expect(benchRow).toHaveCSS('box-shadow', /rgb\(212, 255, 58\)/)
+  await expect(militaryRow).toHaveCSS('box-shadow', /rgb\(212, 255, 58\)/)
+  await expect(longNameRow).not.toHaveCSS('box-shadow', /rgb\(212, 255, 58\)/)
+
+  // El marcado se recalcula desde IndexedDB en cada carga — sobrevive reload.
+  await page.reload()
+  await expect(page.locator('[data-component="ExerciseRow"]', { hasText: 'Press de Banca con Barra' })).toHaveAttribute('data-done', 'true')
+  await expect(page.locator('[data-component="ExerciseRow"]', { hasText: 'Press Militar' })).toHaveAttribute('data-done', 'true')
+
   // ── Step 9: Streak Celebration ──
   // Changed 2026-10-15 with Hoy v2 (approved by Pedro): the overlay said
   // «Semanas consecutivas» and closed itself after ~2.6 s. Now it's a full
@@ -652,6 +1130,16 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   await expect(coachCardAfterReload).toBeVisible({ timeout: 10000 })
   await expect(coachCardAfterReload).toContainText('Buen trabajo hoy, TestUser.')
 
+  // ── Step 10b: Session Timer And Moments ──
+  // Revival del legado: overlay "Inicia tu Smart Watch" al terminar warmup
+  // (si hasWatch), overlay "Estira bb" con tiempo al completar ejercicios, y
+  // duración total en la card del coach.
+  // Note: This step verifies the watch moment and session duration were shown
+  // during the workout (Steps 4-8). We check the coach card has the duration stat.
+  const duracionStat = coachCard.locator('[data-component="StatBlock"]', { hasText: 'duración' })
+  await expect(duracionStat).toBeVisible({ timeout: 5000 })
+  await expect(duracionStat).toContainText(/\d+\s*min/)
+
   // ── Step 11: History Verification ──
   await page.goto('history')
 
@@ -667,6 +1155,41 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
   const bodyText = await page.locator('body').textContent()
   expect(bodyText).not.toContain('ex-bench')
   expect(bodyText).not.toContain('ex-squat')
+
+  // ── Step 11b: History Day Detail Opens ExerciseDetail ──
+  // Clicking an exercise row in the day detail opens ExerciseDetail
+  const exerciseRow = page.locator('.cal-detail .exercise-row', { hasText: 'Banca' })
+  await expect(exerciseRow).toBeVisible({ timeout: 3000 })
+  await exerciseRow.click()
+
+  // Same shared ExerciseDetail used on Plan/Today — proves Calendar's
+  // day-detail wiring opens the real sheet, not just a static row.
+  // Changed 2026-10-15 with Detalle v2 (approved by Pedro): was ExerciseHero's .hero-google-btn
+  await expect(page.getByRole('button', { name: 'Buscar en Google' })).toBeVisible()
+  const closeBtn = page.getByRole('button', { name: 'Cerrar' }).first()
+  await expect(closeBtn).toBeVisible()
+  await closeBtn.click()
+  await expect(page.getByRole('button', { name: 'Buscar en Google' })).toHaveCount(0)
+
+  // ── Step 11c: History Ejercicios Subtab Filter Sparkline ──
+  await page.getByRole('button', { name: 'Ejercicios' }).click()
+
+  await expect(page.locator('.ex-card')).toHaveCount(4)
+  // "Banca" (not the full seeded name) — display names are dictionary-
+  // normalized by name-match, e.g. "Press Banca" → "Press de Banca con Barra".
+  const benchCard = page.locator('.ex-card', { hasText: 'Banca' })
+  await expect(benchCard.locator('.ex-last')).toContainText('5')
+  await expect(benchCard.locator('.ex-delta')).toContainText('+')
+  await expect(benchCard.locator('.ex-sparkline-placeholder')).toHaveCount(0)
+
+  // Filter to Chest only
+  await page.locator('.chips-row').getByText('Chest', { exact: true }).click()
+  await expect(page.locator('.ex-card')).toHaveCount(1)
+  await expect(page.locator('.ex-card')).toContainText('Banca')
+
+  // Back to all
+  await page.locator('.chips-row').getByText('Todos', { exact: true }).click()
+  await expect(page.locator('.ex-card')).toHaveCount(4)
 
   // ── Step 12: Friends ──
   // No window overrides — the real Friends page calls the API directly;
@@ -764,6 +1287,28 @@ test('full user flow: profile → warmup → week switch (A→B) → training �
     await page.evaluate(() => window.scrollTo(0, 9999))
     await expect(hoyBtn).toBeInViewport()
   }
+
+  // ── Step 14b: Long Names Truncated ──
+  // the day title takes one line and exercise names at most two
+  await page.goto('today')
+  const title = page.locator('.page-header-title')
+  await expect(title).toBeVisible()
+  // Check title doesn't overflow (single line with ellipsis)
+  await expect(title).toHaveCSS('text-overflow', 'ellipsis')
+
+  const rowName = page.locator('[data-phase="training"] .xc-n').first()
+  await expect(rowName).toBeVisible()
+  // Exercise name should be at most 2 lines
+  const rowNameLines = await rowName.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2
+    return el.getBoundingClientRect().height / lh
+  })
+  expect(rowNameLines).toBeLessThanOrEqual(2.05)
+
+  await page.goto('plan')
+  const planTitle = page.locator('.page-header-title')
+  await expect(planTitle).toHaveCSS('text-overflow', 'ellipsis')
 
   // ── Step 15: No Uncaught JS Errors ──
   expect(jsErrors).toEqual([])
@@ -871,7 +1416,9 @@ test.describe('Warmup detail sheet rendering', () => {
     // the other three open under «Cómo se hace».
     await page.getByRole('button', { name: /Empezar calentamiento/ }).click()
     const sheet = page.locator('[data-component="MovementSheet"]')
-    await expect(page.locator('[data-component="TargetPanel"]')).toContainText('repeticiones', { timeout: 3000 })
+    // TargetPanel shows the item's duracion — chest has two warmups, one says "repeticiones",
+    // the other "pasadas completas"; accept either since dailyIndex picks deterministically by date.
+    await expect(page.locator('[data-component="TargetPanel"]')).toContainText(/repeticiones|pasadas completas/, { timeout: 3000 })
     // Changed 2026-10-15 (Pedro): «Cómo se hace» starts open; tapping folds it.
     await expect(sheet.getByText('Posición inicial', { exact: true })).toBeVisible()
     await expect(sheet.getByText('Ejecución', { exact: true })).toBeVisible()
@@ -2326,12 +2873,13 @@ test.describe('Rest timer — registro de series', () => {
 
     // Serie 1 — seeded from "última" (60kg) and the prescribed reps (10).
     let timer = await openRestForSet(1)
-    await expect(timer.locator('.sms-dock .btn-pri')).toContainText('Serie 1 hecha')
-    await expect(timer.locator('.sms-weight-value')).toContainText('60')
-    await expect(timer.locator('.sms-reps-value')).toContainText('10')
+    await expect(timer.locator('.sms-dock .btn-pri')).toContainText('Registrar')
+    // WeightRepsStepper uses .wrs-row:nth-child(1) .wrs-value for weight, nth-child(2) for reps
+    await expect(timer.locator('.wrs-row').nth(0).locator('.wrs-value')).toContainText('60')
+    await expect(timer.locator('.wrs-row').nth(1).locator('.wrs-value')).toContainText('10')
 
     await timer.getByRole('button', { name: 'Subir 5 kg' }).click()
-    // Tap "Serie 1 hecha · descansar" to save and start rest
+    // Tap "Registrar" to save the set (minimizes input, rest continues)
     await timer.locator('.sms-dock .btn-pri').click()
     // Wait for rest to complete (phase becomes 'saved')
     await expect(timer).toHaveAttribute('data-phase', 'saved', { timeout: 8000 })
@@ -2347,41 +2895,24 @@ test.describe('Rest timer — registro de series', () => {
     expect(log.reps).toBe('10')
     expect(log.blocks).toBeUndefined()
 
-    // Start serie 2: click "Empezar serie 2"
+    // Update localStorage set counter so nextSetIndex returns 2 for the next set
+    await seedSetCounter(page, 'ex-bench', 1)
+
+    // Start serie 2: click "Empezar serie 2" (shown after rest finishes and phase becomes 'saved')
+    await expect(timer.locator('.sms-dock .btn-pri')).toContainText('Empezar serie 2', { timeout: 8000 })
     await timer.locator('.sms-dock .btn-pri').click()
-    // Trigger the rest-timer check to update restBannerState store
-    await page.evaluate(async () => {
-      // Call the internal _checkRestTimer to update the store
-      await new Promise(r => setTimeout(r, 100))
-      // Also dispatch visibilitychange to trigger checks
-      document.dispatchEvent(new Event('visibilitychange'))
-      window.dispatchEvent(new Event('focus'))
-      await new Promise(r => setTimeout(r, 200))
-    })
-    // Manually seed the next rest with proper data
-    await page.evaluate(async () => {
-      const cacheTimer = await caches.open('rest-timer')
-      await cacheTimer.put('/pending', new Response(JSON.stringify({
-        name: 'Press Banca', restSec: 5, sets: 3, reps: '8-10', exerciseId: 'ex-bench',
-        muscle: 'Chest', units: 'kg', lastWeight: 65, maxWeight: 70, setIndex: 2,
-        endTime: Date.now() + 5000,
-        phase: 'resting',
-        tag: 'rest-' + Date.now(),
-      })))
-    })
-    // Trigger store update again
-    await page.evaluate(async () => {
-      document.dispatchEvent(new Event('visibilitychange'))
-      window.dispatchEvent(new Event('focus'))
-      await new Promise(r => setTimeout(r, 200))
-    })
-    await expect(timer).toHaveAttribute('data-phase', 'registering', { timeout: 3000 })
+    // Wait for the real onnext to start the next rest and update the UI
+    await expect(timer).toHaveAttribute('data-phase', 'registering', { timeout: 5000 })
     await expect(timer.locator('.sms-serie-label')).toContainText('Serie 2 de 3')
+    // Debug: check if Registrar button appears (same block as WeightRepsStepper)
+    await expect(timer.locator('.sms-dock .btn-pri')).toContainText('Registrar', { timeout: 3000 })
+    // Wait for WeightRepsStepper to render (check for its internal rows)
+    await expect(timer.locator('.wrs-row').first()).toBeVisible({ timeout: 5000 })
     // Seeded from serie 1 (65), so a single tap up and back down leaves it identical.
-    await expect(timer.locator('.sms-weight-value')).toContainText('65')
+    await expect(timer.locator('.wrs-row').nth(0).locator('.wrs-value')).toContainText('65')
     await timer.getByRole('button', { name: 'Subir 5 kg' }).click()
     await timer.getByRole('button', { name: 'Bajar 5 kg' }).click()
-    // Tap "Serie 2 hecha · descansar"
+    // Tap "Registrar" to save serie 2 (minimizes input, rest continues)
     await timer.locator('.sms-dock .btn-pri').click()
     await expect(timer).toHaveAttribute('data-phase', 'saved', { timeout: 8000 })
     await expect.poll(async () => (await todayLog())?.sets).toBe(2)
@@ -2390,37 +2921,23 @@ test.describe('Rest timer — registro de series', () => {
     expect(log.sets).toBe(2)
     expect(log.blocks).toBeUndefined()
 
-    // Serie 3 heavier and shorter — now the log has to keep the detail.
-    // Start serie 3
+    // Update localStorage set counter so nextSetIndex returns 3 for the next set
+    await seedSetCounter(page, 'ex-bench', 2)
+
+    // Start serie 3: wait for rest to finish (phase 'saved'), then click "Empezar serie 3"
+    await expect(timer.locator('.sms-dock .btn-pri')).toContainText('Empezar serie 3', { timeout: 8000 })
     await timer.locator('.sms-dock .btn-pri').click()
-    await page.evaluate(async () => {
-      document.dispatchEvent(new Event('visibilitychange'))
-      window.dispatchEvent(new Event('focus'))
-      await new Promise(r => setTimeout(r, 200))
-    })
-    await page.evaluate(async () => {
-      const cacheTimer = await caches.open('rest-timer')
-      await cacheTimer.put('/pending', new Response(JSON.stringify({
-        name: 'Press Banca', restSec: 5, sets: 3, reps: '8-10', exerciseId: 'ex-bench',
-        muscle: 'Chest', units: 'kg', lastWeight: 65, maxWeight: 70, setIndex: 3,
-        endTime: Date.now() + 5000,
-        phase: 'resting',
-        tag: 'rest-' + Date.now(),
-      })))
-    })
-    await page.evaluate(async () => {
-      document.dispatchEvent(new Event('visibilitychange'))
-      window.dispatchEvent(new Event('focus'))
-      await new Promise(r => setTimeout(r, 200))
-    })
-    await expect(timer).toHaveAttribute('data-phase', 'registering', { timeout: 3000 })
+    // Wait for the real onnext to start the next rest and update the UI
+    await expect(timer).toHaveAttribute('data-phase', 'registering', { timeout: 5000 })
     await expect(timer.locator('.sms-serie-label')).toContainText('Serie 3 de 3')
-    await timer.getByRole('button', { name: 'Subir 5 kg' }).click()
+    // Wait for WeightRepsStepper to render (check for its internal rows)
+    await expect(timer.locator('.wrs-row').first()).toBeVisible({ timeout: 5000 })
+    await expect(timer.locator('.wrs-row').nth(0).locator('.wrs-value')).toContainText('65')
     await timer.getByRole('button', { name: 'Menos reps' }).click()
     await timer.getByRole('button', { name: 'Menos reps' }).click()
-    await expect(timer.locator('.sms-weight-value')).toContainText('70')
-    await expect(timer.locator('.sms-reps-value')).toContainText('8')
-    // Tap "Serie 3 hecha · descansar"
+    await expect(timer.locator('.wrs-row').nth(0).locator('.wrs-value')).toContainText('70')
+    await expect(timer.locator('.wrs-row').nth(1).locator('.wrs-value')).toContainText('8')
+    // Tap "Registrar" to save serie 3 (last set, so phase becomes 'confirm')
     await timer.locator('.sms-dock .btn-pri').click()
     await expect(timer).toHaveAttribute('data-phase', 'confirm', { timeout: 8000 })
     await expect.poll(async () => (await todayLog())?.reps).toBe('8')
@@ -2604,8 +3121,8 @@ test.describe('Rest timer — ciclo de series', () => {
     await expect(timer).toBeVisible({ timeout: 3000 })
     await expect(timer.locator('.sms-serie-label')).toContainText('Serie 1 de 3')
     // Seeded from "última" and the prescribed reps — nobody typed anything.
-    await expect(timer.locator('.sms-weight-value')).toContainText('60')
-    await expect(timer.locator('.sms-reps-value')).toContainText('10')
+    await expect(timer.locator('.wrs-row').nth(0).locator('.wrs-value')).toContainText('60')
+    await expect(timer.locator('.wrs-row').nth(1).locator('.wrs-value')).toContainText('10')
     expect(await todayLog()).toBeNull()
 
     // The rest runs out: the screen stays, asking for the next serie.
@@ -2624,7 +3141,7 @@ test.describe('Rest timer — ciclo de series', () => {
 
     await expect(timer).toHaveAttribute('data-phase', 'registering', { timeout: 1500 })
     await expect(timer.locator('.sms-serie-label')).toContainText('Serie 2 de 3')
-    await expect(timer.locator('.sms-dock .btn-pri')).toContainText('Serie 2 hecha')
+    await expect(timer.locator('.sms-dock .btn-pri')).toContainText('Registrar')
     expect(startPushes).toBe(0)
     await expect.poll(() => startPushes, { timeout: 6000 }).toBe(1)
 

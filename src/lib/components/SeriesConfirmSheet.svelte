@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { SetEntry } from '$lib/set-log'
+  import WeightRepsStepper from './WeightRepsStepper.svelte'
 
   let {
     name,
@@ -18,17 +19,12 @@
   } = $props()
 
   const WEIGHT_STEPS = [1.25, 2.5, 5]
-  const HOLD_START_MS = 380
-  const HOLD_MIN_MS = 70
-
-  type Field = 'weight' | 'reps'
 
   let orig = $derived(entries.map(e => ({ ...e })))
   let sets = $state<SetEntry[]>(entries.map(e => ({ ...e })))
   let sel = $state(0)
   let stepKg = $state(2.5)
   let saving = $state(false)
-  let holdId: ReturnType<typeof setTimeout> | null = null
   let rowsEl = $state<HTMLElement | null>(null)
 
   let minReps = $derived(parseInt(String(reps).match(/\d+/)?.[0] || '0', 10))
@@ -67,40 +63,14 @@
     rowsEl?.children[i]?.scrollIntoView({ block: 'nearest' })
   }
 
-  function bump(field: Field, dir: number) {
-    const delta = dir * (field === 'weight' ? stepKg : 1)
-    sets[sel][field] = Math.max(0, +(sets[sel][field] + delta).toFixed(2))
+  function onWeightChange(delta: number) {
+    sets[sel].weight = Math.max(0, +(sets[sel].weight + delta).toFixed(2))
     buzz()
   }
 
-  function holdStart(e: PointerEvent, field: Field, dir: number) {
-    e.preventDefault()
-    holdStop()
-    bump(field, dir)
-    let delay = HOLD_START_MS
-    const repeat = () => {
-      bump(field, dir)
-      delay = Math.max(HOLD_MIN_MS, delay * 0.8)
-      holdId = setTimeout(repeat, delay)
-    }
-    holdId = setTimeout(repeat, delay)
-  }
-
-  function holdStop() {
-    if (holdId) { clearTimeout(holdId); holdId = null }
-  }
-
-  function keyStep(e: MouseEvent, field: Field, dir: number) {
-    if (e.detail === 0) bump(field, dir)
-  }
-
-  function typed(e: Event, field: Field) {
-    const v = parseFloat((e.target as HTMLInputElement).value.replace(',', '.'))
-    if (!isNaN(v) && v >= 0) sets[sel][field] = field === 'reps' ? Math.round(v) : v
-  }
-
-  function selectAll(e: FocusEvent) {
-    (e.target as HTMLInputElement).select()
+  function onRepsChange(delta: number) {
+    sets[sel].reps = Math.max(0, sets[sel].reps + delta)
+    buzz()
   }
 
   function nextSet() {
@@ -127,11 +97,10 @@
       saving = false
     }
   }
-
-  $effect(() => holdStop)
 </script>
 
-<header class="scs-top">
+<div class="scs" data-component="SeriesConfirmSheet">
+  <header class="scs-top">
   <button class="scs-close" type="button" aria-label="Cerrar" onclick={onclose}>
     <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
   </button>
@@ -181,33 +150,18 @@
       {/if}
     </div>
 
-    {#snippet line(field: Field, label: string, unit: string, mode: 'decimal' | 'numeric')}
-      <div class="scs-line">
-        <button class="scs-b" type="button" aria-label="Menos {label.toLowerCase()}"
-          onpointerdown={(e) => holdStart(e, field, -1)} onpointerup={holdStop} onpointerleave={holdStop} onpointercancel={holdStop}
-          onclick={(e) => keyStep(e, field, -1)}>−</button>
-        <div class="scs-mid">
-          <span class="scs-lab">{label}</span>
-          <label class="scs-iv">
-            <input class="scs-in" class:is-ed={current[field] !== orig[sel][field]} type="text" inputmode={mode} enterkeyhint="next"
-              aria-label={label} value={fmt(current[field])} oninput={(e) => typed(e, field)} onfocus={selectAll} />
-            <span class="scs-u">{unit}</span>
-          </label>
-        </div>
-        <button class="scs-b" type="button" aria-label="Más {label.toLowerCase()}"
-          onpointerdown={(e) => holdStart(e, field, 1)} onpointerup={holdStop} onpointerleave={holdStop} onpointercancel={holdStop}
-          onclick={(e) => keyStep(e, field, 1)}>+</button>
-      </div>
-    {/snippet}
-    {@render line('weight', 'Peso', units, 'decimal')}
-    {@render line('reps', 'Reps', 'reps', 'numeric')}
-
-    <div class="scs-steps">
-      <span>Paso de peso</span>
-      {#each WEIGHT_STEPS as s}
-        <button class="scs-step" class:is-on={s === stepKg} type="button" aria-pressed={s === stepKg} onclick={() => stepKg = s}>±{s}</button>
-      {/each}
-    </div>
+    <WeightRepsStepper
+      editable
+      weight={current.weight}
+      reps={current.reps}
+      units={units}
+      weightStep={stepKg}
+      repsStep={1}
+      origWeight={orig[sel].weight}
+      origReps={orig[sel].reps}
+      onWeightChange={onWeightChange}
+      onRepsChange={onRepsChange}
+    />
 
     <div class="scs-foot">
       <button class="scs-pill" type="button" disabled={isLast} onclick={copyDown}>Copiar a las siguientes</button>
@@ -225,6 +179,7 @@
     <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
 </footer>
+</div>
 
 <style>
   .scs-top { display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
@@ -296,34 +251,6 @@
     height: 44px; padding: 0 12px; border-radius: var(--radius-full); border: 0; background: transparent;
     color: var(--text-secondary); font-family: var(--font-sans); font-size: 13px; font-weight: 500; cursor: pointer;
   }
-  .scs-line {
-    display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; align-items: center; gap: 8px; padding: 4px;
-    border-radius: var(--radius-xl); background: rgba(0,0,0,0.28); border: 0.5px solid var(--border);
-  }
-  .scs-b {
-    height: 56px; border-radius: 16px; border: 0.5px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.08);
-    color: var(--text); font-family: var(--font-mono); font-size: 26px; line-height: 1; display: grid; place-items: center;
-    cursor: pointer; padding: 0; touch-action: manipulation; user-select: none; -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent; transition: transform 0.1s, background 0.1s;
-  }
-  .scs-b:active { transform: scale(0.93); background: color-mix(in srgb, var(--rt) 24%, transparent); }
-  .scs-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
-  .scs-lab { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-muted); }
-  .scs-iv { width: 100%; display: flex; align-items: baseline; justify-content: center; gap: 5px; min-width: 0; }
-  .scs-in {
-    width: 100%; max-width: 120px; min-width: 0; background: transparent; border: 0; outline: none; text-align: right;
-    font-family: var(--font-mono); font-size: 30px; font-weight: 500; letter-spacing: -1.4px; line-height: 1;
-    color: var(--text); padding: 0;
-  }
-  .scs-in.is-ed { color: var(--rt); }
-  .scs-u { flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); width: 34px; }
-  .scs-steps { display: flex; align-items: center; gap: 6px; padding-left: 4px; }
-  .scs-steps > span { white-space: nowrap; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-right: auto; }
-  .scs-step {
-    height: 44px; min-width: 58px; padding: 0 10px; border-radius: var(--radius-full); border: 0.5px solid var(--border-medium);
-    background: transparent; color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; font-weight: 500; cursor: pointer;
-  }
-  .scs-step.is-on { background: rgba(255,255,255,0.12); color: var(--text); border-color: transparent; }
   .scs-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .scs-pill {
     height: 48px; border-radius: var(--radius-full); border: 0.5px solid var(--border-medium); background: rgba(255,255,255,0.05);
@@ -348,8 +275,6 @@
     .scs-foot { grid-template-columns: 1.3fr 1fr; }
     .scs-pill { font-size: 11.5px; letter-spacing: -0.2px; }
     .scs-pill svg { display: none; }
-    .scs-step { min-width: 48px; padding: 0 6px; }
-    .scs-line { grid-template-columns: 48px minmax(0, 1fr) 48px; }
   }
 
   @media (max-height: 720px) {
@@ -359,9 +284,6 @@
     .scs-row { min-height: 46px; }
     .scs-ed { margin-top: 8px; padding: 8px; gap: 6px; }
     .scs-ed-top { min-height: 38px; }
-    .scs-b { height: 44px; font-size: 22px; }
-    .scs-in { font-size: 24px; }
-    .scs-step { height: 36px; }
     .scs-pill { height: 42px; }
     .scs-actions { margin-top: 10px; }
     .scs-save { height: 50px; font-size: 16px; }

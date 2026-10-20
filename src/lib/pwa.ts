@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.87'
-const _VER_DESC = 'Modo serie en descanso: peso 120px, ±5kg/72px, reps ±, marcas series, autollenado, confirmar v2'
-const _VER_TIME = '2026-10-19 12:00'
+const _VER_BASE = 'v2.88'
+const _VER_DESC = 'Paso "Terminar entrenamiento" tras completar series: muestra botón antes de ir a estirar'
+const _VER_TIME = '2026-10-19 22:18'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

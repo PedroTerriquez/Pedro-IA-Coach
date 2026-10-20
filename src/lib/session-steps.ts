@@ -38,13 +38,14 @@ export function firstUnmarked(marks: number[], total: number): number {
   return -1
 }
 
-export type SessionStage = 'warmup' | 'training' | 'stretch' | 'finish' | 'complete'
+export type SessionStage = 'warmup' | 'training' | 'training_done' | 'stretch' | 'finish' | 'complete'
 
 /** Logging every exercise counts as past the warmup even if it was skipped */
-export function sessionStage(f: { warmupDone: boolean; trainingDone: boolean; stretchDone: boolean; complete: boolean }): SessionStage {
+export function sessionStage(f: { warmupDone: boolean; trainingDone: boolean; trainingCompleted: boolean; stretchDone: boolean; complete: boolean }): SessionStage {
   if (f.complete) return 'complete'
   if (!f.warmupDone && !f.trainingDone) return 'warmup'
   if (!f.trainingDone) return 'training'
+  if (!f.trainingCompleted) return 'training_done'
   if (!f.stretchDone) return 'stretch'
   return 'finish'
 }
@@ -292,9 +293,15 @@ function stretchStep(i: DockInput): DockStep {
   return { caption: `Último paso · ${plural(moves.length, 'movimiento')}`, label: 'Empezar estiramiento', target: { kind: 'stretch', idx: 0 } }
 }
 
+function trainingDoneStep(i: DockInput): DockStep {
+  const doneCount = i.exercises.filter(e => e.status.state === 'done').length
+  return { caption: `Entrenamiento completado · ${plural(doneCount, 'ejercicio')}`, label: 'Terminar entrenamiento', target: { kind: 'finish' } }
+}
+
 function stageStep(i: DockInput): DockStep | null {
   if (i.stage === 'warmup' && i.warmup.moves.length) return warmupStep(i)
   if (i.stage === 'training') return trainingStep(i)
+  if (i.stage === 'training_done') return trainingDoneStep(i)
   if (i.stage === 'stretch' && i.stretch.moves.length) return stretchStep(i)
   if (i.stage === 'finish') return { caption: 'Lo último de hoy', label: 'Terminar sesión', target: { kind: 'finish' } }
   return null
