@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.88'
-const _VER_DESC = 'Paso "Terminar entrenamiento" tras completar series: muestra botón antes de ir a estirar'
-const _VER_TIME = '2026-10-19 22:18'
+const _VER_BASE = 'v2.89'
+const _VER_DESC = 'Bigtest en un solo flujo; arregla timer, cuota de imágenes y escrituras perdidas'
+const _VER_TIME = '2026-10-21 00:39'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

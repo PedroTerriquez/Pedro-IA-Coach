@@ -53,6 +53,7 @@
       value={shown(field)}
       placeholder="0"
       inputmode={field === 'weight' ? 'decimal' : 'numeric'}
+      pattern={field === 'weight' ? '[0-9.]*' : '[0-9]*'}
       aria-label="Bloque {index + 1} · {unit}"
       onfocus={() => onselect(field)}
       oninput={(e) => typed(field, e)}

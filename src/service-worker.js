@@ -39,14 +39,32 @@ self.addEventListener('activate', (e) => {
 // the local copy.
 const NET_TIMEOUT_MS = 3000
 
+// An exercise image from another host is asked for with CORS first (the media
+// hosts allow it): an opaque copy is charged ~7 MB of storage quota whatever
+// its real size, and enough of them leave IndexedDB — the user's data — with no
+// room to write. A host without CORS still shows its image, uncached.
+async function fetchImage(request, signal) {
+  try {
+    const res = await fetch(request.url, { mode: 'cors', credentials: 'omit', signal })
+    if (res.ok) return res
+  } catch (err) {
+    if (signal.aborted) throw err
+  }
+  return fetch(request, { signal })
+}
+
+function isCrossOriginImage(request) {
+  return request.destination === 'image' && new URL(request.url).origin !== self.location.origin
+}
+
 async function fetchAndCache(request) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), NET_TIMEOUT_MS)
   try {
-    const res = await fetch(request, { signal: ctrl.signal })
+    const res = isCrossOriginImage(request) ? await fetchImage(request, ctrl.signal) : await fetch(request, { signal: ctrl.signal })
     // Only real answers get stored: a 404 page cached under an image URL would
-    // be served forever. Opaque cross-origin responses count as real.
-    if (res.ok || res.type === 'opaque') {
+    // be served forever, and an opaque one would eat the storage quota.
+    if (res.ok) {
       const clone = res.clone()
       caches.open(CACHE).then((cache) => cache.put(request, clone))
     }
@@ -143,13 +161,17 @@ async function closeDoneAfter(ms) {
 }
 
 // Pushes arrive empty, so which card to show is read off the clock: the app
-// stages when the rest started and when its "done" push is due, and a push is
-// whichever of the two moments it lands closer to. Deciding by order of arrival
-// instead showed "Descanso terminado" whenever the start push came in late.
+// stages when its "done" push is due, and the queue never delivers before that
+// moment. Anything earlier is the start push, however late it lands — splitting
+// at the midpoint showed "Descanso terminado" seconds after Iniciar whenever
+// the start push was slow or the rest short. The margin absorbs clock skew
+// between the phone and the Worker.
 // Specs without `doneAt` come from an older app version and still carry `kind`.
+const DONE_PUSH_EARLY_MS = 5000
+
 function pushKind(spec, now) {
   if (!spec.doneAt) return spec.kind
-  return now >= (spec.startedAt + spec.doneAt) / 2 ? 'done' : 'start'
+  return now >= spec.doneAt - DONE_PUSH_EARLY_MS ? 'done' : 'start'
 }
 
 self.addEventListener('push', (e) => {

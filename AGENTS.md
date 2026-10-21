@@ -5,7 +5,7 @@
 ## Stack
 - SvelteKit 2 + Svelte 5 (runes) + TypeScript, Vite 8
 - `@sveltejs/adapter-static`, base path `/Pedro-IA-Coach`, SPA fallback (`index.html`)
-- Mobile-first (iPhone PWA), dark mode only; desktop browsers work too (`npm run dev`)
+- **Mobile-only (iPhone PWA), dark mode only** — no desktop view; `npm run dev` works in mobile emulation only
 - IndexedDB for all persistence (4 object stores) + localStorage mirror (`coach-pedro-ai-backup`)
 - No runtime backend — Cloudflare Worker (`push-worker/`) for Web Push, AI (Workers AI), users/friends
 - Deploy: GitHub Pages via `.github/workflows/deploy.yml` (push to `main`)
@@ -75,7 +75,7 @@ tests/                → Single E2E file: big.spec.cjs
 > Full policy: [`docs/commit-policy.md`](docs/commit-policy.md)
 
 ## Tests & Verification
-- **E2E**: `npx playwright test` → runs `tests/big.spec.cjs` (single file, `EXPECTED_STEPS` guardrail)
+- **E2E**: `npx playwright test` → runs `tests/big.spec.cjs`: one full user flow from an empty app (its own seed, real UI) + a few tests apart; `EXPECTED_STEPS` must match the steps that ran
 - **NEVER delete/rename/weaken existing `test()` without asking** — they're the record of promised behavior
 - **Type check**: `npm run check` (svelte-check)
 - **Build**: `npm run build` (adapter-static, base `/Pedro-IA-Coach`)

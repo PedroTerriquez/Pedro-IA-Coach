@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte'
   import { formatWeight } from '$lib/exercise-history'
+  import { plural } from '$lib/program-utils'
 
   // Today's weight: − / + of 5 and the number itself, which takes the
   // keyboard when tapped. Registered = accent border, check and how to fix it.
@@ -28,7 +29,7 @@
 
   let display = $derived(weight > 0 ? formatWeight(weight) : '')
   let caption = $derived(sets > 0 ? `Igual en las ${sets} series` : `De ${STEP} en ${STEP} ${units}`)
-  let savedLine = $derived([savedSets > 0 ? `${savedSets} series` : '', isRecord ? 'tu nuevo récord' : ''].filter(Boolean).join(' · '))
+  let savedLine = $derived([savedSets > 0 ? plural(savedSets, 'serie', 'series') : '', isRecord ? 'tu nuevo récord' : ''].filter(Boolean).join(' · '))
 
   function step(dir: 1 | -1) {
     weight = Math.max(0, +(weight + dir * STEP).toFixed(1))
@@ -69,7 +70,7 @@
   <div class="r">
     <button type="button" class="b" aria-label="Menos peso" disabled={weight <= 0} onclick={() => step(-1)}><Icon name="minus" size={26} /></button>
     <label class="v">
-      <input value={typing ?? display} placeholder="0" inputmode="decimal" style="width:{fieldWidth(typing ?? display)}" aria-label="Peso de hoy" oninput={typed} onfocus={focused} onblur={() => (typing = null)} />
+      <input value={typing ?? display} placeholder="0" inputmode="decimal" pattern="[0-9.]*" style="width:{fieldWidth(typing ?? display)}" aria-label="Peso de hoy" oninput={typed} onfocus={focused} onblur={() => (typing = null)} />
       <small>{units}</small>
     </label>
     <button type="button" class="b" aria-label="Más peso" onclick={() => step(1)}><Icon name="plus" size={26} /></button>

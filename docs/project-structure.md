@@ -51,7 +51,7 @@ push-worker/
 scripts/
   bump-version.sh        → Bumps APP_VERSION minor + sets description (run before every commit)
 tests/
-  big.spec.cjs           → SINGLE E2E suite (Playwright). Guardrail EXPECTED_STEPS. Do not add new test files.
+  big.spec.cjs           → SINGLE E2E suite (Playwright): the full user flow from an empty app + a few tests apart. Guardrail EXPECTED_STEPS (steps that ran, in order). Do not add new test files.
 vite.config.ts           → SvelteKit + Vite config, __BUILD_TIME__ define, dev-only plugins (e.g. mediaEditorPlugin)
 playwright.config.cjs    → base URL includes trailing slash (`/Pedro-IA-Coach/`)
 AGENTS.md                ← This file (minimal core)

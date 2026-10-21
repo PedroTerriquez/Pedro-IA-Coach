@@ -3,6 +3,13 @@ const DB_VERSION = 2
 
 const STORES = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
 
+// An aborted transaction fires neither `complete` nor (without a failed
+// request) `error`: without this, the write's promise hangs forever and the
+// caller never learns it didn't land.
+function abortError(tx: IDBTransaction): Error {
+  return tx.error || new DOMException('IndexedDB transaction aborted', 'AbortError')
+}
+
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
@@ -32,6 +39,7 @@ export async function getAll<T = any>(storeName: string): Promise<T[]> {
     req.onsuccess = () => { result = req.result }
     tx.oncomplete = () => { db.close(); resolve(result || []) }
     tx.onerror = () => { db.close(); reject(tx.error) }
+    tx.onabort = () => { db.close(); reject(abortError(tx)) }
   })
 }
 
@@ -44,6 +52,7 @@ export async function get<T = any>(storeName: string, id: string): Promise<T | u
     req.onsuccess = () => { result = req.result }
     tx.oncomplete = () => { db.close(); resolve(result) }
     tx.onerror = () => { db.close(); reject(tx.error) }
+    tx.onabort = () => { db.close(); reject(abortError(tx)) }
   })
 }
 
@@ -56,6 +65,7 @@ export async function put(storeName: string, data: any): Promise<IDBValidKey> {
     req.onsuccess = () => { result = req.result }
     tx.oncomplete = () => { db.close(); resolve(result) }
     tx.onerror = () => { db.close(); reject(tx.error) }
+    tx.onabort = () => { db.close(); reject(abortError(tx)) }
   })
 }
 
@@ -66,6 +76,7 @@ export async function del(storeName: string, id: string): Promise<void> {
     tx.objectStore(storeName).delete(id)
     tx.oncomplete = () => { resolve(); db.close() }
     tx.onerror = () => { reject(tx.error); db.close() }
+    tx.onabort = () => { reject(abortError(tx)); db.close() }
   })
 }
 
@@ -78,6 +89,7 @@ export async function getByIndex<T = any>(storeName: string, indexName: string, 
     req.onsuccess = () => { result = req.result }
     tx.oncomplete = () => { db.close(); resolve(result || []) }
     tx.onerror = () => { db.close(); reject(tx.error) }
+    tx.onabort = () => { db.close(); reject(abortError(tx)) }
   })
 }
 

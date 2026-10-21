@@ -32,7 +32,10 @@
   const WEIGHT_STEP = 5
   const REPS_STEP = 1
 
-  let remainingMs = $state(0)
+  // Derived from the clock, not ticked down from 0: a fresh rest must never
+  // read as "done" on its first render, before the first tick.
+  let now = $state(Date.now())
+  let remainingMs = $derived(Math.max(0, timer.endTime - now))
   let tickId: ReturnType<typeof setInterval> | null = null
 
   // Per-set log: the set you just finished is the one you register while you
@@ -45,7 +48,9 @@
   let loadedKey = ''
   let saveId: ReturnType<typeof setTimeout> | null = null
   let pending: { exerciseId: string; setNo: number; units: string; entry: SetEntry } | null = null
-  let advancing = false
+  // While the next rest is being armed, the old one still reads as done: it must
+  // not be taken for a rest that just ended (that bounced back to "Empezar serie").
+  let advancing = $state(false)
 
   // Committed values for display in saved phase
   let committedWeight = $state(0)
@@ -283,10 +288,22 @@
     loadSets()
   })
 
+  // This screen lives in the layout and outlasts each rest: a rest for another
+  // set or exercise starts over on its fields, never on the last one's
+  // «Confirma tus series» or «Serie guardada». (+30 s / Reiniciar keep the set.)
+  let shownSetKey = ''
+  $effect.pre(() => {
+    const key = `${timer.exerciseId}#${timer.setIndex || 0}`
+    if (!visible || !timer.exerciseId || key === shownSetKey) return
+    shownSetKey = key
+    phase = 'registering'
+    weightRepsMinimized = false
+  })
+
   // Track rest timer phase changes
   $effect(() => {
     if (!visible) return
-    if (isDone && phase === 'registering') {
+    if (isDone && phase === 'registering' && !advancing) {
       onRestDone()
     } else if (!isDone && phase !== 'registering' && phase !== 'saved' && phase !== 'confirm') {
       // New rest started (only reset if not in a terminal phase)
@@ -298,9 +315,9 @@
   $effect(() => {
     if (tickId) { clearInterval(tickId); tickId = null }
     if (!visible || timer.endTime <= 0) return
-    remainingMs = Math.max(0, timer.endTime - Date.now())
+    now = Date.now()
     tickId = setInterval(() => {
-      remainingMs = Math.max(0, timer.endTime - Date.now())
+      now = Date.now()
     }, 1000)
     return () => { if (tickId) clearInterval(tickId) }
   })

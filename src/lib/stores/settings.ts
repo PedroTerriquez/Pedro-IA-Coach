@@ -19,6 +19,8 @@ function readLangFromBackup(): string {
 function createSettingsStore() {
   const initialLang = readLangFromBackup()
 
+  let queue: Promise<void> = Promise.resolve()
+
   const store = writable<Settings>({
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
     accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false,
@@ -34,14 +36,21 @@ function createSettingsStore() {
         store.set(s)
       }
     },
-    update: async (partial: Partial<Settings>) => {
-      const current = await storage.getSettings()
-      const merged = { ...current, ...partial }
-      await storage.saveSettings(merged)
-      store.set(merged)
-      if (merged.language) {
-        try { localStorage.setItem('exerciseLang', merged.language) } catch {}
+    // One at a time: each update reads what's stored and writes it back merged,
+    // so two running together would each miss the other's change
+    update: (partial: Partial<Settings>) => {
+      const run = async () => {
+        const current = await storage.getSettings()
+        const merged = { ...current, ...partial }
+        await storage.saveSettings(merged)
+        store.set(merged)
+        if (merged.language) {
+          try { localStorage.setItem('exerciseLang', merged.language) } catch {}
+        }
       }
+      const done = queue.then(run, run)
+      queue = done.catch(() => {})
+      return done
     }
   }
 }

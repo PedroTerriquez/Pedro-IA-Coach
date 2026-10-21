@@ -106,9 +106,11 @@ Do not add it to AGENTS.md.
 
 1. **Glossary updates** — as each term is resolved.
 2. **Test scenarios** — the behaviours that must be automated, written for `tests/big.spec.cjs`:
-   each scenario is one new `test.describe()` with exactly one `test()`, seeded once with
-   `seedIndexedDB()` and then driven through the real UI (clicks, reloads, navigation). Give each a
-   title, the seed state, the steps and the assertions. Cover the happy path, every guard and empty
+   each scenario becomes part of the **full user flow** (one journey that starts empty and builds
+   everything through the real UI), so say where in the journey it happens and what state it needs
+   the flow to have built by then. Only a scenario that can't fit that journey gets its own
+   `test.describe()` with one `test()` — say why. Give each a title, the state it starts from, the
+   steps and the assertions. Cover the happy path, every guard and empty
    state, and the edge cases the interview surfaced. Every "Manual check" you plan to put in
    Validation needs a matching scenario — except what the suite cannot reach (it runs against the
    prod preview build: no dev-only `/admin` save, no real iOS push or Watch); list those apart, with

@@ -496,9 +496,9 @@
 
   function onStreakDone() {
     streakModalShow = false
-    Storage.saveSettings({ ...$settings, streakShownDate: todayDate } as Settings).then(() => {
-      settings.update({ streakShownDate: todayDate } as any)
-    })
+    // Merged onto what's stored: saving the in-memory store whole could put
+    // back a stale sessionState over what was just persisted
+    settings.update({ streakShownDate: todayDate } as any)
     effortModalShow = true
   }
 

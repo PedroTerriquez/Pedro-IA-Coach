@@ -434,13 +434,12 @@ import type { SetEntry } from '$lib/set-log'
           <div class="fused-weight-stepper">
             <button class="fused-btn-weight" type="button" aria-label="Menos 5 kg" disabled={nextSetWeight <= 0} onclick={() => nextSetWeight = Math.max(0, +(nextSetWeight - 5).toFixed(1))}>−5</button>
             <input
-              type="number"
+              type="text"
               class="fused-weight-input"
               inputmode="decimal"
-              step="0.5"
-              min="0"
+              pattern="[0-9.]*"
               value={nextSetWeight || ''}
-              oninput={(e) => { const v = (e.target as HTMLInputElement).value; nextSetWeight = v === '' ? 0 : parseFloat(v) || 0 }}
+              oninput={(e) => { const v = (e.target as HTMLInputElement).value.replace(',', '.').replace(/[^0-9.]/g, ''); nextSetWeight = v === '' ? 0 : parseFloat(v) || 0 }}
               onfocus={(e) => (e.target as HTMLInputElement).select()}
               aria-label="Peso en kg"
             />
@@ -503,13 +502,12 @@ import type { SetEntry } from '$lib/set-log'
           <div class="fused-next-weight-stepper">
             <button class="fused-btn-next-weight" type="button" aria-label="Menos 5 kg" disabled={nextSetWeight <= 0} onclick={() => nextSetWeight = Math.max(0, +(nextSetWeight - 5).toFixed(1))}>−5</button>
             <input
-              type="number"
+              type="text"
               class="fused-next-weight-input"
               inputmode="decimal"
-              step="0.5"
-              min="0"
+              pattern="[0-9.]*"
               value={nextSetWeight || ''}
-              oninput={(e) => { const v = (e.target as HTMLInputElement).value; nextSetWeight = v === '' ? 0 : parseFloat(v) || 0 }}
+              oninput={(e) => { const v = (e.target as HTMLInputElement).value.replace(',', '.').replace(/[^0-9.]/g, ''); nextSetWeight = v === '' ? 0 : parseFloat(v) || 0 }}
               onfocus={(e) => (e.target as HTMLInputElement).select()}
               aria-label="Peso próxima serie en kg"
             />

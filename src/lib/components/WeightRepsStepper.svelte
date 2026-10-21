@@ -135,6 +135,7 @@
             class:is-ed={weight !== origWeight}
             type="text"
             inputmode="decimal"
+            pattern="[0-9.]*"
             enterkeyhint="next"
             aria-label="Peso"
             value={fmtNum(weight)}

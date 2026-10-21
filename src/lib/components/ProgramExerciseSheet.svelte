@@ -36,6 +36,11 @@
 
   let suggestions = $derived(suggestExercises(name, library))
 
+  function typedRest(e: Event) {
+    const n = parseInt((e.currentTarget as HTMLInputElement).value.replace(/\D/g, ''), 10)
+    rest = Number.isFinite(n) ? n : 0
+  }
+
   function save() {
     if (!name.trim()) { error = 'Ponle un nombre.'; return }
     onsave({ name: name.trim(), sets, reps: reps.trim() || '10', rest })
@@ -62,7 +67,7 @@
   <TextInput variant="field" label="Repeticiones" mono bind:value={reps} placeholder="8-10" />
   <div class="fw">
     <span class="fl">Descanso</span>
-    <NumberStepper variant="sheet" size="sm" name="descanso" display={String(rest)} unit="s" decDisabled={rest <= 0} onstep={(d) => rest = Math.max(0, rest + d * REST_STEP)} />
+    <NumberStepper variant="sheet" size="sm" name="descanso" display={String(rest)} unit="s" decDisabled={rest <= 0} onstep={(d) => rest = Math.max(0, rest + d * REST_STEP)} oninput={typedRest} />
   </div>
 </EditSheet>
 

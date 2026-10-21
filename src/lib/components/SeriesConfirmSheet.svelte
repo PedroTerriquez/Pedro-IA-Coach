@@ -182,6 +182,8 @@
 </div>
 
 <style>
+  /* Fills the timer screen so the rows scroll and «Guardar» stays on screen */
+  .scs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .scs-top { display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
   .scs-close {
     width: 44px; height: 44px; border-radius: var(--radius-full);

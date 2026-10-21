@@ -24,9 +24,12 @@ A path to a spec under `docs/superpowers/specs/`, normally written by the `/anal
    pattern you will copy.
 2. Implement `T1..Tn` **in order**. For each task follow its "What" + "Files" and run its "Verify"
    when it is a command.
-3. Write the spec's **Test Scenarios** into `tests/big.spec.cjs`: each scenario is a new
-   `test.describe()` with exactly one `test()`, seeded once with `seedIndexedDB()` and then driven
-   through the real UI. Never add a second test file.
+3. Write the spec's **Test Scenarios** into `tests/big.spec.cjs` as steps of the **full user flow**
+   (it starts empty and builds everything through the real UI — no `seedIndexedDB()` in it): put
+   each one where the journey naturally reaches it, as a new `step('Step N: …')` plus its name in
+   `EXPECTED_STEPS`, or as assertions inside an existing step. Only a scenario that contradicts the
+   flow's state (its own server, an incompatible history) gets its own `test.describe()` with
+   exactly one `test()`, with a comment saying why it's apart. Never add a second test file.
 4. Honour every Constraint (Must / Must Not / Out of Scope).
 5. Finish with the commit policy below.
 

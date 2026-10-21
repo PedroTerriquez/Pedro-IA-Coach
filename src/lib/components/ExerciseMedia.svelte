@@ -74,7 +74,7 @@
 {/if}
 
 <style>
-  .media { position: relative; height: 112px; border-radius: var(--radius-xl); background: var(--media-bg); overflow: hidden; flex-shrink: 0; }
+  .media { position: relative; height: 220px; border-radius: var(--radius-xl); background: var(--media-bg); overflow: hidden; flex-shrink: 0; }
   .media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .media.fit img { object-fit: contain; }
   .media.none { background: var(--cv-fill-1); padding: 14px 16px; }

@@ -63,6 +63,7 @@
     readonly={!oninput}
     placeholder="0"
     inputmode={decimals ? 'decimal' : 'numeric'}
+    pattern={decimals ? '[0-9.]*' : '[0-9]*'}
     aria-label={name || label}
   >
 {/snippet}
@@ -70,7 +71,11 @@
 {#if variant === 'sheet'}
   <div class="stp58" class:sm={size === 'sm'} data-component="NumberStepper">
     <button type="button" aria-label={name ? `Menos ${name}` : 'Menos'} disabled={decDisabled} onclick={() => onstep(-1)}><Icon name="minus" size={22} /></button>
-    <b aria-live="polite">{display}{#if unit}<small>{unit}</small>{/if}</b>
+    {#if oninput}
+      <label class="stp58-field"><input value={display} {oninput} {onfocus} inputmode="numeric" pattern="[0-9]*" placeholder="0" aria-label={name || label}>{#if unit}<small>{unit}</small>{/if}</label>
+    {:else}
+      <b aria-live="polite">{display}{#if unit}<small>{unit}</small>{/if}</b>
+    {/if}
     <button type="button" aria-label={name ? `Más ${name}` : 'Más'} disabled={incDisabled} onclick={() => onstep(1)}><Icon name="plus" size={22} /></button>
   </div>
 {:else}
@@ -128,6 +133,30 @@
     color: var(--text-tertiary);
   }
   .stp58.sm b { font-size: 40px; }
+  .stp58-field { display: flex; align-items: baseline; justify-content: center; min-width: 0; }
+  .stp58-field input {
+    width: 3.2ch;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 56px;
+    font-weight: 500;
+    letter-spacing: -0.06em;
+    line-height: 1;
+    color: var(--text);
+    outline: none;
+  }
+  .stp58.sm .stp58-field input { font-size: 40px; }
+  .stp58-field small {
+    font-family: var(--font-sans);
+    font-size: 17px;
+    font-weight: 500;
+    margin-left: 4px;
+    color: var(--text-tertiary);
+  }
 
   .ns.inline {
     display: flex;

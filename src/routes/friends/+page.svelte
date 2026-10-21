@@ -83,7 +83,9 @@
   onMount(async () => {
     const s = await getSettings()
 
-    if (s.userName && !s.username) {
+    // 'Pedro' is the default placeholder of a fresh install, not a chosen name:
+    // copying it would sign every new user up as «Pedro» without asking
+    if (s.userName && s.userName !== 'Pedro' && !s.username) {
       s.username = s.userName
       await saveSettings(s)
     }

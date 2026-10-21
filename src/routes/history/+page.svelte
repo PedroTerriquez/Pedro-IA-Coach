@@ -40,11 +40,14 @@
   let enriched: (Exercise & { logs: ExerciseLog[] })[] = $derived(
     exercises.map(e => ({
       ...e,
-      logs: allLogs.filter(l => l.exerciseId === e.id)
+      // By date: first/last/delta and the sparkline read them in order, and
+      // IndexedDB returns them by key (a restored copy's ids sort apart)
+      logs: allLogs.filter(l => l.exerciseId === e.id).sort((a, b) => a.date.localeCompare(b.date))
     }))
   )
 
-  let muscles = $derived(['Todos', ...new Set(exercises.map(e => e.muscle.split('/')[0].split(/[,\s]+/)[0]))])
+  // An exercise without a muscle has no chip (it used to show an empty one)
+  let muscles = $derived(['Todos', ...new Set(exercises.map(e => (e.muscle || '').split('/')[0].split(/[,\s]+/)[0]).filter(Boolean))])
 
   let filtered = $derived(
     historyFilter === 'Todos'
