@@ -1,203 +1,258 @@
 <script lang="ts">
   import PageHeader from '$lib/components/PageHeader.svelte'
-  import FilterChip from '$lib/components/FilterChip.svelte'
-  import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
-  import { onMount } from 'svelte'
-  import { settings } from '$lib/stores/settings'
-  import type { Program, Exercise, ProgramExercise, ProgramDay } from '$lib/types'
-  import * as Storage from '$lib/storage'
+  import WeekSwitch from '$lib/components/WeekSwitch.svelte'
+  import PlanWeekStrip from '$lib/components/PlanWeekStrip.svelte'
+  import DayRow from '$lib/components/DayRow.svelte'
+  import DayPanel from '$lib/components/DayPanel.svelte'
   import ExerciseRow from '$lib/components/ExerciseRow.svelte'
-  import DayCard from '$lib/components/DayCard.svelte'
   import PlanReorder from '$lib/components/PlanReorder.svelte'
+  import PlanEmpty from '$lib/components/PlanEmpty.svelte'
+  import ReprogramSheet from '$lib/components/ReprogramSheet.svelte'
+  import ActionToast from '$lib/components/ActionToast.svelte'
+  import NextStepDock from '$lib/components/NextStepDock.svelte'
+  import IconButton from '$lib/components/IconButton.svelte'
+  import Button from '$lib/components/Button.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
-  import Button from '$lib/components/Button.svelte'
+  import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
+  import { onMount } from 'svelte'
+  import { goto } from '$app/navigation'
+  import { ROUTES } from '$lib/routes'
+  import { settings } from '$lib/stores/settings'
+  import { toast } from '$lib/stores/ui'
+  import { online } from '$lib/stores/network'
+  import type { Program, Exercise, ExerciseLog, ProgramExercise, ProgramDay } from '$lib/types'
+  import * as Storage from '$lib/storage'
   import { startRestFromExercise } from '$lib/rest-timer'
-  import { detailPosition, nextInList } from '$lib/session-steps'
+  import { detailPosition, nextInList, dayMuscles } from '$lib/session-steps'
   import { resolveWeekOrder } from '$lib/week-order'
   import { dayDurationMin } from '$lib/program-utils'
+  import { muscleLabel } from '$lib/exercise-utils'
+  import { isTrained, trainingDaysPerWeek } from '$lib/streak'
+  import { toLocalDateStr } from '$lib/calendar-utils'
+  import { weekDays, weekRange, type DayState } from '$lib/league'
+  import { readFriendsCache, type FriendsCache } from '$lib/friends-cache'
+  import {
+    weekDates, slotDay, isRestDay, fixedSlots, shiftPending, movedFrom,
+    nextWorkout, dayRowView, planDock, stripSocial, shiftEffectLabel
+  } from '$lib/plan-week'
 
-  const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+  const SHIFT_TOAST_MS = 6000
 
+  let loaded = $state(false)
   let programs = $state<Program[]>([])
   let exercises = $state<Exercise[]>([])
+  let logs = $state<ExerciseLog[]>([])
+  let todaySeconds = $state(0)
+  let friendsCache = $state<FriendsCache | null>(null)
   let planWeekIdx = $state(0)
-  let planExpandedDayIdx = $state<number | null>(null)
-  let planAutoExpanded = $state(false)
-  let planEditing = $state(false)
-  let planDragMode = $state(false)
-  let planEditingOrder = $state<number[] | null>(null)
-  let exerciseWeights = $state<Record<string, number>>({})
+  let openIdx = $state<number | null>(null)
+  let moving = $state(false)
+  let editingOrder = $state<number[] | null>(null)
+  let sheetOpen = $state(false)
+  let shiftToast = $state(false)
+  let shiftToastTimer: ReturnType<typeof setTimeout> | null = null
 
   let showDetail = $state(false)
   let detailExercises = $state<any[]>([])
   let detailIdx = $state(0)
   let detailDayName = $state('')
 
-  let todayIdx = $derived((new Date().getDay() + 6) % 7)
+  const today = toLocalDateStr(new Date())
+  const todayIdx = (new Date().getDay() + 6) % 7
+  const dates = weekDates(today)
+
   let accent = $derived($settings.accentColor || '#d4ff3a')
   let units = $derived($settings.units || 'kg')
   let program = $derived(programs.find(p => p.id === $settings.activeProgramId) || null)
   let weeks = $derived(program?.weeks || [])
   let week = $derived(weeks[planWeekIdx] || weeks[0])
+  let currentWeekIdx = $derived($settings.currentWeekIdx || 0)
+  let isCurrentWeek = $derived(planWeekIdx === currentWeekIdx)
   let rescheduleKey = $derived(program ? `${program.id}-week-${planWeekIdx}` : '')
-  let rescheduleOrders = $derived(($settings.rescheduleWeekOrder || {}) as Record<string, number[]>)
-  let rawRescheduleOrder = $derived(rescheduleOrders[rescheduleKey])
+  let rawRescheduleOrder = $derived((($settings.rescheduleWeekOrder || {}) as Record<string, number[]>)[rescheduleKey])
   // Intrinsic layout of the week (weekday fields or sequential fallback) — what
   // the program means to show before any manual Reprogramar override.
   let naturalOrder = $derived(resolveWeekOrder(week, null))
   let committedOrder = $derived(resolveWeekOrder(week, rawRescheduleOrder))
-  let order = $derived(planEditing ? (planEditingOrder || committedOrder) : committedOrder)
-  let changes = $derived(committedOrder.reduce((n, v, i) => n + (v !== naturalOrder[i] ? 1 : 0), 0))
-  let editingChanges = $derived(
-    planEditingOrder ? planEditingOrder.reduce((n, v, i) => n + (v !== naturalOrder[i] ? 1 : 0), 0) : 0
-  )
+  let order = $derived(moving ? (editingOrder || committedOrder) : committedOrder)
+  let hasChanges = $derived(differs(committedOrder, naturalOrder))
+  let editingChanges = $derived(!!editingOrder && differs(editingOrder, naturalOrder))
   let exercisesById = $derived(Object.fromEntries(exercises.map(e => [e.id, e])))
-  let noProgram = $derived(!program)
+  let bestWeights = $derived(maxWeights(logs))
+
+  let dayStates = $derived<DayState[]>(isCurrentWeek ? weekDays(logs, today) : Array(7).fill('off'))
+  let firstWeek = $derived(!logs.some(isTrained))
+  let total = $derived(trainingDaysPerWeek(program, planWeekIdx))
+  let done = $derived(dayStates.filter(d => d === 'done').length)
+  let fixed = $derived(fixedSlots(week, order, dayStates))
+  let shiftFrom = $derived(isCurrentWeek ? todayIdx : 0)
+  let todayDay = $derived(isCurrentWeek ? slotDay(week, order, todayIdx) : null)
+  let todayDone = $derived(dayStates[todayIdx] === 'done')
+  let next = $derived(nextWorkout(week, order, todayIdx))
+  let rows = $derived(order.map((_, calIdx) => rowFor(calIdx)))
+  let dock = $derived(planDock({
+    todayDay,
+    todayDone,
+    firstWeek,
+    offline: !$online,
+    done,
+    total,
+    todayIdx,
+    next,
+    nextMinutes: next ? dayDurationMin(next.day.exercises) : 0,
+    nextWeekNumber: planWeekIdx + 1 < weeks.length ? planWeekIdx + 2 : null,
+  }))
+  let social = $derived(stripSocial({
+    friends: friendsCache?.friends || [],
+    today,
+    trainedMe: todayDone,
+    weekComplete: total > 0 && done >= total,
+    offline: !$online,
+    savedAt: friendsCache?.savedAt ?? null,
+  }))
+  let shiftEffect = $derived(shiftEffectLabel(week, committedOrder, shiftPending(committedOrder, shiftFrom, fixed), isCurrentWeek ? todayIdx : -1))
 
   onMount(async () => {
-    const [progs, exs] = await Promise.all([
+    const [progs, exs, allLogs, sessions, s] = await Promise.all([
       Storage.getPrograms(),
-      Storage.getExercises()
+      Storage.getExercises(),
+      Storage.getAllLogs(),
+      Storage.getAllGymSessions(),
+      Storage.getSettings(),
     ])
     programs = progs
     exercises = exs
-    const s = await Storage.getSettings()
-    planWeekIdx = typeof s.currentWeekIdx === 'number' ? s.currentWeekIdx : 0
-    if (planWeekIdx >= (progs.find(p => p.id === s.activeProgramId)?.weeks?.length || 0)) {
-      planWeekIdx = 0
-    }
-    if (planExpandedDayIdx === null && !planAutoExpanded) {
-      planExpandedDayIdx = todayIdx >= 0 ? todayIdx : 0
-      planAutoExpanded = true
-    }
+    logs = allLogs
+    todaySeconds = sessions.find(g => g.date === today)?.seconds || 0
+    friendsCache = readFriendsCache()
+    const weekCount = progs.find(p => p.id === s.activeProgramId)?.weeks?.length || 0
+    planWeekIdx = typeof s.currentWeekIdx === 'number' && s.currentWeekIdx < weekCount ? s.currentWeekIdx : 0
+    loaded = true
   })
 
-  $effect(() => {
-    if (planEditing) return
-    // Auto-expand today's day when it becomes null (e.g., after week switch)
-    if (planExpandedDayIdx === null && !planAutoExpanded) {
-      const today = (new Date().getDay() + 6) % 7
-      planExpandedDayIdx = today >= 0 ? today : 0
-      planAutoExpanded = true
-    }
-    const idx = planExpandedDayIdx
-    if (idx === null || !week || !order) return
-    const originalIdx = order[idx]
-    if (originalIdx < week.days.length) {
-      const day = week.days[originalIdx]
-      if (day && day.name !== 'Rest' && day.name !== 'Descanso' && day.exercises?.length > 0) {
-        void loadWeights(day.exercises)
-      }
-    }
-  })
+  function differs(a: number[], b: number[]): boolean {
+    return a.some((v, i) => v !== b[i])
+  }
 
-  async function loadWeights(dayExercises: ProgramExercise[]) {
-    // Guard against empty lists: with no exercises, the loop below never reaches an
-    // `await`, so this whole function would otherwise run synchronously to completion
-    // inside the calling $effect's reactive tracking window. That makes the final
-    // `exerciseWeights = { ...exerciseWeights, ... }` line both read AND write the same
-    // $state from within the effect that's still on the call stack, which Svelte reports
-    // as `effect_update_depth_exceeded` (an effect re-triggering itself forever). Bailing
-    // out early avoids touching `exerciseWeights` at all when there's nothing to load —
-    // when there ARE exercises, the `await Storage.getLogsForExercise(...)` below always
-    // yields to a later microtask first, so the effect has already finished by the time
-    // `exerciseWeights` is written, and this loop never occurs.
-    if (!dayExercises || dayExercises.length === 0) return
-    const weights: Record<string, number> = {}
-    for (const ex of dayExercises) {
-      const exId = ex.exerciseId || (ex as any).id
-      if (!exId) continue
-      try {
-        const logs = await Storage.getLogsForExercise(exId)
-        if (logs.length > 0) {
-          weights[exId] = Math.max(...logs.map(l => l.weight))
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-    exerciseWeights = { ...exerciseWeights, ...weights }
+  function maxWeights(all: ExerciseLog[]): Record<string, number> {
+    const best: Record<string, number> = {}
+    for (const l of all) if (l.weight > 0 && l.weight > (best[l.exerciseId] || 0)) best[l.exerciseId] = l.weight
+    return best
+  }
+
+  function resolved(ex: ProgramExercise): any {
+    return { ...ex, ...(exercisesById[ex.exerciseId] || {}) }
+  }
+
+  function musclesOf(day: ProgramDay | null): string {
+    return day ? dayMuscles(day.exercises.map(resolved)) : ''
+  }
+
+  function rowFor(calIdx: number) {
+    const day = slotDay(week, order, calIdx)
+    return dayRowView({
+      calIdx,
+      day,
+      date: dates[calIdx],
+      state: dayStates[calIdx],
+      from: rawRescheduleOrder || moving ? movedFrom(week, order, naturalOrder, calIdx) : -1,
+      past: isCurrentWeek && calIdx < todayIdx,
+      firstWeek,
+      muscles: musclesOf(day),
+    })
+  }
+
+  function exerciseSub(ex: ProgramExercise): string {
+    const muscle = muscleLabel(resolved(ex).muscle)
+    const best = bestWeights[ex.exerciseId]
+    return [muscle, best ? `${best} ${units}` : ''].filter(Boolean).join(' · ')
+  }
+
+  function setsLabel(ex: ProgramExercise): string {
+    return `${ex.sets} × ${String(ex.reps || '').replace('-', '–')}`
+  }
+
+  function panelSub(day: ProgramDay, isToday: boolean): string {
+    if (isToday && todayDone) return todaySeconds > 0 ? `Hecho en ${Math.round(todaySeconds / 60)} min` : 'Hecho'
+    return [musclesOf(day), `${dayDurationMin(day.exercises)} min`].filter(Boolean).join(' · ')
   }
 
   async function handleWeekClick(idx: number) {
     planWeekIdx = idx
-    planExpandedDayIdx = todayIdx
-    planAutoExpanded = true
+    openIdx = null
     await settings.update({ currentWeekIdx: idx })
   }
 
-  function handleDayToggle(calIdx: number, hasWorkout: boolean, isRest: boolean) {
-    if (!hasWorkout || isRest) return
-    planExpandedDayIdx = planExpandedDayIdx === calIdx ? null : calIdx
+  function toggleDay(calIdx: number) {
+    openIdx = openIdx === calIdx ? null : calIdx
   }
 
-  function toggleEditing() {
-    if (planEditing) {
-      if (planEditingOrder) {
-        saveRescheduleOrder(planEditingOrder)
-      }
-      planEditing = false
-      planDragMode = false
-      planEditingOrder = null
-    } else {
-      planEditing = true
-      planDragMode = false
-      planEditingOrder = [...committedOrder]
-    }
-  }
-
-  function handleMoveToggle() {
-    planDragMode = !planDragMode
-  }
-
-  async function saveRescheduleOrder(newOrder: number[]) {
+  async function saveOrder(newOrder: number[]) {
     if (!program) return
-    const key = `${program.id}-week-${planWeekIdx}`
     const stored = await Storage.getSettings()
-    const rs = (stored.rescheduleWeekOrder || {}) as Record<string, number[]>
-    // newOrder is a Svelte $state array — IndexedDB's structured clone can't
-    // serialize the reactive proxy, so persist a plain-array copy.
-    // If the order equals the week's intrinsic layout, DROP any stored override:
-    // the program's own weekday fields must keep controlling placement. Persisting
-    // a redundant override here used to mask weekdays forever (e.g. after
-    // Reprogramar → Restablecer).
-    if (newOrder.length === naturalOrder.length && newOrder.every((v, i) => v === naturalOrder[i])) {
-      if (key in rs) {
-        delete rs[key]
-        await settings.update({ rescheduleWeekOrder: rs as any })
-      }
-      return
-    }
-    rs[key] = [...newOrder]
+    const rs = { ...((stored.rescheduleWeekOrder || {}) as Record<string, number[]>) }
+    // The week's own layout drops the override, so the program's weekday
+    // fields keep controlling placement (a stored identity used to mask them).
+    // newOrder may be a $state proxy: IndexedDB needs a plain copy.
+    if (differs(newOrder, naturalOrder)) rs[rescheduleKey] = [...newOrder]
+    else if (rescheduleKey in rs) delete rs[rescheduleKey]
+    else return
     await settings.update({ rescheduleWeekOrder: rs as any })
   }
 
-  function handleReset() {
-    if (editingChanges === 0) return
-    // Reset = back to the week's INTRINSIC layout (weekday placement), not
-    // blind sequential order — resetting to [0..6] used to clobber weekdays.
-    planEditingOrder = [...naturalOrder]
+  function showShiftToast() {
+    if (shiftToastTimer) clearTimeout(shiftToastTimer)
+    shiftToast = true
+    shiftToastTimer = setTimeout(() => { shiftToast = false }, SHIFT_TOAST_MS)
   }
 
-  function handleShift() {
-    const editOrder = planEditingOrder || committedOrder
-    planEditingOrder = editOrder.map((_, i) => editOrder[(i - 1 + 7) % 7])
+  async function handleShift() {
+    sheetOpen = false
+    const shifted = shiftPending(committedOrder, shiftFrom, fixed)
+    if (!differs(shifted, committedOrder)) {
+      toast.show('No quedan días por correr esta semana')
+      return
+    }
+    await saveOrder(shifted)
+    showShiftToast()
   }
 
-  function handleBannerEdit() {
-    planEditing = true
-    planEditingOrder = [...committedOrder]
+  function startMoving() {
+    sheetOpen = false
+    editingOrder = [...committedOrder]
+    moving = true
+  }
+
+  async function resetWeek() {
+    sheetOpen = false
+    shiftToast = false
+    await saveOrder(naturalOrder)
+  }
+
+  async function handleSheetReset() {
+    await resetWeek()
+    toast.show('Volviste a tu semana original')
+  }
+
+  function swapDays(from: number, to: number) {
+    const arr = [...(editingOrder || committedOrder)]
+    ;[arr[from], arr[to]] = [arr[to], arr[from]]
+    editingOrder = arr
+  }
+
+  async function finishMoving() {
+    if (editingOrder) await saveOrder(editingOrder)
+    moving = false
+    editingOrder = null
   }
 
   async function openExerciseDetailAt(dayExercises: ProgramExercise[], idx: number, dayName: string) {
     detailDayName = dayName
-    const resolvedList = await Promise.all(dayExercises.map(async (ex) => {
-      const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any
-      const logs = await Storage.getLogsForExercise(ex.exerciseId)
-      return { ...resolved, exerciseId: ex.exerciseId, logs }
+    detailExercises = await Promise.all(dayExercises.map(async (ex) => {
+      const logsOf = await Storage.getLogsForExercise(ex.exerciseId)
+      return { ...resolved(ex), exerciseId: ex.exerciseId, logs: logsOf }
     }))
-    detailExercises = resolvedList
     detailIdx = idx
     showDetail = true
   }
@@ -210,188 +265,109 @@
   async function onDetailLog() {
     if (detailExercises.length === 0) return
     const exId = detailExercises[detailIdx].exerciseId
-    const logs = await Storage.getLogsForExercise(exId)
-    if (logs.length > 0) exerciseWeights = { ...exerciseWeights, [exId]: Math.max(...logs.map(l => l.weight)) }
-    detailExercises = detailExercises.map((e, i) => i === detailIdx ? { ...e, logs } : e)
+    const logsOf = await Storage.getLogsForExercise(exId)
+    logs = await Storage.getAllLogs()
+    detailExercises = detailExercises.map((e, i) => i === detailIdx ? { ...e, logs: logsOf } : e)
   }
 
   function onDetailNavigate(dir: 'prev' | 'next') {
-    if (dir === 'next' && detailIdx < detailExercises.length - 1) {
-      detailIdx++
-    } else if (dir === 'prev' && detailIdx > 0) {
-      detailIdx--
-    }
+    if (dir === 'next' && detailIdx < detailExercises.length - 1) detailIdx++
+    else if (dir === 'prev' && detailIdx > 0) detailIdx--
   }
 </script>
 
-{#if noProgram}
-  <div class="screen" id="plan">
-    <div class="no-program-msg">
-      Ningún programa seleccionado. Ve a Tú para crear uno.
-    </div>
-  </div>
-{:else}
-  <div class="screen" id="plan">
-    <PageHeader
-      eyebrow={planEditing ? 'Reprogramar' : 'Tu programa'}
-      title={planEditing ? 'Mover.' : 'Plan.'}
-    >
-      {#snippet action()}
-        <FilterChip
-          id="plan-reprogram-btn"
-          variant="sans"
-          size="lg"
-          {accent}
-          active={planEditing}
-          style={planEditing ? 'margin-bottom:2px' : `border:0.5px solid ${accent}55;background:transparent;color:${accent};margin-bottom:2px`}
-          onclick={toggleEditing}
-        >
-          {#if planEditing}
-            Listo
-          {:else}
-            <Icon name="swap" size={15} color={accent} />
-            Reprogramar
-          {/if}
-        </FilterChip>
-      {/snippet}
-    </PageHeader>
-
-    {#if planEditing}
-      <div class="section-pad-sm">
-        <div class="edit-banner" style="background:{accent}0d;border-color:{accent}33">
-          <div class="icon-box" style="background:{accent}1c;color:{accent}">
-            <Icon name="swap" size={17} color={accent} />
-          </div>
-          <div class="flex-1">
-            <div class="banner-title">Reprogramando esta semana</div>
-            <div class="banner-subtitle">{planDragMode
-              ? 'Arrastra el asa ⠿ de un día y suéltalo en su posición.'
-              : 'Los 7 días de la semana. Usa «Mover» para arrastrar.'}</div>
-          </div>
-          <Button id="plan-reset-btn" variant="primary" {accent} disabled={editingChanges === 0} onclick={handleReset}>Restablecer</Button>
-        </div>
+<div class="screen" id="plan">
+  {#if !loaded}
+    <!-- IndexedDB answers in a few ms: nothing to draw meanwhile -->
+  {:else if !program}
+    <PageHeader eyebrow="Tu programa" title="Plan." />
+    <PlanEmpty />
+    <NextStepDock caption="Pégala con IA o créala a mano en Tú">
+      <Button variant="primary" size="lg" {accent} onclick={() => goto(ROUTES.you)}>Armar mi rutina<Icon name="arrow" size={18} /></Button>
+    </NextStepDock>
+  {:else if moving}
+    <PageHeader eyebrow="Reprogramar · {weekRange(today)}" title="Mover." />
+    <p class="hint">Mantén y arrastra un día. Lo hecho no se mueve.</p>
+    <PlanReorder {rows} {fixed} onswap={swapDays} />
+    <NextStepDock>
+      <div class="pair">
+        <Button id="plan-reset-btn" variant="secondary" size="lg" disabled={!editingChanges} onclick={() => { editingOrder = [...naturalOrder] }}>Restablecer</Button>
+        <Button id="plan-done-btn" variant="primary" size="lg" {accent} onclick={finishMoving}>Listo</Button>
       </div>
-
-      <div class="section-pad-md">
-        <div class="edit-actions">
-          <button id="plan-shift-btn" class="shift-btn" onclick={handleShift}>
-            <div class="shift-icon" style="color:{accent}">→</div>
-            <div class="flex-1">
-              <div class="shift-title">Me salté un día</div>
-              <div class="shift-desc">Corre cada entrenamiento un día hacia adelante (Lun→Mar, Mar→Mié…).</div>
-            </div>
-            <div class="shift-cta" style="background:{accent};color:var(--bg)">Desplazar</div>
-          </button>
-          <button
-            id="plan-move-btn"
-            class="shift-btn"
-            style="border:{planDragMode ? `0.5px solid ${accent}66` : ''}"
-            onclick={handleMoveToggle}>
-            <div class="shift-icon" style="color:{accent}">⠿</div>
-            <div class="flex-1">
-              <div class="shift-title">{planDragMode ? 'Detener arrastre' : 'Mueve un día'}</div>
-              <div class="shift-desc">Arrastra el asa para reordenar la semana como quieras.</div>
-            </div>
-            <div class="shift-cta" style="background:{planDragMode ? 'transparent' : accent};color:{planDragMode ? accent : 'var(--bg)'};border:{planDragMode ? `0.5px solid ${accent}` : '0'}">Arrastrar</div>
-          </button>
-        </div>
-      </div>
-
-      <div class="hint-row">
-        <span class="hint-dot" style="background:{accent}"></span>
-        <span>{planDragMode
-          ? 'Arrastra el asa de un día para moverlo'
-          : 'Toca «Arrastrar» para mover los días libremente'}</span>
-      </div>
-
-      <PlanReorder
-        {order}
-        days={week.days}
-        dayNames={DAY_NAMES_SHORT}
-        {accent}
-        dragMode={planDragMode}
-        todayCalIdx={todayIdx}
-        weekIdx={planWeekIdx}
-        currentWeekIdx={$settings.currentWeekIdx}
-        {naturalOrder}
-        onorder={(o) => { planEditingOrder = o }}
-      />
-    {:else}
-      {#if changes > 0}
-        <div class="section-pad-xs">
-          <button id="plan-changes-banner" class="changes-banner" style="background:{accent}0d;border-color:{accent}33" onclick={handleBannerEdit}>
-            <div class="active-dot" style="background:{accent};box-shadow:0 0 7px {accent}"></div>
-            <div class="flex-1">
-              <div class="changes-title">Semana reprogramada · {changes} {changes === 1 ? 'cambio' : 'cambios'}</div>
-              <div class="changes-subtitle">Temporal · 7 días</div>
-            </div>
-            <span class="changes-edit" style="color:{accent}">Editar</span>
-          </button>
-        </div>
-      {/if}
-
-      {#if weeks.length > 0}
-        <div id="plan-week-tabs" class="week-tabs">
-          {#each weeks as w, i (i)}
-            <button class="week-tab" style="background:{planWeekIdx === i ? 'var(--surface-hover)' : 'transparent'};border:{planWeekIdx === i ? `0.5px solid ${(w as any).accent || accent}66` : '0.5px solid var(--border)'};color:{planWeekIdx === i ? 'var(--text)' : 'rgba(255,255,255,0.5)'}"
-              onclick={() => handleWeekClick(i)}>
-              <div class="week-tag" style="color:{planWeekIdx === i ? ((w as any).accent || accent) : 'rgba(255,255,255,0.4)'}">{w.tag || ''}</div>
-              <div class="week-name">{w.name}</div>
-              <div class="week-subtitle">{w.subtitle || ''}</div>
-            </button>
-          {/each}
-        </div>
-
-        <div id="plan-days-grid" class="day-grid">
-          {#each order as originalIdx, calIdx (calIdx)}
-            {@const day = originalIdx < week.days.length ? week.days[originalIdx] : null}
-            {@const hasWorkout = day !== null}
-            {@const isTodayDay = calIdx === todayIdx && planWeekIdx === $settings.currentWeekIdx}
-          {@const naturalSlot = hasWorkout ? naturalOrder.indexOf(originalIdx) : -1}
-            {@const isMoved = hasWorkout && !!rawRescheduleOrder && naturalSlot !== -1 && naturalSlot !== calIdx}
-            {@const isRest = !hasWorkout || day?.name === 'Rest' || day?.name === 'Descanso'}
-            {@const isExpanded = planExpandedDayIdx === calIdx}
-            {@const isWorkoutDay = hasWorkout && !isRest}
-            <DayCard
-              dayName={DAY_NAMES_SHORT[calIdx]}
-              dayNumber={calIdx + 1}
-              title={day?.name || ''}
-              subtitle={day?.subtitle || ''}
-              isToday={isTodayDay}
-              {isMoved}
-              movedFrom={DAY_NAMES_SHORT[naturalSlot]}
-              exerciseCount={day?.exercises?.length || 0}
-              duration={day?.exercises?.length ? String(dayDurationMin(day.exercises)) : undefined}
-              {isRest}
-              {isExpanded}
-              {accent}
-              onclick={isWorkoutDay ? () => handleDayToggle(calIdx, hasWorkout, isRest) : undefined}
-            >
-              {#if isExpanded && isWorkoutDay}
-                {#each (day?.exercises || []) as ex, exIdx (ex.exerciseId)}
-                  {@const resolved = { ...ex, ...(exercisesById[ex.exerciseId] || {}) } as any}
-                  {@const imgUrl = resolveExerciseMedia(resolved).imgUrl}
-                  {@const exId = ex.exerciseId}
-                  <ExerciseRow
-                    name={getExerciseDisplayName(resolved) || 'Desconocido'}
-                    muscle={resolved.muscle || ''}
-                    {imgUrl}
-                    sets={ex.sets}
-                    reps={ex.reps}
-                    weight={exerciseWeights[exId]}
-                    {units}
-                    {accent}
-                    onclick={() => openExerciseDetailAt(day?.exercises || [], exIdx, day?.name || '')}
-                  />
-                {/each}
-              {/if}
-            </DayCard>
-          {/each}
-        </div>
-      {/if}
+    </NextStepDock>
+  {:else}
+    <PageHeader eyebrow="Tu programa · {weekRange(today)}" title="Plan." />
+    {#if weeks.length > 1}
+      <WeekSwitch {weeks} selected={planWeekIdx} current={currentWeekIdx} onselect={handleWeekClick} />
     {/if}
-  </div>
-{/if}
+    {#if isCurrentWeek}
+      <PlanWeekStrip {done} {total} days={dayStates} {firstWeek} {social} onopen={() => goto(ROUTES.friends)} />
+    {/if}
+
+    <div id="plan-days-grid" class="days">
+      {#each rows as row, calIdx (calIdx)}
+        {@const day = slotDay(week, order, calIdx)}
+        {@const isToday = isCurrentWeek && calIdx === todayIdx}
+        {#if (isToday || openIdx === calIdx) && !isRestDay(day)}
+          <DayPanel
+            weekday={row.weekday}
+            date={row.date}
+            title={row.title}
+            sub={panelSub(day as ProgramDay, isToday)}
+            today={isToday}
+            done={row.state === 'done'}
+            ontoggle={isToday ? undefined : () => toggleDay(calIdx)}
+          >
+            {#each (day?.exercises || []) as ex, exIdx (exIdx)}
+              <ExerciseRow
+                variant="plan"
+                name={getExerciseDisplayName(resolved(ex)) || 'Desconocido'}
+                imgUrl={resolveExerciseMedia(resolved(ex)).imgUrl}
+                sub={exerciseSub(ex)}
+                right={setsLabel(ex)}
+                done={row.state === 'done'}
+                onclick={() => openExerciseDetailAt(day?.exercises || [], exIdx, day?.name || '')}
+              />
+            {/each}
+          </DayPanel>
+        {:else if isToday}
+          <DayPanel weekday={row.weekday} date={row.date} title="Descanso" sub="Recuperar también cuenta" today />
+        {:else}
+          <DayRow {...row} onclick={row.state === 'rest' ? undefined : () => toggleDay(calIdx)} />
+        {/if}
+      {/each}
+    </div>
+
+    <!-- The shift notice takes the dock's place while it shows -->
+    {#if !shiftToast}
+    <NextStepDock caption={dock.caption}>
+      {#if dock.train}
+        <div class="row">
+          <IconButton id="plan-reprogram-btn" icon="move" label="Reprogramar" onclick={() => { sheetOpen = true }} />
+          <Button variant="primary" size="lg" fullWidth {accent} onclick={() => goto(ROUTES.today)}>
+            <span class="one-line">{dock.train}</span><Icon name="arrow" size={18} />
+          </Button>
+        </div>
+      {:else}
+        <Button id="plan-reprogram-btn" variant="secondary" size="lg" fullWidth onclick={() => { sheetOpen = true }}>
+          <Icon name="move" size={18} />Reprogramar semana
+        </Button>
+      {/if}
+    </NextStepDock>
+    {/if}
+  {/if}
+</div>
+
+<ReprogramSheet
+  bind:open={sheetOpen}
+  {shiftEffect}
+  canReset={hasChanges}
+  onshift={handleShift}
+  onmove={startMoving}
+  onreset={handleSheetReset}
+/>
+
+<ActionToast id="plan-shift-toast" visible={shiftToast} message="Listo. Tu semana se corrió un día." action="Restablecer" onaction={resetWeek} />
 
 {#if showDetail && detailExercises.length > 0}
   <ExerciseDetail
@@ -412,32 +388,10 @@
 {/if}
 
 <style>
-  .no-program-msg { padding: 56px 20px; text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; }
-  .section-pad-sm { padding: 0 20px; margin-bottom: 14px; }
-  .section-pad-md { padding: 0 20px; margin-bottom: 16px; }
-  .section-pad-xs { padding: 0 20px; margin-bottom: 10px; }
-  .edit-banner { border: 0.5px solid; border-radius: 16px; padding: 13px 14px; display: flex; align-items: center; gap: 12px; }
-  .icon-box { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-  .flex-1 { flex: 1; min-width: 0; }
-  .banner-title { font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
-  .banner-subtitle { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; line-height: 1.35; }
-  .shift-btn { width: 100%; text-align: left; cursor: pointer; background: var(--surface); border: 0.5px solid var(--border-medium); border-radius: 16px; padding: 13px 14px; display: flex; align-items: center; gap: 13px; color: inherit; }
-  .shift-icon { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 18px; }
-  .shift-title { font-family: var(--font-sans); font-size: 14.5px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
-  .shift-desc { font-size: 11.5px; color: rgba(255,255,255,0.5); margin-top: 2px; line-height: 1.35; }
-  .shift-cta { flex-shrink: 0; padding: 8px 12px; border-radius: 10px; font-family: var(--font-sans); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
-  .hint-row { padding: 0 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.42); font-weight: 600; }
-  .hint-dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
-  .edit-actions { display: flex; flex-direction: column; gap: 10px; }
-  .changes-banner { width: 100%; text-align: left; cursor: pointer; border: 0.5px solid; border-radius: 14px; padding: 11px 14px; display: flex; align-items: center; gap: 10px; color: inherit; }
-  .active-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .changes-title { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
-  .changes-subtitle { font-size: 10.5px; color: rgba(255,255,255,0.5); margin-top: 1px; }
-  .changes-edit { font-family: var(--font-sans); font-size: 12px; font-weight: 700; flex-shrink: 0; }
-  .week-tabs { padding: 0 20px; display: flex; gap: 8px; margin-bottom: 18px; }
-  .week-tab { flex: 1; padding: 12px 8px; border: 0; cursor: pointer; border-radius: 14px; text-align: left; position: relative; }
-  .week-tag { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase; }
-  .week-name { font-family: var(--font-sans); font-size: 15px; font-weight: 700; margin-top: 2px; letter-spacing: -0.3px; }
-  .week-subtitle { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
-  .day-grid { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+  #plan { padding: calc(var(--safe-top) + 56px) 20px 104px; display: flex; flex-direction: column; gap: 20px; }
+  .hint { margin: -8px 4px 0; font-size: 13px; color: var(--text-tertiary); }
+  .days { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; }
+  .pair { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 8px; }
+  .one-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

@@ -10,7 +10,7 @@ src/
     +layout.svelte         → App shell: TabBar, Toast, RestTimerFullscreen + RestTimerBanner (minimizado), Onboarding, Coach FAB
     +page.svelte           → Redirect: new user → /you, otherwise → /today
     today/                 → Session auto-detect, warmup, rest timer, ⌚ watch button
-    plan/                  → Week selector + day grid
+    plan/                  → Plan v2: week switch, week strip, day rows, Reprogramar
     history/               → Exercise list + muscle filter + sparklines
     friends/               → Friends + shared/assigned programs
     you/                   → Stats, settings, exercise/program CRUD, JSON import/export, AI import, admin link

@@ -32,28 +32,10 @@ export const groups = {
   },
 
   // ───────────────────────────────── Plan ─────────────────────────────────
+  // Plan v2 (2026-10-21). Writes «Plan · Actual» (vistas/plan2/); the old
+  // vistas/plan cards stay as «Plan · v1».
   async plan({ open, S }) {
-    const G = 'Plan'
-    const at = (p) => `vistas/plan/${p}`
-    const src = 'src/routes/plan/+page.svelte'
-    const page = await open(world(S))
-    await page.go('plan')
-    await page.card({ path: at('pantalla'), group: G, name: 'Plan · Semana', subtitle: 'tabs de semana + un DayCard por día; hoy abierto con sus ExerciseRow', source: src, screen: true })
-    await page.card({ path: at('day-card'), group: G, name: 'DayCard', subtitle: 'hoy / entreno / descanso', source: C + 'DayCard.svelte', specimens: [{ label: 'DayCard · variantes', selector: comp('DayCard'), distinct: true, max: 4 }], viewport: '420x620' })
-    await page.card({ path: at('exercise-row'), group: G, name: 'ExerciseRow', subtitle: 'fila de ejercicio: miniatura, nombre, músculo, series × reps', source: C + 'ExerciseRow.svelte', specimens: [{ label: 'ExerciseRow', selector: comp('ExerciseRow'), max: 3 }], viewport: '420x340' })
-    await page.locator('#plan-week-tabs .week-tab').nth(1).dispatchEvent('click')
-    await page.waitForTimeout(400)
-    await page.card({ path: at('week-tabs'), group: G, name: 'Tabs de semana', subtitle: 'selector de semana con etiqueta (BUILD / STRENGTH)', source: src, specimens: [{ label: 'Semana 2 activa', selector: '#plan-week-tabs', width: 390 }], viewport: '460x200' })
-    await page.locator('#plan-reprogram-btn').dispatchEvent('click')
-    await page.waitForTimeout(600)
-    await page.card({ path: at('pantalla-reprogramar'), group: G, name: 'Plan · Reprogramar', subtitle: 'modo edición: mover días, recorrer la semana, restablecer', source: C + 'PlanReorder.svelte', screen: true })
-    await page.card({ path: at('plan-reorder'), group: G, name: 'PlanReorder', subtitle: 'lista de días arrastrables', source: C + 'PlanReorder.svelte', specimens: [{ label: 'PlanReorder', selector: '.reorder-list', width: 370 }], viewport: '440x900' })
-    await page.context().close()
-
-    const empty = await open({ exercises: [], settings: S.settings({ activeProgramId: null }) })
-    await empty.go('plan')
-    await empty.card({ path: at('pantalla-sin-programa'), group: G, name: 'Plan · Sin programa', subtitle: 'estado vacío', source: src, screen: true })
-    await empty.context().close()
+    await planScreens({ open, S })
   },
 
   // ─────────────────────────────── Historial ───────────────────────────────
@@ -347,6 +329,90 @@ const hoyScreen = (page, path, name, subtitle, source = HOY_SRC) =>
   page.card({ path: hoyAt(path), group: HOY, name, subtitle, source, screen: true, fold: true })
 const detScreen = (page, path, name, subtitle, source = C + 'ExerciseDetail.svelte') =>
   page.card({ path: detAt(path), group: DET, name, subtitle, source, screen: true, fold: true })
+
+// ───────────────────────────── Plan v2 ─────────────────────────────
+const PLAN = 'Plan · Actual'
+const PLAN_SRC = 'src/routes/plan/+page.svelte'
+const planAt = (p) => `vistas/plan2/${p}`
+const planScreen = (page, path, name, subtitle, source = PLAN_SRC) =>
+  page.card({ path: planAt(path), group: PLAN, name, subtitle, source, screen: true, fold: true })
+const planPart = (page, path, name, subtitle, source, specimens, viewport) =>
+  page.card({ path: planAt(path), group: PLAN, name, subtitle, source, specimens, viewport })
+
+/** Opens Plan on a seeded world, with the friends list Amigos would have cached */
+async function openPlan(open, S, over = {}, friends = S.friends) {
+  const page = await open(world(S, over))
+  await page.evaluate((list) => localStorage.setItem('friends-cache', JSON.stringify({ friends: list, savedAt: Date.now() - 95 * 60000 })), friends)
+  await page.go('plan')
+  return page
+}
+
+async function planScreens({ open, S }) {
+  const trainedToday = [todayLog('ex-bench', 80), todayLog('ex-military', 45), todayLog('ex-lateral', 12)]
+  const todaySession = { id: 'gym-today', date: isoToday(), seconds: 52 * 60, weekStart: '' }
+
+  // Esta semana: hoy abierto, la franja y el dock
+  let page = await openPlan(open, S)
+  await planScreen(page, 'pantalla', 'Plan · Esta semana', 'hoy abierto con sus ejercicios, la semana en una franja, entrenar abajo')
+  await planPart(page, 'week-strip', 'PlanWeekStrip', 'avance de la semana + quién entrenó hoy (lleva a Amigos)', C + 'PlanWeekStrip.svelte', [{ label: 'PlanWeekStrip', selector: comp('PlanWeekStrip'), width: 350 }], '420x320')
+  await planPart(page, 'week-switch', 'WeekSwitch', 'selector de semanas del programa; la actual dice «esta semana»', C + 'WeekSwitch.svelte', [{ label: 'WeekSwitch', selector: comp('WeekSwitch'), width: 350 }], '420x160')
+  await planPart(page, 'day-panel', 'DayPanel', 'un día abierto con sus ejercicios; hoy con «Hoy» y aro blanco', C + 'DayPanel.svelte', [{ label: 'DayPanel · hoy', selector: comp('DayPanel'), width: 350 }], '420x420')
+  await planPart(page, 'exercise-row', 'ExerciseRow · plan', 'nombre, músculo y peso en una línea; series × reps a la derecha', C + 'ExerciseRow.svelte', [{ label: 'ExerciseRow variant="plan"', selector: `${comp('DayPanel')} .exercise-row`, max: 3, width: 334 }], '420x320')
+  await planPart(page, 'day-row', 'DayRow', 'hecho / pendiente / descanso', C + 'DayRow.svelte', [{ label: 'DayRow · variantes', selector: comp('DayRow'), distinct: true, max: 4, width: 350 }], '420x420')
+  const dockTrain = await grab(page, [{ label: 'NextStepDock · Reprogramar + Entrenar', selector: comp('NextStepDock'), width: 390, unfix: true }])
+
+  // ¿Qué cambió? → Mover
+  await page.locator('#plan-reprogram-btn').click()
+  await page.waitForTimeout(500)
+  await planScreen(page, 'pantalla-que-cambio', 'Plan · ¿Qué cambió?', 'Reprogramar pregunta primero qué pasó, con el caso real de hoy', C + 'ReprogramSheet.svelte')
+  await planPart(page, 'choice-card', 'ChoiceCard', 'opción de una hoja: ícono, qué es, qué hace', C + 'ChoiceCard.svelte', [{ label: 'ChoiceCard', selector: comp('ChoiceCard'), max: 2, width: 350 }], '420x260')
+  await page.locator('#plan-move-btn').click()
+  await page.waitForTimeout(500)
+  await planScreen(page, 'pantalla-mover', 'Plan · Mover', 'asa de 44 px a la derecha; lo hecho no se mueve; Restablecer y Listo abajo', C + 'PlanReorder.svelte')
+  await planPart(page, 'plan-reorder', 'PlanReorder', 'días arrastrables con DayRow; los hechos llevan check', C + 'PlanReorder.svelte', [{ label: 'PlanReorder', selector: comp('PlanReorder'), width: 350 }], '420x700')
+  await page.locator('#plan-done-btn').click()
+  await page.waitForTimeout(400)
+
+  // Me salté un día → días movidos + aviso con Restablecer
+  await page.locator('#plan-reprogram-btn').click()
+  await page.waitForTimeout(400)
+  await page.locator('#plan-shift-btn').click()
+  await page.waitForTimeout(600)
+  await planScreen(page, 'pantalla-movido', 'Plan · Después de «Me salté un día»', 'cada día movido dice de dónde vino; el aviso ofrece Restablecer', C + 'ActionToast.svelte')
+  await planPart(page, 'action-toast', 'ActionToast', 'aviso en la zona del pulgar con una salida', C + 'ActionToast.svelte', [{ label: 'ActionToast', selector: comp('ActionToast'), width: 366, unfix: true }], '420x140')
+  await page.context().close()
+
+  // Hoy ya entrenaste
+  page = await openPlan(open, S, { exerciseLogs: [...S.logs(), ...trainedToday], gymSessions: [...S.gymSessions(), todaySession] })
+  await planScreen(page, 'pantalla-hecho', 'Plan · Hoy ya entrenaste', 'hoy hecho con acento; sin botón principal, dice qué sigue')
+  const dockDone = await grab(page, [{ label: 'NextStepDock · Reprogramar semana + qué sigue', selector: comp('NextStepDock'), width: 390, unfix: true }])
+  await page.card({ path: planAt('next-step-dock'), group: PLAN, name: 'NextStepDock · Plan', subtitle: 'entrenar hoy / hoy hecho', source: C + 'NextStepDock.svelte', snaps: [dockTrain, dockDone], viewport: '460x380' })
+  await page.context().close()
+
+  // Hoy toca descanso
+  page = await openPlan(open, S, { programs: [S.restDayProgram(), S.secondProgram()] })
+  await planScreen(page, 'pantalla-descanso', 'Plan · Hoy toca descanso', 'el descanso como parte del plan')
+  await page.context().close()
+
+  // Primera semana: sin registros ni amigos
+  page = await openPlan(open, S, { exerciseLogs: [], gymSessions: [] }, [])
+  await planScreen(page, 'pantalla-primera-semana', 'Plan · Primera semana', 'sin cuenta de entrenos; invita a un amigo; empezar el primer entreno')
+  await page.context().close()
+
+  // Sin conexión
+  page = await openPlan(open, S)
+  await page.context().setOffline(true)
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+  await page.waitForTimeout(500)
+  await planScreen(page, 'pantalla-sin-conexion', 'Plan · Sin conexión', 'el plan funciona igual; la liga dice a qué hora se actualizó')
+  await page.context().close()
+
+  // Sin programa
+  const empty = await open({ exercises: [], settings: S.settings({ activeProgramId: null }) })
+  await empty.go('plan')
+  await planScreen(empty, 'pantalla-sin-programa', 'Plan · Sin programa', 'qué aparecerá aquí, filas fantasma y «Armar mi rutina»', C + 'PlanEmpty.svelte')
+  await empty.context().close()
+}
 
 /** Opens Hoy on a seeded world; `logs` are today's extra logs */
 async function openHoy(open, S, settings, logs = [], over = {}) {

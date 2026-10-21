@@ -181,21 +181,31 @@ function dayMonth(dateStr: string, withMonth: boolean): string {
   return withMonth ? `${d.getDate()} ${MONTHS[d.getMonth()]}` : String(d.getDate())
 }
 
-// "5–11 oct · cierra el domingo"
-export function weekEyebrow(today: string): string {
+// "5–11 oct" (or "28 sep–4 oct" across months)
+export function weekRange(today: string): string {
   const monday = mondayOf(today)
   const sunday = addDays(monday, 6)
   const sameMonth = monday.slice(0, 7) === sunday.slice(0, 7)
+  return `${dayMonth(monday, !sameMonth)}–${dayMonth(sunday, true)}`
+}
+
+// "5–11 oct · cierra el domingo"
+export function weekEyebrow(today: string): string {
   const idx = weekDayIndex(today)
   const tail = idx === 0 ? 'empieza la semana' : idx === 6 ? 'cierra hoy' : 'cierra el domingo'
-  return `${dayMonth(monday, !sameMonth)}–${dayMonth(sunday, true)} · ${tail}`
+  return `${weekRange(today)} · ${tail}`
+}
+
+// "18:42" — hand-written for the same reason as formatSavedAt
+export function formatHour(ts: number): string {
+  const d = new Date(ts)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 // "5 oct, 18:42" — written by hand so it does not change with the phone's locale.
 export function formatSavedAt(ts: number): string {
   const d = new Date(ts)
-  const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${hhmm}`
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${formatHour(ts)}`
 }
 
 export function streakLabel(streak: number): string {

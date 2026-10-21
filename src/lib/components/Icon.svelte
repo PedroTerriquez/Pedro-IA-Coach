@@ -30,6 +30,10 @@
     play: { d: '<path d="M8 5.5v13l10.5-6.5z"/>', w: 1.9 },
     expand: { d: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>' },
     book: { d: '<path d="M5 4.5h9a3 3 0 013 3V20H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h9"/>', w: 1.8 },
+    // Plan v2: Reprogramar, «Me salté un día», «Quiero mover días»
+    move: { d: '<path d="M14 5l3 3-3 3M16.5 8H8a3 3 0 00-3 3M8 17l-3-3 3-3M5.5 14H14a3 3 0 003-3"/>', w: 1.8 },
+    shift: { d: '<path d="M4 12h12M12 7l5 5-5 5M20 5v14"/>' },
+    reorder: { d: '<path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/>' },
     // Kept from the old set for the views that still use them
     pencil: { d: '<path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>' },
     restart: { d: '<path d="M13 8a5 5 0 11-1.5-3.6M13 2v3h-3"/>' },

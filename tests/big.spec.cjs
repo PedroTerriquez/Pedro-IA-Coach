@@ -29,12 +29,14 @@
 
 const EXPECTED_STEPS = [
   'Step 0: First Run',
+  'Step 0b: Plan — Sin programa',
   'Step 1: Tú — Mis datos',
   'Step 1b: Tú — Ajustes',
   'Step 2: Tú — Ejercicios',
   'Step 2b: Tú — Editor de ejercicio',
   'Step 3: Tú — Programas',
   'Step 4: Hoy — Before The First Workout',
+  'Step 4b: Plan — Primera semana',
   'Step 5: Tú — Copia de seguridad',
   'Step 5b: Amigos — Primera vez y racha viva',
   'Step 6: Plan — Weekdays And Weeks',
@@ -52,6 +54,7 @@ const EXPECTED_STEPS = [
   'Step 9a: Hoy — Terminar desde el último ejercicio',
   'Step 9b: Hoy — Estiramiento',
   'Step 9c: Hoy — Racha, esfuerzo y resumen',
+  'Step 9d: Plan — Hoy hecho',
   'Step 10: Historial — Constancia',
   'Step 10b: Historial — Ejercicios',
   'Step 11: Amigos — Liga después de entrenar',
@@ -358,12 +361,13 @@ function cached(page, cacheName) {
 // With `cancel`, it lets go outside the list instead (which must undo it).
 async function dragDay(page, from, to, { cancel = false } = {}) {
   const slots = page.locator('.drag-slot')
-  // Later slots sit partly under the fixed tab bar — bring the lower one into
-  // the clear, or elementFromPoint hits the tab bar and the drag never starts.
+  // Later slots sit partly under the fixed dock and tab bar — bring the lower
+  // one into the clear, or elementFromPoint hits them and the drag never starts.
   await page.evaluate(([a, b]) => {
     const els = document.querySelectorAll('.drag-slot')
     const low = els[Math.max(a, b)].getBoundingClientRect()
-    const safe = window.innerHeight - 110
+    const dock = document.querySelector('[data-component="NextStepDock"]')
+    const safe = (dock ? dock.getBoundingClientRect().top : window.innerHeight - 110) - 10
     if (low.bottom > safe) window.scrollBy(0, low.bottom - safe)
   }, [from, to])
   const box0 = await slots.nth(0).boundingBox()
@@ -434,6 +438,17 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     // iOS Safari zooms into any focused field under 16px; maximum-scale=1 stops it
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /maximum-scale=1/)
     await page.getByRole('button', { name: /Armar mi rutina/ }).click()
+    await expect(page).toHaveURL(/\/you\/?$/)
+  })
+
+  await step('Step 0b: Plan — Sin programa', async () => {
+    await page.goto('plan')
+    const empty = page.locator('[data-component="PlanEmpty"]')
+    await expect(empty).toContainText('Aún no tienes un programa')
+    await expect(empty).toContainText('aquí verás tu semana')
+    await expect(page.locator('#plan-days-grid')).toHaveCount(0)
+    await expect(todayDock(page)).toContainText('Pégala con IA o créala a mano en Tú')
+    await todayDock(page).getByRole('button', { name: /Armar mi rutina/ }).click()
     await expect(page).toHaveURL(/\/you\/?$/)
   })
 
@@ -863,6 +878,21 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(banner).toHaveCount(0)
   })
 
+  await step('Step 4b: Plan — Primera semana', async () => {
+    await page.goto('plan')
+    // No workout yet: no count to fall behind on, and no friends to show
+    const strip = page.locator('#plan-week-strip')
+    await expect(strip).toContainText('Tu primera semana')
+    await expect(strip.locator('[data-day="today"]')).toHaveCount(1)
+    await expect(strip.locator('[data-day="done"]')).toHaveCount(0)
+    await expect(strip).toContainText('Invita a un amigo y suman juntos cada semana')
+    await expect(page.locator('#plan-days-grid')).not.toContainText('Hecho')
+    // The dock greets the first workout and takes you to Hoy
+    await expect(todayDock(page)).toContainText('Toca cualquier día para ver sus ejercicios')
+    await todayDock(page).getByRole('button', { name: /Empezar mi primer entreno/ }).click()
+    await expect(page).toHaveURL(/\/today\/?$/)
+  })
+
   // Filled in by Step 5 from the exported exercises file
   const ids = {}
 
@@ -1022,16 +1052,33 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
 
   await step('Step 6: Plan — Weekdays And Weeks', async () => {
     await page.goto('plan')
-    const slotCard = (i) => page.locator('#plan-days-grid .day-card')
-      .filter({ has: page.locator('.badge-day', { hasText: WEEKDAY_SHORT[i] }) })
-    // Each day sits on its own weekday; the rest stay free, with no "moved" chips
+    const grid = page.locator('#plan-days-grid')
+    const tiron = (t + 2) % 7
+    // Each day sits on its own weekday; the rest are rest days, nothing moved
     for (let i = 0; i < 7; i++) {
-      if (i === t) await expect(slotCard(i).locator('.day-title')).toHaveText('Empuje')
-      else if (i === (t + 2) % 7) await expect(slotCard(i).locator('.day-title')).toHaveText('Tirón')
-      else await expect(slotCard(i).locator('.day-empty')).toContainText('Sin entrenamiento')
+      if (i === t) await expect(planDay(page, i).locator('.day-title')).toHaveText('Empuje')
+      else if (i === tiron) await expect(planDay(page, i).locator('.day-title')).toHaveText('Tirón')
+      else await expect(planDay(page, i)).toHaveAttribute('data-state', 'rest')
     }
-    await expect(page.locator('#plan-days-grid .moved-chip')).toHaveCount(0)
-    await expect(page.locator('.meta-label', { hasText: /^\d+m$/ }).first()).toBeVisible()
+    await expect(grid.locator('[data-state="moved"]')).toHaveCount(0)
+
+    // Today opens by itself, marked «Hoy»; the other workout says its size
+    await expect(planDay(page, t)).toHaveAttribute('data-component', 'DayPanel')
+    await expect(planDay(page, t).locator('.now')).toHaveText('Hoy')
+    await expect(planDay(page, tiron)).toContainText(/\d+ ej · \d+ min/)
+    // Muscles in Spanish, weight on the same line, sets × reps at the right
+    const bench = grid.locator('.exercise-row', { hasText: 'Banca' })
+    await expect(bench).toContainText('Pecho')
+    await expect(bench).toContainText('4 × 8–10')
+    // Any other day opens on tap and closes from its head
+    await planDay(page, tiron).click()
+    await expect(planDay(page, tiron)).toHaveAttribute('data-component', 'DayPanel')
+    await planDay(page, tiron).locator('.head').click()
+    await expect(planDay(page, tiron)).toHaveAttribute('data-component', 'DayRow')
+
+    // The week selector says which one is this week
+    await expect(page.locator('[data-component="WeekSwitch"]').getByRole('tab', { selected: true })).toContainText('esta semana')
+    const slotCard = (i) => planDay(page, i)
 
     // Switching weeks shows the new week's day, and the detail only walks that week
     await page.locator('button:has-text("Semana 2")').first().click()
@@ -1135,68 +1182,98 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
 
   await step('Step 6c: Plan — Reprogramar', async () => {
     const slots = page.locator('.drag-slot')
+    const grid = page.locator('#plan-days-grid')
     const free = (t + 1) % 7
     const tiron = (t + 2) % 7
-    await page.locator('#plan-reprogram-btn').click()
-    await expect(page.getByText('Reprogramando esta semana')).toBeVisible()
-    await page.locator('#plan-move-btn').click()
-    await expect(slots).toHaveCount(7)
-    await expect(page.locator('.drag-handle')).toHaveCount(2)
+    const sheet = page.locator('#plan-reprogram-sheet')
+    const movedFrom = (i) => `Se movió del ${WEEKDAY_NAMES_ES[i].toLowerCase()}`
+    const listMoved = () => page.locator('.drag-slot [data-state="moved"]')
 
-    // Dragging a day onto another one swaps them
+    // Reprogramar asks first what happened, with today's real case; nothing to restore yet
+    await page.locator('#plan-reprogram-btn').click()
+    await expect(sheet).toContainText('¿Qué cambió esta semana?')
+    if (t < 6) await expect(page.locator('#plan-shift-btn')).toContainText(`Hoy Empuje pasa al ${WEEKDAY_NAMES_ES[t + 1].toLowerCase()}`)
+    await expect(page.locator('#plan-reset-btn')).toBeDisabled()
+
+    // Mover: a grip on every day (nothing trained yet this week)
+    await page.locator('#plan-move-btn').click()
+    await expect(sheet).toHaveCount(0)
+    await expect(page.locator('.page-header-title')).toHaveText('Mover.')
+    await expect(slots).toHaveCount(7)
+    await expect(page.locator('.drag-handle')).toHaveCount(7)
+
+    // Dragging a day onto another one swaps them; each says where it came from
     await dragDay(page, t, tiron)
-    await expect(slots.nth(tiron).getByText('Empuje')).toBeVisible()
-    await expect(slots.nth(tiron).locator('.moved-chip')).toContainText(`desde ${WEEKDAY_SHORT[t]}`)
-    await expect(slots.nth(t).getByText('Tirón')).toBeVisible()
-    await expect(slots.nth(t).locator('.moved-chip')).toContainText(`desde ${WEEKDAY_SHORT[tiron]}`)
+    await expect(slots.nth(tiron)).toContainText('Empuje')
+    await expect(slots.nth(tiron)).toContainText(movedFrom(t))
+    await expect(slots.nth(t)).toContainText('Tirón')
+    await expect(slots.nth(t)).toContainText(movedFrom(tiron))
 
     // Releasing outside the list cancels
     await dragDay(page, tiron, free, { cancel: true })
-    await expect(slots.nth(tiron).getByText('Empuje')).toBeVisible()
-    await expect(page.locator('.moved-chip')).toHaveCount(2)
+    await expect(slots.nth(tiron)).toContainText('Empuje')
+    await expect(listMoved()).toHaveCount(2)
 
-    // Reset clears it; «Me salté un día» moves every workout one day forward
+    // Restablecer (in the dock) puts the week back; Listo with no edits must not
+    // persist an identity override (it used to mask the weekdays forever)
     await page.locator('#plan-reset-btn').click()
-    await expect(page.locator('.moved-chip')).toHaveCount(0)
+    await expect(listMoved()).toHaveCount(0)
+    await page.locator('#plan-done-btn').click()
+    await expect(page.locator('.page-header-title')).toHaveText('Plan.')
+    // Deliberate: proves a write does NOT happen, so there is no event to wait on.
+    await page.waitForTimeout(400)
+    expect(Object.keys((await storedSettings(page))?.rescheduleWeekOrder || {})).toHaveLength(0)
+
+    // «Me salté un día»: each pending workout from today on moves one day; the
+    // notice offers Restablecer. On Sunday nothing is left to move.
+    await page.locator('#plan-reprogram-btn').click()
     await page.locator('#plan-shift-btn').click()
-    await expect(page.locator('.drag-slot', { hasText: 'Empuje' }).locator('.moved-chip')).toContainText(`desde ${WEEKDAY_SHORT[t]}`)
-    await expect(page.locator('.drag-slot', { hasText: 'Tirón' }).locator('.moved-chip')).toContainText(`desde ${WEEKDAY_SHORT[tiron]}`)
-    await page.locator('#plan-reset-btn').click()
-    await expect(page.locator('.moved-chip')).toHaveCount(0)
+    if (t < 6) {
+      await expect(grid.locator('[data-state="moved"]', { hasText: 'Empuje' })).toContainText(movedFrom(t))
+      if (t <= 3) await expect(grid.locator('[data-state="moved"]', { hasText: 'Tirón' })).toContainText(movedFrom(tiron))
+      const shiftToast = page.locator('#plan-shift-toast')
+      await expect(shiftToast).toContainText('Listo. Tu semana se corrió un día.')
+      await shiftToast.getByRole('button', { name: 'Restablecer' }).click()
+      await expect(grid.locator('[data-state="moved"]')).toHaveCount(0)
+      await expect(shiftToast).toHaveCount(0)
+    } else {
+      await expect(page.locator('#backup-toast')).toContainText('No quedan días por correr esta semana')
+    }
+    await expect.poll(async () => Object.keys((await storedSettings(page))?.rescheduleWeekOrder || {}).length).toBe(0)
 
     // Today's workout dragged onto tomorrow's free slot
-    await dragDay(page, t, free)
-    await expect(slots.nth(free).getByText('Empuje')).toBeVisible()
-    await expect(slots.nth(free).locator('.moved-chip')).toContainText(`desde ${WEEKDAY_SHORT[t]}`)
-    await expect(slots.nth(t).getByText('Sin entrenamiento')).toBeVisible()
-
-    // Listo → a persistent banner, and it survives a reload
     await page.locator('#plan-reprogram-btn').click()
-    await expect(page.locator('#plan-changes-banner')).toContainText('2 cambios')
+    await page.locator('#plan-move-btn').click()
+    await dragDay(page, t, free)
+    await expect(slots.nth(free)).toContainText('Empuje')
+    await expect(slots.nth(free)).toContainText(movedFrom(t))
+    await expect(slots.nth(t)).toContainText('Descanso')
+
+    // Listo → the moved day keeps saying where it came from, also after a reload
+    await page.locator('#plan-done-btn').click()
+    // Mover closes only once the week is saved
+    await expect(page.locator('.page-header-title')).toHaveText('Plan.')
+    await expect(planDay(page, free)).toContainText(movedFrom(t))
     await page.reload()
-    await expect(page.locator('#plan-changes-banner')).toBeVisible()
+    await expect(planDay(page, free)).toContainText(movedFrom(t))
+    await expect(planDay(page, t)).toContainText('Recuperar también cuenta')
+    await page.locator('#plan-reprogram-btn').click()
+    await expect(page.locator('#plan-reset-btn')).toBeEnabled()
+    await sheet.getByRole('button', { name: 'Cerrar' }).click()
 
     // Hoy follows the plan: today is a rest day now
     await page.goto('today')
     await expect(page.locator('.hero-title', { hasText: 'Descanso' })).toBeVisible()
 
-    // Back to the routine: reset and Listo leave no override behind
+    // Back to the routine: Restablecer in the sheet leaves no override behind
     await page.goto('plan')
     await page.locator('#plan-reprogram-btn').click()
     await page.locator('#plan-reset-btn').click()
-    await page.locator('#plan-reprogram-btn').click()
-    await expect(page.locator('#plan-changes-banner')).toHaveCount(0)
+    await expect(page.locator('#backup-toast')).toContainText('Volviste a tu semana original')
+    await expect(grid.locator('[data-state="moved"]')).toHaveCount(0)
     await expect.poll(async () => Object.keys((await storedSettings(page))?.rescheduleWeekOrder || {}).length).toBe(0)
-
-    // Reprogramar + Listo with no edits must not persist an identity override
-    // either (it used to mask the weekdays forever)
-    await page.locator('#plan-reprogram-btn').click()
-    await page.locator('#plan-reprogram-btn').click()
-    // Deliberate: proves a write does NOT happen, so there is no event to wait on.
-    await page.waitForTimeout(400)
-    expect(Object.keys((await storedSettings(page))?.rescheduleWeekOrder || {})).toHaveLength(0)
     await page.reload()
-    await expect(page.locator('#plan-days-grid .day-card').filter({ has: page.locator('.badge-day', { hasText: WEEKDAY_SHORT[t] }) }).locator('.day-title')).toHaveText('Empuje')
+    await expect(planDay(page, t).locator('.day-title')).toHaveText('Empuje')
 
     await page.goto('today')
     await expect(page.locator('.page-header-title')).toHaveText('Empuje.')
@@ -2017,6 +2094,22 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await checkSummary()
   })
 
+  await step('Step 9d: Plan — Hoy hecho', async () => {
+    await page.goto('plan')
+    // Today is done: accent ring, its time, and the week counts it
+    const today = planDay(page, t)
+    await expect(today).toHaveAttribute('data-state', 'done')
+    await expect(today).toContainText(/Hecho( en \d+ min)?/)
+    const strip = page.locator('#plan-week-strip')
+    await expect(strip.locator('.n')).toHaveText('1')
+    await expect(strip.locator('.u')).toHaveText('de 2 entrenos')
+    await expect(strip.locator('[data-day="done"]')).toHaveCount(1)
+    // Nothing left to push today: no Entrenar, only Reprogramar and what comes next
+    await expect(todayDock(page).getByRole('button', { name: /^Entrenar/ })).toHaveCount(0)
+    await expect(todayDock(page).getByRole('button', { name: /Reprogramar semana/ })).toBeVisible()
+    await expect(todayDock(page)).toContainText(t <= 4 ? /: Tirón · \d+ min/ : /No quedan entrenos esta semana/)
+  })
+
   await step('Step 10: Historial — Constancia', async () => {
     await page.goto('history')
     // Today's session, with resolved names — never a raw exercise id
@@ -2251,6 +2344,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await page.goto('plan')
     await expect(page.locator('#plan-days-grid .exercise-row', { hasText: 'Banca' })).toBeVisible({ timeout: 5000 })
     await expect(banner).toContainText('Sin conexión')
+    // The league line says how old it is
+    await expect(page.locator('#plan-week-strip')).toContainText(/Liga actualizada a las \d{2}:\d{2}\. Se refresca al volver la señal/)
     await page.goto('history')
     await expect(page.getByRole('button', { name: 'Constancia' })).toBeVisible({ timeout: 5000 })
     await page.goto('today')
@@ -2808,6 +2903,11 @@ function readLogs(page) {
 async function goOffline(page, context) {
   await context.setOffline(true)
   await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+}
+
+/** The Plan's day on weekday `i` (Mon=0): a DayRow, or a DayPanel when open */
+function planDay(page, i) {
+  return page.locator(`#plan-days-grid [data-weekday="${WEEKDAY_SHORT[i]}"]`)
 }
 
 async function openFromPlan(page, name = 'Banca') {

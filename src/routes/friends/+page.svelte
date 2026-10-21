@@ -21,25 +21,8 @@
   import { toLocalDateStr, mondayOf } from '$lib/calendar-utils'
   import { shareUsername } from '$lib/share'
   import { buildLeague, weekDays, weekProgress, weekPhrase, weekEyebrow, formatSavedAt, type FriendData } from '$lib/league'
+  import { readFriendsCache, writeFriendsCache } from '$lib/friends-cache'
   import type { ExerciseLog } from '$lib/types'
-
-  const FRIENDS_CACHE_KEY = 'friends-cache'
-
-  // Last friends list we got from the Worker, shown as-is while offline.
-  function readFriendsCache(): { friends: FriendData[]; savedAt: number } | null {
-    try {
-      const raw = localStorage.getItem(FRIENDS_CACHE_KEY)
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
-  }
-
-  function writeFriendsCache(list: FriendData[]) {
-    try {
-      localStorage.setItem(FRIENDS_CACHE_KEY, JSON.stringify({ friends: list, savedAt: Date.now() }))
-    } catch {}
-  }
 
   let username = $state('')
   let inputUsername = $state('')

@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.90'
-const _VER_DESC = 'Terminar abre Confirma tus series; Terminar entrenamiento desde el último ejercicio'
-const _VER_TIME = '2026-10-21 00:59'
+const _VER_BASE = 'v2.91'
+const _VER_DESC = 'Plan v2: semana en franja, hoy abierto, Reprogramar en hoja'
+const _VER_TIME = '2026-10-21 16:41'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

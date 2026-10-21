@@ -2,11 +2,11 @@
   import Icon from './Icon.svelte'
 
   let { name, muscle = '', imgUrl, sets, reps, weight, units = 'kg', accent = 'var(--accent)', weightIsTarget = false, selectable = false, selected = false, done = false, onclick, actions, variant = 'default', sub = '', right = '', state = '', pips = undefined, chevron = false }: {
-    /** default = Plan / Historial row · session = 76 row of Hoy v2 and Detalle v2 */
-    variant?: 'default' | 'session'
-    /** session: second line */
+    /** default = Historial row · session = 76 row of Hoy v2 and Detalle v2 · plan = 64 row inside an open day of Plan v2 */
+    variant?: 'default' | 'session' | 'plan'
+    /** session / plan: second line */
     sub?: string
-    /** session: mono text at the right («4 × 8-10») */
+    /** session / plan: mono text at the right («4 × 8-10») */
     right?: string
     /** session: done = accent border + check · now = in progress · next = up next */
     state?: 'done' | 'now' | 'next' | ''
@@ -52,6 +52,15 @@
   {:else}
     <span></span>
   {/if}
+</button>
+{:else if variant === 'plan'}
+<button class="exercise-row xr" class:row-done={done} data-component="ExerciseRow" data-done={done ? 'true' : 'false'} {onclick} type="button">
+  {#if imgUrl}<img class="xr-img" src={imgUrl} alt="" />{:else}<span class="xr-img xc-img ph"></span>{/if}
+  <span class="xc-text">
+    <span class="xr-n">{name}</span>
+    {#if sub}<span class="xc-s">{sub}</span>{/if}
+  </span>
+  <span class="xc-r">{right}</span>
 </button>
 {:else}
 <button class="exercise-row" class:selected class:row-done={done} data-component="ExerciseRow" data-done={done ? 'true' : 'false'} {onclick} type="button">
@@ -132,6 +141,20 @@
   .xc-r { font-family: var(--font-mono); font-size: 15px; letter-spacing: -0.03em; white-space: nowrap; }
   .xc-chev { display: grid; color: var(--text-muted); }
   .xc-ok { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; }
+  /* ── plan (Plan v2): no fill, 44 thumb, 64 tall ── */
+  .exercise-row.xr {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    min-height: 64px;
+    padding: 8px 10px 8px 6px;
+    border-radius: var(--radius-lg);
+  }
+  .xr-img { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; display: block; background: var(--media-bg); }
+  .xr-n { display: block; font-size: 16px; font-weight: 600; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .xr.row-done .xr-n, .xr.row-done .xc-r { color: var(--text-tertiary); }
+  .xr.row-done .xr-img { opacity: 0.4; }
   .pips { display: flex; gap: 4px; margin-top: 8px; }
   .pips i { width: 22px; height: 4px; border-radius: 2px; background: var(--cv-line-strong); }
   .pips i.on { background: var(--accent); }

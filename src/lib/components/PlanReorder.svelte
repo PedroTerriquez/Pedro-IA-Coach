@@ -1,30 +1,14 @@
 <script lang="ts">
-  import DayCard from './DayCard.svelte'
-  import type { ProgramDay } from '$lib/types'
-  import { dayDurationMin } from '$lib/program-utils'
+  import DayRow from './DayRow.svelte'
+  import Icon from './Icon.svelte'
+  import type { DayRowView } from '$lib/plan-week'
 
-  let {
-    order,
-    days,
-    dayNames,
-    accent,
-    dragMode,
-    todayCalIdx,
-    weekIdx,
-    currentWeekIdx,
-    naturalOrder,
-    onorder
-  }: {
-    order: number[]
-    days: ProgramDay[]
-    dayNames: string[]
-    accent: string
-    dragMode: boolean
-    todayCalIdx: number
-    weekIdx: number
-    currentWeekIdx: number
-    naturalOrder: number[]
-    onorder: (order: number[]) => void
+  // Mover (Plan · Nuevo · 02): hold the 44 px grip at the right and drop the day
+  // on another one to swap them. Done days have no grip and can't be dropped on.
+  let { rows, fixed, onswap }: {
+    rows: DayRowView[]
+    fixed: boolean[]
+    onswap: (from: number, to: number) => void
   } = $props()
 
   let containerEl: HTMLElement | undefined
@@ -41,8 +25,8 @@
   let cardStep = $state(0)
 
   function startDrag(e: PointerEvent, calIdx: number) {
-    if (!dragMode || dragging) return
-    const el = e.currentTarget as HTMLButtonElement
+    if (dragging || fixed[calIdx]) return
+    const el = e.currentTarget as HTMLElement
     el.setPointerCapture(e.pointerId)
     dragging = true
     dragIdx = calIdx
@@ -64,33 +48,24 @@
     dragX = e.clientX - grabX - rects[dragIdx].left
     dragY = e.clientY - grabY - rects[dragIdx].top
     let j = Math.floor((e.clientY - rects[0].top) / cardStep)
-    j = Math.max(0, Math.min(order.length - 1, j))
+    j = Math.max(0, Math.min(rows.length - 1, j))
     if (j !== hoverIdx) hoverIdx = j
+  }
+
+  function droppedInside(e: PointerEvent): boolean {
+    const b = containerEl?.getBoundingClientRect()
+    if (!b) return false
+    return e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top - 40 && e.clientY <= b.bottom + 40
   }
 
   function endDrag(e: PointerEvent) {
     if (!dragging) return
-    const bounds = containerEl?.getBoundingClientRect()
-    const inside = bounds
-      ? e.clientX >= bounds.left - 20 &&
-        e.clientX <= bounds.right + 20 &&
-        e.clientY >= bounds.top - 40 &&
-        e.clientY <= bounds.bottom + 40
-      : false
-    if (inside && hoverIdx !== dragIdx) commit(hoverIdx)
+    if (droppedInside(e) && hoverIdx !== dragIdx && !fixed[hoverIdx]) onswap(dragIdx, hoverIdx)
     resetDrag()
   }
 
   function cancelDrag() {
     if (dragging) resetDrag()
-  }
-
-  function commit(j: number) {
-    const arr = [...order]
-    const tmp = arr[dragIdx]
-    arr[dragIdx] = arr[j]
-    arr[j] = tmp
-    onorder(arr)
   }
 
   function resetDrag() {
@@ -106,91 +81,55 @@
   }
 </script>
 
-<div class="reorder-list" bind:this={containerEl}>
-  {#each order as originalIdx, calIdx (calIdx)}
-    {@const day = originalIdx < days.length ? days[originalIdx] : null}
-    {@const hasWorkout = day !== null}
-    {@const isRest = !hasWorkout || day?.name === 'Rest' || day?.name === 'Descanso'}
-    {@const isTodayCal = calIdx === todayCalIdx && weekIdx === currentWeekIdx}
-    {@const naturalSlot = hasWorkout ? naturalOrder.indexOf(originalIdx) : -1}
-    {@const isMoved = hasWorkout && naturalSlot !== -1 && naturalSlot !== calIdx}
-    {@const showHandle = dragMode && hasWorkout}
-    {@const isDraggingSlot = dragging && calIdx === dragIdx}
-    {@const isTargetSlot = dragging && calIdx !== dragIdx && calIdx === hoverIdx}
-    {@const transform = isDraggingSlot
-      ? `translate(${dragX}px, ${dragY}px) scale(1.03)`
-      : ''}
+<div id="plan-days-grid" class="reorder-list" bind:this={containerEl} data-component="PlanReorder">
+  {#each rows as row, calIdx (calIdx)}
+    {@const isDragging = dragging && calIdx === dragIdx}
+    {@const isTarget = dragging && calIdx !== dragIdx && calIdx === hoverIdx && !fixed[calIdx]}
     <div
       class="drag-slot"
-      class:dragging-slot={isDraggingSlot}
-      class:target-slot={isTargetSlot}
-      style:transform={transform}
-      style:z-index={isDraggingSlot ? 50 : 1}
-      style:box-shadow={isDraggingSlot
-        ? '0 18px 40px rgba(0,0,0,0.5)'
-        : isTargetSlot
-          ? `inset 0 0 0 1.5px ${accent}`
-          : ''}
-      style:cursor={isDraggingSlot ? 'grabbing' : ''}
+      class:target={isTarget}
+      style:transform={isDragging ? `translate(${dragX}px, ${dragY}px) scale(1.02)` : ''}
+      style:z-index={isDragging ? 50 : 1}
       bind:this={slotEls[calIdx]}
     >
-      <DayCard
-        dayName={dayNames[calIdx]}
-        dayNumber={calIdx + 1}
-        title={day?.name || ''}
-        subtitle={isTodayCal ? (day?.subtitle ? `Hoy · ${day.subtitle}` : 'Hoy') : (day?.subtitle || '')}
-        isToday={isTodayCal}
-        isMoved={hasWorkout && naturalSlot !== -1 && naturalSlot !== calIdx}
-        movedFrom={dayNames[naturalSlot]}
-        exerciseCount={(day?.exercises || []).length}
-        duration={day?.exercises?.length ? String(dayDurationMin(day.exercises)) : undefined}
-        {isRest}
-        {accent}
-      >
-        {#snippet dragHandle()}
-          {#if showHandle}
+      <DayRow {...row} lifted={isDragging}>
+        {#snippet trailing()}
+          {#if fixed[calIdx]}
+            <span class="ok"><Icon name="check" size={14} /></span>
+          {:else}
             <button
+              type="button"
               class="drag-handle"
-              class:active={isDraggingSlot}
-              style="color:{accent}"
-              aria-label="Mover día"
+              aria-label="Mover {row.title}"
               onpointerdown={(e) => startDrag(e, calIdx)}
-              onpointermove={(e) => moveDrag(e)}
-              onpointerup={(e) => endDrag(e)}
+              onpointermove={moveDrag}
+              onpointerup={endDrag}
               onpointercancel={cancelDrag}
-            >⠿</button>
+            ><Icon name="grip" size={20} /></button>
           {/if}
         {/snippet}
-      </DayCard>
+      </DayRow>
     </div>
   {/each}
 </div>
 
 <style>
-  .reorder-list { display: flex; flex-direction: column; gap: 10px; padding: 0 20px; }
-  .drag-slot { position: relative; }
-  .drag-slot.dragging-slot,
-  .drag-slot.target-slot { border-radius: 18px; }
+  .reorder-list { display: flex; flex-direction: column; gap: 8px; }
+  .drag-slot { position: relative; border-radius: var(--radius-xl); }
+  .drag-slot.target { outline: 1px solid rgba(255, 255, 255, 0.35); outline-offset: -1px; }
   .drag-handle {
-    flex-shrink: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.05);
-    border: 0.5px solid rgba(255,255,255,0.08);
+    width: 44px;
+    height: 44px;
+    margin-right: -10px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: none;
+    color: var(--text-tertiary);
     cursor: grab;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
-    font-size: 15px;
-    line-height: 1;
   }
-  .drag-handle.active {
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
-    border-color: var(--accent);
-    cursor: grabbing;
-  }
+  .ok { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; }
 </style>
