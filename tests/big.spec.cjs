@@ -49,6 +49,7 @@ const EXPECTED_STEPS = [
   'Step 8f: Hoy — Fondos por una alternativa',
   'Step 8g: Hoy — Series por bloque',
   'Step 9: Hoy — Terminar entrenamiento',
+  'Step 9a: Hoy — Terminar desde el último ejercicio',
   'Step 9b: Hoy — Estiramiento',
   'Step 9c: Hoy — Racha, esfuerzo y resumen',
   'Step 10: Historial — Constancia',
@@ -1553,6 +1554,11 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await timerMain.click()
     await expect(timer).toContainText('Serie 3 registrada')
     await expect(timer).toContainText('85 kg × 10')
+    // −15 s only shortens this rest: serie 4 below gets the full one again
+    const startsNudge = api.restStarts.length
+    await timer.getByRole('button', { name: '−15 s' }).click()
+    await expect.poll(() => api.restStarts.length).toBe(startsNudge + 1)
+    expect(api.restStarts.at(-1).restSec).toBe(1)
     await waitPhase('saved')
     await expect(timer).toContainText('Serie 3 guardada')
     // The first set that differs turns today's log into blocks
@@ -1566,6 +1572,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(timerMain).toContainText('Empezar serie 4')
     await timerMain.click()
     await expect(serieLabel).toContainText('Serie 4 de 4')
+    await expect.poll(() => api.restStarts.at(-1).restSec).toBe(REST)
     await expect(wrsValue(0)).toContainText('85')
     for (let i = 0; i < 3; i++) await timer.getByRole('button', { name: 'Menos reps' }).click()
     await expect(wrsValue(1)).toContainText('7')
@@ -1692,8 +1699,12 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(wrsValue(0)).toContainText('40')
     await timerMain.click()
     await waitPhase('saved')
-    // «Terminar» closes the cycle for this exercise, keeping what was registered
+    // «Terminar» goes straight to «Confirma tus series», keeping what was registered
     await timer.getByRole('button', { name: 'Terminar ejercicio' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'confirm')
+    await expect(timer.locator('.scs-row')).toHaveCount(1)
+    await expect(timer.locator('.scs-save')).toContainText('Guardar 1 serie')
+    await timer.locator('.scs-save').click()
     await expect(timer).toHaveCount(0)
     await expect.poll(async () => (await todayLogOf(ids.military))[0]?.sets).toBe(1)
     await closeDetail()
@@ -1724,13 +1735,18 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     // Series 2 and 3 through the timer, then «Guardar 3 series»
     await logDock(page).getByRole('button', { name: /Iniciar descanso|Descansar/ }).click()
     await expect(serieLabel).toContainText('Serie 2 de 3')
+    await expect(timer.locator('.ms-dot.done')).toHaveCount(1)
     await expect(wrsValue(0)).toContainText('40')
     await timerMain.click()
     await waitPhase('saved')
     await timerMain.click()
+    // The last serie, counted on screen; untouched, its rest running out opens
+    // «Confirma tus series» by itself
     await expect(serieLabel).toContainText('Serie 3 de 3')
-    await timerMain.click()
-    await expect(timer).toHaveAttribute('data-phase', 'confirm', { timeout: 10000 })
+    await expect(timer.locator('.ms-dot.done')).toHaveCount(2)
+    await expect(timer.locator('.ms-dot.current')).toHaveCount(1)
+    await expect(timerMain).toContainText('Registrar')
+    await waitPhase('confirm')
     await expect(timer.locator('.scs-row')).toHaveCount(3)
     await timer.locator('.scs-save').click()
     await expect(timer).toHaveCount(0)
@@ -1885,6 +1901,30 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await page.reload()
     await expect(training).toContainText('4 de 4 hechos')
     await expect(page.locator('[data-phase="stretch"][data-state="open"]')).toBeVisible()
+  })
+
+  await step('Step 9a: Hoy — Terminar desde el último ejercicio', async () => {
+    // Every exercise done: the one before the last still moves on with «Siguiente»
+    if (await training.locator('.ph-row').count()) await training.locator('.ph-row').click()
+    await training.locator('[data-component="ExerciseRow"]').nth(2).click()
+    await expect(detail).toBeVisible()
+    await expect(logDock(page).getByRole('button', { name: 'Siguiente' })).toBeEnabled()
+    await expect(logDock(page).getByRole('button', { name: 'Terminar entrenamiento' })).toHaveCount(0)
+    // On the last one «Siguiente» becomes «Terminar entrenamiento», next to «Descansar»
+    await logDock(page).getByRole('button', { name: 'Siguiente' }).click()
+    await expect(navNext).toBeDisabled()
+    await expect(logDock(page).getByRole('button', { name: 'Siguiente' })).toHaveCount(0)
+    await expect(logDock(page).getByRole('button', { name: /Descansar/ })).toBeVisible()
+    await logDock(page).getByRole('button', { name: 'Terminar entrenamiento' }).click()
+
+    // It goes straight to the first stretch move, no toast, end time untouched
+    await expect(detail).toHaveCount(0)
+    await expect(page.locator('[data-component="MovementSheet"]')).toBeVisible()
+    await expect(sheetHead(page)).toContainText(/Estiramiento · 1 de \d+/)
+    await expect(page.locator('[data-component="CenterToast"]')).toHaveCount(0)
+    expect((await storedSettings(page)).sessionState.endedAt).toBe(endedAt)
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+    await expect(page.locator('[data-component="MovementSheet"]')).toHaveCount(0)
   })
 
   await step('Step 9b: Hoy — Estiramiento', async () => {

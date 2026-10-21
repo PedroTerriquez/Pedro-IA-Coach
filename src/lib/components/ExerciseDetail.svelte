@@ -87,7 +87,8 @@ import type { SetEntry } from '$lib/set-log'
     onLog = null,
     onStartRest = null,
     onSwap = null,
-    onRevert = null
+    onRevert = null,
+    onFinish = null
   }: {
     exercise: ExerciseDetail
     open: boolean
@@ -106,6 +107,8 @@ import type { SetEntry } from '$lib/set-log'
     onStartRest?: ((data: any) => void | Promise<void>) | null
     onSwap?: (() => void) | null
     onRevert?: (() => void) | null
+    /** Given once every exercise is done: the last one's «Siguiente» becomes «Terminar entrenamiento» */
+    onFinish?: (() => void) | null
   } = $props()
 
   let todayStr = $derived(getToday())
@@ -564,9 +567,15 @@ import type { SetEntry } from '$lib/set-log'
     </LogDock>
   {:else if registered}
     <LogDock caption={dockCaption()} layout="even">
-      <Button variant="secondary" size="lg" disabled={!hasNext} onclick={() => onNavigate?.('next')}>
-        <span class="one-line">Siguiente</span><Icon name="chev" size={18} />
-      </Button>
+      {#if !hasNext && onFinish}
+        <Button variant="secondary" size="lg" onclick={onFinish}>
+          <span class="one-line">Terminar entrenamiento</span><Icon name="chev" size={18} />
+        </Button>
+      {:else}
+        <Button variant="secondary" size="lg" disabled={!hasNext} onclick={() => onNavigate?.('next')}>
+          <span class="one-line">Siguiente</span><Icon name="chev" size={18} />
+        </Button>
+      {/if}
       <Button variant="primary" size="lg" {accent} onclick={handleIniciar}>
         <Icon name="timer" size={18} /><span class="one-line">Descansar <span class="mono">{restText}</span></span>
       </Button>

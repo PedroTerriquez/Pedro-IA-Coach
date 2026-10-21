@@ -238,9 +238,11 @@
     }
   }
 
-  async function close() {
+  // «Terminar»: keeps the shown set and goes straight to «Confirma tus series»
+  async function finish() {
     await commitShownSet()
-    onclose?.()
+    phase = 'confirm'
+    await refreshAutoFlags()
   }
 
   function stepWeight(delta: number) {
@@ -369,7 +371,7 @@
             <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 3.2l8 5.8-8 5.8V3.2z" fill="currentColor"/><rect x="12.5" y="3" width="2" height="12" rx="1" fill="currentColor"/></svg>
           </button>
         {:else if phase === 'saved'}
-          <button class="sms-skip" type="button" aria-label="Terminar ejercicio" onclick={close}>
+          <button class="sms-skip" type="button" aria-label="Terminar ejercicio" onclick={finish}>
             Terminar
             <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4.5 4.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
@@ -498,8 +500,7 @@
           <button class="sms-act sms-act-restart" type="button" onclick={restart}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a9 9 0 0 1 15.5-5L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a9 9 0 0 1-15.5 5L2.5 16"/></svg>
             Reiniciar descanso
-          </button>
-        {/if}
+          </button>        {/if}
       </footer>
     {/if}
   </div>

@@ -439,6 +439,17 @@
     refreshExerciseLogs()
   }
 
+  // «Terminar entrenamiento» from the last exercise: straight to the first stretch move
+  function finishFromDetail() {
+    showDetail = false
+    completionToastShown = true
+    if (!endedAt) endedAt = Date.now()
+    trainingCompleted = true
+    persistPhase()
+    if (hasStretch) openMoves('stretch', 0)
+    else finishSession()
+  }
+
   function onDetailNavigate(dir: 'prev' | 'next') {
     if (dir === 'next' && detailIdx < todayExercises.length - 1) detailIdx++
     else if (dir === 'prev' && detailIdx > 0) detailIdx--
@@ -638,6 +649,7 @@
     onStartRest={startRestFromExercise}
     onSwap={refreshAfterSwap}
     onRevert={refreshAfterSwap}
+    onFinish={trainingDone ? finishFromDetail : null}
   />
 {/if}
 
