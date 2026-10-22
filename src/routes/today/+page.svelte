@@ -33,6 +33,7 @@
   import EmptyState from '$lib/components/EmptyState.svelte'
   import RestDayView from '$lib/components/RestDayView.svelte'
   import Button from '$lib/components/Button.svelte'
+  import IconButton from '$lib/components/IconButton.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import CenterToast from '$lib/components/CenterToast.svelte'
   import type { Exercise, ExerciseLog, Program, ProgramDay, Settings } from '$lib/types'
@@ -613,7 +614,7 @@
   {/if}
 
   <div class="footer-bar">
-    <Button variant="ghost" onclick={() => location.reload()}>↻</Button>
+    <IconButton size="sm" icon="restart" label="Recargar" onclick={() => location.reload()} />
   </div>
 </div>
 

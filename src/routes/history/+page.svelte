@@ -1,419 +1,354 @@
 <script lang="ts">
-  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { onMount } from 'svelte'
+  import { goto } from '$app/navigation'
+  import { ROUTES } from '$lib/routes'
   import { settings } from '$lib/stores/settings'
-  import * as storage from '$lib/storage'
-  import Calendar from '$lib/components/Calendar.svelte'
-  import Sparkline from '$lib/components/Sparkline.svelte'
-  import SegmentedControl from '$lib/components/SegmentedControl.svelte'
+  import { toast } from '$lib/stores/ui'
+  import { online } from '$lib/stores/network'
+  import * as Storage from '$lib/storage'
+  import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
+  import { formatWeight } from '$lib/exercise-history'
+  import { muscleLabel } from '$lib/exercise-utils'
+  import { isTrained } from '$lib/streak'
+  import { startRestFromExercise } from '$lib/rest-timer'
+  import { detailPosition, nextInList } from '$lib/session-steps'
+  import { makeDayStatusFn, toLocalDateStr } from '$lib/calendar-utils'
+  import {
+    dayEntries, plannedRows, panelKind, dayLabel, rowsSummary, primaryMuscle,
+    monthStart, addMonths, monthTitle, monthBounds, initialDay, calendarCells, monthCountLabel,
+    whenLabel, deltaLabel, progressRows, listLabel, historyDock,
+    type DayRec, type PanelRow, type PanelKind
+  } from '$lib/history-view'
+  import type { Exercise, ExerciseLog, Program } from '$lib/types'
   import PageHeader from '$lib/components/PageHeader.svelte'
+  import IconButton from '$lib/components/IconButton.svelte'
+  import MonthCalendar from '$lib/components/MonthCalendar.svelte'
+  import HistoryDayPanel from '$lib/components/HistoryDayPanel.svelte'
+  import ExerciseProgressRow from '$lib/components/ExerciseProgressRow.svelte'
+  import ViewSwitchDock from '$lib/components/ViewSwitchDock.svelte'
   import ChipRow from '$lib/components/ChipRow.svelte'
   import FilterChip from '$lib/components/FilterChip.svelte'
   import Button from '$lib/components/Button.svelte'
-  import EmptyState from '$lib/components/EmptyState.svelte'
-  import Stack from '$lib/components/Stack.svelte'
-  import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import Icon from '$lib/components/Icon.svelte'
-  import type { Exercise, ExerciseLog } from '$lib/types'
+  import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
+  import EditExerciseSheet, { type ExerciseEdits } from '$lib/components/EditExerciseSheet.svelte'
 
-  let historyFilter = $state('Todos')
-  let historyTab = $state<'constancia' | 'ejercicios'>('constancia')
+  const TABS = [{ label: 'Días', value: 'days' }, { label: 'Ejercicios', value: 'exercises' }]
+  const GHOST_ROWS = 3
+  const today = new Date()
 
-  let accent = $derived($settings.accentColor || '#d4ff3a')
-  let units = $derived($settings.units || 'kg')
-
-  let exercises: Exercise[] = $state([])
-  let allLogs: ExerciseLog[] = $state([])
-  let activeProgram: any = $state(null)
-  let weekIdx = $state(0)
   let loaded = $state(false)
+  let exercises = $state<Exercise[]>([])
+  let logs = $state<ExerciseLog[]>([])
+  let programs = $state<Program[]>([])
+  let tab = $state('days')
+  let selected = $state(today)
+  let viewMonth = $state(monthStart(today))
+  let justMarked = $state(false)
+  let muscle = $state('')
+  let editing = $state(false)
+  let editId = $state<string | null>(null)
+  let editOpen = $state(false)
 
-  let detailExercise: (Exercise & { logs: ExerciseLog[] }) | null = $state(null)
   let showDetail = $state(false)
+  let detailExercises = $state<any[]>([])
+  let detailIdx = $state(0)
+  let detailDayName = $state('')
 
-  let expandedId: string | null = $state(null)
-  let editingId: string | null = $state(null)
-  let editName = $state('')
-  let editMuscle = $state('')
-  let editImgUrl = $state('')
+  let units = $derived($settings.units || 'kg')
+  let language = $derived($settings.language)
+  let program = $derived(programs.find(p => p.id === $settings.activeProgramId && p.weeks?.length) || null)
+  let exercisesMap = $derived(Object.fromEntries(exercises.map(e => [e.id, e])) as Record<string, Exercise>)
+  let logsByDate = $derived(groupByDate(logs))
+  let hasLogs = $derived(logs.some(isTrained))
+  let bounds = $derived(monthBounds(logs, today))
 
-  let enriched: (Exercise & { logs: ExerciseLog[] })[] = $derived(
-    exercises.map(e => ({
-      ...e,
-      // By date: first/last/delta and the sparkline read them in order, and
-      // IndexedDB returns them by key (a restored copy's ids sort apart)
-      logs: allLogs.filter(l => l.exerciseId === e.id).sort((a, b) => a.date.localeCompare(b.date))
-    }))
-  )
+  // ── Días ──
+  let statusFn = $derived(program
+    ? makeDayStatusFn(today, logsByDate, program, program.weeks.length, $settings.currentWeekIdx || 0, exercisesMap, language, ($settings.rescheduleWeekOrder || {}) as Record<string, number[]>)
+    : null)
+  let grid = $derived.by(() => {
+    const fn = statusFn
+    return calendarCells(viewMonth, fn ? (d) => fn(d).status : null, selected, today)
+  })
+  let rec = $derived<DayRec | null>(statusFn ? statusFn(selected) : null)
+  let kind = $derived<PanelKind>(rec ? panelKind(rec, today, !hasLogs) : 'none')
+  let panel = $derived(rec ? panelView(rec, kind) : null)
 
-  // An exercise without a muscle has no chip (it used to show an empty one)
-  let muscles = $derived(['Todos', ...new Set(exercises.map(e => (e.muscle || '').split('/')[0].split(/[,\s]+/)[0]).filter(Boolean))])
+  // ── Ejercicios ──
+  let rows = $derived(progressRows(exercises, logs))
+  let muscles = $derived([...new Set(rows.map(r => primaryMuscle(r.exercise.muscle)).filter(Boolean))])
+  let shown = $derived(muscle ? rows.filter(r => primaryMuscle(r.exercise.muscle) === muscle) : rows)
+  let editExercise = $derived(exercises.find(e => e.id === editId) ?? null)
+  let editLogCount = $derived(editId ? logs.filter(l => l.exerciseId === editId).length : 0)
 
-  let filtered = $derived(
-    historyFilter === 'Todos'
-      ? enriched
-      : enriched.filter(e => e.muscle.startsWith(historyFilter))
-  )
+  let dock = $derived(historyDock({ tab: tab === 'days' ? 'days' : 'exercises', hasProgram: !!program, hasLogs, offline: !$online, kind, justMarked }))
 
-  let logsByDate = $derived.by(() => {
-    const map = new Map<number, any[]>()
-    for (const l of allLogs) {
+  onMount(async () => {
+    await load()
+    selected = initialDay(logsByDate, today)
+    viewMonth = monthStart(selected)
+    loaded = true
+  })
+
+  async function load() {
+    const [exs, all, progs] = await Promise.all([Storage.getExercises(), Storage.getAllLogs(), Storage.getPrograms()])
+    exercises = exs
+    logs = all
+    programs = progs
+  }
+
+  function groupByDate(all: ExerciseLog[]): Map<number, ExerciseLog[]> {
+    const map = new Map<number, ExerciseLog[]>()
+    for (const l of all) {
       const key = parseInt(l.date.replace(/-/g, ''), 10)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(l)
     }
     return map
-  })
-
-  function setFilter(m: string) {
-    historyFilter = m
   }
 
-  async function load() {
-    const [exs, logs, progs, s] = await Promise.all([
-      storage.getExercises(),
-      storage.getAllLogs(),
-      storage.getPrograms(),
-      storage.getSettings()
-    ])
-    exercises = exs
-    allLogs = logs
+  // A day trained off the program (a rest day, say) still gets a title
+  function dayName(r: DayRec): string {
+    return r.day && !r.isRest ? r.day.name : 'Entreno'
+  }
 
-    if (s.activeProgramId) {
-      activeProgram = progs.find(p => p.id === s.activeProgramId) || null
-    } else {
-      activeProgram = null
+  function panelView(r: DayRec, k: PanelKind): { date: string; title: string; sub?: string; text?: string; listLabel?: string; rows: PanelRow[] } {
+    const date = dayLabel(r.date)
+    switch (k) {
+      case 'first':
+        return { date: '', title: 'Tu primer entreno aparece aquí', text: 'Cada día que registres se marca en el calendario y al tocarlo ves qué hiciste.', rows: [] }
+      case 'done': {
+        const done = dayEntries(r, exercisesMap, language)
+        return { date, title: dayName(r), sub: rowsSummary(done.map(d => ({ muscle: exercisesMap[d.exerciseId]?.muscle }))), rows: done }
+      }
+      case 'marked':
+        return { date, title: dayName(r), sub: 'Marcado a mano · sin pesos', rows: plannedRows(r, exercisesMap, language).map(p => ({ ...p, right: '' })) }
+      case 'today':
+        return { date: `Hoy · ${date}`, title: `Hoy toca ${dayName(r)}`, sub: rowsSummary(r.exercises), text: 'Cuando lo registres en Hoy, aparece aquí con tus pesos.', rows: [] }
+      case 'missed':
+        return { date, title: '¿Lo hiciste y no lo anotaste?', sub: dayName(r), listLabel: 'Lo que tocaba', rows: plannedRows(r, exercisesMap, language) }
+      case 'rest':
+        return { date, title: 'Descanso', sub: 'Día de recuperación', rows: [] }
+      case 'future':
+        if (r.isRest) return { date, title: 'Descanso', sub: 'Día de recuperación', rows: [] }
+        return { date, title: dayName(r), sub: rowsSummary(r.exercises), listLabel: 'Lo que toca', rows: plannedRows(r, exercisesMap, language) }
+      default:
+        return { date, title: 'Sin registro', rows: [] }
     }
-    weekIdx = s.currentWeekIdx || 0
-    loaded = true
   }
 
-  function refresh() {
-    load()
+  function selectDay(date: Date) {
+    selected = date
+    justMarked = false
   }
 
-  function openDetail(ex: Exercise & { logs: ExerciseLog[] }) {
-    detailExercise = ex
+  function changeTab() {
+    justMarked = false
+    editing = false
+  }
+
+  async function markAsDone() {
+    await Storage.logWeight('__day__', 0, 'kg', undefined, undefined, toLocalDateStr(selected))
+    logs = await Storage.getAllLogs()
+    justMarked = true
+  }
+
+  // ── Detalle ──
+
+  async function openDayDetail(list: PanelRow[], idx: number) {
+    detailDayName = rec ? dayName(rec) : ''
+    const planned = rec?.exercises || []
+    detailExercises = await Promise.all(list.map(async (r) => ({
+      ...(exercisesMap[r.exerciseId] || {}),
+      exerciseId: r.exerciseId,
+      sets: r.sets,
+      reps: r.reps,
+      rest: (planned.find(e => e.exerciseId === r.exerciseId) as any)?.rest ?? 0,
+      logs: await Storage.getLogsForExercise(r.exerciseId),
+    })))
+    detailIdx = idx
+    showDetail = true
+  }
+
+  // From the list there is no plan to follow: no target (`sets: 0`)
+  function openExerciseDetail(ex: Exercise) {
+    detailDayName = ''
+    detailExercises = [{ ...ex, exerciseId: ex.id, sets: 0, reps: '', rest: 0, logs: logs.filter(l => l.exerciseId === ex.id) }]
+    detailIdx = 0
     showDetail = true
   }
 
   function onDetailClose() {
     showDetail = false
-    detailExercise = null
+    detailExercises = []
   }
 
-  function toggleEdit(ex: Exercise & { logs: ExerciseLog[] }) {
-    if (expandedId === ex.id) {
-      expandedId = null
-      editingId = null
-    } else {
-      expandedId = ex.id
-      editingId = ex.id
-      editName = getExerciseDisplayName(ex, $settings.language)
-      editMuscle = ex.muscle
-      editImgUrl = ex.imgUrl || ''
-    }
+  async function onDetailLog() {
+    if (!detailExercises.length) return
+    const exId = detailExercises[detailIdx].exerciseId
+    const exLogs = await Storage.getLogsForExercise(exId)
+    logs = await Storage.getAllLogs()
+    detailExercises = detailExercises.map((e, i) => i === detailIdx ? { ...e, logs: exLogs } : e)
   }
 
-  function cancelEdit() {
-    expandedId = null
-    editingId = null
+  function onDetailNavigate(dir: 'prev' | 'next') {
+    if (dir === 'next' && detailIdx < detailExercises.length - 1) detailIdx++
+    else if (dir === 'prev' && detailIdx > 0) detailIdx--
   }
 
-  async function saveEdit(ex: Exercise) {
-    await storage.saveExercise({
-      ...ex,
-      name: editName,
-      muscle: editMuscle,
-      imgUrl: editImgUrl
-    })
-    expandedId = null
-    editingId = null
-    await refresh()
+  // ── Editar ──
+
+  function startEdit(id: string) {
+    editId = id
+    editOpen = true
   }
 
-  function getLastWeight(logs: ExerciseLog[]): number {
-    return logs.length > 0 ? logs[logs.length - 1].weight : 0
+  async function saveEdit(edits: ExerciseEdits) {
+    if (!editExercise) return
+    await Storage.patchExercise(editExercise.id, $state.snapshot(edits) as ExerciseEdits)
+    editOpen = false
+    toast.show('Ejercicio actualizado')
+    await load()
   }
 
-  function getFirstWeight(logs: ExerciseLog[]): number {
-    return logs.length > 0 ? logs[0].weight : 0
+  async function removeExercise() {
+    if (!editExercise) return
+    const name = editExercise.name
+    await Storage.deleteExercise(editExercise.id)
+    editOpen = false
+    editId = null
+    toast.show(`«${name}» eliminado`, false, 3000)
+    await load()
   }
 
-  function getDelta(logs: ExerciseLog[]): number {
-    return getLastWeight(logs) - getFirstWeight(logs)
+  function dockAction() {
+    goto(dock.action === 'you' ? ROUTES.you : ROUTES.today)
   }
-
-  function getAllTimeMax(logs: ExerciseLog[]): number {
-    return logs.length > 0 ? Math.max(...logs.map(l => l.weight)) : 0
-  }
-
-  onMount(() => {
-    load()
-  })
 </script>
 
 <div class="screen" id="history">
-  <PageHeader eyebrow="Historial" title="Progreso." />
-
-  <div class="segment-wrap">
-    <SegmentedControl
-      options={[
-        { label: 'Constancia', value: 'constancia' },
-        { label: 'Ejercicios', value: 'ejercicios' }
-      ]}
-      bind:value={historyTab}
-    />
-  </div>
-
   {#if !loaded}
-    <EmptyState message="Cargando..." />
-  {:else if historyTab === 'constancia'}
-    {#if !activeProgram || !activeProgram.weeks || activeProgram.weeks.length === 0}
-      <EmptyState message="Selecciona un programa en Tú → Programas para ver tu constancia." />
-    {:else}
-      <Calendar
-        {accent}
-        {logsByDate}
-        program={activeProgram}
-        weeks={activeProgram.weeks.length}
-        weekIdx={weekIdx}
-        {units}
-        {exercises}
-        language={$settings.language}
-        today={new Date()}
-        {refresh}
+    <!-- IndexedDB answers in a few ms: nothing to draw meanwhile -->
+  {:else if tab === 'days'}
+    <PageHeader eyebrow="Historial · {viewMonth.getFullYear()}" title={monthTitle(viewMonth)} sub={program ? monthCountLabel(grid.cells) : 'Sin programa activo'}>
+      {#snippet action()}
+        {#if program}
+          <span class="arrows">
+            <IconButton icon="back" size="sm" variant="filled" label="Mes anterior" disabled={viewMonth <= bounds.first} onclick={() => viewMonth = addMonths(viewMonth, -1)} />
+            <IconButton icon="chev" size="sm" variant="filled" label="Mes siguiente" disabled={viewMonth >= bounds.last} onclick={() => viewMonth = addMonths(viewMonth, 1)} />
+          </span>
+        {/if}
+      {/snippet}
+    </PageHeader>
+
+    <MonthCalendar lead={grid.lead} cells={grid.cells} ghost={!program} onselect={selectDay} />
+
+    {#if !program}
+      <HistoryDayPanel kind="noprogram" title="Elige un programa para empezar" />
+    {:else if panel}
+      <HistoryDayPanel
+        {kind}
+        date={panel.date}
+        title={panel.title}
+        sub={panel.sub}
+        text={panel.text}
+        listLabel={panel.listLabel}
+        rows={panel.rows}
+        onrow={(i) => openDayDetail(panel!.rows, i)}
+        onmark={markAsDone}
+        ontoday={() => goto(ROUTES.today)}
       />
     {/if}
   {:else}
-    <ChipRow class="chips-row" gap={8} scroll>
-      {#each muscles as m}
-        <FilterChip size="sm" active={historyFilter === m} {accent} onclick={() => setFilter(m)}>{m}</FilterChip>
-      {/each}
-    </ChipRow>
+    <PageHeader eyebrow="Historial" title="Ejercicios." sub="Tu último peso y cuánto has subido" />
 
-    {#if filtered.length === 0}
-      <EmptyState message="No se encontraron ejercicios." />
+    {#if rows.length === 0}
+      <div class="empty">
+        <h2>Todavía no hay pesos</h2>
+        <p>Cada ejercicio que registres aparece aquí con su último peso y cuánto has subido.</p>
+      </div>
+      <div class="ghost" aria-hidden="true">
+        {#each Array(GHOST_ROWS) as _}<div class="ghost-row"><i style="width:55%"></i><i style="width:30%;height:10px"></i></div>{/each}
+      </div>
     {:else}
-      <Stack gap={10} style="padding:0 20px">
-        {#each filtered as e}
-          {@const last = getLastWeight(e.logs)}
-          {@const delta = getDelta(e.logs)}
-          <div
-            class="card ex-card"
-            role="button"
-            tabindex="0"
-            onclick={() => openDetail(e)}
-            onkeydown={(ev) => {
-              if (ev.key === 'Enter' || ev.key === ' ') {
-                ev.preventDefault()
-                openDetail(e)
-              }
-            }}
-          >
-            <div class="ex-info">
-              <div class="ex-name-row">
-                <span class="ex-name">{getExerciseDisplayName(e, $settings.language)}</span>
-                <button
-                  class="ex-edit-btn"
-                  onclick={(ev) => { ev.stopPropagation(); toggleEdit(e) }}
-                  aria-label="Editar ejercicio"
-                >
-                  <Icon name="pencil" size={16} color="rgba(255,255,255,0.4)" />
-                </button>
-              </div>
-              <div class="ex-muscle">{e.muscle}</div>
-            </div>
-            {#if e.logs.length > 0}
-              <div class="ex-sparkline">
-                <Sparkline data={e.logs} width={70} height={26} color={delta >= 0 ? accent : '#ff6b6b'} />
-              </div>
-            {:else}
-              <div class="ex-sparkline-placeholder"></div>
-            {/if}
-            <div class="ex-stats">
-              <div class="ex-last">{last}<span class="ex-unit">{units}</span></div>
-              <div class="ex-delta" style="color:{delta >= 0 ? accent : '#ff6b6b'}">{delta >= 0 ? '+' : ''}{delta.toFixed(1)}</div>
-            </div>
-          </div>
-
-          {#if expandedId === e.id}
-            <div class="ex-edit-form">
-              <input
-                type="text"
-                value={editName}
-                oninput={(ev) => editName = (ev.target as HTMLInputElement).value}
-                placeholder="Nombre"
-                class="ex-edit-input"
-              />
-              <input
-                type="text"
-                value={editMuscle}
-                oninput={(ev) => editMuscle = (ev.target as HTMLInputElement).value}
-                placeholder="Músculo"
-                class="ex-edit-input"
-              />
-              <input
-                type="text"
-                value={editImgUrl}
-                oninput={(ev) => editImgUrl = (ev.target as HTMLInputElement).value}
-                placeholder="URL imagen (opcional)"
-                class="ex-edit-input"
-              />
-              <div class="ex-edit-actions">
-                <Button variant="secondary" onclick={cancelEdit}>Cancelar</Button>
-                <Button variant="primary" {accent} onclick={() => saveEdit(e)}>Guardar</Button>
-              </div>
-            </div>
-          {/if}
+      <ChipRow layout="scroll">
+        <FilterChip variant="choice" active={!muscle} onclick={() => muscle = ''}>Todos</FilterChip>
+        {#each muscles as m}
+          <FilterChip variant="choice" active={muscle === m} onclick={() => muscle = m}>{m}</FilterChip>
         {/each}
-      </Stack>
+      </ChipRow>
+
+      <div class="list-head">
+        <span>{editing ? 'Toca el lápiz para editar' : listLabel(shown.length, muscle)}</span>
+        <button type="button" class="link" onclick={() => editing = !editing}>{editing ? 'Listo' : 'Editar'}</button>
+      </div>
+
+      <div class="list">
+        {#each shown as r (r.exercise.id)}
+          <ExerciseProgressRow
+            name={getExerciseDisplayName(r.exercise, language) || r.exercise.name}
+            sub={[primaryMuscle(r.exercise.muscle), whenLabel(r.progress.lastDate, today)].filter(Boolean).join(' · ')}
+            points={r.progress.points}
+            last={formatWeight(r.progress.last)}
+            {units}
+            delta={r.progress.points.length > 1 ? deltaLabel(r.progress.delta, units) : ''}
+            {editing}
+            onopen={() => openExerciseDetail(r.exercise)}
+            onedit={() => startEdit(r.exercise.id)}
+          />
+        {/each}
+      </div>
     {/if}
+  {/if}
+
+  {#if loaded}
+    <ViewSwitchDock bind:value={tab} options={TABS} label="Vista de Historial" caption={dock.caption} onchange={changeTab}>
+      {#if dock.action}
+        <Button variant="primary" size="lg" onclick={dockAction}>{dock.label}<Icon name="arrow" size={18} /></Button>
+      {/if}
+    </ViewSwitchDock>
   {/if}
 </div>
 
-{#if detailExercise}
+<EditExerciseSheet
+  bind:open={editOpen}
+  exercise={editExercise}
+  {exercises}
+  muscles={[...new Set(exercises.map(e => muscleLabel(e.muscle)).filter(Boolean))]}
+  logCount={editLogCount}
+  onsave={saveEdit}
+  ondelete={removeExercise}
+/>
+
+{#if showDetail && detailExercises.length > 0}
   <ExerciseDetail
-    exercise={{
-      ...detailExercise,
-      sets: 0,
-      reps: '',
-      rest: 0,
-      logs: detailExercise.logs
-    }}
+    exercise={detailExercises[detailIdx]}
     open={showDetail}
-    {accent}
+    accent={$settings.accentColor || 'var(--accent)'}
     {units}
-    hasPrev={false}
-    hasNext={false}
+    hasPrev={detailIdx > 0}
+    hasNext={detailIdx < detailExercises.length - 1}
+    positionLabel={detailDayName ? detailPosition(detailDayName, detailIdx, detailExercises.length) : ''}
+    nextExercise={nextInList(detailExercises, detailIdx)}
     isToday={false}
+    onNavigate={onDetailNavigate}
     onClose={onDetailClose}
+    onLog={detailDayName ? onDetailLog : null}
+    onStartRest={detailDayName ? startRestFromExercise : null}
   />
 {/if}
 
 <style>
-  #history {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .segment-wrap {
-    margin: 0 20px 16px;
-  }
-
-  :global(.chips-row) {
-    padding: 0 20px 16px;
-  }
-
-  .ex-card {
-    padding: 14px;
-    cursor: pointer;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: inherit;
-    transition: border-color 0.2s;
-  }
-  .ex-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .ex-name {
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 600;
-    color: #fafafa;
-    letter-spacing: -0.3px;
-    line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ex-muscle {
-    font-size: 11px;
-    color: rgba(255,255,255,0.45);
-    margin-top: 2px;
-  }
-  .ex-sparkline {
-    flex-shrink: 0;
-  }
-  .ex-sparkline-placeholder {
-    width: 70px;
-    height: 26px;
-    flex-shrink: 0;
-  }
-  .ex-stats {
-    text-align: right;
-    min-width: 56px;
-  }
-  .ex-last {
-    font-family: var(--font-mono);
-    font-size: 16px;
-    font-weight: 500;
-    color: #fafafa;
-    letter-spacing: -0.3px;
-  }
-  .ex-unit {
-    font-size: 9px;
-    color: rgba(255,255,255,0.4);
-    margin-left: 1px;
-  }
-  .ex-delta {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.6px;
-    margin-top: 1px;
-  }
-  .ex-name-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .ex-edit-btn {
-    background: none;
-    border: none;
-    padding: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.6;
-    transition: opacity 0.15s;
-    flex-shrink: 0;
-  }
-  .ex-edit-btn:active {
-    opacity: 1;
-  }
-
-  .ex-edit-form {
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    border-top: 1px solid rgba(255,255,255,0.06);
-  }
-
-  .ex-edit-input {
-    background: #1a1a1a;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 10px 12px;
-    color: #fafafa;
-    font-size: 14px;
-    font-family: 'Space Grotesk', sans-serif;
-    outline: none;
-  }
-  .ex-edit-input:focus {
-    border-color: rgba(255,255,255,0.2);
-  }
-
-  .ex-edit-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    margin-top: 4px;
-  }
+  #history { padding: calc(var(--safe-top) + 56px) 20px 104px; display: flex; flex-direction: column; gap: 20px; }
+  .arrows { display: flex; gap: 8px; flex-shrink: 0; }
+  .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -4px 4px -8px; font-size: 13px; color: var(--text-tertiary); }
+  .link { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--text); font-family: var(--font-sans); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .empty { display: flex; flex-direction: column; gap: 12px; padding: 24px 20px; border-radius: var(--radius-2xl); box-shadow: inset 0 0 0 1px var(--cv-line-dashed); }
+  .empty h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.6px; line-height: 1.15; }
+  .empty p { font-size: 15px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
+  .ghost { display: flex; flex-direction: column; gap: 8px; opacity: 0.5; }
+  .ghost-row { display: flex; flex-direction: column; justify-content: center; gap: 8px; min-height: 68px; padding: 10px 16px; border-radius: var(--radius-xl); box-shadow: inset 0 0 0 1px var(--cv-fill-3); }
+  .ghost-row i { display: block; height: 14px; border-radius: 10px; background: var(--cv-fill-2); }
 </style>

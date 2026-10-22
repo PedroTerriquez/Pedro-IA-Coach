@@ -62,12 +62,12 @@
   {/if}
   <div class="fw">
     <span class="fl">Series</span>
-    <NumberStepper variant="sheet" size="sm" name="series" display={String(sets)} unit="series" decDisabled={sets <= 1} onstep={(d) => sets = Math.max(1, sets + d)} />
+    <NumberStepper size="sm" name="series" display={String(sets)} unit="series" decDisabled={sets <= 1} onstep={(d) => sets = Math.max(1, sets + d)} />
   </div>
   <TextInput variant="field" label="Repeticiones" mono bind:value={reps} placeholder="8-10" />
   <div class="fw">
     <span class="fl">Descanso</span>
-    <NumberStepper variant="sheet" size="sm" name="descanso" display={String(rest)} unit="s" decDisabled={rest <= 0} onstep={(d) => rest = Math.max(0, rest + d * REST_STEP)} oninput={typedRest} />
+    <NumberStepper size="sm" name="descanso" display={String(rest)} unit="s" decDisabled={rest <= 0} onstep={(d) => rest = Math.max(0, rest + d * REST_STEP)} oninput={typedRest} />
   </div>
 </EditSheet>
 

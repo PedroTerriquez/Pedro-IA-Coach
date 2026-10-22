@@ -45,17 +45,17 @@ Con la herramienta DesignSync, desde `design-system/` como `localDir`: `list_fil
 | Detalle de ejercicio | `vistas/detalle-ejercicio/` | La hoja `ExerciseDetail` y sus pestañas |
 | Shell | `shell/` | TabBar, Toast, banners |
 | Compartidos | `compartidos/` | Button, chips, inputs, etc. |
-| Foundations, Rest timer | `foundations/`, `components/rest-timer-*` | Hechas a mano, no las genera el script |
-| `<Vista> · Actual` | `vistas/<vista>2/` | Lo que la app muestra hoy, generado por el script (`Tú · Actual`, `Hoy · Actual` en `vistas/hoy2/`, `Detalle de ejercicio · Actual` en `vistas/detalle-ejercicio2/` y `Plan · Actual` en `vistas/plan2/`). Junto a `· Nuevo` (propuestas) y `· v1` (archivo) |
-| Nuevo · … | `components/<tema>/` | Propuestas todavía no implementadas (ej. `Nuevo · Hoy`). No tienen copia local: se listan en `handMade` de `manifest.mjs`. Al implementarse se conservan como referencia (no se borran) y su vista se regenera en una carpeta nueva; las cards viejas quedan como «· v1» |
+| Foundations | `foundations/` | Hecha a mano, no la genera el script |
+| `<Vista> · Actual` | `vistas/<vista>2/` | Lo que la app muestra hoy, generado por el script (`Tú · Actual`, `Hoy · Actual` en `vistas/hoy2/`, `Detalle de ejercicio · Actual` en `vistas/detalle-ejercicio2/` y `Plan · Actual` en `vistas/plan2/`). Junto a `· Nuevo` (propuestas). No hay archivo: las cards que una `· Actual` reemplaza se borran |
+| Nuevo · … | `components/<tema>/` | Propuestas todavía no implementadas (ej. `Nuevo · Hoy`). No tienen copia local: se listan en `handMade` de `manifest.mjs`. Al implementarse se conservan como referencia (no se borran) y su vista se regenera en una carpeta nueva; las cards viejas se borran |
 
 ## Sin card todavía
 
-`/admin` y sus componentes (solo desarrollo), `DebugAIToggle` (solo visible con debug IA activo) y `RestTimerFullscreen`/`RestSetsSummary` (viven a mano en `Rest timer`).
+`/admin` y sus componentes (solo desarrollo), `DebugAIToggle` (solo visible con debug IA activo) y `SeriesModeScreen`/`SeriesConfirmSheet` (el descanso a pantalla completa).
 
 ## Pendiente — arreglar en Claude Design a mano (2026-10-14)
 
-- **`manifest.mjs` está desfasado del proyecto**: el `_ds_manifest.json` remoto tiene grupos renombrados a mano (`Hoy · v1`, `Tú · v1`…) y propuestas que `handMade` no lista (`Tú · Nuevo`, `Plan · Nuevo`, `Compartidos · Nuevo`…). Subir el que genera el script las borraría del panel: hasta alinearlo, bajar el remoto (`get_file`) y agregarle solo las cards nuevas.
+- **`manifest.mjs` está desfasado del proyecto**: el `_ds_manifest.json` remoto tiene propuestas que `handMade` no lista (`Tú · Nuevo`, `Plan · Nuevo`, `Compartidos · Nuevo`…). Subir el que genera el script las borraría del panel: hasta alinearlo, bajar el remoto (`get_file`) y agregarle solo las cards nuevas.
 - **Tú v2**: el recorrido `tu` solo cubre Ejercicios (`vistas/tu2/`, 2026-10-14). Falta el walk de `NavGroup`, `ProgramEditor`, `YouHub`, `SettingsScreen`, `BackupScreen`, `ProgramsScreen`, `ProfileData`, `ProfileSheet`, `UnmatchedScreen`.
 - **Atomos de Compartidos** `button`, `inputs`, `section-label`, `empty`, `debug`: sus colectores se perdieron con Tú v2 → salen "sin muestras" y las cards quedan viejas. En particular **`SectionLabel`** cambió (nueva prop `sentence`, sin mayúsculas) y su card (Oct 7) ya no refleja el código.
 - El recorrido de **Amigos** ya no captura la card de "Cambiar usuario": el lápiz "Editar usuario" (`ProfileSheet`) quedó oculto el 2026-10-14, así que ese flujo no es alcanzable (líneas comentadas en `groups.mjs`).

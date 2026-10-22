@@ -49,7 +49,7 @@
   }
   .toast.toast-error {
     background: #2a0f0f;
-    color: #ff6b6b;
-    border-color: rgba(255, 107, 107, 0.25);
+    color: var(--cv-danger-text);
+    border-color: rgba(255, 122, 110, 0.25);
   }
 </style>

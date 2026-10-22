@@ -23,6 +23,9 @@ export interface RestPendingData {
   lastWeight?: number
   maxWeight?: number
   setIndex?: number
+  // The prescribed rest, kept once "+30 s" / "−15 s" change `restSec`: a nudge
+  // only lasts for the rest it was made on.
+  planRestSec?: number
 }
 
 // 'resting' → the clock is running. 'done' → the rest is over and the screen
@@ -182,7 +185,7 @@ export async function checkPendingRest(): Promise<void> {
 // start push: the notification that got us here was the start notification).
 async function countSetAndArm(data: RestPendingData): Promise<void> {
   const pending: RestPendingData = {
-    ...data,
+    ...toExerciseData(data),
     tag: 'rest-' + Date.now(),
     setIndex: nextSetIndex(data.exerciseId)
   }
@@ -302,7 +305,7 @@ export async function adjustRestTimer(deltaSec: number): Promise<void> {
   const endTime = Math.max(Date.now() + 3000, current.endTime + deltaSec * 1000)
   const restSec = Math.max(1, current.restSec + deltaSec)
   await cancelDelayedPush(current.tag)
-  await armRest({ ...current, endTime, restSec, tag: 'rest-' + Date.now() })
+  await armRest({ ...current, endTime, restSec, planRestSec: planRest(current), tag: 'rest-' + Date.now() })
 }
 
 // "Reiniciar descanso" from the full-screen timer: the same machinery the
@@ -342,7 +345,7 @@ async function announceRestDone(data: RestTimerData): Promise<void> {
 }
 
 // Shared "Iniciar" handler for ExerciseDetail's onStartRest — used identically from
-// today/+page.svelte, plan/+page.svelte and Calendar.svelte so every route triggers
+// today/+page.svelte, plan/+page.svelte and history/+page.svelte so every route triggers
 // the same rest-timer push/watch flow instead of duplicating it.
 //
 // The rest starts on the tap: the timer goes up and the delayed push is queued
@@ -388,11 +391,15 @@ export async function startNextSet(): Promise<void> {
 }
 
 // Drops what belongs to the rest that just ended (`endTime`, `phase`,
-// `setIndex`) and keeps only the exercise, so the next rest is counted and
-// timed from scratch.
+// `setIndex`, a nudged `restSec`) and keeps only the exercise, so the next
+// rest is counted and timed from scratch.
 function toExerciseData(data: RestTimerData | RestPendingData): RestPendingData {
-  const { name, restSec, tag, exerciseId, sets, reps, muscle, imgUrl, gifUrl, units, lastWeight, maxWeight } = data
-  return { name, restSec, tag, exerciseId, sets, reps, muscle, imgUrl, gifUrl, units, lastWeight, maxWeight }
+  const { name, tag, exerciseId, sets, reps, muscle, imgUrl, gifUrl, units, lastWeight, maxWeight } = data
+  return { name, restSec: planRest(data), tag, exerciseId, sets, reps, muscle, imgUrl, gifUrl, units, lastWeight, maxWeight }
+}
+
+function planRest(data: RestPendingData): number {
+  return data.planRestSec ?? data.restSec
 }
 
 export async function cancelRestTimer(tag: string): Promise<void> {

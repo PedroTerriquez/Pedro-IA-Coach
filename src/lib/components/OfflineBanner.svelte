@@ -71,8 +71,8 @@
     font-weight: 600;
     white-space: nowrap;
     background: #2a0f0f;
-    color: #ff6b6b;
-    border: 0.5px solid rgba(255, 107, 107, 0.25);
+    color: var(--cv-danger-text);
+    border: 0.5px solid rgba(255, 122, 110, 0.25);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }

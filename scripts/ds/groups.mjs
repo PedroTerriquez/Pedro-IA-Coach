@@ -39,30 +39,10 @@ export const groups = {
   },
 
   // ─────────────────────────────── Historial ───────────────────────────────
+  // Historial v2 (2026-10-22). Writes «Historial · Actual» (vistas/historial2/);
+  // the old vistas/historial cards stay as «Historial · v1».
   async historial({ open, S }) {
-    const G = 'Historial'
-    const at = (p) => `vistas/historial/${p}`
-    const src = 'src/routes/history/+page.svelte'
-    const page = await open(world(S))
-    await page.go('history')
-    await page.card({ path: at('pantalla-constancia'), group: G, name: 'Historial · Constancia', subtitle: 'racha + calendario del mes + día seleccionado', source: src, screen: true })
-    await page.card({ path: at('calendar'), group: G, name: 'Calendar', subtitle: 'racha, mes con estados (entrenado / descanso / faltaste / hoy) y detalle del día', source: C + 'Calendar.svelte', specimens: [{ label: 'Calendar', selector: comp('Calendar'), width: 390 }], viewport: '460x1100' })
-    await page.locator('.cal-day, .calendar-root button').filter({ hasText: /^1$/ }).first().click().catch(() => {})
-    await page.waitForTimeout(400)
-    await page.card({ path: at('pantalla-dia-entrenado'), group: G, name: 'Historial · Día entrenado', subtitle: 'al tocar un día hecho se listan sus ejercicios', source: C + 'Calendar.svelte', screen: true })
-    await page.locator('.seg-btn', { hasText: 'Ejercicios' }).click()
-    await page.waitForTimeout(600)
-    await page.card({ path: at('pantalla-ejercicios'), group: G, name: 'Historial · Ejercicios', subtitle: 'chips de músculo + lista con sparkline, último peso y delta', source: src, screen: true })
-    await page.card({ path: at('fila-ejercicio'), group: G, name: 'Fila de ejercicio + Sparkline', subtitle: 'tarjeta de la lista con tendencia', source: C + 'Sparkline.svelte', specimens: [{ label: 'ex-card', selector: '.ex-card', max: 2 }, { label: 'Sparkline', selector: comp('Sparkline') }], viewport: '420x380' })
-    await page.locator('.ex-edit-btn').first().click()
-    await page.waitForTimeout(400)
-    await page.card({ path: at('pantalla-editar'), group: G, name: 'Historial · Editar ejercicio', subtitle: 'formulario en línea dentro de la fila', source: src, screen: true })
-    await page.context().close()
-
-    const empty = await open({ exercises: [], settings: S.settings({ activeProgramId: null }) })
-    await empty.go('history')
-    await empty.card({ path: at('pantalla-vacia'), group: G, name: 'Historial · Vacío', subtitle: 'sin programa activo', source: src, screen: true })
-    await empty.context().close()
+    await historialScreens({ open, S })
   },
 
   // ──────────────────────────────── Amigos ────────────────────────────────
@@ -275,23 +255,25 @@ export const groups = {
     }
     await page.context().close()
 
-    // Chip and GlowCard only live on the rest day now
+    // Card and InfoCard: the rest day uses both
     const rest = await open(world(S, { programs: [S.restDayProgram()] }))
     await rest.go('today')
-    ;(bag.chips ??= []).push(await grab(rest, [{ label: 'Chip (pill de estado)', selector: comp('Chip'), distinct: true, row: true, optional: true }]))
-    bag.glow = [await grab(rest, [{ label: 'GlowCard', selector: comp('GlowCard'), width: 366, optional: true }])]
+    bag.card = [await grab(rest, [
+      { label: 'Card', selector: comp('Card'), width: 350, optional: true },
+      { label: 'InfoCard', selector: comp('InfoCard'), width: 350, optional: true }
+    ])]
     await rest.context().close()
 
     const cards = [
       ['button', 'Button', 'primary, secondary, danger, ghost, text, dashed · md y sm', 'Button.svelte', '820x900'],
-      ['chips', 'Chip, ChipRow y FilterChip', 'pills de estado y chips de filtro (mono y sans, sm y lg)', 'FilterChip.svelte', '820x560'],
+      ['chips', 'ChipRow y FilterChip', 'chips de filtro (mono y sans, sm y lg)', 'FilterChip.svelte', '820x560'],
       ['segmented', 'SegmentedControl', '2, 3 y 4 opciones', 'SegmentedControl.svelte', '820x360'],
       ['inputs', 'TextInput y SearchInput', 'campos de texto', 'TextInput.svelte', '820x640'],
       ['stats', 'StatsGrid + StatBlock', 'cuadrícula de cifras', 'StatBlock.svelte', '820x280'],
       ['page-header', 'PageHeader', 'eyebrow + título de vista', 'PageHeader.svelte', '460x220'],
       ['section-label', 'SectionLabel', 'rótulo de sección con barra de acento', 'SectionLabel.svelte', '420x220'],
       ['empty', 'EmptyState', 'mensaje centrado para listas vacías o carga', 'EmptyState.svelte', '420x220'],
-      ['glow', 'GlowCard', 'tarjeta con resplandor de acento', 'GlowCard.svelte', '440x560'],
+      ['card', 'Card e InfoCard', 'tarjeta de superficie (antes GlowCard) y aviso de lectura', 'Card.svelte', '440x560'],
       ['debug', 'DebugAIToggle', 'interruptor de depuración de IA', 'DebugAIToggle.svelte', '420x200'],
     ]
     for (const [key, name, subtitle, file, viewport] of cards) {
@@ -414,6 +396,106 @@ async function planScreens({ open, S }) {
   await empty.context().close()
 }
 
+// ─────────────────────────── Historial v2 ───────────────────────────
+const HIST = 'Historial · Actual'
+const HIST_SRC = 'src/routes/history/+page.svelte'
+const histAt = (p) => `vistas/historial2/${p}`
+const histScreen = (page, path, name, subtitle, source = HIST_SRC) =>
+  page.card({ path: histAt(path), group: HIST, name, subtitle, source, screen: true, fold: true })
+const histPart = (page, path, name, subtitle, source, specimens, viewport) =>
+  page.card({ path: histAt(path), group: HIST, name, subtitle, source, specimens, viewport })
+const isoDaysAgo = (n) => new Date(Date.now() - new Date().getTimezoneOffset() * 60000 - n * 86400000).toISOString().slice(0, 10)
+const cal = (page, state) => page.locator(`${comp('MonthCalendar')} ${state}`)
+const panelSnap = (page, label) => grab(page, [{ label: `HistoryDayPanel · ${label}`, selector: comp('HistoryDayPanel'), width: 350 }])
+const histDockSnap = (page, label) => grab(page, [{ label: `ViewSwitchDock · ${label}`, selector: comp('ViewSwitchDock'), width: 390, unfix: true }])
+
+async function tapDay(page, state) {
+  if (!(await cal(page, state).count())) await btn(page, 'Mes anterior').click()
+  await cal(page, state).first().click()
+  await page.waitForTimeout(300)
+}
+
+async function historialScreens({ open, S }) {
+  // Last week left unlogged, so past workouts show as «Sin registrar»
+  const withGap = S.logs().filter((l) => l.date < isoDaysAgo(13) || l.date > isoDaysAgo(7))
+  let page = await open(world(S, { exerciseLogs: withGap }))
+  await page.go('history')
+  await histScreen(page, 'pantalla', 'Historial · Días', 'el mes con lo entrenado en acento; abre el último día entrenado con sus pesos')
+  await histPart(page, 'month-calendar', 'MonthCalendar', 'celdas de 44: entrenado en acento, el resto gris, futuro tenue, tocado en blanco, hoy con anillo', C + 'MonthCalendar.svelte', [{ label: 'MonthCalendar', selector: comp('MonthCalendar'), width: 350 }], '420x420')
+  const panels = [await panelSnap(page, 'hecho')]
+  const docks = [await histDockSnap(page, 'Días')]
+
+  if (!(await cal(page, '.now').count())) await btn(page, 'Mes siguiente').click()
+  await cal(page, '.now').click()
+  await page.waitForTimeout(300)
+  await histScreen(page, 'pantalla-hoy', 'Historial · Hoy sin registrar', '«Hoy toca …» y el enlace a Hoy', C + 'HistoryDayPanel.svelte')
+  panels.push(await panelSnap(page, 'hoy'))
+
+  const future = cal(page, '[data-state="future"]')
+  if (await future.count()) {
+    await future.first().click()
+    await page.waitForTimeout(300)
+    panels.push(await panelSnap(page, 'futuro'))
+  }
+
+  await tapDay(page, '[data-state="rest"]')
+  panels.push(await panelSnap(page, 'descanso'))
+
+  await tapDay(page, '[data-state="missed"]')
+  await histScreen(page, 'pantalla-sin-registrar', 'Historial · Sin registrar', '¿Lo hiciste y no lo anotaste? «Marcar como hecho» y lo que tocaba, atenuado', C + 'HistoryDayPanel.svelte')
+  panels.push(await panelSnap(page, 'sin registrar'))
+  await btn(page, /Marcar como hecho/).click()
+  await page.waitForTimeout(500)
+  await histScreen(page, 'pantalla-marcado', 'Historial · Marcado a mano', 'el día pasa a acento, «Marcado a mano · sin pesos» y el dock lo confirma', C + 'HistoryDayPanel.svelte')
+  panels.push(await panelSnap(page, 'marcado a mano'))
+  await page.card({ path: histAt('history-day-panel'), group: HIST, name: 'HistoryDayPanel', subtitle: 'hecho, hoy, futuro, descanso, sin registrar y marcado a mano', source: C + 'HistoryDayPanel.svelte', snaps: panels, viewport: '460x1800' })
+
+  await page.locator(comp('ViewSwitchDock')).getByRole('button', { name: 'Ejercicios', exact: true }).click()
+  await page.waitForTimeout(500)
+  await histScreen(page, 'pantalla-ejercicios', 'Historial · Ejercicios', 'filtros por músculo y lo último arriba: gráfica gris, último peso y cuánto subiste')
+  const rows = [await grab(page, [{ label: 'ExerciseProgressRow', selector: comp('ExerciseProgressRow'), max: 3, width: 350 }])]
+  docks.push(await histDockSnap(page, 'Ejercicios'))
+  await page.locator(`#history ${comp('FilterChip')}`).nth(1).click()
+  await page.waitForTimeout(300)
+  await histScreen(page, 'pantalla-filtro', 'Historial · Ejercicios con filtro', '«N de {músculo}»')
+  await page.locator(`#history ${comp('FilterChip')}`).first().click()
+  await page.getByRole('button', { name: 'Editar', exact: true }).click()
+  await page.waitForTimeout(300)
+  await histScreen(page, 'pantalla-editar', 'Historial · Modo editar', 'un lápiz de 44 por fila; la fila ya no abre el Detalle')
+  rows.push(await grab(page, [{ label: 'ExerciseProgressRow · editing', selector: comp('ExerciseProgressRow'), max: 2, width: 350 }]))
+  await page.card({ path: histAt('exercise-progress-row'), group: HIST, name: 'ExerciseProgressRow', subtitle: 'nombre, músculo · cuándo, gráfica, último peso y subida; en modo editar, el lápiz', source: C + 'ExerciseProgressRow.svelte', snaps: rows, viewport: '420x620' })
+  await page.locator(`${comp('ExerciseProgressRow')} ${comp('IconButton')}`).first().click()
+  await page.waitForTimeout(600)
+  await histScreen(page, 'pantalla-hoja-editar', 'Historial · Editar ejercicio', 'la hoja de Tú, con «Eliminar ejercicio» y el conteo de registros', C + 'EditExerciseSheet.svelte')
+  await page.context().close()
+
+  // Primera vez: programa activo, cero registros
+  page = await open(world(S, { exerciseLogs: [], gymSessions: [] }))
+  await page.go('history')
+  await histScreen(page, 'pantalla-primera-vez', 'Historial · Primera vez', 'calendario limpio con hoy marcado; «Ir a entrenar»')
+  docks.push(await histDockSnap(page, 'primera vez'))
+  await page.locator(comp('ViewSwitchDock')).getByRole('button', { name: 'Ejercicios', exact: true }).click()
+  await page.waitForTimeout(400)
+  await histScreen(page, 'pantalla-primera-vez-ejercicios', 'Historial · Ejercicios sin pesos', '«Todavía no hay pesos» y filas fantasma')
+  await page.context().close()
+  await card(null, { path: histAt('view-switch-dock'), group: HIST, name: 'ViewSwitchDock', subtitle: 'Días / Ejercicios sobre la TabBar, con caption y botón opcionales', source: C + 'ViewSwitchDock.svelte', snaps: docks, viewport: '460x560' })
+
+  // Sin conexión
+  page = await open(world(S))
+  await page.go('history')
+  await page.context().setOffline(true)
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+  await page.waitForTimeout(500)
+  await histScreen(page, 'pantalla-sin-conexion', 'Historial · Sin conexión', 'todo igual; el dock dice que el historial está en el teléfono')
+  await page.context().close()
+
+  // Sin programa
+  page = await open({ exercises: [], settings: S.settings({ activeProgramId: null }) })
+  await page.go('history')
+  await histScreen(page, 'pantalla-sin-programa', 'Historial · Sin programa', 'calendario fantasma y «Elegir un programa»')
+  await page.context().close()
+}
+
 /** Opens Hoy on a seeded world; `logs` are today's extra logs */
 async function openHoy(open, S, settings, logs = [], over = {}) {
   const page = await open(world(S, { settings, exerciseLogs: [...S.logs(), ...logs], ...over }))
@@ -432,10 +514,9 @@ async function hoyScreens({ open, S }) {
   const stepsOpen = await grab(page, [{ label: 'SessionSteps · antes de empezar', selector: comp('SessionSteps'), width: 390 }])
   const dockStart = await grab(page, [{ label: 'NextStepDock · empezar calentamiento', selector: comp('NextStepDock'), width: 390, unfix: true }])
   await btn(page, /Empezar calentamiento/).click()
-  await btn(page, 'Hecho').click()
-  await btn(page, 'Hecho').click()
+  await logDock(page).getByRole('button', { name: 'Siguiente' }).click()
   await btn(page, 'Cerrar').click()
-  await hoyScreen(page, 'pantalla-calentamiento-a-mitad', 'Hoy · Calentamiento a mitad', 'dos movimientos hechos, el dock sigue con el siguiente')
+  await hoyScreen(page, 'pantalla-calentamiento-a-mitad', 'Hoy · Calentamiento a mitad', 'un movimiento hecho, el dock sigue con el siguiente')
   await page.context().close()
 
   // Entrenando (calentamiento hecho, nada registrado)
@@ -472,6 +553,9 @@ async function hoyScreens({ open, S }) {
   const allDone = [bench, todayLog('ex-military', 40), todayLog('ex-lateral', 10)]
   page = await openHoy(open, S, session(S, { phase: 2, startedAt: started }), allDone)
   await clearToasts(page)
+  await hoyScreen(page, 'pantalla-entrenamiento-completado', 'Hoy · Entrenamiento completado', 'todo registrado; el dock pide «Terminar entrenamiento» antes de estirar')
+  await btn(page, 'Terminar entrenamiento').click()
+  await page.waitForTimeout(400)
   await hoyScreen(page, 'pantalla-falta-estirar', 'Hoy · Falta estirar', 'calentamiento y entrenamiento hechos, estiramiento abierto')
   const stepsStretch = await grab(page, [{ label: 'SessionSteps · falta estirar', selector: comp('SessionSteps'), width: 390 }])
   await btn(page, /Empezar estiramiento/).click()
@@ -515,7 +599,7 @@ async function moveSheets({ open, S }) {
   let page = await openHoy(open, S, session(S))
   await btn(page, /Empezar calentamiento/).click()
   await page.waitForTimeout(600)
-  await hoyScreen(page, 'calentamiento', 'Calentamiento', 'un movimiento en la hoja de Detalle: objetivo en frase, Siguiente / Hecho', C + 'MovementSheet.svelte')
+  await hoyScreen(page, 'calentamiento', 'Calentamiento', 'un movimiento en la hoja de Detalle: objetivo en frase, «Siguiente» lo marca y avanza', C + 'MovementSheet.svelte')
   pieces.push(await grab(page, [
     { label: 'DetailSheetHead · posición', selector: comp('DetailSheetHead'), width: 390 },
     { label: 'ExerciseMedia · GIF de movimiento', selector: comp('ExerciseMedia'), width: 350 },
@@ -544,6 +628,8 @@ async function moveSheets({ open, S }) {
   const pull = [todayLog('ex-row', 60), todayLog('ex-pulldown', 55), todayLog('ex-curl', 30)]
   page = await openHoy(open, S, session(S, { phase: 2 }), pull, { programs: [S.pullProgram(), S.secondProgram()] })
   await clearToasts(page)
+  await btn(page, 'Terminar entrenamiento').click()
+  await page.waitForTimeout(400)
   if (await page.getByRole('button', { name: /Empezar estiramiento/ }).count()) {
     await btn(page, /Empezar estiramiento/).click()
     await page.waitForTimeout(600)

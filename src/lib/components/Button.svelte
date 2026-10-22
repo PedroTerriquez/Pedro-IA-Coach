@@ -12,7 +12,8 @@
     style = '',
     id = undefined,
     type = 'button',
-    ariaLabel = undefined
+    ariaLabel = undefined,
+    class: className = ''
   }: {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'text' | 'dashed' | 'danger-text'
     accent?: string
@@ -26,13 +27,14 @@
     id?: string
     type?: 'button' | 'submit'
     ariaLabel?: string
+    class?: string
   } = $props()
 
   let v2 = $derived(size === 'lg' || size === 'pill')
 </script>
 
 <button
-  class="btn-base"
+  class="btn-base {className}"
   data-component="Button"
   class:v2
   class:lg={size === 'lg'}
@@ -91,8 +93,8 @@
     font-weight: 600;
   }
   .btn-danger {
-    background: rgba(255,107,107,0.12);
-    color: #ff6b6b;
+    background: var(--cv-danger-bg);
+    color: var(--cv-danger-text);
     font-weight: 600;
   }
   .btn-ghost {

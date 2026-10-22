@@ -20,6 +20,16 @@ Tu usuario más un correo y una contraseña. Liga tu usuario con tu copia en la 
 - **No es:** el usuario solo, ni un inicio de sesión con Google o Apple.
 - **En inglés / en código:** account
 
+### Día entrenado
+Día con al menos un registro con peso o marcado a mano. En Historial es lo único con color en el calendario.
+- **No es:** un día del programa; un día de descanso o uno sin registrar se ven igual, en gris.
+- **En inglés / en código:** trained day (`done`)
+
+### Día marcado a mano
+Día pasado que se marcó como hecho desde Historial, sin registrar pesos. Cuenta como día entrenado (en el calendario y en la racha) y dice «Marcado a mano · sin pesos».
+- **No es:** un día con registros; no guarda qué ejercicios se hicieron ni con qué peso.
+- **En inglés / en código:** day mark (`__day__`)
+
 ### Dirección de la app
 La URL desde la que se abre e instala la app. El teléfono guarda los datos, las notificaciones y el usuario por dirección: si la app cambia de dirección, el iPhone la trata como una app nueva y vacía hasta restaurar una copia de seguridad.
 - **No es:** el nombre de la app que sale bajo el icono (ese puede cambiar sin perder datos).
@@ -54,6 +64,16 @@ Tiempo de sesión acumulado de lunes a domingo de la semana en curso. Los de un 
 Cada elemento de la fase de calentamiento o de estiramiento (por ejemplo «Rotaciones de brazos»). Se marca como hecho, pero no tiene peso, registro, historial ni alternativas.
 - **No es:** un ejercicio del programa (esos tienen series, repeticiones, descanso y registros).
 - **En inglés / en código:** warmup item / stretch item
+
+### Registro por serie
+Registro que se va armando serie a serie desde el timer: cada serie lleva su peso y repeticiones, y se guarda al confirmar «Confirma tus series». Es la única forma de registrar series sueltas; el ejercicio queda «en curso» hasta llegar a sus series planeadas.
+- **No es:** el registro único (ese se hace desde Registrar, sin timer).
+- **En inglés / en código:** per-set log (timer)
+
+### Registro único
+Un solo peso para el ejercicio de hoy, escrito en Registrar y guardado con «Registrar N kg». Cuenta todas las series del plan, así que deja el ejercicio hecho; volver a registrar sobrescribe el de hoy. También vale para una alternativa: cuenta como el ejercicio del programa que reemplaza.
+- **No es:** el registro por serie (ese solo existe usando el timer).
+- **En inglés / en código:** single log
 
 ### Racha
 Número de semanas seguidas completadas. Una semana se completa al entrenar los días del programa menos uno; la semana en curso suma en cuanto llega a ese número y, mientras no llega, no rompe la racha.

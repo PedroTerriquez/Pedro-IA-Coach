@@ -6,6 +6,11 @@
   import { getAutoFilledSets, withAutoFlag, type AutoFillResult } from '$lib/series-mode'
   import SeriesConfirmSheet from './SeriesConfirmSheet.svelte'
   import WeightRepsStepper from './WeightRepsStepper.svelte'
+  import Button from './Button.svelte'
+  import IconButton from './IconButton.svelte'
+  import FilterChip from './FilterChip.svelte'
+  import Tag from './Tag.svelte'
+  import Icon from './Icon.svelte'
 
   let {
     visible = false,
@@ -350,9 +355,7 @@
     {:else}
       <header class="sms-top">
         {#if phase === 'registering'}
-          <button class="sms-icon-btn" type="button" aria-label="Minimizar descanso" onclick={onminimize}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
+          <IconButton size="sm" variant="filled" icon="down" label="Minimizar descanso" onclick={onminimize} />
         {:else}
           <span class="sms-top-gap"></span>
         {/if}
@@ -366,15 +369,9 @@
         </span>
         
         {#if phase === 'registering'}
-          <button class="sms-skip" type="button" aria-label="Saltar descanso" onclick={onskip}>
-            Saltar
-            <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 3.2l8 5.8-8 5.8V3.2z" fill="currentColor"/><rect x="12.5" y="3" width="2" height="12" rx="1" fill="currentColor"/></svg>
-          </button>
+          <Button variant="secondary" size="pill" ariaLabel="Saltar descanso" onclick={onskip}>Saltar<Icon name="skip" size={16} /></Button>
         {:else if phase === 'saved'}
-          <button class="sms-skip" type="button" aria-label="Terminar ejercicio" onclick={finish}>
-            Terminar
-            <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4.5 4.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </button>
+          <Button variant="secondary" size="pill" ariaLabel="Terminar ejercicio" onclick={finish}>Terminar<Icon name="x" size={16} /></Button>
         {/if}
       </header>
 
@@ -392,9 +389,7 @@
           </svg>
           <div class="sms-center">
             {#if phase === 'saved'}
-              <div class="sms-done-mark">
-                <svg width="54" height="42" viewBox="0 0 14 11" fill="none" aria-hidden="true"><path d="M1 5.5l4 4 8-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </div>
+              <div class="sms-done-mark"><Icon name="check" size={54} /></div>
               <div class="sms-done-label">Listo para la serie {setNo + 1}</div>
             {:else}
               <div class="sms-time">{fmtClock(remainingMs)}</div>
@@ -435,7 +430,7 @@
           <div class="sms-ex">
             <div class="sms-ex-name">{displayName}</div>
             {#if timer.muscle}
-              <div class="sms-ex-sub"><span class="sms-chip">{timer.muscle}</span></div>
+              <div class="sms-ex-sub"><Tag>{timer.muscle}</Tag></div>
             {/if}
           </div>
         </div>
@@ -456,51 +451,39 @@
           />
           
           <div class="sms-dock">
-            <button class="btn btn-pri btn-lg" type="button" onclick={commitSet}>
-              Registrar
-            </button>
+            <Button variant="primary" size="lg" accent="var(--rt)" onclick={commitSet}>Registrar</Button>
           </div>
         {:else if phase === 'registering' && weightRepsMinimized}
           <!-- Minimized weight/reps - compact bar showing saved values -->
           <div class="sms-minimized" onclick={expandWeightReps}>
-            <span class="sms-min-check">
-              <svg width="14" height="11" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4 8-8.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </span>
+            <span class="sms-min-check"><Icon name="check" size={16} /></span>
             <span class="sms-min-info">
               <b>Serie {setNo} registrada</b>
               <span>{committedWeight > 0 ? fmtNum(committedWeight) : '—'} {units} × {committedReps > 0 ? committedReps : '—'}</span>
             </span>
-            <span class="sms-min-expand">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
-            </span>
+            <span class="sms-min-expand"><Icon name="plus" size={18} /></span>
           </div>
         {:else if phase === 'saved'}
           <!-- Saved set display -->
           <div class="sms-log">
-            <span class="sms-log-check">
-              <svg width="14" height="11" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4 8-8.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </span>
+            <span class="sms-log-check"><Icon name="check" size={16} /></span>
             <span>
               <b>Serie {justSavedSetNo} guardada</b>
               <span>{committedWeight > 0 ? fmtNum(committedWeight) : '—'} {units} × {committedReps > 0 ? committedReps : '—'}</span>
             </span>
-            <button class="chipb" type="button" onclick={startEditSavedSet}>Cambiar</button>
+            <FilterChip variant="choice" onclick={startEditSavedSet}>Cambiar</FilterChip>
           </div>
-          
+
           <div class="sms-dock">
-            <button class="btn btn-pri btn-lg" type="button" onclick={next}>
-              Empezar serie {justSavedSetNo + 1}
-            </button>
+            <Button variant="primary" size="lg" accent="var(--rt)" onclick={next}>Empezar serie {justSavedSetNo + 1}</Button>
           </div>
         {/if}
       </section>
 
       <footer class="sms-actions">
         {#if phase === 'registering'}
-          <button class="sms-act sms-act-restart" type="button" onclick={restart}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a9 9 0 0 1 15.5-5L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a9 9 0 0 1-15.5 5L2.5 16"/></svg>
-            Reiniciar descanso
-          </button>        {/if}
+          <Button variant="secondary" size="lg" onclick={restart}><Icon name="restart" size={18} />Reiniciar descanso</Button>
+        {/if}
       </footer>
     {/if}
   </div>
@@ -526,13 +509,7 @@
   }
 
   .sms-top { display: flex; align-items: center; justify-content: space-between; height: 44px; flex-shrink: 0; }
-  .sms-icon-btn {
-    width: 38px; height: 38px; border-radius: var(--radius-full);
-    border: 0.5px solid var(--border-medium); background: rgba(255,255,255,0.04);
-    color: var(--text-secondary); display: grid; place-items: center; cursor: pointer;
-  }
-  .sms-icon-btn:active { transform: scale(0.92); }
-  .sms-top-gap { width: 38px; }
+  .sms-top-gap { width: 44px; }
   .sms-status {
     display: flex; align-items: center; gap: 8px;
     font-family: var(--font-mono); font-size: 11px; font-weight: 600;
@@ -544,13 +521,6 @@
     animation: sms-blink 1.4s ease-in-out infinite;
   }
   .is-done .sms-status::before { animation: none; }
-  .sms-skip {
-    height: 38px; padding: 0 16px; border-radius: var(--radius-full);
-    border: 0.5px solid var(--border-medium); background: rgba(255,255,255,0.04);
-    color: var(--text-secondary); font-size: 14px; font-weight: 500;
-    display: flex; align-items: center; gap: 6px; cursor: pointer;
-  }
-  .sms-skip:active { transform: scale(0.96); }
 
   .sms-clock { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; }
   .sms-nudge {
@@ -628,40 +598,6 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .sms-ex-sub { margin-top: 5px; display: flex; align-items: center; gap: 7px; }
-  .sms-chip {
-    font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;
-    color: var(--text-tertiary); border: 0.5px solid var(--border-medium); border-radius: var(--radius-full);
-    padding: 3px 9px;
-  }
-
-  /* Modo serie weight/reps section */
-  .sms-weight {
-    display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0 0;
-  }
-  .sms-weight-row {
-    display: grid; grid-template-columns: 56px minmax(0,1fr) 56px; align-items: center; gap: 8px;
-    padding: 6px; border-radius: 24px; background: rgba(255,255,255,0.04); width: 100%; max-width: 320px;
-  }
-  .sms-weight-value {
-    font-family: var(--font-mono); font-size: 120px; font-weight: 500; letter-spacing: -0.07em; line-height: 0.9; color: var(--text);
-    text-align: center;
-  }
-  .sms-weight-value small {
-    font-family: var(--font-sans); font-size: 22px; color: var(--text-tertiary); letter-spacing: 0; margin-left: 6px; font-weight: 500;
-  }
-  .sms-btn {
-    height: 56px; width: 56px; border-radius: 16px; background: rgba(255,255,255,0.08);
-    display: grid; place-items: center; color: var(--text); border: none; cursor: pointer;
-    transition: transform 0.1s, background 0.1s;
-  }
-  .sms-btn:active { transform: scale(0.93); background: color-mix(in srgb, var(--rt) 24%, transparent); }
-  .sms-btn svg { flex-shrink: 0; }
-
-  .sms-reps { display: grid; grid-template-columns: 56px minmax(0,1fr) 56px; align-items: center; gap: 8px; padding: 6px; border-radius: 24px; background: rgba(255,255,255,0.04); width: 100%; max-width: 320px; }
-  .sms-reps-btn { height: 56px; width: 56px; border-radius: 16px; background: rgba(255,255,255,0.08); display: grid; place-items: center; color: var(--text); border: none; cursor: pointer; }
-  .sms-reps-btn:active { transform: scale(0.93); background: color-mix(in srgb, var(--rt) 24%, transparent); }
-  .sms-reps-value { text-align: center; font-family: var(--font-mono); font-size: 24px; font-weight: 500; letter-spacing: -0.04em; color: var(--text); }
-  .sms-reps-value small { font-family: var(--font-sans); font-size: 14px; color: var(--text-tertiary); margin-left: 5px; letter-spacing: 0; }
 
   .sms-log {
     display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 12px 8px 12px 14px; border-radius: 20px; background: rgba(255,255,255,0.04);
@@ -682,42 +618,9 @@
   .sms-min-info span { display: block; font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
   .sms-min-expand { color: var(--text-muted); flex-shrink: 0; opacity: 0.6; }
 
-  .chipb {
-    height: 44px; padding: 0 16px; border-radius: 999px; background: rgba(255,255,255,0.06);
-    font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary);
-    border: none; cursor: pointer;
-  }
-  .chipb:active { background: rgba(255,255,255,0.12); }
-
   .sms-dock { padding-top: 20px; }
-  .sms-dock .btn { width: 100%; }
 
   .sms-actions { flex-shrink: 0; margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
-  .sms-act {
-    height: 56px; border-radius: var(--radius-xl);
-    border: 0.5px solid var(--border-medium); background: rgba(255,255,255,0.045);
-    color: var(--text); font-family: var(--font-mono); font-size: 16px; font-weight: 500;
-    letter-spacing: -0.3px; cursor: pointer;
-    transition: background 0.15s, transform 0.12s var(--ease-smooth);
-  }
-  .sms-act:active { transform: scale(0.97); background: rgba(255,255,255,0.09); }
-  .sms-act-restart {
-    display: flex; align-items: center; justify-content: center; gap: 9px;
-    font-family: var(--font-sans); font-size: 16px; font-weight: 500; color: var(--rt);
-    border-color: color-mix(in srgb, var(--rt) 26%, transparent);
-    background: color-mix(in srgb, var(--rt) 7%, transparent);
-  }
-
-  .btn {
-    height: 56px; border-radius: 18px; font-size: 17px; font-weight: 600;
-    display: flex; align-items: center; justify-content: center; gap: 9px; cursor: pointer;
-    transition: transform 0.12s, background 0.15s;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn-pri { background: var(--rt); color: var(--bg); border-color: transparent; box-shadow: 0 8px 26px -12px var(--rt); }
-  .btn-pri:active { background: color-mix(in srgb, var(--rt) 85%, #000); }
-  .btn-lg { height: 56px; font-size: 17px; font-weight: 600; }
-  .btn-sec { background: rgba(255,255,255,0.045); color: var(--text); border-color: var(--border-medium); }
 
   .is-ending { --rt: #ff5b4d; }
   .is-ending .sms-time { color: #ff5b4d; animation: sms-blink 1s ease-in-out infinite; }
@@ -735,14 +638,7 @@
     .sms-card { padding: 12px; }
     .sms-thumb { width: 46px; height: 46px; }
     .sms-ex-name { font-size: 17px; }
-    .sms-weight-value { font-size: 96px; }
-    .sms-weight-value small { font-size: 18px; }
-    .sms-btn { height: 64px; }
-    .sms-reps { grid-template-columns: 48px minmax(0,1fr) 48px; }
-    .sms-reps-btn { height: 48px; width: 48px; }
-    .sms-reps-value { font-size: 20px; }
     .sms-actions { margin-top: 10px; }
-    .sms-act { height: 48px; }
   }
 
   @media (prefers-reduced-motion: reduce) {

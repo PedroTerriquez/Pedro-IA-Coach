@@ -1,104 +1,133 @@
 <script lang="ts">
-  import StepButton from './StepButton.svelte'
   import Icon from './Icon.svelte'
-  import type { Snippet } from 'svelte'
 
+  // 58 circles + 56 figure (40 with sm), no keyboard unless `oninput` (Compartidos · Nuevo)
   let {
-    variant = 'default',
     display = '',
     label = '',
     unit = '',
     name = '',
-    framed = false,
-    layout = 'inline',
+    decLabel = '',
+    incLabel = '',
     size = 'md',
-    accent = 'var(--accent)',
-    tintedInc = false,
-    decimals = false,
     decDisabled = false,
     incDisabled = false,
-    inputClass = '',
-    inputStyle = '',
+    repeat = false,
+    tapToType = false,
+    decimals = false,
     onfocus = undefined,
     onstep,
     oninput = undefined,
-    note
+    ondone = undefined
   }: {
-    /** default = Detalle / rest timer stepper (debt) · sheet = 58 circles + 56 figure, no keyboard (Compartidos · Nuevo) */
-    variant?: 'default' | 'sheet'
     display?: string
     label?: string
     unit?: string
     name?: string
-    framed?: boolean
-    layout?: 'inline' | 'stacked'
-    size?: 'sm' | 'md' | 'lg'
-    accent?: string
-    tintedInc?: boolean
-    decimals?: boolean
+    /** Overrides «Menos {name}» / «Más {name}» */
+    decLabel?: string
+    incLabel?: string
+    size?: 'sm' | 'md'
     decDisabled?: boolean
     incDisabled?: boolean
-    inputClass?: string
-    inputStyle?: string
+    /** Holding − / + keeps stepping, faster the longer it is held */
+    repeat?: boolean
+    /** With `oninput`: the figure shows until tapped, then turns into the field */
+    tapToType?: boolean
+    decimals?: boolean
     onfocus?: (e: FocusEvent) => void
     onstep: (dir: 1 | -1) => void
     oninput?: (e: Event) => void
-    note?: Snippet
+    /** The field closes (blur or Enter) */
+    ondone?: () => void
   } = $props()
+
+  const HOLD_START_MS = 380
+  const HOLD_MIN_MS = 70
+  let holdId: ReturnType<typeof setTimeout> | null = null
+  let typing = $state(false)
+  let field = $state<HTMLInputElement | null>(null)
+
+  let showField = $derived(!!oninput && (!tapToType || typing))
+
+  function holdStart(e: PointerEvent, dir: 1 | -1) {
+    e.preventDefault()
+    holdStop()
+    onstep(dir)
+    let delay = HOLD_START_MS
+    const again = () => {
+      onstep(dir)
+      delay = Math.max(HOLD_MIN_MS, delay * 0.8)
+      holdId = setTimeout(again, delay)
+    }
+    holdId = setTimeout(again, delay)
+  }
+
+  function holdStop() {
+    if (holdId) { clearTimeout(holdId); holdId = null }
+  }
+
+  // With `repeat` the pointer steps; a click without a pointer (keyboard) still does
+  function clicked(e: MouseEvent, dir: 1 | -1) {
+    if (!repeat || e.detail === 0) onstep(dir)
+  }
+
+  function startTyping() {
+    typing = true
+  }
+
+  function stopTyping() {
+    typing = false
+    ondone?.()
+  }
+
+  function focused(e: FocusEvent) {
+    if (tapToType) (e.target as HTMLInputElement).select()
+    onfocus?.(e)
+  }
+
+  $effect(() => { if (typing) field?.focus() })
+  $effect(() => holdStop)
 </script>
 
-{#snippet dec()}
-  <StepButton dir="dec" {size} {accent} disabled={decDisabled} label={name ? `Menos ${name}` : undefined} onclick={() => onstep(-1)} />
-{/snippet}
-{#snippet inc()}
-  <StepButton dir="inc" {size} {accent} tinted={tintedInc} disabled={incDisabled} label={name ? `Más ${name}` : undefined} onclick={() => onstep(1)} />
-{/snippet}
-{#snippet field()}
-  <input
-    class="ns-input {inputClass}"
-    style={inputStyle}
-    value={display}
-    {oninput}
-    {onfocus}
-    readonly={!oninput}
-    placeholder="0"
-    inputmode={decimals ? 'decimal' : 'numeric'}
-    pattern={decimals ? '[0-9.]*' : '[0-9]*'}
-    aria-label={name || label}
-  >
+{#snippet stepButton(dir: 1 | -1)}
+  <button
+    type="button"
+    aria-label={(dir < 0 ? decLabel : incLabel) || (dir < 0 ? (name ? `Menos ${name}` : 'Menos') : (name ? `Más ${name}` : 'Más'))}
+    disabled={dir < 0 ? decDisabled : incDisabled}
+    onclick={(e) => clicked(e, dir)}
+    onpointerdown={repeat ? (e) => holdStart(e, dir) : undefined}
+    onpointerup={repeat ? holdStop : undefined}
+    onpointerleave={repeat ? holdStop : undefined}
+    onpointercancel={repeat ? holdStop : undefined}
+  ><Icon name={dir < 0 ? 'minus' : 'plus'} size={22} /></button>
 {/snippet}
 
-{#if variant === 'sheet'}
-  <div class="stp58" class:sm={size === 'sm'} data-component="NumberStepper">
-    <button type="button" aria-label={name ? `Menos ${name}` : 'Menos'} disabled={decDisabled} onclick={() => onstep(-1)}><Icon name="minus" size={22} /></button>
-    {#if oninput}
-      <label class="stp58-field"><input value={display} {oninput} {onfocus} inputmode="numeric" pattern="[0-9]*" placeholder="0" aria-label={name || label}>{#if unit}<small>{unit}</small>{/if}</label>
-    {:else}
-      <b aria-live="polite">{display}{#if unit}<small>{unit}</small>{/if}</b>
-    {/if}
-    <button type="button" aria-label={name ? `Más ${name}` : 'Más'} disabled={incDisabled} onclick={() => onstep(1)}><Icon name="plus" size={22} /></button>
-  </div>
-{:else}
-<div class="ns {layout} size-{size}" class:framed data-component="NumberStepper">
-  {#if layout === 'stacked'}
-    {#if label}<div class="ns-label">{label}{#if unit}<span class="ns-unit-inline"> · {unit}</span>{/if}</div>{/if}
-    {@render field()}
-    {#if note}{@render note()}{/if}
-    <div class="ns-steps">
-      {@render dec()}
-      {@render inc()}
-    </div>
+<div class="stp58" class:sm={size === 'sm'} class:repeat data-component="NumberStepper">
+  {@render stepButton(-1)}
+  {#if showField}
+    <label class="stp58-field">
+      <input
+        bind:this={field}
+        value={display}
+        {oninput}
+        onfocus={focused}
+        onblur={tapToType ? stopTyping : undefined}
+        onkeydown={tapToType ? (e) => e.key === 'Enter' && stopTyping() : undefined}
+        inputmode={decimals ? 'decimal' : 'numeric'}
+        pattern={decimals ? '[0-9.]*' : '[0-9]*'}
+        placeholder="0"
+        aria-label={name || label}
+        style={tapToType ? `width:${Math.max(2, display.length) + 0.6}ch` : undefined}
+      >{#if unit}<small>{unit}</small>{/if}
+    </label>
+  {:else if tapToType && oninput}
+    <b role="button" tabindex="0" aria-label="Escribir {name || label}" onclick={startTyping} onkeydown={(e) => e.key === 'Enter' && startTyping()}>{display}{#if unit}<small>{unit}</small>{/if}</b>
   {:else}
-    {@render dec()}
-    <div class="ns-val">
-      {@render field()}
-      {#if unit}<span class="ns-unit">{unit}</span>{/if}
-      {#if note}{@render note()}{/if}
-    </div>
-    {@render inc()}
+    <b aria-live="polite">{display}{#if unit}<small>{unit}</small>{/if}</b>
   {/if}
+  {@render stepButton(1)}
 </div>
-{/if}
 
 <style>
   .stp58 { display: grid; grid-template-columns: 58px minmax(0, 1fr) 58px; align-items: center; }
@@ -114,6 +143,7 @@
     cursor: pointer;
   }
   .stp58 button:disabled { opacity: 0.3; cursor: default; }
+  .stp58.repeat button { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
   .stp58 b {
     text-align: center;
     font-family: var(--font-mono);
@@ -156,90 +186,5 @@
     font-weight: 500;
     margin-left: 4px;
     color: var(--text-tertiary);
-  }
-
-  .ns.inline {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .ns.inline.size-lg {
-    gap: 12px;
-    justify-content: space-between;
-    position: relative;
-    z-index: 1;
-  }
-  .ns.framed {
-    background: rgba(0,0,0,0.25);
-    border: 0.5px solid rgba(255,255,255,0.07);
-    border-radius: var(--radius-md);
-    padding: 5px;
-  }
-  .ns.stacked {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-  }
-  .ns.stacked.framed {
-    border-radius: 11px;
-    padding: 8px 6px 7px;
-  }
-  .ns-steps {
-    display: flex;
-    gap: 5px;
-    width: 100%;
-  }
-  .ns-val {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-  }
-  .ns.size-lg .ns-val {
-    gap: 3px;
-  }
-  .ns-input {
-    width: 100%;
-    background: transparent;
-    border: 0;
-    outline: none;
-    text-align: center;
-    font-family: var(--font-mono);
-    font-weight: 500;
-    color: var(--text);
-    line-height: 1;
-    padding: 0;
-  }
-  .ns.size-sm .ns-input {
-    font-size: 24px;
-    letter-spacing: -1px;
-  }
-  .ns.size-md .ns-input {
-    font-size: clamp(16px, 5.3vw, 21px);
-    letter-spacing: -0.8px;
-  }
-  .ns.size-lg .ns-input {
-    font-size: 48px;
-    letter-spacing: -2.2px;
-  }
-  .ns-unit {
-    font-family: var(--font-mono);
-    font-size: 8px;
-    letter-spacing: 1.1px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-  .ns-label {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-  .ns-unit-inline {
-    opacity: 0.7;
   }
 </style>

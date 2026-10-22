@@ -11,7 +11,7 @@ src/
     +page.svelte           → Redirect: new user → /you, otherwise → /today
     today/                 → Session auto-detect, warmup, rest timer, ⌚ watch button
     plan/                  → Plan v2: week switch, week strip, day rows, Reprogramar
-    history/               → Exercise list + muscle filter + sparklines
+    history/               → Historial v2: month calendar + day panel (Días), progress rows (Ejercicios)
     friends/               → Friends + shared/assigned programs
     you/                   → Stats, settings, exercise/program CRUD, JSON import/export, AI import, admin link
   lib/
@@ -26,12 +26,12 @@ src/
     push.ts                → subscribePush, unsubscribePush, sendPushNotification, notifyWatch
     rest-timer.ts          → scheduleRestTimer, adjustRestTimer, restartRestTimer, completeRest, cancelRestTimer, checkPendingRest, nextSetIndex
     exercise-utils.ts      → getExerciseDisplayName (es/en), findById, keyword helpers
-    calendar-utils.ts      → Date/week/day helpers
+    calendar-utils.ts      → Date/week/day helpers, makeDayStatusFn (done/rest/missed/future/none)
+    history-view.ts        → Historial v2: day entries, month bounds, calendar cells, exercise progress, dock
     stores/
       settings.ts          → settings store (reactive, persisted to IndexedDB)
       ui.ts                → toast store, confirm, prompt
-      session.ts           → session (today's date, current view)
-    components/            → 58 Svelte components (TabBar, ExerciseDetail, DetailSheet, WeightPanel, ProgressHero, CoachChat, Calendar, MovementSheet, SessionSteps, RestTimerBanner, MediaPicker, ...)
+    components/            → 58 Svelte components (TabBar, ExerciseDetail, DetailSheet, WeightPanel, ProgressHero, CoachChat, MonthCalendar, HistoryDayPanel, MovementSheet, SessionSteps, RestTimerBanner, MediaPicker, ...)
     data/
       exercise-dictionary.ts → 171 entries + IMG_BASE/EX_GIF_BASE/_IMG/_GIF + resolveExerciseMedia
       warmup.ts              → warmup/stretch sequences by muscle group

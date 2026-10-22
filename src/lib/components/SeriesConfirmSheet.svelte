@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { SetEntry } from '$lib/set-log'
   import WeightRepsStepper from './WeightRepsStepper.svelte'
+  import Button from './Button.svelte'
+  import IconButton from './IconButton.svelte'
+  import Icon from './Icon.svelte'
 
   let {
     name,
@@ -101,9 +104,7 @@
 
 <div class="scs" data-component="SeriesConfirmSheet">
   <header class="scs-top">
-  <button class="scs-close" type="button" aria-label="Cerrar" onclick={onclose}>
-    <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-  </button>
+  <IconButton size="sm" variant="filled" icon="x" label="Cerrar" onclick={onclose} />
   <span class="scs-status">Completado</span>
   <span class="scs-top-gap"></span>
 </header>
@@ -129,10 +130,7 @@
       {:else if isLow(i)}
         <span class="scs-st low">{s.reps - minReps} rep</span>
       {:else}
-        <span class="scs-st ok">
-          <svg width="12" height="10" viewBox="0 0 14 11" fill="none"><path d="M1 5.5l4 4 8-8.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          en rango
-        </span>
+        <span class="scs-st ok"><Icon name="check" size={12} />en rango</span>
       {/if}
     </button>
   {/each}
@@ -146,7 +144,7 @@
         <div class="scs-ed-prev">Registrado: {fmt(orig[sel].weight)} {units} × {orig[sel].reps}</div>
       </div>
       {#if isEdited(sel)}
-        <button class="scs-reset" type="button" onclick={reset}>Restablecer</button>
+        <Button variant="text" size="pill" onclick={reset}>Restablecer</Button>
       {/if}
     </div>
 
@@ -164,20 +162,18 @@
     />
 
     <div class="scs-foot">
-      <button class="scs-pill" type="button" disabled={isLast} onclick={copyDown}>Copiar a las siguientes</button>
-      <button class="scs-pill scs-pill-next" type="button" onclick={nextSet}>
-        {isLast ? 'Listo' : 'Siguiente serie'}
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
+      <Button variant="secondary" size="pill" class="scs-pill" disabled={isLast} onclick={copyDown}>Copiar a las siguientes</Button>
+      <Button variant="secondary" size="pill" class="scs-pill" onclick={nextSet}>
+        {isLast ? 'Listo' : 'Siguiente serie'}<Icon name="arrow" size={14} />
+      </Button>
     </div>
   </section>
 {/if}
 
 <footer class="scs-actions">
-  <button class="scs-save" type="button" disabled={saving} onclick={save}>
-    {saveLabel}
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
+  <Button variant="primary" size="lg" accent="var(--rt)" class="scs-save" disabled={saving} onclick={save}>
+    {saveLabel}<Icon name="arrow" size={18} />
+  </Button>
 </footer>
 </div>
 
@@ -185,12 +181,6 @@
   /* Fills the timer screen so the rows scroll and «Guardar» stays on screen */
   .scs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .scs-top { display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
-  .scs-close {
-    width: 44px; height: 44px; border-radius: var(--radius-full);
-    border: 0.5px solid var(--border-medium); background: rgba(255,255,255,0.04);
-    color: var(--text-secondary); display: grid; place-items: center; cursor: pointer;
-  }
-  .scs-close:active { transform: scale(0.92); }
   .scs-top-gap { width: 44px; }
   .scs-status {
     display: flex; align-items: center; gap: 8px;
@@ -249,34 +239,16 @@
   .scs-ed-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding-left: 4px; }
   .scs-ed-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; color: var(--text); }
   .scs-ed-prev { white-space: nowrap; margin-top: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
-  .scs-reset {
-    height: 44px; padding: 0 12px; border-radius: var(--radius-full); border: 0; background: transparent;
-    color: var(--text-secondary); font-family: var(--font-sans); font-size: 13px; font-weight: 500; cursor: pointer;
-  }
-  .scs-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .scs-pill {
-    height: 48px; border-radius: var(--radius-full); border: 0.5px solid var(--border-medium); background: rgba(255,255,255,0.05);
-    color: var(--text); font-family: var(--font-sans); font-size: 14px; font-weight: 500; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; min-width: 0;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .scs-pill:disabled { opacity: 0.35; cursor: default; }
-  .scs-pill:not(:disabled):active { background: rgba(255,255,255,0.1); }
+  .scs-foot { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 8px; }
+  /* Two Button pills share the row: they fill their half and keep the text whole */
+  .scs .scs-foot :global(.scs-pill) { width: 100%; min-width: 0; padding: 0; gap: 6px; font-size: 14px; font-weight: 500; }
 
   .scs-actions { flex-shrink: 0; margin-top: 14px; display: flex; flex-direction: column; }
-  .scs-save {
-    height: 60px; border-radius: var(--radius-xl); border: 0.5px solid transparent;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    font-family: var(--font-sans); font-size: 18px; font-weight: 600; letter-spacing: -0.3px;
-    background: var(--rt); color: #0a0a0a; cursor: pointer; transition: transform 0.12s;
-  }
-  .scs-save:active { transform: scale(0.98); }
-  .scs-save:disabled { opacity: 0.6; }
 
   @media (max-width: 360px) {
     .scs-foot { grid-template-columns: 1.3fr 1fr; }
-    .scs-pill { font-size: 11.5px; letter-spacing: -0.2px; }
-    .scs-pill svg { display: none; }
+    .scs .scs-foot :global(.scs-pill) { font-size: 11.5px; letter-spacing: -0.2px; }
+    .scs-foot :global(.scs-pill svg) { display: none; }
   }
 
   @media (max-height: 720px) {
@@ -286,8 +258,6 @@
     .scs-row { min-height: 46px; }
     .scs-ed { margin-top: 8px; padding: 8px; gap: 6px; }
     .scs-ed-top { min-height: 38px; }
-    .scs-pill { height: 42px; }
     .scs-actions { margin-top: 10px; }
-    .scs-save { height: 50px; font-size: 16px; }
   }
 </style>

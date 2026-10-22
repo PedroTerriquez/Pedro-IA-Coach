@@ -38,7 +38,7 @@
 </script>
 
 {#if field.kind === 'number'}
-  <NumberStepper variant="sheet" name={field.label.toLowerCase()} display={value} unit={fieldUnit(field, units)} decDisabled={current() <= field.min} onstep={step} />
+  <NumberStepper name={field.label.toLowerCase()} display={value} unit={fieldUnit(field, units)} decDisabled={current() <= field.min} onstep={step} />
 {:else if field.kind === 'option'}
   <OptionList label={field.label} options={field.options} {value} onselect={pick} />
 {:else}

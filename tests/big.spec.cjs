@@ -30,6 +30,7 @@
 const EXPECTED_STEPS = [
   'Step 0: First Run',
   'Step 0b: Plan — Sin programa',
+  'Step 0c: Historial — Sin programa',
   'Step 1: Tú — Mis datos',
   'Step 1b: Tú — Ajustes',
   'Step 2: Tú — Ejercicios',
@@ -37,7 +38,9 @@ const EXPECTED_STEPS = [
   'Step 3: Tú — Programas',
   'Step 4: Hoy — Before The First Workout',
   'Step 4b: Plan — Primera semana',
+  'Step 4c: Historial — Primera vez',
   'Step 5: Tú — Copia de seguridad',
+  'Step 5c: Historial — Antes de entrenar hoy',
   'Step 5b: Amigos — Primera vez y racha viva',
   'Step 6: Plan — Weekdays And Weeks',
   'Step 6b: Plan — Exercise Detail',
@@ -49,6 +52,7 @@ const EXPECTED_STEPS = [
   'Step 8d: Rest Timer — Confirma tus series',
   'Step 8e: Hoy — Press Militar',
   'Step 8f: Hoy — Fondos por una alternativa',
+  'Step 8f2: Hoy — Otra alternativa queda hecha',
   'Step 8g: Hoy — Series por bloque',
   'Step 9: Hoy — Terminar entrenamiento',
   'Step 9a: Hoy — Terminar desde el último ejercicio',
@@ -211,6 +215,7 @@ async function step(name, fn) {
 const WEEKDAY_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const WEEKDAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const WEEKDAY_NAMES_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
 function localDate(daysAgo = 0) {
   const now = new Date()
@@ -428,6 +433,16 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   // Descansos de 5 s (escritos a mano en el editor) para que el test no tarde.
   const REST = 5
 
+  // Historial v2: month header, calendar, the tapped day's panel and its dock
+  const hHeader = page.locator('#history [data-component="PageHeader"]')
+  const hCal = page.locator('[data-component="MonthCalendar"]')
+  const hPanel = page.locator('[data-component="HistoryDayPanel"]')
+  const hDock = page.locator('[data-component="ViewSwitchDock"]')
+  const prevMonth = page.getByRole('button', { name: 'Mes anterior' })
+  const nextMonth = page.getByRole('button', { name: 'Mes siguiente' })
+  const dayCell = (iso) => hCal.getByRole('button', { name: String(Number(iso.slice(8))), exact: true })
+  const sameMonth = (a, b) => a.slice(0, 7) === b.slice(0, 7)
+
   await step('Step 0: First Run', async () => {
     await page.goto('today')
     await expect(page.getByText('Entrenemos.')).toBeVisible()
@@ -449,6 +464,20 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('#plan-days-grid')).toHaveCount(0)
     await expect(todayDock(page)).toContainText('Pégala con IA o créala a mano en Tú')
     await todayDock(page).getByRole('button', { name: /Armar mi rutina/ }).click()
+    await expect(page).toHaveURL(/\/you\/?$/)
+  })
+
+  await step('Step 0c: Historial — Sin programa', async () => {
+    await page.goto('history')
+    await expect(hHeader).toContainText('Sin programa activo')
+    await expect(hPanel).toContainText('Elige un programa para empezar')
+    // The month's shape, nothing to tap and no months to walk
+    await expect(page.locator('[data-component="MonthCalendar"].ghost')).toBeVisible()
+    await expect(hCal.locator('button:enabled')).toHaveCount(0)
+    await expect(prevMonth).toHaveCount(0)
+    await expect(nextMonth).toHaveCount(0)
+    await expect(hDock).toContainText('Se elige en Tú → Programas')
+    await hDock.getByRole('button', { name: /Elegir un programa/ }).click()
     await expect(page).toHaveURL(/\/you\/?$/)
   })
 
@@ -854,7 +883,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('[data-phase="stretch"]')).toContainText('Después')
     await expect(page.locator('[data-component="PhaseCard"]')).toHaveCount(0)
     await expect(page.locator('#today')).not.toContainText(/v\d+\.\d+ ·/)
-    await expect(page.getByRole('button', { name: '↻' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Recargar' })).toBeVisible()
 
     // Without any log the dock greets the first workout
     await expect(todayDock(page).getByRole('button', { name: /Empezar calentamiento/ })).toBeVisible()
@@ -891,6 +920,26 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(todayDock(page)).toContainText('Toca cualquier día para ver sus ejercicios')
     await todayDock(page).getByRole('button', { name: /Empezar mi primer entreno/ }).click()
     await expect(page).toHaveURL(/\/today\/?$/)
+  })
+
+  await step('Step 4c: Historial — Primera vez', async () => {
+    await page.goto('history')
+    // A clean month with today marked, and nowhere else to go
+    await expect(hHeader).toContainText('Aún sin entrenos este mes')
+    await expect(hCal.locator('[data-state="done"]')).toHaveCount(0)
+    await expect(hCal.locator('.now')).toHaveText(String(new Date().getDate()))
+    await expect(hPanel).toContainText('Tu primer entreno aparece aquí')
+    await expect(nextMonth).toBeDisabled()
+    await expect(prevMonth).toBeDisabled()
+    await hDock.getByRole('button', { name: /Ir a entrenar/ }).click()
+    await expect(page).toHaveURL(/\/today\/?$/)
+
+    // Ejercicios before any weight: its own empty state and the same way out
+    await page.goto('history')
+    await hDock.getByRole('button', { name: 'Ejercicios', exact: true }).click()
+    await expect(page.locator('#history')).toContainText('Todavía no hay pesos')
+    await expect(page.locator('[data-component="ExerciseProgressRow"]')).toHaveCount(0)
+    await expect(hDock.getByRole('button', { name: /Ir a entrenar/ })).toBeVisible()
   })
 
   // Filled in by Step 5 from the exported exercises file
@@ -1001,6 +1050,25 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await editSheet.getByRole('button', { name: 'Guardar' }).click()
     await expect(editSheet).toHaveCount(0)
     await expect(card).toContainText('press casero de prueba')
+  })
+
+  await step('Step 5c: Historial — Antes de entrenar hoy', async () => {
+    await page.goto('history')
+    // It opens on the last trained day (the restored copy's, a week ago), with its weights
+    const lastTrained = localDate(7)
+    await expect(dayCell(lastTrained)).toHaveClass(/sel/)
+    await expect(dayCell(lastTrained)).toHaveAttribute('data-state', 'done')
+    await expect(hPanel).toHaveAttribute('data-state', 'done')
+    await expect(hPanel).toContainText('kg')
+    await expect(hPanel).not.toContainText('Sin registrar')
+
+    // Today, still unlogged: what it has and the way to Hoy
+    if (!sameMonth(lastTrained, localDate(0))) await nextMonth.click()
+    await hCal.locator('.now').click()
+    await expect(hPanel).toHaveAttribute('data-state', 'today')
+    await expect(hPanel).toContainText('Hoy toca Empuje')
+    await hPanel.getByRole('button', { name: 'Ir a Hoy' }).click()
+    await expect(page).toHaveURL(/\/today\/?$/)
   })
 
   const registers = () => api.calls.filter((c) => c.path.endsWith('/api/user/register'))
@@ -1263,7 +1331,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
 
     // Hoy follows the plan: today is a rest day now
     await page.goto('today')
-    await expect(page.locator('.hero-title', { hasText: 'Descanso' })).toBeVisible()
+    await expect(page.locator('.page-header-title', { hasText: 'Descanso' })).toBeVisible()
 
     // Back to the routine: Restablecer in the sheet leaves no override behind
     await page.goto('plan')
@@ -1438,8 +1506,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   const timer = page.locator('[data-component="SeriesModeScreen"]')
   const timerTime = timer.locator('.sms-time')
   const serieLabel = timer.locator('.sms-serie-label')
-  const wrsValue = (i) => timer.locator('.wrs-row').nth(i).locator('.wrs-value')
-  const timerMain = timer.locator('.sms-dock .btn-pri')
+  const wrsValue = (i) => timer.locator('[data-component="WeightRepsStepper"] [data-component="NumberStepper"]').nth(i).locator('b')
+  const timerMain = timer.locator('.sms-dock [data-component="Button"]')
   // A 5 s rest running out (with room for a loaded machine)
   const waitPhase = (phase) => expect(timer).toHaveAttribute('data-phase', phase, { timeout: 10000 })
 
@@ -1459,7 +1527,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(serieLabel).toContainText('Serie 1 de 4')
     await expect(timer.locator('.ms-dot.current')).toHaveCount(1)
     await expect(timer.locator('.ms-dot.done')).toHaveCount(0)
-    await expect(timer.locator('.sms-chip')).toContainText('Pecho')
+    await expect(timer.locator('.sms-ex-sub [data-component="Tag"]')).toContainText('Pecho')
     expect(api.startPushes).toBe(pushes0)
     // The first rest queued once; +30 s re-queued it under a new tag, pushed back
     await expect.poll(() => api.restStarts.length).toBe(starts0 + 2)
@@ -1702,7 +1770,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await timer.getByRole('button', { name: 'Subir 2.5 kg' }).click()
     await expect(wrsValue(0)).toContainText('85')
     // Tapping the figure turns it into a field to type in
-    await timer.locator('.wrs-row').nth(1).locator('.wrs-center').click()
+    await wrsValue(1).click()
     await timer.getByLabel('Reps', { exact: true }).fill('9')
     await timer.getByLabel('Reps', { exact: true }).press('Enter')
     await expect(rows.nth(0)).toContainText('85kg×9reps')
@@ -1879,6 +1947,32 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     // One exercise left: the session clock keeps running
     await expect(page.locator('[data-component="SessionClock"]')).toBeVisible()
     expect((await storedSettings(page)).sessionState.endedAt ?? null).toBeNull()
+  })
+
+  await step('Step 8f2: Hoy — Otra alternativa queda hecha', async () => {
+    // Back to Fondos, then a curated alternative with a plain weight log
+    await openRow('Sentadilla Hack')
+    await altTab.click()
+    await alts.getByRole('button', { name: /Volver a Fondos/ }).click()
+    await expect(tnName).toContainText('Fondos')
+    await altTab.click()
+    await alts.locator('.exercise-row').first().click()
+    await expect(registrarTab).toHaveClass(/seg-active/)
+    await expect(tnName).not.toContainText('Fondos')
+    const altName = (await tnName.innerText()).trim()
+
+    await weightInput.fill('20')
+    await logDock(page).getByRole('button', { name: 'Registrar 20 kg' }).click()
+    await expect(savedPanel).toBeVisible()
+    await expect.poll(async () => (await readLogs(page)).some(l => l.date === localDate(0) && l.weight === 20
+      && ![ids.bench, ids.military, ids.dips, ids.long].includes(l.exerciseId))).toBe(true)
+
+    // Back on Hoy, the slot shows the alternative, marked as done
+    await closeDetail()
+    const altRow = page.locator('[data-component="ExerciseRow"]', { hasText: altName })
+    await expect(altRow).toHaveAttribute('data-done', 'true')
+    await expect(altRow.locator('.xc-ok')).toBeVisible()
+    await expect(page.locator('[data-component="ExerciseRow"]', { hasText: 'Sentadilla Hack' })).toHaveCount(0)
   })
 
   await step('Step 8g: Hoy — Series por bloque', async () => {
@@ -2111,17 +2205,33 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   })
 
   await step('Step 10: Historial — Constancia', async () => {
+    // Rewritten for Historial v2 with Pedro's yes (2026-10-22). It keeps the
+    // promise of the old one: today's session (was the «Completado» pill in
+    // .cal-detail), names resolved and never a raw exercise id, and a row
+    // opening the detail with its alternatives and its history.
     await page.goto('history')
-    // Today's session, with resolved names — never a raw exercise id
-    await expect(page.locator('body')).toContainText('Completado')
-    const dayDetail = page.locator('.cal-detail')
-    await expect(dayDetail).toContainText('Press de Banca')
-    await expect(dayDetail).toContainText('Press Militar')
+    await expect(hHeader.locator('.page-header-title')).toHaveText(`${MONTHS_ES[new Date().getMonth()]}.`)
+    await expect(hHeader).toContainText(/\d+ entrenos? este mes/)
+    await expect(hCal.locator('.now')).toHaveClass(/sel/)
+    await expect(hCal.locator('.now')).toHaveAttribute('data-state', 'done')
+    await expect(hPanel).toHaveAttribute('data-state', 'done')
+
+    // Exactly what was logged today: the alternative instead of Fondos, which has no log
+    const todayLogs = (await readLogs(page)).filter(l => l.date === localDate(0) && l.weight > 0 && l.exerciseId !== '__day__')
+    expect(todayLogs.some(l => l.exerciseId === ids.dips)).toBe(false)
+    await expect(hPanel.locator('.exercise-row')).toHaveCount(todayLogs.length)
+    const benchRow = hPanel.locator('.exercise-row', { hasText: 'Press de Banca con Barra' })
+    await expect(benchRow).toContainText('85 kg')
+    await expect(hPanel.locator('.exercise-row', { hasText: 'Press Militar' })).toContainText(/\d+ kg/)
+    await expect(hPanel.locator('.exercise-row', { hasText: 'Sentadilla Hack' })).toContainText('60 kg')
     const bodyText = await page.locator('body').textContent()
     for (const id of Object.values(ids)) expect(bodyText).not.toContain(id)
+    // No streak card and no red words for a missed day
+    for (const word of ['Racha actual', 'Faltaste', 'No fuiste']) await expect(page.locator('body')).not.toContainText(word)
 
     // A row of the day opens the same detail, with its alternatives too
-    await dayDetail.locator('.exercise-row', { hasText: 'Banca' }).first().click()
+    await benchRow.click()
+    await expect(sheetHead(page)).toContainText(/Empuje · 1 de \d+/)
     await expect(page.getByRole('button', { name: 'Buscar en Google' })).toBeVisible()
     await expect(altTab).toHaveCount(1)
 
@@ -2139,31 +2249,97 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await list.getByRole('button', { name: 'Ver las 8 sesiones' }).click()
     await expect(list.locator('.hr')).toHaveCount(8)
     await closeDetail()
+
+    // A rest day: recovery, nothing to mark (this month, or the one before)
+    const restCell = hCal.locator('[data-state="rest"]').first()
+    const wentBack = !(await restCell.count())
+    if (wentBack) await prevMonth.click()
+    await restCell.click()
+    await expect(hPanel).toContainText('Día de recuperación')
+    await expect(page.getByRole('button', { name: /Marcar como hecho/ })).toHaveCount(0)
+    if (wentBack) await nextMonth.click()
+
+    // A workout still ahead this month: what it has, dimmed, nothing to mark
+    const future = hCal.locator('[data-state="future"]')
+    const ahead = Math.min(await future.count(), 7)
+    for (let i = 0; i < ahead; i++) {
+      await future.nth(i).click()
+      if (await hPanel.getByText('Lo que toca', { exact: true }).count()) {
+        await expect(hPanel.locator('.exercise-row').first()).toBeVisible()
+        await expect(page.getByRole('button', { name: /Marcar como hecho/ })).toHaveCount(0)
+        break
+      }
+    }
+
+    // Months: nothing after this one; back to the oldest log's, where ‹ turns off
+    await expect(nextMonth).toBeDisabled()
+    for (let i = 0; i < 3 && await prevMonth.isEnabled(); i++) await prevMonth.click()
+    await expect(prevMonth).toBeDisabled()
+    const oldest = localDate(27)
+    await expect(hHeader.locator('.page-header-title')).toHaveText(`${MONTHS_ES[Number(oldest.slice(5, 7)) - 1]}.`)
   })
 
   await step('Step 10b: Historial — Ejercicios', async () => {
-    await page.getByRole('button', { name: 'Ejercicios' }).click()
-    const cards = page.locator('.ex-card')
-    await expect(cards.first()).toBeVisible()
-    const all = await cards.count()
+    // Rewritten for Historial v2 with Pedro's yes (2026-10-22). Same promise
+    // as the .ex-card version: last weight, how much it went up («+25.0» is
+    // now «+25 kg»), its trend line, no empty chip, filter by muscle and back.
+    await hDock.getByRole('button', { name: 'Ejercicios', exact: true }).click()
+    const rows = page.locator('[data-component="ExerciseProgressRow"]')
+    await expect(rows.first()).toBeVisible()
+    const all = await rows.count()
     expect(all).toBeGreaterThanOrEqual(5)
-    // Press Banca: last 85 kg, +25 since the first restored 60, with its sparkline
-    const benchCard = cards.filter({ hasText: 'Press de Banca con Barra' })
-    await expect(benchCard.locator('.ex-last')).toContainText('85')
-    await expect(benchCard.locator('.ex-delta')).toContainText('+25.0')
-    await expect(benchCard.locator('.ex-sparkline-placeholder')).toHaveCount(0)
+    // Only what has logs, the latest first; exercises never logged don't show
+    await expect(rows.first()).toContainText('· hoy')
+    await expect(rows.filter({ hasText: 'Ejercicio Inventado X7' })).toHaveCount(0)
+    await expect(rows.filter({ hasText: 'Curl de Bíceps' })).toHaveCount(0)
+    // Press Banca: last 85 kg, +25 since the first restored 60, with its trend line
+    const benchRow = rows.filter({ hasText: 'Press de Banca con Barra' })
+    await expect(benchRow).toContainText('85 kg')
+    await expect(benchRow).toContainText('+25 kg')
+    await expect(benchRow).toContainText('Pecho · hoy')
+    await expect(benchRow.locator('svg')).toHaveCount(1)
     // Peso Muerto came only from the copy: 90 → 100
-    await expect(cards.filter({ hasText: 'Peso Muerto' }).locator('.ex-delta')).toContainText('+10.0')
+    await expect(rows.filter({ hasText: 'Peso Muerto' })).toContainText('+10 kg')
 
     // No empty chip for the exercise without a muscle
-    await expect(page.locator('.chips-row button').filter({ hasText: /^\s*$/ })).toHaveCount(0)
+    const chips = page.locator('#history [data-component="ChipRow"] [data-component="FilterChip"]')
+    await expect(chips.filter({ hasText: /^\s*$/ })).toHaveCount(0)
     // Filter by one muscle (Peso Muerto's, from the dictionary), then back to all
-    const chip = page.locator('.chips-row').getByText('Isquiotibiales', { exact: true })
-    await chip.click()
-    await expect(cards.filter({ hasText: 'Peso Muerto' })).toHaveCount(1)
-    await expect(cards.filter({ hasText: 'Banca' })).toHaveCount(0)
-    await page.locator('.chips-row').getByText('Todos', { exact: true }).click()
-    await expect(cards).toHaveCount(all)
+    await chips.filter({ hasText: /^Isquiotibiales$/ }).click()
+    await expect(rows).toHaveCount(1)
+    await expect(rows).toContainText('Peso Muerto')
+    await expect(page.locator('#history')).toContainText('1 de Isquiotibiales')
+    await chips.filter({ hasText: /^Todos$/ }).click()
+    await expect(rows).toHaveCount(all)
+
+    // The whole row opens the detail
+    await benchRow.click()
+    await expect(detail).toBeVisible()
+    await closeDetail()
+
+    // Editar: a pencil per row, and the row no longer opens the detail
+    await page.getByRole('button', { name: 'Editar', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Listo', exact: true })).toBeVisible()
+    await expect(rows.getByRole('button', { name: /^Editar / })).toHaveCount(all)
+    await rows.first().locator('.n').click()
+    await expect(detail).toHaveCount(0)
+    // The same editor as Tú, with Eliminar; renaming shows and is saved
+    const editSheet = page.locator('#edit-exercise-sheet')
+    const rename = async (from, to) => {
+      await rows.filter({ hasText: from }).getByRole('button', { name: /^Editar / }).click()
+      await expect(editSheet.getByRole('button', { name: 'Eliminar ejercicio' })).toBeVisible()
+      await editSheet.getByLabel('Nombre').fill(to)
+      await editSheet.getByRole('button', { name: 'Guardar' }).click()
+      await expect(editSheet).toHaveCount(0)
+      await expect(rows.filter({ hasText: to })).toHaveCount(1)
+      await expect.poll(async () => (await readExercises(page)).find(e => e.id === ids.long)?.name).toBe(to)
+    }
+    // (a name the dictionary doesn't know, so the row shows it as typed)
+    await rename('Flexiones dinámicas', 'Movimiento Inventado Q4')
+    await rename('Movimiento Inventado Q4', EX.long.name)
+    await page.getByRole('button', { name: 'Listo', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Editar', exact: true })).toBeVisible()
+    await expect(rows.getByRole('button', { name: /^Editar / })).toHaveCount(0)
   })
 
   await step('Step 11: Amigos — Liga después de entrenar', async () => {
@@ -2346,8 +2522,37 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(banner).toContainText('Sin conexión')
     // The league line says how old it is
     await expect(page.locator('#plan-week-strip')).toContainText(/Liga actualizada a las \d{2}:\d{2}\. Se refresca al volver la señal/)
+    // Historial opens (was: its «Constancia» tab visible — now «Días», with Pedro's yes 2026-10-22)
     await page.goto('history')
-    await expect(page.getByRole('button', { name: 'Constancia' })).toBeVisible({ timeout: 5000 })
+    await expect(hDock.getByRole('button', { name: 'Días', exact: true })).toBeVisible({ timeout: 5000 })
+    await expect(hDock).toContainText('Tu historial está guardado en tu teléfono')
+
+    // Marking a past workout as done works without internet
+    if (await prevMonth.isEnabled()) await prevMonth.click()
+    const missed = hCal.locator('[data-state="missed"]').first()
+    const marked = Number(await missed.textContent())
+    const doneBefore = await hCal.locator('[data-state="done"]').count()
+    await missed.click()
+    await expect(hPanel).toHaveAttribute('data-state', 'missed')
+    await expect(hPanel).toContainText('Sin registrar')
+    await expect(hPanel).toContainText('¿Lo hiciste y no lo anotaste?')
+    await expect(hDock).toContainText('Marcar funciona sin internet')
+    await hPanel.getByRole('button', { name: /Marcar como hecho/ }).click()
+    const markedCell = hCal.getByRole('button', { name: String(marked), exact: true })
+    await expect(markedCell).toHaveAttribute('data-state', 'done')
+    await expect(hPanel).toContainText('Marcado a mano · sin pesos')
+    await expect(hDock).toContainText('Listo. Ya cuenta en tu semana.')
+    await expect(hCal.locator('[data-state="done"]')).toHaveCount(doneBefore + 1)
+    await expect(hHeader).toContainText(`● ${doneBefore + 1} entreno`)
+    let dayMark = null
+    await expect.poll(async () => {
+      dayMark = (await readLogs(page)).find(l => l.exerciseId === '__day__' && Number(l.date.slice(8)) === marked)
+      return !!dayMark
+    }).toBe(true)
+    await page.reload()
+    if (!sameMonth(dayMark.date, localDate(0))) await prevMonth.click()
+    await expect(dayCell(dayMark.date)).toHaveAttribute('data-state', 'done')
+
     await page.goto('today')
     await page.reload()
     await expect(banner).toBeVisible()
@@ -2895,6 +3100,16 @@ function readLogs(page) {
     const req = indexedDB.open('coach-pedro-ai', 2)
     req.onsuccess = () => {
       const get = req.result.transaction('exerciseLogs', 'readonly').objectStore('exerciseLogs').getAll()
+      get.onsuccess = () => { req.result.close(); resolve(get.result) }
+    }
+  }))
+}
+
+function readExercises(page) {
+  return page.evaluate(() => new Promise((resolve) => {
+    const req = indexedDB.open('coach-pedro-ai', 2)
+    req.onsuccess = () => {
+      const get = req.result.transaction('exercises', 'readonly').objectStore('exercises').getAll()
       get.onsuccess = () => { req.result.close(); resolve(get.result) }
     }
   }))

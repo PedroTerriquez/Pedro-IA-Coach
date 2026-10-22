@@ -1,10 +1,9 @@
 <script lang="ts">
-  let { options, value = $bindable(), accent = 'var(--accent)', size = 'md', label = undefined, onchange = undefined }: {
+  let { options, value = $bindable(), size = 'tabs', label = undefined, onchange = undefined }: {
     options: { label: string; value: string; id?: string }[]
     value: string
-    accent?: string
-    /** md = old full-width control (debt) · compact = 38 high, inside a NavRow (kg/lb) · tabs = 44 equal tabs of Detalle v2 */
-    size?: 'md' | 'compact' | 'tabs'
+    /** compact = 38 high, inside a NavRow (kg/lb) · tabs = 44 equal tabs (Detalle v2, Historial) */
+    size?: 'compact' | 'tabs'
     label?: string
     onchange?: (value: string) => void
   } = $props()
@@ -22,7 +21,6 @@
       id={opt.id}
       class="seg-btn"
       class:seg-active={value === opt.value}
-      style={value === opt.value && size === 'md' ? `color:${accent}` : ''}
       aria-pressed={value === opt.value}
       onclick={() => pick(opt.value)}
       type="button"

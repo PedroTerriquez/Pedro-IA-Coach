@@ -12,7 +12,7 @@
   import WarmupAdminTab from '$lib/components/WarmupAdminTab.svelte'
   import MediaPickerDialog from '$lib/components/MediaPickerDialog.svelte'
   import SearchInput from '$lib/components/SearchInput.svelte'
-  import Chip from '$lib/components/Chip.svelte'
+  import Tag from '$lib/components/Tag.svelte'
   import ChipRow from '$lib/components/ChipRow.svelte'
   import FilterChip from '$lib/components/FilterChip.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
@@ -242,7 +242,7 @@
       {/if}
     </div>
     {#if !isDev}
-      <Chip>solo lectura</Chip>
+      <Tag>solo lectura</Tag>
     {/if}
   </div>
 

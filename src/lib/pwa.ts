@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.91'
-const _VER_DESC = 'Plan v2: semana en franja, hoy abierto, Reprogramar en hoja'
-const _VER_TIME = '2026-10-21 16:41'
+const _VER_BASE = 'v2.92'
+const _VER_DESC = 'Historial v2: mes en grande, día con pesos, Ejercicios; modo serie y limpieza'
+const _VER_TIME = '2026-10-22 09:38'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

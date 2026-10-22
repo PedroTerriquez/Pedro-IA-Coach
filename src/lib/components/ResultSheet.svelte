@@ -39,7 +39,7 @@
       <div class="file"><b>{result.file.name}</b><span>{result.file.meta}</span></div>
     {/if}
     {#if result.stats?.length}
-      <StatsGrid variant="tiles" columns={result.stats.length === 2 ? 2 : 3}>
+      <StatsGrid columns={result.stats.length === 2 ? 2 : 3}>
         {#each result.stats as s}<StatBlock variant="tile" size="md" value={s.value} label={s.label} />{/each}
       </StatsGrid>
     {/if}
