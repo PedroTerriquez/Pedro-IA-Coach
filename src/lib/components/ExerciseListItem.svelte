@@ -3,6 +3,7 @@
   import { muscleLabel } from '$lib/exercise-utils'
   import type { Exercise } from '$lib/types'
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
 
   // Closed row of Tú › Ejercicios: thumbnail, name and muscle. Opening it shows
   // ExerciseCard in its place. `nav` = a row that just opens something (Sin coincidencia).
@@ -19,7 +20,7 @@
 </script>
 
 <div class="xo" class:dimmed data-component="ExerciseListItem" data-exercise-id={exercise.id}>
-  <button type="button" class="exercise-toggle" aria-expanded={nav ? undefined : false} onclick={() => ontoggle(exercise.id)}>
+  <button type="button" class="exercise-toggle" data-testid={TID.exerciseToggle} aria-expanded={nav ? undefined : false} onclick={() => ontoggle(exercise.id)}>
     {#if media.imgUrl}
       <img src={media.imgUrl} alt="" class="thumb" loading="lazy">
     {:else}

@@ -4,6 +4,7 @@
   import Button from './Button.svelte'
   import IconButton from './IconButton.svelte'
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
 
   let {
     name,
@@ -120,7 +121,7 @@
 
 <section class="scs-rows" bind:this={rowsEl}>
   {#each sets as s, i}
-    <button class="scs-row" class:is-sel={i === sel} class:is-auto={isAuto(i)} type="button" aria-label="Serie {i + 1}" aria-pressed={i === sel} onclick={() => select(i)}>
+    <button class="scs-row" data-testid={TID.confirmRow} class:is-sel={i === sel} class:is-auto={isAuto(i)} type="button" aria-label="Serie {i + 1}" aria-pressed={i === sel} onclick={() => select(i)}>
       <span class="scs-n">{i + 1}</span>
       <span class="scs-val">{fmt(s.weight)}<small>{units}</small><i>×</i>{s.reps}<small>reps</small></span>
       {#if isEdited(i)}
@@ -171,7 +172,7 @@
 {/if}
 
 <footer class="scs-actions">
-  <Button variant="primary" size="lg" accent="var(--rt)" class="scs-save" disabled={saving} onclick={save}>
+  <Button variant="primary" size="lg" accent="var(--rt)" class="scs-save" testId={TID.confirmSave} disabled={saving} onclick={save}>
     {saveLabel}<Icon name="arrow" size={18} />
   </Button>
 </footer>

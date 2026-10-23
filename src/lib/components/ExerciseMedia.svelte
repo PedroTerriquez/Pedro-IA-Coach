@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DEFAULT_EXERCISE_IMG } from '$lib/data/exercise-dictionary'
   import { online } from '$lib/stores/network'
+  import { settings } from '$lib/stores/settings'
   import Icon from './Icon.svelte'
 
   // The 112 px media strip of Detalle v2. Exercises show their photo with
@@ -19,7 +20,7 @@
   let canAnimate = $derived(kind === 'exercise' && !!gifUrl && !!imgUrl && gifUrl !== imgUrl)
   let moveSrc = $derived(gifUrl || imgUrl)
   let exerciseSrc = $derived(showGif && canAnimate ? gifUrl : imgUrl || gifUrl || DEFAULT_EXERCISE_IMG)
-  let query = $derived(encodeURIComponent(searchName + ' exercise'))
+  let query = $derived(encodeURIComponent(`${searchName} ${$settings.language === 'en' ? 'form' : 'técnica'}`))
 
   // Moving to another exercise starts again on its photo
   $effect(() => {
@@ -27,19 +28,21 @@
     showGif = false
   })
 
-  function searchGoogle() {
-    location.href = `https://www.google.com/search?tbm=video&q=${query}`
+  // udm=7 is Google's Videos tab
+  function googleVideoUrl(q: string) {
+    return `https://www.google.com/search?udm=7&q=${q}`
   }
 
-  function searchTikTok() {
-    location.href = `https://www.tiktok.com/search?q=${query}`
+  function tiktokUrl(q: string) {
+    return `https://www.tiktok.com/search/video?q=${q}`
   }
 </script>
 
+<!-- Real links in a new tab: iOS opens Safari / TikTok on top and the PWA keeps its state -->
 {#snippet pills()}
   <div class="pills">
-    <button type="button" class="img-p" aria-label="Buscar en Google" onclick={searchGoogle}><Icon name="search" size={15} />Google</button>
-    <button type="button" class="img-p" aria-label="Buscar en TikTok" onclick={searchTikTok}><Icon name="play" size={14} />TikTok</button>
+    <a class="img-p" href={googleVideoUrl(query)} target="_blank" rel="noopener" aria-label="Buscar en Google"><Icon name="search" size={15} />Google</a>
+    <a class="img-p" href={tiktokUrl(query)} target="_blank" rel="noopener" aria-label="Buscar en TikTok"><Icon name="play" size={14} />TikTok</a>
   </div>
 {/snippet}
 
@@ -116,6 +119,7 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
+    text-decoration: none;
     cursor: pointer;
   }
   .big { position: fixed; inset: 0; z-index: 160; display: grid; place-items: center; padding: 20px; background: var(--cv-scrim); }

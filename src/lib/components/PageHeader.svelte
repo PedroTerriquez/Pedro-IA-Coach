@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import TID from '$lib/test-ids.json'
 
   let { eyebrow, title, sub = '', action, titleExtra }: {
     eyebrow: string
@@ -13,12 +14,12 @@
 
 <div class="page-header with-action" data-component="PageHeader">
   <div class="min-0">
-    <div class="page-header-eyebrow">{eyebrow}</div>
-    <div class="page-header-title">
+    <div class="page-header-eyebrow" data-testid={TID.pageEyebrow}>{eyebrow}</div>
+    <div class="page-header-title" data-testid={TID.pageTitle}>
       {title}
       {#if titleExtra}{@render titleExtra()}{/if}
     </div>
-    {#if sub}<div class="page-header-sub">{sub}</div>{/if}
+    {#if sub}<div class="page-header-sub" data-testid={TID.pageSub}>{sub}</div>{/if}
   </div>
   {#if action}{@render action()}{/if}
 </div>

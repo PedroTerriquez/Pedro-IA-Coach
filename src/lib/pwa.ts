@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.92'
-const _VER_DESC = 'Historial v2: mes en grande, día con pesos, Ejercicios; modo serie y limpieza'
-const _VER_TIME = '2026-10-22 09:38'
+const _VER_BASE = 'v2.93'
+const _VER_DESC = 'Buscador Google/TikTok arreglado, IA revisa el programa, hojas se cierran deslizando'
+const _VER_TIME = '2026-10-23 00:21'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
 
   let { name, imgUrl, done = false, onclick, variant = 'plan', sub = '', right = '', state = '', pips = undefined, chevron = false }: {
     /** session = 76 row of Hoy v2 and Detalle v2 · plan = 64 row inside an open day (Plan v2, Historial v2) */
@@ -26,7 +27,7 @@
 <button class="exercise-row xc {state}" data-component="ExerciseRow" data-done={state === 'done' ? 'true' : 'false'} data-state={state || 'pending'} {onclick} type="button">
   {#if imgUrl}<img class="xc-img" src={imgUrl} alt="" />{:else}<span class="xc-img ph"></span>{/if}
   <span class="xc-text">
-    <span class="xc-n">{name}</span>
+    <span class="xc-n" data-testid={TID.exerciseName}>{name}</span>
     {#if sub}<span class="xc-s">{sub}</span>{/if}
     {#if pips}
       <span class="pips" aria-label="{pips.on} de {pips.total} series">
@@ -35,7 +36,7 @@
     {/if}
   </span>
   {#if state === 'done'}
-    <span class="xc-ok"><Icon name="check" size={16} /></span>
+    <span class="xc-ok" data-testid={TID.exerciseDoneMark}><Icon name="check" size={16} /></span>
   {:else if chevron}
     <span class="xc-chev"><Icon name="chev" size={16} /></span>
   {:else if right}

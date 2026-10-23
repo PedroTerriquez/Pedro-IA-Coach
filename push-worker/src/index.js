@@ -54,13 +54,16 @@ const WEEKS_SCHEMA = {
     type: 'object',
     properties: {
       name: { type: 'string' },
-      tag: { type: 'string', enum: ['VOLUMEN', 'FUERZA', 'RESISTENCIA'] },
+      // Free string: the prompts allow "" when no tag applies
+      tag: { type: 'string' },
       days: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
             name: { type: 'string' },
+            // 1=lunes … 7=domingo; without it Gemini's structured output drops the day the prompts ask for
+            weekday: { type: 'integer' },
             subtitle: { type: 'string' },
             duration_min: { type: 'number' },
             exercises: {

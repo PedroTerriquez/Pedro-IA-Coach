@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte'
   import ExerciseRow from './ExerciseRow.svelte'
+  import TID from '$lib/test-ids.json'
   import type { PhaseView, PhaseKey } from '$lib/session-steps'
 
   // Hoy v2: the three numbered steps. Only the current one is unfolded; the
@@ -38,7 +39,7 @@
       </section>
     {:else}
       <section class="ph" data-phase={ph.key} data-state={ph.state}>
-        <button type="button" class="ph-row" class:done={ph.state === 'done'} aria-expanded={!!expanded[ph.key]} onclick={() => toggle(ph.key)}>
+        <button type="button" class="ph-row" data-testid={TID.phaseToggle} class:done={ph.state === 'done'} aria-expanded={!!expanded[ph.key]} onclick={() => toggle(ph.key)}>
           {#if ph.state === 'done'}
             <span class="ph-i ok"><Icon name="check" size={16} /></span>
           {:else}

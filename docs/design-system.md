@@ -24,13 +24,13 @@ Las cards no se dibujan a mano: `scripts/ds/` abre la app real con Playwright, l
 ```bash
 npm run build && npm run preview -- --port 8080 --strictPort   # en otra terminal
 node scripts/ds/build.mjs                 # todo
-node scripts/ds/build.mjs hoy plan        # solo esos grupos: hoy, plan, historial, amigos, tu, shell, compartidos
+node scripts/ds/build.mjs hoy plan        # solo esos grupos: hoy, plan, historial, temporizador, amigos, tu, shell, compartidos
 node scripts/ds/preview.mjs /tmp/ds vistas/hoy   # PNGs + /tmp/ds/_sheet.png
 ```
 
 ## Cómo se suben
 
-Con la herramienta DesignSync, desde `design-system/` como `localDir`: `list_files` → `finalize_plan` (las rutas que cambiaron + `_ds_manifest.json`) → `write_files`. Antes de subir, correr `node scripts/ds/manifest.mjs`: regenera `_ds_manifest.json`, el índice del que el panel saca su lista de cards. Sin subir ese archivo las cards quedan en el proyecto pero el panel no las muestra (no se recompila solo, y `register_assets` no lo cambia). Las cards hechas a mano en Claude Design se agregan a `handMade` en ese script. Nunca reemplazo total: se suben las cards del grupo tocado. Si una card desaparece, se borra con `delete_files`.
+Con la herramienta DesignSync, desde `design-system/` como `localDir`: `list_files` → `finalize_plan` (las rutas que cambiaron + `_ds_manifest.json`) → `write_files`. Antes de subir, correr `node scripts/ds/manifest.mjs`: regenera `_ds_manifest.json`, el índice del que el panel saca su lista de cards. Sin subir ese archivo las cards quedan en el proyecto pero el panel no las muestra (no se recompila solo, y `register_assets` no lo cambia). Las cards hechas a mano en Claude Design se agregan a `handMade` en ese script (hoy no hay ninguna). Normalmente se suben solo las cards del grupo tocado; si una card desaparece, se borra con `delete_files`. Desde la limpieza del 2026-10-22 el proyecto tiene solo lo generado: cualquier ruta remota que no esté en `design-system/` sobra.
 
 ## Formato de card
 
@@ -39,23 +39,24 @@ Con la herramienta DesignSync, desde `design-system/` como `localDir`: `list_fil
 
 ## Grupos
 
+Todo lo genera el script y refleja la app actual; no hay sufijos ni archivo de versiones viejas.
+
 | Grupo | Carpeta | Contenido |
 |---|---|---|
 | Hoy, Plan, Historial, Amigos, Tú | `vistas/<vista>/` | Pantallas por estado + componentes propios de la vista |
+| Temporizador | `vistas/temporizador/` | `SeriesModeScreen` (descanso, serie registrada, últimos segundos, terminado), `SeriesConfirmSheet` y `RestTimerBanner` |
 | Detalle de ejercicio | `vistas/detalle-ejercicio/` | La hoja `ExerciseDetail` y sus pestañas |
 | Shell | `shell/` | TabBar, Toast, banners |
-| Compartidos | `compartidos/` | Button, chips, inputs, etc. |
-| Foundations | `foundations/` | Hecha a mano, no la genera el script |
-| `<Vista> · Actual` | `vistas/<vista>2/` | Lo que la app muestra hoy, generado por el script (`Tú · Actual`, `Hoy · Actual` en `vistas/hoy2/`, `Detalle de ejercicio · Actual` en `vistas/detalle-ejercicio2/` y `Plan · Actual` en `vistas/plan2/`). Junto a `· Nuevo` (propuestas). No hay archivo: las cards que una `· Actual` reemplaza se borran |
-| Nuevo · … | `components/<tema>/` | Propuestas todavía no implementadas (ej. `Nuevo · Hoy`). No tienen copia local: se listan en `handMade` de `manifest.mjs`. Al implementarse se conservan como referencia (no se borran) y su vista se regenera en una carpeta nueva; las cards viejas se borran |
+| Compartidos | `compartidos/` | Chips, segmented, PageHeader, Card |
+
+Las propuestas de diseño se piden en Claude Design sobre estas cards; al implementarse, se regenera la vista y la propuesta se borra.
 
 ## Sin card todavía
 
-`/admin` y sus componentes (solo desarrollo), `DebugAIToggle` (solo visible con debug IA activo) y `SeriesModeScreen`/`SeriesConfirmSheet` (el descanso a pantalla completa).
+`/admin` y sus componentes (solo desarrollo) y `DebugAIToggle` (solo visible con debug IA activo).
 
-## Pendiente — arreglar en Claude Design a mano (2026-10-14)
+## Pendiente
 
-- **`manifest.mjs` está desfasado del proyecto**: el `_ds_manifest.json` remoto tiene propuestas que `handMade` no lista (`Tú · Nuevo`, `Plan · Nuevo`, `Compartidos · Nuevo`…). Subir el que genera el script las borraría del panel: hasta alinearlo, bajar el remoto (`get_file`) y agregarle solo las cards nuevas.
-- **Tú v2**: el recorrido `tu` solo cubre Ejercicios (`vistas/tu2/`, 2026-10-14). Falta el walk de `NavGroup`, `ProgramEditor`, `YouHub`, `SettingsScreen`, `BackupScreen`, `ProgramsScreen`, `ProfileData`, `ProfileSheet`, `UnmatchedScreen`.
-- **Atomos de Compartidos** `button`, `inputs`, `section-label`, `empty`, `debug`: sus colectores se perdieron con Tú v2 → salen "sin muestras" y las cards quedan viejas. En particular **`SectionLabel`** cambió (nueva prop `sentence`, sin mayúsculas) y su card (Oct 7) ya no refleja el código.
+- **Tú v2**: el recorrido `tu` solo cubre Ejercicios (`vistas/tu/`). Falta el walk de `NavGroup`, `ProgramEditor`, `YouHub`, `SettingsScreen`, `BackupScreen`, `ProgramsScreen`, `ProfileData`, `ProfileSheet`, `UnmatchedScreen`.
+- **Atomos de Compartidos** `button`, `inputs`, `section-label`, `empty`, `debug`: sus colectores se perdieron con Tú v2 → salen "sin muestras" y no tienen card (se borraron las viejas el 2026-10-22).
 - El recorrido de **Amigos** ya no captura la card de "Cambiar usuario": el lápiz "Editar usuario" (`ProfileSheet`) quedó oculto el 2026-10-14, así que ese flujo no es alcanzable (líneas comentadas en `groups.mjs`).

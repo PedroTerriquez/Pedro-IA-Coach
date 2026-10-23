@@ -1,0 +1,23 @@
+{
+  "pageTitle": "page-title",
+  "pageEyebrow": "page-eyebrow",
+  "pageSub": "page-sub",
+  "detailName": "detail-name",
+  "detailNav": "detail-nav",
+  "detailScroll": "detail-scroll",
+  "phaseToggle": "phase-toggle",
+  "exerciseName": "exercise-name",
+  "exerciseDoneMark": "exercise-done-mark",
+  "exerciseToggle": "exercise-toggle",
+  "dayTitle": "day-title",
+  "dragSlot": "drag-slot",
+  "dragHandle": "drag-handle",
+  "seriesTime": "series-time",
+  "seriesLabel": "series-label",
+  "seriesDot": "series-dot",
+  "confirmRow": "confirm-row",
+  "confirmSave": "confirm-save",
+  "blockField": "block-field",
+  "searchResult": "search-result",
+  "searchResultName": "search-result-name"
+}

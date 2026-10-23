@@ -1,6 +1,7 @@
 <script lang="ts">
   import DayRow from './DayRow.svelte'
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
   import type { DayRowView } from '$lib/plan-week'
 
   // Mover (Plan · Nuevo · 02): hold the 44 px grip at the right and drop the day
@@ -87,6 +88,7 @@
     {@const isTarget = dragging && calIdx !== dragIdx && calIdx === hoverIdx && !fixed[calIdx]}
     <div
       class="drag-slot"
+      data-testid={TID.dragSlot}
       class:target={isTarget}
       style:transform={isDragging ? `translate(${dragX}px, ${dragY}px) scale(1.02)` : ''}
       style:z-index={isDragging ? 50 : 1}
@@ -100,6 +102,7 @@
             <button
               type="button"
               class="drag-handle"
+              data-testid={TID.dragHandle}
               aria-label="Mover {row.title}"
               onpointerdown={(e) => startDrag(e, calIdx)}
               onpointermove={moveDrag}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
 
   // A day opened with its exercises (Plan · Nuevo · TodayCard). Today gets the
   // lighter fill, the white ring and «Hoy» in mono; done turns the ring accent.
@@ -22,7 +23,7 @@
     <span class="badge"><span>{weekday}</span><b>{date}</b></span>
     <span class="min0">
       {#if today}<span class="now">Hoy</span>{/if}
-      <span class="day-title">{title}</span>
+      <span class="day-title" data-testid={TID.dayTitle}>{title}</span>
       {#if sub}<span class="sub">{sub}</span>{/if}
     </span>
     {#if done}<span class="ok"><Icon name="check" size={14} /></span>{:else}<span></span>{/if}

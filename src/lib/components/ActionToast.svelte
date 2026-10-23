@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
+  import { prefersReducedMotion } from 'svelte/motion'
   import Button from './Button.svelte'
 
   // A notice with one way back, in the thumb zone over the TabBar
@@ -14,7 +15,7 @@
 </script>
 
 {#if visible}
-  <div {id} class="toast" role="status" data-component="ActionToast" transition:fly={{ y: 20, duration: 200 }}>
+  <div {id} class="toast" role="status" data-component="ActionToast" transition:fly={{ y: 20, duration: prefersReducedMotion.current ? 0 : 200 }}>
     <span>{message}</span>
     <Button variant="secondary" size="pill" onclick={onaction}>{action}</Button>
   </div>

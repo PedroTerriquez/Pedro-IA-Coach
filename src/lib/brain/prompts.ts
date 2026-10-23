@@ -343,6 +343,28 @@ export function buildPasteCreatePrompt(language: PromptLanguage, context: string
   return `${buildAIRole(language)}\n\n${AI_SECURITY}\n\n${FORMAT_PASTE_CREATE}\n\n${context}`
 }
 
+export const FORMAT_REVIEW = `Eres el REVISOR. Otro entrenador ya escribió el BORRADOR del programa (último mensaje) a partir de la conversación con el usuario. Tu trabajo es auditarlo con criterio de experto y devolver la versión corregida. SOLO JSON, sin markdown, sin explicaciones.
+Si recibes PROGRAMA ACTUAL, es la versión anterior: el borrador es la versión nueva con los cambios acordados, y esos cambios se respetan.
+
+─ QUÉ REVISAR, DÍA POR DÍA ─
+1. Estímulos redundantes: dos o más ejercicios del mismo músculo y el mismo patrón de movimiento en un día (ej: Press Banca + Press Mancuerna + Chest Press; Curl Barra + Curl Mancuerna + Curl Martillo) cuando no aportan un estímulo distinto. Quita el sobrante o cámbialo por uno que cubra un músculo o ángulo que falte.
+2. Volumen por músculo en la sesión: si las series directas de un músculo en un día pasan de lo productivo para su nivel (~6-10 series duras para la mayoría; menos para principiantes), recorta series o ejercicios.
+3. Solapamiento entre días seguidos (por weekday): no cargues los mismos músculos o articulaciones pesados dos días seguidos (ej: hombro anterior el día de pecho y al día siguiente press militar; espalda baja con peso muerto y luego sentadilla pesada).
+4. Equilibrio de la semana: empuje/jalón y cuádriceps/femorales razonablemente balanceados según el foco acordado.
+
+─ QUÉ NO TOCAR ─
+- El enfoque, split, días, weekday, foco, limitaciones y todo lo que el usuario pidió en la conversación. La conversación manda sobre tu criterio.
+- Si el borrador ya está bien, devuélvelo IGUAL. No cambies por cambiar ni inventes problemas.
+- Corrige lo mínimo necesario; conserva nombres de ejercicios, program_name, series, reps y descansos de lo que no cambies.
+- Los ejercicios nuevos usan nombres del DICCIONARIO cuando sea posible, con la convención "Nombre Común (Especificidad)".
+
+─ FORMATO DE SALIDA ─
+El mismo JSON del borrador: { "program_name", "weeks": [{ "name", "tag", "days": [{ "name", "weekday", "subtitle", "exercises": [{ "exercise_name", "muscle", "sets", "reps", "rest_sec" }] }] }] }. Incluye TODOS los días y ejercicios, no solo los que cambiaste.`
+
+export function buildReviewPrompt(language: PromptLanguage, context: string): string {
+  return `${buildAIRole(language)}\n\n${FORMAT_REVIEW}\n\n${context}`
+}
+
 const _generatePromptCache = new Map<PromptLanguage, string>()
 
 export function buildGeneratePrompt(language: PromptLanguage = 'es'): string {

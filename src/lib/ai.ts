@@ -4,7 +4,7 @@ import type { Program, Settings } from '$lib/types'
 
 import { PUSH_SERVER_URL } from '$lib/config'
 import { buildAIDictionary, buildFilteredDictionary } from '$lib/brain/dictionary'
-import { buildImportPrompt, buildProgramCoachPrompt, buildProgramChatPrompt, buildGenerateChatPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, buildPasteChatPrompt, buildPasteCreatePrompt, type PromptLanguage } from '$lib/brain/prompts'
+import { buildImportPrompt, buildProgramCoachPrompt, buildProgramChatPrompt, buildGenerateChatPrompt, buildGeneratePrompt, buildExerciseCoachPrompt, buildPasteChatPrompt, buildPasteCreatePrompt, buildReviewPrompt, type PromptLanguage } from '$lib/brain/prompts'
 import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
 import { lastAIExchange, aiExchanges } from '$lib/stores/debug'
 import type { ChatTurn } from '$lib/components/CoachChat.svelte'
@@ -198,8 +198,39 @@ async function saveAndActivate(program: Program, resetWeek: boolean): Promise<vo
   await Storage.saveSettings(s)
 }
 
+const REVIEW_MESSAGE = 'Revisa este borrador y devuelve el programa corregido.'
+
+/** Second pass: the same coach audits the draft (redundant same-muscle work, excess volume, overlap) */
+function buildReviewBody(thread: ChatTurn[], context: string, draft: unknown) {
+  return {
+    messages: [...thread, { role: 'user' as const, content: 'BORRADOR:\n' + JSON.stringify(draft) + '\n\n' + REVIEW_MESSAGE }],
+    systemPrompt: buildReviewPrompt(LANGUAGE, context),
+  }
+}
+
+/** Returns the reviewed program, or the draft itself when the review fails or comes back empty */
+async function reviewProgram(thread: ChatTurn[], context: string, draft: any): Promise<any> {
+  const url = `${PUSH_SERVER_URL}/api/ai/generate-program`
+  const reqBody = buildReviewBody(thread, context, draft)
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqBody)
+    })
+    const data = res.ok ? await res.json() : { error: true, status: res.status }
+    await recordIfDebug('Revisar programa', url, reqBody, data)
+    return data.weeks?.length ? data : draft
+  } catch (err) {
+    console.warn('[AI] reviewProgram failed, keeping the draft:', err)
+    return draft
+  }
+}
+
+export type AIPhase = 'draft' | 'review'
+
 /** POSTs to /api/ai/generate-program and saves + activates the program it returns */
-async function createProgramFromGenerate(label: string, reqBody: { messages: ChatTurn[]; systemPrompt: string }, fallbackName: string): Promise<Program> {
+async function createProgramFromGenerate(label: string, reqBody: { messages: ChatTurn[]; systemPrompt: string }, fallbackName: string, review?: { thread: ChatTurn[]; context: string; onphase?: (phase: AIPhase) => void }): Promise<Program> {
   const url = `${PUSH_SERVER_URL}/api/ai/generate-program`
   const res = await fetch(url, {
     method: 'POST',
@@ -214,13 +245,15 @@ async function createProgramFromGenerate(label: string, reqBody: { messages: Cha
     throw new Error(`AI generation failed: ${res.status}`)
   }
 
-  const data = await res.json()
-  if (import.meta.env.DEV) console.log(`[AI] ${label} ✓`, data)
-  await recordIfDebug(label, url, reqBody, data)
-  if (!data.weeks || data.weeks.length === 0) {
+  const draft = await res.json()
+  if (import.meta.env.DEV) console.log(`[AI] ${label} ✓`, draft)
+  await recordIfDebug(label, url, reqBody, draft)
+  if (!draft.weeks || draft.weeks.length === 0) {
     throw new Error('La IA no pudo generar un programa válido')
   }
 
+  review?.onphase?.('review')
+  const data = review ? await reviewProgram(review.thread, review.context, draft) : draft
   const program = await buildProgramFromAIResponse(data, { noFuzzy: true })
   program.name = data.program_name || fallbackName
   await saveAndActivate(program, true)
@@ -228,10 +261,12 @@ async function createProgramFromGenerate(label: string, reqBody: { messages: Cha
 }
 
 /** Turns the agreed conversation into a new saved + activated program */
-export async function generateProgramWithAI(overrides: ProgramOverrides, thread: ChatTurn[]): Promise<Program> {
+export async function generateProgramWithAI(overrides: ProgramOverrides, thread: ChatTurn[], onphase?: (phase: AIPhase) => void): Promise<Program> {
   const settings = await Storage.getSettings()
-  const reqBody = buildGenerateBody(buildUserProfile(settings), overrides, thread)
-  return createProgramFromGenerate('Generar programa', reqBody, 'Generado con IA')
+  const userProfile = buildUserProfile(settings)
+  const reqBody = buildGenerateBody(userProfile, overrides, thread)
+  const context = generateContextText(userProfile, overrides) + '\n\nDICCIONARIO DE EJERCICIOS:\n' + JSON.stringify(buildAIDictionary().map(e => e.es))
+  return createProgramFromGenerate('Generar programa', reqBody, 'Generado con IA', { thread, context, onphase })
 }
 
 async function pasteContextText(): Promise<string> {
@@ -348,7 +383,8 @@ export async function programCoach(program: Program, thread: ChatTurn[], opts: N
   await recordIfDebug('Coach de programa', `${PUSH_SERVER_URL}/api/ai/program-coach`, reqBody, data)
 
   if (data.program && data.program.weeks && data.program.weeks.length) {
-    const newProgram = await buildProgramFromAIResponse(data.program, { noFuzzy: false })
+    const reviewed = await reviewProgram(thread, programContextText(ctx), data.program)
+    const newProgram = await buildProgramFromAIResponse(reviewed, { noFuzzy: false })
     newProgram.name = opts.name.trim() || program.name
     if (opts.activate) await saveAndActivate(newProgram, false)
     else await Storage.saveProgram(newProgram)

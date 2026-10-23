@@ -45,6 +45,9 @@
   let agreedThread = $state<ChatTurn[]>([])
   let creatingVersion = $state(false)
   let ready = $state<Program | null>(null)
+  const CREATING_LABEL = 'Creando programa…'
+  // The coach writes the program, then a second pass reviews it
+  let generateLabel = $state(CREATING_LABEL)
 
   export function openCreate() { menuOpen = true }
 
@@ -88,7 +91,10 @@
   }
 
   async function applyGenerate(thread: ChatTurn[]) {
-    await created(await generateProgramWithAI(choicesToOverrides(choices!), thread))
+    generateLabel = CREATING_LABEL
+    await created(await generateProgramWithAI(choicesToOverrides(choices!), thread, (phase) => {
+      if (phase === 'review') generateLabel = 'Revisando el programa…'
+    }))
   }
 
   async function applyPaste(thread: ChatTurn[]) {
@@ -144,7 +150,7 @@
       context={choicesToTags(choices)}
       quickReplies={GENERATE_CHIPS}
       applyLabel="Crear este programa"
-      applyingLabel="Creando programa…"
+      applyingLabel={generateLabel}
       send={(thread) => generateProgramChat(thread, choicesToOverrides(choices!))}
       apply={applyGenerate}
       onclose={() => chat = null}

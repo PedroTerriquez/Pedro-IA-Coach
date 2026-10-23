@@ -21,6 +21,7 @@ src/
     db.ts                  → IndexedDB open/CRUD helpers (openDB, getAll, get, put, del, getByIndex, generateId)
     storage.ts             → Data service layer (Storage object): CRUD, backupAll, restoreFromBackup, migrations, dedup, import/export JSON
     types.ts               → Exercise, ExerciseLog, Program, Settings, Week, Day, etc.
+    test-ids.json          → data-testid values, shared by components and tests/support/screens.cjs
     ai.ts                  → importWithAI, generateProgramWithAI, programCoach, exerciseCoachChat
     coach-analysis.ts      → runCoachAnalysis (post-workout insights)
     push.ts                → subscribePush, unsubscribePush, sendPushNotification, notifyWatch
@@ -50,8 +51,10 @@ push-worker/
   package.json           → web-push dependency
 scripts/
   bump-version.sh        → Bumps APP_VERSION minor + sets description (run before every commit)
+  build-if-stale.mjs     → Playwright webServer: `npm run build` only if build/ is older than src/, static/ or config
 tests/
   big.spec.cjs           → SINGLE E2E suite (Playwright): the full user flow from an empty app + a few tests apart. Guardrail EXPECTED_STEPS (steps that ran, in order). Do not add new test files.
+  support/screens.cjs    → Page objects + helpers for big.spec.cjs (selectors from src/lib/test-ids.json, nav() by TabBar, stand-in external images). Not a test file.
 vite.config.ts           → SvelteKit + Vite config, __BUILD_TIME__ define, dev-only plugins (e.g. mediaEditorPlugin)
 playwright.config.cjs    → base URL includes trailing slash (`/Pedro-IA-Coach/`)
 AGENTS.md                ← This file (minimal core)

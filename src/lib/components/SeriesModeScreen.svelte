@@ -11,6 +11,7 @@
   import FilterChip from './FilterChip.svelte'
   import Tag from './Tag.svelte'
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
 
   let {
     visible = false,
@@ -330,10 +331,10 @@
   })
 
   // Series marks: done = accent, current = white, pending = muted
-  function getDotClass(n: number): string {
-    if (n < setNo) return 'ms-dot done'
-    if (n === setNo) return 'ms-dot current'
-    return 'ms-dot pending'
+  function getDotState(n: number): 'done' | 'current' | 'pending' {
+    if (n < setNo) return 'done'
+    if (n === setNo) return 'current'
+    return 'pending'
   }
 </script>
 
@@ -392,7 +393,7 @@
               <div class="sms-done-mark"><Icon name="check" size={54} /></div>
               <div class="sms-done-label">Listo para la serie {setNo + 1}</div>
             {:else}
-              <div class="sms-time">{fmtClock(remainingMs)}</div>
+              <div class="sms-time" data-testid={TID.seriesTime}>{fmtClock(remainingMs)}</div>
               <div class="sms-total">de {fmtClock(timer.restSec * 1000)}</div>
             {/if}
           </div>
@@ -407,12 +408,12 @@
 
       {#if dots.length}
         <section class="sms-serie">
-          <div class="sms-serie-label">
+          <div class="sms-serie-label" data-testid={TID.seriesLabel}>
             Serie <b>{setNo}</b> de <b>{timer.sets}</b>
           </div>
           <div class="sms-dots">
             {#each dots as n}
-              <span class={getDotClass(n)}></span>
+              <span class="ms-dot {getDotState(n)}" data-testid={TID.seriesDot} data-state={getDotState(n)}></span>
             {/each}
           </div>
         </section>

@@ -4,6 +4,8 @@
   import { detailSheetsOpen, restMinimized } from '$lib/stores/ui'
   import { restBannerState } from '$lib/rest-timer'
   import DetailSheetHead from './DetailSheetHead.svelte'
+  import TID from '$lib/test-ids.json'
+  import { swipeToClose, CLOSED_OFFSET } from '$lib/swipe-to-close'
 
   // The frame shared by the exercise detail and the warmup / stretch sheet
   // (Detalle v2): full-height sheet, head with the position, scrolling body
@@ -33,51 +35,30 @@
   // The minimized rest banner takes the dock's place while it runs.
   let restShown = $derived($restBannerState.visible && $restMinimized)
 
-  // Drag-to-close state
+  // Drag-to-close by the head
   let dragOffset = $state(0)
   let isDragging = $state(false)
-  const CLOSE_THRESHOLD = 100 // px
-  const VELOCITY_THRESHOLD = 0.5 // px/ms
 
   onMount(() => {
     detailSheetsOpen.update(n => n + 1)
     return () => detailSheetsOpen.update(n => Math.max(0, n - 1))
   })
 
-  function handleDragStart(y: number) {
-    isDragging = true
-    dragOffset = 0
-  }
-
-  function handleDragMove(y: number, dy: number) {
-    // Apply resistance curve: slower as you drag further
-    const resistance = Math.min(1, dy / 300)
-    dragOffset = dy * (1 - resistance * 0.5)
-  }
-
-  function handleDragEnd(y: number, dy: number, velocity: number) {
-    isDragging = false
-    // Close if dragged past threshold OR flicked down with enough velocity
-    const shouldClose = dy > CLOSE_THRESHOLD || velocity > VELOCITY_THRESHOLD
-    if (shouldClose) {
-      // Animate out
-      dragOffset = 300 // off-screen
-      // Call onclose after animation starts
-      setTimeout(onclose, 150)
-    } else {
-      // Spring back
-      dragOffset = 0
-    }
+  function drag(offset: number, dragging: boolean) {
+    dragOffset = offset
+    isDragging = dragging
   }
 </script>
 
 <div class="ds-overlay" role="dialog" aria-modal="true" data-component="DetailSheet">
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="ds-scrim" role="presentation" onclick={onclose} style="opacity: {1 - Math.min(dragOffset / 300, 1)};"></div>
+  <div class="ds-scrim" role="presentation" onclick={onclose} style="opacity: {1 - Math.min(dragOffset / CLOSED_OFFSET, 1)};"></div>
   <div class="ds-panel" style="transform: translateY({dragOffset}px); transition: {isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'};">
-    <DetailSheetHead {onclose} {position} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} />
+    <div class="ds-top" use:swipeToClose={{ onmove: drag, onclose }}>
+      <DetailSheetHead {onclose} {position} />
+    </div>
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="ds-body detail-scroll" data-component={name} {ontouchstart} {ontouchend}>
+    <div class="ds-body detail-scroll" data-component={name} data-testid={TID.detailScroll} {ontouchstart} {ontouchend}>
       {@render children()}
     </div>
     {#if dock && !restShown}{@render dock()}{/if}
@@ -100,6 +81,7 @@
     background: var(--surface);
     border-radius: var(--cv-radius-sheet) var(--cv-radius-sheet) 0 0;
   }
+  .ds-top { flex-shrink: 0; touch-action: none; }
   /* Room at the end so the last block clears the dock */
   .ds-body {
     flex: 1;

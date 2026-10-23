@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import { swipeToClose, CLOSED_OFFSET } from '$lib/swipe-to-close'
 
   let {
     open = $bindable(false),
@@ -37,37 +38,54 @@
 
   let isNew = $derived(!!title)
 
+  // Drag-to-close by the top (grabber + head)
+  let dragOffset = $state(0)
+  let isDragging = $state(false)
+
   function close() {
     open = false
     onclose()
   }
+
+  function drag(offset: number, dragging: boolean) {
+    dragOffset = offset
+    isDragging = dragging
+  }
+
+  // A sheet that opens again starts in place
+  $effect(() => {
+    if (open) dragOffset = 0
+  })
 </script>
 
 {#if open}
   <div {id} class="sheet-overlay" class:elevated data-component="Sheet" role="dialog" aria-modal="true" aria-label={title || undefined}>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="sheet-backdrop" role="presentation" onclick={close}></div>
+    <div class="sheet-backdrop" role="presentation" onclick={close} style="opacity: {1 - Math.min(dragOffset / CLOSED_OFFSET, 1)};"></div>
     {#if !isNew}
       <button class="sheet-close-btn" onclick={close} aria-label="Cerrar">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l10 10M12 2L2 12"/></svg>
       </button>
     {/if}
-    <div class="sheet-content" class:v2={isNew} class:full>
-      {#if titleStyle !== 'center'}<div class="sheet-handle"></div>{/if}
-      {#if isNew && titleStyle === 'center'}
-        <div class="sheet-head-center">
-          <button class="sheet-x" onclick={close} aria-label="Volver"><Icon name="back" size={20} /></button>
-          <div class="sheet-title-center">{title}{#if eyebrow}<small>{eyebrow}</small>{/if}</div>
-          <span></span>
-        </div>
-      {:else if isNew}
-        <div class="sheet-head">
-          <span class={titleStyle === 'label' ? 'sheet-label' : 'sheet-title'}>{title}</span>
-          <button class="sheet-x" onclick={close} aria-label="Cerrar"><Icon name="x" size={18} /></button>
-        </div>
-      {:else if header}
-        <div class="sheet-header">{@render header()}</div>
-      {/if}
+    <!-- No transform at rest: it would trap the fixed layers of sheets opened inside -->
+    <div class="sheet-content" class:v2={isNew} class:full style="transform: {dragOffset ? `translateY(${dragOffset}px)` : 'none'}; transition: {isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'};">
+      <div class="sheet-top" use:swipeToClose={{ onmove: drag, onclose: close }}>
+        {#if titleStyle !== 'center'}<div class="sheet-handle"></div>{/if}
+        {#if isNew && titleStyle === 'center'}
+          <div class="sheet-head-center">
+            <button class="sheet-x" onclick={close} aria-label="Volver"><Icon name="back" size={20} /></button>
+            <div class="sheet-title-center">{title}{#if eyebrow}<small>{eyebrow}</small>{/if}</div>
+            <span></span>
+          </div>
+        {:else if isNew}
+          <div class="sheet-head">
+            <span class={titleStyle === 'label' ? 'sheet-label' : 'sheet-title'}>{title}</span>
+            <button class="sheet-x" onclick={close} aria-label="Cerrar"><Icon name="x" size={18} /></button>
+          </div>
+        {:else if header}
+          <div class="sheet-header">{@render header()}</div>
+        {/if}
+      </div>
       <div class="sheet-body">
         {#if children}{@render children()}{/if}
       </div>
@@ -110,6 +128,7 @@
     top: max(54px, env(safe-area-inset-top, 0px));
     max-height: none;
   }
+  .sheet-top { flex-shrink: 0; }
   .sheet-handle {
     width: 36px;
     height: 5px;

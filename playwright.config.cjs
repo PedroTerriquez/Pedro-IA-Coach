@@ -2,8 +2,8 @@ const { defineConfig } = require('@playwright/test')
 
 module.exports = defineConfig({
   testDir: './tests',
-  // Fail fast: the tests apart take a few seconds; the full user flow (~1.5 min,
-  // real 5 s rests) sets its own budget and a 15 s per-action timeout.
+  // Fail fast: the tests apart take a few seconds; the full user flow sets its
+  // own budget and a 5 s per-action timeout (its rests run on a fake clock).
   timeout: 30000,
   maxFailures: 1,
   retries: 0,
@@ -19,6 +19,8 @@ module.exports = defineConfig({
     baseURL: 'http://localhost:8080/Pedro-IA-Coach/',
     headless: true,
     viewport: { width: 390, height: 844 },
+    // Sheets, toasts and fades finish at once (app.css honors reduced motion)
+    reducedMotion: 'reduce',
     browserName: 'chromium',
     // The headless GPU compositor (SwiftShader) stalls at random under load: a
     // click "performing click action" never gets its input ack and the run hangs.
@@ -31,7 +33,8 @@ module.exports = defineConfig({
     // since it reads the same svelte.config.js used to build the app.
     // --host :: listens on IPv4 and IPv6: plain `localhost` binds ::1 only and
     // Chromium sometimes dials 127.0.0.1 (ERR_CONNECTION_REFUSED).
-    command: 'npm run build && npm run preview -- --port 8080 --strictPort --host ::',
+    // build-if-stale: rebuilds only when src/, static/ or the config changed.
+    command: 'node scripts/build-if-stale.mjs && npm run preview -- --port 8080 --strictPort --host ::',
     url: 'http://localhost:8080/Pedro-IA-Coach',
     // The build alone can take over a minute; the default 60s wait isn't enough.
     timeout: 180000,

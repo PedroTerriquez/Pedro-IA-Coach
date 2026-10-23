@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
 
   // One day of the week (Plan · Nuevo): weekday badge, title, one grey line and
   // the duration — or a check when it's done, or whatever `trailing` brings (the
@@ -35,7 +36,7 @@
 >
   <span class="badge"><span>{weekday}</span><b>{date}</b></span>
   <span class="min0">
-    <span class="day-title">{title}</span>
+    <span class="day-title" data-testid={TID.dayTitle}>{title}</span>
     {#if sub}<span class="sub">{sub}</span>{/if}
   </span>
   {#if trailing}

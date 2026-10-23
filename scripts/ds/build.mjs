@@ -13,7 +13,7 @@ const only = process.argv.slice(2)
 // The app is an iPhone PWA: iOS-only UI (install guide) needs Safari's UA to show up.
 const IPHONE_SAFARI = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
 
-// Only the generated folders are wiped; hand-made proposals elsewhere in design-system/ stay.
+// A full build starts the generated folders from scratch.
 if (!only.length) for (const d of ['vistas', 'shell', 'compartidos']) await rm(OUT_DIR + d, { recursive: true, force: true })
 const browser = await chromium.launch()
 

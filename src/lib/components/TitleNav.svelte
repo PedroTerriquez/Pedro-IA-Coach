@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
 
   // Muscle + ← → of 56 on top, the name below at full width (2 lines at most).
   // The arrows only move between items; they never mark anything.
@@ -18,12 +19,12 @@
 <div class="tn" data-component="TitleNav">
   <div class="tn-r">
     <p class="tn-muscle">{muscle}{#if badge}{@render badge()}{/if}</p>
-    <div class="tn-nav">
+    <div class="tn-nav" data-testid={TID.detailNav}>
       <button type="button" class="tn-b" aria-label="Anterior" disabled={!hasPrev} onclick={onprev}><Icon name="back" size={24} /></button>
       <button type="button" class="tn-b" aria-label="Siguiente" disabled={!hasNext} onclick={onnext}><Icon name="chev" size={24} /></button>
     </div>
   </div>
-  <h2 class="tn-name">{name}</h2>
+  <h2 class="tn-name" data-testid={TID.detailName}>{name}</h2>
 </div>
 
 <style>

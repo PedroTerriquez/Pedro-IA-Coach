@@ -22,9 +22,6 @@ async function clearToasts(page) {
 
 export const groups = {
   // ───────────────────────── Hoy + Detalle de ejercicio ─────────────────────────
-  // Hoy v2 + Detalle v2 (2026-10-15). Writes «Hoy · Actual» (vistas/hoy2/) and
-  // «Detalle de ejercicio · Actual» (vistas/detalle-ejercicio2/); the old
-  // vistas/hoy and vistas/detalle-ejercicio stay as «· v1».
   async hoy({ open, S }) {
     await hoyScreens({ open, S })
     await moveSheets({ open, S })
@@ -32,17 +29,18 @@ export const groups = {
   },
 
   // ───────────────────────────────── Plan ─────────────────────────────────
-  // Plan v2 (2026-10-21). Writes «Plan · Actual» (vistas/plan2/); the old
-  // vistas/plan cards stay as «Plan · v1».
   async plan({ open, S }) {
     await planScreens({ open, S })
   },
 
   // ─────────────────────────────── Historial ───────────────────────────────
-  // Historial v2 (2026-10-22). Writes «Historial · Actual» (vistas/historial2/);
-  // the old vistas/historial cards stay as «Historial · v1».
   async historial({ open, S }) {
     await historialScreens({ open, S })
+  },
+
+  // ───────────────────────────── Temporizador ─────────────────────────────
+  async temporizador({ open, S }) {
+    await timerScreens({ open, S })
   },
 
   // ──────────────────────────────── Amigos ────────────────────────────────
@@ -121,18 +119,11 @@ export const groups = {
   },
 
   // ────────────────────────────────── Tú ──────────────────────────────────
-  // Tú v2 (2026-10-13) removed the 4 tabs this walk went through and the
-  // components it captured (ProfileCard, QuickSettingsCard, AccentToggle,
-  // CardRow, ProgramCreateForm, ProgramEditorIACard, NormalizeCard,
-  // NewExerciseForm, ActionRow…). The old cards stay in Claude Design as
-  // «Tú · v1» (vistas/tu/) and the new design lives in «Tú · Nuevo». Pedro
-  // skipped regenerating the Tú cards this round. The walk for the new view
-  // (vistas/tu2/) only covers Ejercicios (Tú · Nuevo 03, 2026-10-14) so far;
-  // the hub, Programas, Ajustes and Copia are still to be written.
+  // Only covers Ejercicios so far; the hub, Programas, Ajustes and Copia are
+  // still to be written.
   async tu({ open, S }) {
-    // «Actual» = what the app looks like today, next to «Tú · Nuevo» (proposals) and «Tú · v1» (archive)
-    const G = 'Tú · Actual'
-    const at = (p) => `vistas/tu2/${p}`
+    const G = 'Tú'
+    const at = (p) => `vistas/tu/${p}`
     const src = C + 'ExercisesScreen.svelte'
     const shot = (p, path, name, subtitle, file = 'ExercisesScreen.svelte') => p.card({ path: at(path), group: G, name, subtitle, source: C + file, screen: true, fold: true })
     const page = await open(world(S))
@@ -188,14 +179,6 @@ export const groups = {
     await page.locator(comp('Toast')).waitFor({ timeout: 3000 })
     await page.card({ path: at('toast'), group: G, name: 'Toast', subtitle: 'confirmación breve arriba, bajo la barra de estado', source: C + 'Toast.svelte', specimens: [{ label: 'Toast', selector: comp('Toast'), unfix: true }], viewport: '420x160' })
     await clearToasts(page)
-    await btn(page, /Descansar/).click()
-    await page.locator(comp('SeriesModeScreen')).waitFor({ timeout: 3000 })
-    await page.getByRole('button', { name: 'Minimizar' }).click()
-    await page.locator(comp('RestTimerBanner')).waitFor({ timeout: 3000 })
-    await btn(page, 'Cerrar').click().catch(() => {})
-    await page.waitForTimeout(500)
-    await page.card({ path: at('rest-timer-banner-pantalla'), group: G, name: 'RestTimerBanner · en contexto', subtitle: 'descanso minimizado abajo, sobre la TabBar, en lugar del dock', source: C + 'RestTimerBanner.svelte', screen: true, fold: true })
-    await page.card({ path: at('rest-timer-banner'), group: G, name: 'RestTimerBanner', subtitle: 'anillo blanco + tiempo + ejercicio + «Sigue la serie» + saltar', source: C + 'RestTimerBanner.svelte', specimens: [{ label: 'RestTimerBanner', selector: comp('RestTimerBanner'), width: 366, unfix: true }], viewport: '440x240' })
 
     await page.context().setOffline(true)
     await page.evaluate(() => window.dispatchEvent(new Event('offline')))
@@ -297,11 +280,11 @@ const card0 = (snaps, path, group) =>
   card(null, { path, group, name: 'OnboardingBanner', subtitle: 'los 4 pasos del primer arranque', source: C + 'OnboardingBanner.svelte', snaps, viewport: '860x640' })
 
 // ───────────────────────── Hoy v2 / Detalle v2 ─────────────────────────
-const HOY = 'Hoy · Actual'
-const DET = 'Detalle de ejercicio · Actual'
+const HOY = 'Hoy'
+const DET = 'Detalle de ejercicio'
 const HOY_SRC = 'src/routes/today/+page.svelte'
-const hoyAt = (p) => `vistas/hoy2/${p}`
-const detAt = (p) => `vistas/detalle-ejercicio2/${p}`
+const hoyAt = (p) => `vistas/hoy/${p}`
+const detAt = (p) => `vistas/detalle-ejercicio/${p}`
 const isoToday = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 const todayLog = (id, weight, extra = {}) => ({ id: `log-9999-${id}`, exerciseId: id, date: isoToday(), weight, units: 'kg', ...extra })
 const session = (S, over = {}) => S.settings({ hasWatch: false, sessionState: { date: isoToday(), phase: 1, todayExDone: 0, ...over } })
@@ -313,9 +296,9 @@ const detScreen = (page, path, name, subtitle, source = C + 'ExerciseDetail.svel
   page.card({ path: detAt(path), group: DET, name, subtitle, source, screen: true, fold: true })
 
 // ───────────────────────────── Plan v2 ─────────────────────────────
-const PLAN = 'Plan · Actual'
+const PLAN = 'Plan'
 const PLAN_SRC = 'src/routes/plan/+page.svelte'
-const planAt = (p) => `vistas/plan2/${p}`
+const planAt = (p) => `vistas/plan/${p}`
 const planScreen = (page, path, name, subtitle, source = PLAN_SRC) =>
   page.card({ path: planAt(path), group: PLAN, name, subtitle, source, screen: true, fold: true })
 const planPart = (page, path, name, subtitle, source, specimens, viewport) =>
@@ -397,9 +380,9 @@ async function planScreens({ open, S }) {
 }
 
 // ─────────────────────────── Historial v2 ───────────────────────────
-const HIST = 'Historial · Actual'
+const HIST = 'Historial'
 const HIST_SRC = 'src/routes/history/+page.svelte'
-const histAt = (p) => `vistas/historial2/${p}`
+const histAt = (p) => `vistas/historial/${p}`
 const histScreen = (page, path, name, subtitle, source = HIST_SRC) =>
   page.card({ path: histAt(path), group: HIST, name, subtitle, source, screen: true, fold: true })
 const histPart = (page, path, name, subtitle, source, specimens, viewport) =>
@@ -705,4 +688,77 @@ async function detailScreens({ open, S }) {
   await page.context().close()
 
   await card(null, { path: detAt('piezas'), group: DET, name: 'Piezas de Detalle v2 · ejercicio', subtitle: 'media, objetivo, coach, tabs, WeightPanel, BlockRow y LogDock', source: C + 'ExerciseDetail.svelte', snaps: pieces, viewport: '820x1600' })
+}
+
+// ───────────────────────────── Temporizador ─────────────────────────────
+const TIMER = 'Temporizador'
+const SMS = C + 'SeriesModeScreen.svelte'
+const timerAt = (p) => `vistas/temporizador/${p}`
+const timerScreen = (page, path, name, subtitle, source = SMS) =>
+  page.card({ path: timerAt(path), group: TIMER, name, subtitle, source, screen: true })
+const timerSecs = async (timer) => {
+  const [m, s] = (await timer.locator('.sms-time').innerText()).split(':').map(Number)
+  return m * 60 + s
+}
+
+/** The 4 series of Press Banca: rest, registered, last seconds, done, banner and Confirma tus series */
+async function timerScreens({ open, S }) {
+  const page = await openHoy(open, S, session(S, { phase: 2, startedAt: Date.now() - 14 * 60000 }))
+  const timer = page.locator(comp('SeriesModeScreen'))
+  const phase = (p) => page.locator(`${comp('SeriesModeScreen')}[data-phase="${p}"]`).waitFor({ timeout: 20000 })
+  const shorten = async () => {
+    while ((await timerSecs(timer)) > 15) await timer.getByRole('button', { name: '−15 s' }).click()
+  }
+  // Registers serie n and runs its rest out quickly
+  const serie = async (n) => {
+    await btn(page, `Empezar serie ${n}`).click()
+    await phase('registering')
+    await timer.getByRole('button', { name: 'Registrar', exact: true }).click()
+    await shorten()
+    await phase('saved')
+  }
+  await page.locator('[data-phase="training"] .exercise-row').first().click()
+  await btn(page, /Descansar|Iniciar descanso/).click()
+  await phase('registering')
+  await page.waitForTimeout(400)
+  await timerScreen(page, 'pantalla-descanso', 'Temporizador · Descanso', 'tiempo, ±15/30 s, peso y reps de la serie, Registrar')
+
+  await timer.getByRole('button', { name: 'Registrar', exact: true }).click()
+  await page.waitForTimeout(400)
+  await timerScreen(page, 'pantalla-serie-registrada', 'Temporizador · Serie registrada', 'peso y reps plegados mientras sigue el descanso')
+
+  // Down to the last 10 s with −15 s, then let it run into them
+  while ((await timerSecs(timer)) > 20) await timer.getByRole('button', { name: '−15 s' }).click()
+  await page.locator(`${comp('SeriesModeScreen')}.is-ending`).waitFor({ timeout: 15000 })
+  await page.waitForTimeout(300)
+  await timerScreen(page, 'pantalla-ultimos-segundos', 'Temporizador · Últimos segundos', 'los 10 s finales cambian de tono')
+
+  await phase('saved')
+  await page.waitForTimeout(400)
+  await timerScreen(page, 'pantalla-descanso-terminado', 'Temporizador · Descanso terminado', 'serie guardada, «Empezar serie 2»')
+  await serie(2)
+  await serie(3)
+
+  // Serie 4 minimized: the banner takes the dock's place in every view
+  await btn(page, 'Empezar serie 4').click()
+  await phase('registering')
+  await btn(page, 'Minimizar descanso').click()
+  await page.locator(comp('RestTimerBanner')).waitFor({ timeout: 3000 })
+  await btn(page, 'Cerrar').click().catch(() => {})
+  await page.waitForTimeout(500)
+  await page.card({ path: timerAt('banner-pantalla'), group: TIMER, name: 'Temporizador · Minimizado', subtitle: 'banner abajo, sobre la TabBar, en lugar del dock', source: C + 'RestTimerBanner.svelte', screen: true, fold: true })
+  await page.card({ path: timerAt('rest-timer-banner'), group: TIMER, name: 'RestTimerBanner', subtitle: 'anillo + tiempo + ejercicio + «Sigue la serie» + saltar', source: C + 'RestTimerBanner.svelte', specimens: [{ label: 'RestTimerBanner', selector: comp('RestTimerBanner'), width: 366, unfix: true }], viewport: '440x240' })
+
+  // The last serie ends on Confirma tus series
+  await btn(page, 'Abrir descanso a pantalla completa').click()
+  await phase('registering')
+  await timer.getByRole('button', { name: 'Registrar', exact: true }).click()
+  await phase('confirm')
+  await page.waitForTimeout(400)
+  await timerScreen(page, 'pantalla-confirma', 'Temporizador · Confirma tus series', 'las 4 series contra el objetivo, volumen y Guardar', C + 'SeriesConfirmSheet.svelte')
+  await timer.getByRole('button', { name: 'Serie 1', exact: true }).click()
+  await timer.getByRole('button', { name: 'Más reps' }).click()
+  await page.waitForTimeout(300)
+  await timerScreen(page, 'pantalla-confirma-editando', 'Temporizador · Editar una serie', 'serie abierta con peso y reps, Copiar a las siguientes; «editada» en la fila', C + 'SeriesConfirmSheet.svelte')
+  await page.context().close()
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { online } from '$lib/stores/network'
   import { fly } from 'svelte/transition'
+  import { prefersReducedMotion } from 'svelte/motion'
 
   // inline = inside a detail sheet's head, in place of its position line
   let { inline = false }: { inline?: boolean } = $props()
@@ -44,7 +45,7 @@
     class:inline
     role="status"
     data-component="OfflineBanner"
-    transition:fly={{ y: -20, duration: 200 }}
+    transition:fly={{ y: -20, duration: prefersReducedMotion.current ? 0 : 200 }}
   >
     <span class="dot"></span>
     {status === 'offline' ? 'Sin conexión' : 'Conectado de nuevo'}

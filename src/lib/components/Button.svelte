@@ -13,6 +13,7 @@
     id = undefined,
     type = 'button',
     ariaLabel = undefined,
+    testId = undefined,
     class: className = ''
   }: {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'text' | 'dashed' | 'danger-text'
@@ -27,6 +28,8 @@
     id?: string
     type?: 'button' | 'submit'
     ariaLabel?: string
+    /** data-testid, from $lib/test-ids.json */
+    testId?: string
     class?: string
   } = $props()
 
@@ -53,6 +56,7 @@
   {onclick}
   {id}
   aria-label={ariaLabel}
+  data-testid={testId}
   style="{variant === 'primary' ? `background:${accent};color:var(--bg)` : ''};{style}"
 >
   {#if children}{@render children()}{/if}

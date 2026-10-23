@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { prefersReducedMotion } from 'svelte/motion'
+
   let {
     imageSrc = '',
     iconSvg = '',
@@ -28,7 +30,8 @@
 
   $effect(() => {
     if (!closing) return
-    const t = setTimeout(() => onclose(), 350)
+    // Waits out the fade (none with reduced motion)
+    const t = setTimeout(() => onclose(), prefersReducedMotion.current ? 0 : 350)
     return () => clearTimeout(t)
   })
 </script>

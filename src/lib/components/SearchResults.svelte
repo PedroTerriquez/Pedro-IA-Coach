@@ -4,6 +4,7 @@
   import Button from './Button.svelte'
   import { TOUCH_PILL } from './friends-touch'
   import { streakLabel } from '$lib/league'
+  import TID from '$lib/test-ids.json'
 
   let {
     query = '',
@@ -33,10 +34,10 @@
   <div class="search-results" data-component="SearchResults">
     {#each results as r (r.username)}
       {@const cut = matchLength(r.username)}
-      <div class="sr-item">
+      <div class="sr-item" data-testid={TID.searchResult}>
         <Avatar username={r.username} />
         <div class="sr-info">
-          <div class="sr-name"><mark>{r.username.slice(0, cut)}</mark>{r.username.slice(cut)}</div>
+          <div class="sr-name" data-testid={TID.searchResultName}><mark>{r.username.slice(0, cut)}</mark>{r.username.slice(cut)}</div>
           <div class="sr-streak">{streakLabel(r.streak || 0)}</div>
         </div>
         {#if inLeague.includes(r.username)}

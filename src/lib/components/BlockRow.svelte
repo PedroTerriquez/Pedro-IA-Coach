@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte'
+  import TID from '$lib/test-ids.json'
   import { formatWeight } from '$lib/exercise-history'
   import type { ExerciseLogBlock } from '$lib/types'
 
@@ -50,6 +51,7 @@
   <label class="v" class:sel={selected === field}>
     <input
       class="block-field-input"
+      data-testid={TID.blockField}
       value={shown(field)}
       placeholder="0"
       inputmode={field === 'weight' ? 'decimal' : 'numeric'}
