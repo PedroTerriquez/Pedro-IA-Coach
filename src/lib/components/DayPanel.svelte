@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import DayBadge from './DayBadge.svelte'
   import TID from '$lib/test-ids.json'
 
   // A day opened with its exercises (Plan · Nuevo · TodayCard). Today gets the
@@ -20,7 +21,7 @@
 
 <section class="panel" class:today class:done data-component="DayPanel" data-weekday={weekday} data-state={done ? 'done' : today ? 'today' : 'open'}>
   <svelte:element this={ontoggle ? 'button' : 'div'} type={ontoggle ? 'button' : undefined} class="head" role={ontoggle ? undefined : 'group'} onclick={ontoggle}>
-    <span class="badge"><span>{weekday}</span><b>{date}</b></span>
+    <DayBadge {weekday} {date} fill={2} />
     <span class="min0">
       {#if today}<span class="now">Hoy</span>{/if}
       <span class="day-title" data-testid={TID.dayTitle}>{title}</span>
@@ -50,20 +51,6 @@
     text-align: left;
   }
   button.head { cursor: pointer; }
-  .badge {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-md);
-    background: var(--cv-fill-2);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    font-family: var(--font-mono);
-  }
-  .badge span { font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-tertiary); }
-  .badge b { font-size: 15px; font-weight: 500; line-height: 1; }
   .min0 { min-width: 0; }
   .now { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text); margin-bottom: 3px; }
   .day-title { display: block; font-size: 20px; font-weight: 600; letter-spacing: -0.4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

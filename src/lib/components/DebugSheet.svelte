@@ -7,6 +7,7 @@
   import Button from './Button.svelte'
   import DangerZone from './DangerZone.svelte'
   import Lead from './Lead.svelte'
+  import StatusRow from './StatusRow.svelte'
 
   // «Modo debug de IA»: password when off; status, last exchange, Mostrar / Copiar todo when on.
   let { open = $bindable(false) }: { open: boolean } = $props()
@@ -53,7 +54,7 @@
     <Button size="lg" variant="primary" onclick={activate}>Activar</Button>
   {:else}
     {#if !showing}
-      <div class="ro"><span class="l">Estado</span><span class="on-dot"><i></i>Activado</span></div>
+      <StatusRow label="Estado" on="Activado" />
     {/if}
     <div class="dbg">
       <span class="lbl">Último intercambio</span>
@@ -78,10 +79,6 @@
 </Sheet>
 
 <style>
-  .ro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px; border-radius: var(--cv-radius-field); background: var(--cv-fill-1); }
-  .l { font-size: 16px; font-weight: 500; }
-  .on-dot { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--text-secondary); }
-  .on-dot i { width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
   .dbg { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: var(--radius-lg); background: var(--cv-fill-1); }
   .dbg b { font-size: 16px; }
   .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }

@@ -5,6 +5,7 @@
   import StepsList from './StepsList.svelte'
   import Caption from './Caption.svelte'
   import Lead from './Lead.svelte'
+  import StatusRow from './StatusRow.svelte'
 
   // Depends on the permission: not asked yet / on (with a test) / blocked (with the steps).
   let { open = $bindable(false), state, onactivate, ontest }: {
@@ -23,7 +24,7 @@
 
 <Sheet bind:open title="Notificaciones" id="notifications-sheet">
   {#if state === 'granted'}
-    <div class="ro"><span class="l">Avisos de descanso</span><span class="on-dot"><i></i>Activadas</span></div>
+    <StatusRow label="Avisos de descanso" on="Activadas" />
     <Button size="lg" variant="secondary" onclick={ontest}>Enviar una de prueba</Button>
     <Lead size={14}>Para apagarlas: Ajustes del iPhone › Notificaciones › Training with Pedro.</Lead>
   {:else if state === 'denied'}
@@ -39,10 +40,3 @@
     <Caption style="margin:-8px 0 -12px">El iPhone te pedirá permiso una sola vez</Caption>
   {/if}
 </Sheet>
-
-<style>
-  .ro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px; border-radius: var(--cv-radius-field); background: var(--cv-fill-1); }
-  .l { font-size: 16px; font-weight: 500; }
-  .on-dot { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--text-secondary); white-space: nowrap; }
-  .on-dot i { width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
-</style>

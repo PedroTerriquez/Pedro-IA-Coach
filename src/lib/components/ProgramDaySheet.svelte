@@ -6,6 +6,7 @@
   import ChipRow from './ChipRow.svelte'
   import FilterChip from './FilterChip.svelte'
   import Field from './Field.svelte'
+  import StatusRow from './StatusRow.svelte'
 
   let { open = $bindable(false), day, weekName, onsave, onremove }: {
     open: boolean
@@ -44,15 +45,5 @@
       {/each}
     </ChipRow>
   </Field>
-  <div class="ro">
-    <span><span class="l">Duración</span><span class="s">Se calcula sola: 30 s por serie más su descanso</span></span>
-    <span class="v">≈ {dayDurationMin(day?.exercises)} min</span>
-  </div>
+  <StatusRow label="Duración" sub="Se calcula sola: 30 s por serie más su descanso" value="≈ {dayDurationMin(day?.exercises)} min" />
 </EditSheet>
-
-<style>
-  .ro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px; border-radius: var(--cv-radius-field); background: var(--cv-fill-1); }
-  .l { display: block; font-size: 16px; font-weight: 500; }
-  .s { display: block; margin-top: 3px; font-size: 13px; color: var(--text-tertiary); line-height: 1.35; }
-  .v { font-family: var(--font-mono); font-size: 15px; color: var(--text-secondary); white-space: nowrap; }
-</style>

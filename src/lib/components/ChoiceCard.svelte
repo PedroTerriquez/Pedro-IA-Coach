@@ -1,20 +1,24 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
 
-  // A 68 px choice inside a sheet: icon, what it is, what it does, chevron.
-  let { icon, title, desc = '', id = undefined, onclick }: {
-    icon: string
+  // A 68 px choice inside a sheet: icon (or a custom lead), what it is, what it does, chevron.
+  let { icon = '', lead, title, desc = '', id = undefined, chevron = true, onclick, ...rest }: {
+    icon?: string
+    lead?: Snippet
     title: string
     desc?: string
     id?: string
+    chevron?: boolean
     onclick: () => void
+    [key: string]: unknown
   } = $props()
 </script>
 
-<button {id} type="button" class="opt" data-component="ChoiceCard" {onclick}>
-  <Icon name={icon} size={22} />
+<button {id} type="button" class="opt" class:nochev={!chevron} data-component="ChoiceCard" {onclick} {...rest}>
+  {#if lead}{@render lead()}{:else}<Icon name={icon} size={22} />{/if}
   <span class="min0"><b>{title}</b>{#if desc}<span class="d">{desc}</span>{/if}</span>
-  <span class="chev"><Icon name="chev" size={16} /></span>
+  {#if chevron}<span class="chev"><Icon name="chev" size={16} /></span>{/if}
 </button>
 
 <style>
@@ -34,6 +38,7 @@
     text-align: left;
     cursor: pointer;
   }
+  .opt.nochev { grid-template-columns: 28px minmax(0, 1fr); }
   .min0 { min-width: 0; }
   b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; }
   .d { display: block; font-size: 13px; line-height: 1.4; color: var(--text-tertiary); margin-top: 3px; text-wrap: pretty; }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import DayBadge from './DayBadge.svelte'
   import TID from '$lib/test-ids.json'
 
   // One day of the week (Plan · Nuevo): weekday badge, title, one grey line and
@@ -34,7 +35,7 @@
   role={onclick ? undefined : 'group'}
   {onclick}
 >
-  <span class="badge"><span>{weekday}</span><b>{date}</b></span>
+  <DayBadge {weekday} {date} fill={state === 'rest' ? 'none' : 1} />
   <span class="min0">
     <span class="day-title" data-testid={TID.dayTitle}>{title}</span>
     {#if sub}<span class="sub">{sub}</span>{/if}
@@ -67,20 +68,6 @@
     text-align: left;
   }
   button.dr { cursor: pointer; }
-  .badge {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-md);
-    background: var(--cv-fill-1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    font-family: var(--font-mono);
-  }
-  .badge span { font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-tertiary); }
-  .badge b { font-size: 15px; font-weight: 500; line-height: 1; }
   .min0 { min-width: 0; }
   .day-title { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sub { display: block; font-size: 13px; color: var(--text-tertiary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -89,7 +76,6 @@
   .done { box-shadow: inset 0 0 0 1.5px var(--accent); }
   .rest { background: transparent; box-shadow: inset 0 0 0 0.5px var(--border-medium); min-height: 60px; }
   .rest .day-title { font-size: 16px; font-weight: 500; color: var(--text-secondary); }
-  .rest .badge { background: transparent; }
   .moved .sub { color: var(--text-secondary); }
   .lifted {
     position: relative;
