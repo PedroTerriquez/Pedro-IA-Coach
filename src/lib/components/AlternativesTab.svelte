@@ -5,6 +5,7 @@
   import EmptyState from './EmptyState.svelte'
   import Button from './Button.svelte'
   import Icon from './Icon.svelte'
+  import Caption from './Caption.svelte'
 
   type Alt = { name: string; muscle?: string }
 
@@ -77,7 +78,7 @@
         />
       {/each}
     </div>
-    {#if !searching}<p class="cap">Toca una para cambiar el ejercicio.</p>{/if}
+    {#if !searching}<Caption>Toca una para cambiar el ejercicio.</Caption>{/if}
   {/if}
 </div>
 
@@ -101,5 +102,4 @@
   }
   .lbl { padding: 0 4px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .list { display: flex; flex-direction: column; gap: 8px; }
-  .cap { font-size: 13px; color: var(--text-tertiary); text-align: center; line-height: 1.45; }
 </style>

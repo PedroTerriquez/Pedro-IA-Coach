@@ -33,7 +33,7 @@
   } = $props()
 
   // The minimized rest banner takes the dock's place while it runs.
-  let restShown = $derived($restBannerState.visible && $restMinimized)
+  let restShown = $derived($restBannerState.visible && $restMinimized && $restBannerState.phase !== 'done')
 
   // Drag-to-close by the head
   let dragOffset = $state(0)

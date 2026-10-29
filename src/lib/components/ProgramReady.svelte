@@ -3,6 +3,7 @@
   import { dayDurationMin, plural, weekdayName } from '$lib/program-utils'
   import Button from './Button.svelte'
   import Icon from './Icon.svelte'
+  import Lead from './Lead.svelte'
 
   // «Listo, {nombre}.» after a program is created with the coach or from a paste.
   let { program, userName, ontoday, onprogram }: {
@@ -20,7 +21,7 @@
   <div class="cel-c">
     <span class="ok"><Icon name="check" size={24} /></span>
     <div class="ttl">Listo, {userName}.</div>
-    <p class="note">«{program.name}» ya es tu programa activo.</p>
+    <Lead size={17}>«{program.name}» ya es tu programa activo.</Lead>
     {#if firstDay}
       <div class="nextup">
         <span class="lbl">Empiezas con</span>
@@ -47,7 +48,6 @@
   .cel-c { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding-bottom: 28px; }
   .ok { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--bg); }
   .ttl { margin-top: 14px; font-size: 38px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
-  .note { font-size: 17px; line-height: 1.5; color: var(--text-secondary); }
   .nextup { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--radius-2xl); background: var(--surface); }
   .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
   .nextup-t { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }

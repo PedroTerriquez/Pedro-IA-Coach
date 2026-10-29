@@ -3,7 +3,7 @@
   import { plural, programExerciseCount } from '$lib/program-utils'
   import Sheet from './Sheet.svelte'
   import OptionList from './OptionList.svelte'
-  import Button from './Button.svelte'
+  import DangerZone from './DangerZone.svelte'
   import InlineConfirm from './InlineConfirm.svelte'
 
   // ⋯ of a program: Editar, Duplicar, and Eliminar confirmed inside this same sheet.
@@ -40,13 +40,7 @@
         onconfirm={() => { open = false; ondelete() }}
       />
     {:else}
-      <div class="far">
-        <Button size="lg" variant="danger-text" style="align-self:center" onclick={() => asking = true}>Eliminar</Button>
-      </div>
+      <DangerZone label="Eliminar" onclick={() => asking = true} />
     {/if}
   {/if}
 </Sheet>
-
-<style>
-  .far { display: flex; flex-direction: column; padding-top: 6px; margin-bottom: -14px; border-top: 0.5px solid var(--border-medium); }
-</style>

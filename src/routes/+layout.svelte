@@ -1,14 +1,14 @@
 <script lang="ts">
   import '$lib/../app.css'
   import { settings } from '$lib/stores/settings'
-  import { toast, restMinimized, detailSheetsOpen } from '$lib/stores/ui'
+  import { toast, restMinimized, detailSheetsOpen, seriesConfirmed } from '$lib/stores/ui'
   import TabBar from '$lib/components/TabBar.svelte'
   import Toast from '$lib/components/Toast.svelte'
   import RestTimerBanner from '$lib/components/RestTimerBanner.svelte'
   import SeriesModeScreen from '$lib/components/SeriesModeScreen.svelte'
   import OnboardingBanner from '$lib/components/OnboardingBanner.svelte'
   import OfflineBanner from '$lib/components/OfflineBanner.svelte'
-  import { restBannerState, cancelRestTimer, adjustRestTimer, restartRestTimer, startNextSet } from '$lib/rest-timer'
+  import { restBannerState, cancelRestTimer, skipRest, adjustRestTimer, restartRestTimer, startNextSet } from '$lib/rest-timer'
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
   import { ROUTES } from '$lib/routes'
@@ -90,8 +90,9 @@
   visible={$restBannerState.visible && !$restMinimized}
   timer={$restBannerState}
   {accent}
-  onskip={() => cancelRestTimer($restBannerState.tag)}
+  onskip={() => skipRest()}
   onclose={() => cancelRestTimer($restBannerState.tag)}
+  onconfirmed={(exerciseId) => seriesConfirmed.set(exerciseId)}
   onminimize={() => restMinimized.set(true)}
   onadjust={(delta) => adjustRestTimer(delta)}
   onrestart={() => restartRestTimer()}
@@ -107,7 +108,7 @@
   reps={$restBannerState.reps}
   setIndex={$restBannerState.setIndex}
   inSheet={$detailSheetsOpen > 0}
-  onskip={() => cancelRestTimer($restBannerState.tag)}
+  onskip={() => skipRest()}
   onexpand={() => restMinimized.set(false)}
 />
 

@@ -4,6 +4,8 @@
   import Button from './Button.svelte'
   import StatBlock from './StatBlock.svelte'
   import UsernameField from './UsernameField.svelte'
+  import Caption from './Caption.svelte'
+  import Lead from './Lead.svelte'
   import { TOUCH, TOUCH_SECONDARY } from './friends-touch'
 
   type RenameResult = 'ok' | 'taken' | 'error'
@@ -66,9 +68,9 @@
     {#if editing}
       <!-- Field first: the iOS keyboard covers the bottom of the sheet. -->
       <UsernameField id="rename-input" bind:value={draft} error={taken ? 'Ese usuario ya está tomado' : ''} oninput={() => taken = false} />
-      <p class="note">Tus amigos verán el cambio en su liga.</p>
+      <Lead size={14}>Tus amigos verán el cambio en su liga.</Lead>
       <Button variant="primary" fullWidth style={TOUCH} disabled={!canSave} onclick={save}>Guardar</Button>
-      {#if !online}<p class="cap">Necesitas internet para cambiar tu usuario.</p>{/if}
+      {#if !online}<Caption style="margin-top:-4px">Necesitas internet para cambiar tu usuario.</Caption>{/if}
     {:else}
       <div class="who">
         <Avatar {username} size={64} />
@@ -196,12 +198,5 @@
     line-height: 1.5;
     color: var(--text-secondary);
     text-wrap: pretty;
-  }
-  .cap {
-    margin: -4px 0 0;
-    font-size: 13px;
-    line-height: 1.45;
-    color: var(--text-tertiary);
-    text-align: center;
   }
 </style>

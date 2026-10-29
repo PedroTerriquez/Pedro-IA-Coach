@@ -16,6 +16,7 @@
   import ResultSheet from './ResultSheet.svelte'
   import ExerciseImporter from './ExerciseImporter.svelte'
   import DebugSheet from './DebugSheet.svelte'
+  import Lead from './Lead.svelte'
 
   let { exerciseCount, onchanged, onunmatched, onback }: {
     exerciseCount: number
@@ -129,7 +130,7 @@
 <ExerciseImporter bind:this={importer} {onchanged} />
 
 <Sheet bind:open={restoreAskOpen} title="¿Restaurar una copia?" id="restore-sheet">
-  <p class="note">Agrega lo del archivo y actualiza lo que ya tienes. Lo que no viene en el archivo se queda.</p>
+  <Lead>Agrega lo del archivo y actualiza lo que ya tienes. Lo que no viene en el archivo se queda.</Lead>
   <div class="stack">
     <Button size="lg" variant="secondary" onclick={saveFirst}><Icon name="save" size={18} />Guardar copia primero</Button>
     <Button size="lg" variant="danger" onclick={chooseRestoreFile}>Elegir archivo y restaurar</Button>
@@ -138,7 +139,7 @@
 </Sheet>
 
 <Sheet bind:open={dictAskOpen} title="¿Sincronizar con el diccionario?" id="dictionary-sheet">
-  <p class="note">Busca tus {plural(exerciseCount, 'ejercicio', 'ejercicios')} en el diccionario y cambia su nombre, músculo, imagen, consejos y alternativas por los de ahí. Lo que personalizaste en ellos se reemplaza. Tus registros no se tocan.</p>
+  <Lead>Busca tus {plural(exerciseCount, 'ejercicio', 'ejercicios')} en el diccionario y cambia su nombre, músculo, imagen, consejos y alternativas por los de ahí. Lo que personalizaste en ellos se reemplaza. Tus registros no se tocan.</Lead>
   <div class="stack">
     <Button size="lg" variant="secondary" onclick={saveFirst}><Icon name="save" size={18} />Guardar copia primero</Button>
     <Button size="lg" variant="danger" onclick={runDictionary}>Ordenar {plural(exerciseCount, 'ejercicio', 'ejercicios')}</Button>
@@ -165,6 +166,5 @@
 <DebugSheet bind:open={debugOpen} />
 
 <style>
-  .note { font-size: 15px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
 </style>

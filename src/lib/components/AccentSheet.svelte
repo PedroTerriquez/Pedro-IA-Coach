@@ -2,6 +2,7 @@
   import { ACCENT_PRESETS } from '$lib/settings-options'
   import Sheet from './Sheet.svelte'
   import Icon from './Icon.svelte'
+  import Caption from './Caption.svelte'
 
   // 5 colours + «Otro» (free picker). Applies on tap; the sheet stays to show the preview.
   let { open = $bindable(false), value, onpick }: {
@@ -28,7 +29,7 @@
     <span class="lbl">Vista previa</span>
     <span class="btn-prev">Empezar con Press Banca</span>
   </div>
-  <p class="cap">Se aplica al tocar. Solo cambia el botón principal y el punto de «Programa activo». «Otro» abre el selector de color.</p>
+  <Caption style="margin-bottom:-8px">Se aplica al tocar. Solo cambia el botón principal y el punto de «Programa activo». «Otro» abre el selector de color.</Caption>
 </Sheet>
 
 <style>
@@ -56,5 +57,4 @@
   .prev { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--radius-lg); background: var(--cv-fill-1); }
   .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
   .btn-prev { display: flex; align-items: center; justify-content: center; height: 52px; border-radius: var(--cv-radius-field); background: var(--accent); color: var(--bg); font-size: 16px; font-weight: 600; }
-  .cap { margin-bottom: -8px; font-size: 13px; line-height: 1.45; text-align: center; color: var(--text-tertiary); }
 </style>

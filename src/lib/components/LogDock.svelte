@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import Caption from './Caption.svelte'
 
   // The detail sheet's dock: one-line caption + one or two 56 buttons
   // (`timer` = 112 + rest, `even` = two shares), or the search field.
@@ -11,7 +12,7 @@
 </script>
 
 <div class="dock" data-component="LogDock">
-  {#if caption}<p class="cap">{caption}</p>{/if}
+  {#if caption}<Caption oneLine>{caption}</Caption>{/if}
   <div class="row {layout}">{@render children()}</div>
 </div>
 
@@ -28,7 +29,6 @@
     padding: 28px 20px max(34px, env(safe-area-inset-bottom, 0px));
     background: linear-gradient(to bottom, transparent, var(--surface) 26px);
   }
-  .cap { font-size: 13px; color: var(--text-tertiary); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row { display: grid; gap: 8px; }
   .row.one { grid-template-columns: minmax(0, 1fr); }
   .row.timer { grid-template-columns: 112px minmax(0, 1fr); }

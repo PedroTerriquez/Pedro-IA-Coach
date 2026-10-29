@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import Caption from './Caption.svelte'
 
   let { caption = '', children }: {
     caption?: string
@@ -10,7 +11,7 @@
 <!-- The spacer keeps the end of the page reachable above the fixed dock -->
 <div class="dock-space" aria-hidden="true"></div>
 <div class="dock" data-component="NextStepDock">
-  {#if caption}<p class="cap">{caption}</p>{/if}
+  {#if caption}<Caption>{caption}</Caption>{/if}
   {@render children?.()}
 </div>
 
@@ -28,5 +29,4 @@
     padding: 28px 20px 10px;
     background: linear-gradient(to bottom, transparent, var(--bg) 26px);
   }
-  .cap { font-size: 13px; color: var(--text-tertiary); text-align: center; text-wrap: pretty; }
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte'
+  import Caption from './Caption.svelte'
   import { formatWeight } from '$lib/exercise-history'
   import { plural } from '$lib/program-utils'
 
@@ -75,7 +76,7 @@
     </label>
     <button type="button" class="b" aria-label="Más peso" onclick={() => step(1)}><Icon name="plus" size={26} /></button>
   </div>
-  <p class="cap">{saved ? 'Toca − o + para corregirlo' : caption}</p>
+  <Caption style="margin-top:-6px">{saved ? 'Toca − o + para corregirlo' : caption}</Caption>
   {#if !saved}
     <button type="button" class="lnk" onclick={onblocks}>Series con pesos distintos<Icon name="chev" size={14} /></button>
   {/if}
@@ -114,7 +115,6 @@
   }
   .v input::placeholder { color: var(--text-muted); }
   .v small { font-size: 17px; color: var(--text-tertiary); margin-left: 4px; font-weight: 500; }
-  .cap { text-align: center; font-size: 13px; color: var(--text-tertiary); margin-top: -6px; }
   .lnk {
     height: 48px;
     width: 100%;

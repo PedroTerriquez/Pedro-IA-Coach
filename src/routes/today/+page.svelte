@@ -124,7 +124,8 @@
     firstEver: allLogs.length === 0,
     offline: !$online,
   }))
-  let restShown = $derived($restBannerState.visible && $restMinimized)
+  // The banner only shows a running rest; one at zero, minimized, leaves the dock
+  let restShown = $derived($restBannerState.visible && $restMinimized && $restBannerState.phase !== 'done')
   let clockRunning = $derived(!!startedAt && !endedAt)
   let clock = $derived(startedAt ? formatClock(nowMs - startedAt) : '')
   let sessionMinutes = $derived(durationMinutes())
@@ -522,7 +523,7 @@
     coachError = false
     coachResult = null
     try {
-      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx, trainingDaysPerWeek(program, weekIdx))
+      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx, trainingDaysPerWeek(program, weekIdx), program)
       coachLoading = false
       if (!result) {
         coachError = true

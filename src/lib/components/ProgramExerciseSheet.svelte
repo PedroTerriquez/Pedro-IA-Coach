@@ -7,6 +7,7 @@
   import TextInput from './TextInput.svelte'
   import NumberStepper from './NumberStepper.svelte'
   import OptionList from './OptionList.svelte'
+  import Field from './Field.svelte'
 
   let { open = $bindable(false), exercise, library, onsave }: {
     open: boolean
@@ -50,29 +51,20 @@
 <EditSheet bind:open id="program-exercise-sheet" title="Editar ejercicio del día" cancel={false} onsave={save}>
   <TextInput variant="field" label="Nombre" bind:value={name} {error} placeholder="Ej: Press Banca" />
   {#if suggestions.length}
-    <div class="fw sugg">
-      <span class="fl">De tus ejercicios</span>
+    <Field label="De tus ejercicios" style="margin-top:-6px">
       <OptionList
         nav
         label="De tus ejercicios"
         options={suggestions.map(e => ({ value: e.name, label: e.name, meta: muscleLabel(e.muscle) }))}
         onselect={(v) => name = v}
       />
-    </div>
+    </Field>
   {/if}
-  <div class="fw">
-    <span class="fl">Series</span>
+  <Field label="Series">
     <NumberStepper size="sm" name="series" display={String(sets)} unit="series" decDisabled={sets <= 1} onstep={(d) => sets = Math.max(1, sets + d)} />
-  </div>
+  </Field>
   <TextInput variant="field" label="Repeticiones" mono bind:value={reps} placeholder="8-10" />
-  <div class="fw">
-    <span class="fl">Descanso</span>
+  <Field label="Descanso">
     <NumberStepper size="sm" name="descanso" display={String(rest)} unit="s" decDisabled={rest <= 0} onstep={(d) => rest = Math.max(0, rest + d * REST_STEP)} oninput={typedRest} />
-  </div>
+  </Field>
 </EditSheet>
-
-<style>
-  .fw { display: flex; flex-direction: column; gap: 8px; }
-  .sugg { margin-top: -6px; }
-  .fl { font-size: 13px; color: var(--text-tertiary); padding-left: 4px; }
-</style>

@@ -66,7 +66,7 @@ Cada elemento de la fase de calentamiento o de estiramiento (por ejemplo «Rotac
 - **En inglés / en código:** warmup item / stretch item
 
 ### Registro por serie
-Registro que se va armando serie a serie desde el timer: cada serie lleva su peso y repeticiones, y se guarda al confirmar «Confirma tus series». Es la única forma de registrar series sueltas; el ejercicio queda «en curso» hasta llegar a sus series planeadas.
+Registro que se va armando serie a serie desde el timer: cada serie lleva su peso y repeticiones, y se guarda al registrarla, al saltar su descanso o al llegar a cero; «Confirma tus series» las revisa todas al final (flujo en `docs/adr-rest-timer.md`). Es la única forma de registrar series sueltas; el ejercicio queda «en curso» hasta llegar a sus series planeadas.
 - **No es:** el registro único (ese se hace desde Registrar, sin timer).
 - **En inglés / en código:** per-set log (timer)
 

@@ -2,7 +2,7 @@
   import type { SetEntry } from '$lib/set-log'
   import WeightRepsStepper from './WeightRepsStepper.svelte'
   import Button from './Button.svelte'
-  import IconButton from './IconButton.svelte'
+  import SheetCloseButton from './SheetCloseButton.svelte'
   import Icon from './Icon.svelte'
   import TID from '$lib/test-ids.json'
 
@@ -105,7 +105,7 @@
 
 <div class="scs" data-component="SeriesConfirmSheet">
   <header class="scs-top">
-  <IconButton size="sm" variant="filled" icon="x" label="Cerrar" onclick={onclose} />
+  <SheetCloseButton onclick={() => onclose?.()} />
   <span class="scs-status">Completado</span>
   <span class="scs-top-gap"></span>
 </header>

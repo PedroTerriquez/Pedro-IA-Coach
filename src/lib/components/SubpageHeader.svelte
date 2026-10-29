@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import Lead from './Lead.svelte'
 
   let { title, back = 'Tú', onback, lead = '', leadSnippet }: {
     title: string
@@ -16,7 +17,7 @@
 <header class="sub-hd" data-component="SubpageHeader">
   <button type="button" class="back" onclick={onback}><Icon name="back" size={20} />{back}</button>
   <h1 class="ttl2">{title}</h1>
-  {#if leadSnippet}<p class="lead">{@render leadSnippet()}</p>{:else if lead}<p class="lead">{lead}</p>{/if}
+  {#if leadSnippet}<Lead style="margin-top:2px">{@render leadSnippet()}</Lead>{:else if lead}<Lead style="margin-top:2px">{lead}</Lead>{/if}
 </header>
 
 <style>
@@ -44,5 +45,4 @@
     color: var(--text);
   }
   .ttl2 { font-size: 32px; font-weight: 700; letter-spacing: -1.2px; line-height: 1.05; }
-  .lead { margin-top: 2px; font-size: 15px; line-height: 1.45; color: var(--text-secondary); text-wrap: pretty; }
 </style>

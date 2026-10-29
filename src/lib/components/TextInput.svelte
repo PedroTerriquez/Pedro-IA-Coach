@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FullAutoFill } from 'svelte/elements'
+  import Field from './Field.svelte'
 
   let {
     value = $bindable(''),
@@ -54,8 +55,7 @@
 </script>
 
 {#if variant === 'field'}
-  <label class="fw" data-component="TextInput">
-    {#if label}<span class="fl">{label}</span>{/if}
+  <Field tag="label" {label} data-component="TextInput">
     <span class="field" class:is-error={!!error} class:is-disabled={disabled}>
       <input
         bind:this={inputEl}
@@ -77,7 +77,7 @@
       {#if unit}<span class="fu">{unit}</span>{/if}
     </span>
     {#if error}<span class="ferr" role="alert">{error}</span>{/if}
-  </label>
+  </Field>
 {:else}
   <input
     bind:this={inputEl}
@@ -106,8 +106,6 @@
   }
 
   /* ── Compartidos · Nuevo: field ── */
-  .fw { display: flex; flex-direction: column; gap: 8px; }
-  .fl { font-size: 13px; color: var(--text-tertiary); padding-left: 4px; }
   .field {
     display: flex;
     align-items: center;

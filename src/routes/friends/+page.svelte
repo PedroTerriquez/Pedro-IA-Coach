@@ -10,6 +10,7 @@
   import AddFriend from '$lib/components/AddFriend.svelte'
   import ProfileSheet from '$lib/components/ProfileSheet.svelte'
   import UsernameField from '$lib/components/UsernameField.svelte'
+  import Caption from '$lib/components/Caption.svelte'
   import { TOUCH, TOUCH_SECONDARY, TOUCH_TEXT } from '$lib/components/friends-touch'
   import { PUSH_SERVER_URL } from '$lib/config'
   import { onMount } from 'svelte'
@@ -342,7 +343,7 @@
             <p>Agrega a tus amigos por su usuario y vean cada semana quién suma más minutos. No necesitan aceptar.</p>
             <div class="acts">
               {@render addButton(true)}
-              {#if !$online}<p class="cap">Necesitas internet para agregar amigos.</p>{/if}
+              {#if !$online}<Caption>Necesitas internet para agregar amigos.</Caption>{/if}
               <Button variant="text" fullWidth style={TOUCH_TEXT} onclick={handleShare}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5M5 13v7h14v-7"/></svg>
                 Compartir mi usuario
@@ -359,9 +360,9 @@
             <div class="add">
               {@render addButton(friendCount === 1)}
               {#if !$online}
-                <p class="cap">Necesitas internet para agregar amigos.</p>
+                <Caption>Necesitas internet para agregar amigos.</Caption>
               {:else if friendCount === 1}
-                <p class="cap">Con más amigos, la semana se pone más reñida.</p>
+                <Caption>Con más amigos, la semana se pone más reñida.</Caption>
               {/if}
             </div>
           </Stack>
@@ -423,14 +424,6 @@
     flex-direction: column;
     gap: 10px;
   }
-  .cap {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.45;
-    color: var(--text-tertiary);
-    text-align: center;
-    text-wrap: pretty;
-  }
   .empty {
     display: flex;
     flex-direction: column;
@@ -447,7 +440,7 @@
     line-height: 1.15;
     color: var(--text);
   }
-  .empty p:not(.cap) {
+  .empty p {
     margin: 0;
     font-size: 15px;
     line-height: 1.5;

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
+  import Lead from './Lead.svelte'
 
   // How the session felt, with intensity bars instead of emojis. «Ahora no»
   // closes it; the summary can open it again.
@@ -20,7 +21,7 @@
 </script>
 
 <Sheet id="effort-overlay" bind:open title="¿Cómo sentiste la sesión?" onclose={onskip}>
-  <p class="note">Así Pedro te da mejor feedback.</p>
+  <Lead style="margin-top:-12px">Así Pedro te da mejor feedback.</Lead>
   <div class="opts" data-component="EffortSheet">
     {#each EFFORTS as e}
       <button type="button" class="opt" data-effort={e.label} onclick={() => onselect(e.label)}>
@@ -35,7 +36,6 @@
 </Sheet>
 
 <style>
-  .note { font-size: 15px; line-height: 1.5; color: var(--text-secondary); margin-top: -12px; }
   .opts { display: flex; flex-direction: column; gap: 8px; }
   .opt {
     display: grid;

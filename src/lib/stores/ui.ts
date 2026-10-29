@@ -44,6 +44,9 @@ export const toast = createToastStore()
 // detail sheet hides its LogDock, since the banner takes the thumb zone.
 export const restMinimized = writable(false)
 
+// «Confirma tus series» saved for this exercise: the detail moves on to the next one.
+export const seriesConfirmed = writable<string | null>(null)
+
 // Detail-style sheets open right now: the banner and the offline notice move
 // into the sheet while one is up.
 export const detailSheetsOpen = writable(0)

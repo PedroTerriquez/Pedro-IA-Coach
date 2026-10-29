@@ -9,6 +9,7 @@
   import FilterChip from './FilterChip.svelte'
   import Icon from './Icon.svelte'
   import SearchInput from './SearchInput.svelte'
+  import Field from './Field.svelte'
 
   // One muscle, compact: a search on top and a few chips (the chosen one
   // first). Typing filters the user's muscles + the 10 basics; when nothing
@@ -42,8 +43,7 @@
   }
 </script>
 
-<div class="fw" data-component="MusclePicker">
-  <span class="fl">Músculo</span>
+<Field label="Músculo" data-component="MusclePicker">
   <SearchInput value={query} placeholder="Buscar o añadir músculo" oninput={(v) => query = v} id="muscle-search" />
   <ChipRow layout="wrap">
     {#each shown as m}
@@ -53,9 +53,4 @@
       <FilterChip variant="outline" onclick={() => pick(capitalize(typed))}><Icon name="plus" size={16} />Añadir «{capitalize(typed)}»</FilterChip>
     {/if}
   </ChipRow>
-</div>
-
-<style>
-  .fw { display: flex; flex-direction: column; gap: 8px; }
-  .fl { font-size: 13px; color: var(--text-tertiary); padding-left: 4px; }
-</style>
+</Field>

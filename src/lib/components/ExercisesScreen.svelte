@@ -17,7 +17,6 @@
   import ExerciseListItem from './ExerciseListItem.svelte'
   import ExerciseCard from './ExerciseCard.svelte'
   import EditExerciseSheet, { type ExerciseEdits } from './EditExerciseSheet.svelte'
-  import NewExerciseSheet from './NewExerciseSheet.svelte'
   import ExerciseImporter from './ExerciseImporter.svelte'
 
   let { exercises, logs, onback, onchanged }: {
@@ -30,8 +29,8 @@
   let query = $state('')
   let expandedId = $state<string | null>(null)
   let editOpen = $state(false)
-  let newOpen = $state(false)
-  let newName = $state('')
+  let createOpen = $state(false)
+  let createInitialName = $state('')
   let importer: ExerciseImporter | null = $state(null)
 
   function matches(ex: Exercise, q: string): boolean {
@@ -72,17 +71,17 @@
     onchanged()
   }
 
-  async function create(ex: { name: string; muscle: string }) {
-    await Storage.saveExercise({ id: await generateId(), name: ex.name, muscle: ex.muscle, imgUrl: '', gifUrl: '', tips: [], alternatives: [] })
-    newOpen = false
+  async function createExercise(edits: ExerciseEdits) {
+    await Storage.saveExercise({ id: await generateId(), name: edits.name, muscle: edits.muscle, imgUrl: edits.imgUrl || '', gifUrl: '', tips: edits.tips || [], alternatives: edits.alternatives || [] })
+    createOpen = false
     query = ''
     toast.show('Ejercicio creado')
     onchanged()
   }
 
   function openNew(name = '') {
-    newName = name
-    newOpen = true
+    createInitialName = name
+    createOpen = true
   }
 </script>
 
@@ -102,7 +101,7 @@
   {:else if filtered.length === 0}
     <EmptyState variant="center" title="No tienes «{query.trim()}»" text="Créalo y queda listo para usarlo en tus programas.">
       {#snippet actions()}
-        <Button size="pill" variant="primary" onclick={() => create({ name: capitalize(query.trim()), muscle: '' })}><Icon name="plus" size={18} />Crear «{capitalize(query.trim())}»</Button>
+        <Button size="pill" variant="primary" onclick={() => openNew(capitalize(query.trim()))}><Icon name="plus" size={18} />Crear «{capitalize(query.trim())}»</Button>
       {/snippet}
     </EmptyState>
   {:else}
@@ -135,7 +134,7 @@
 </YouScreen>
 
 <EditExerciseSheet bind:open={editOpen} exercise={selected} {exercises} {muscles} {logCount} onsave={save} ondelete={remove} />
-<NewExerciseSheet bind:open={newOpen} initialName={newName} muscles={muscles.slice(0, 8)} onsave={create} />
+<EditExerciseSheet bind:open={createOpen} exercise={null} mode="create" initialName={createInitialName} {exercises} muscles={muscles.slice(0, 8)} onsave={createExercise} />
 <ExerciseImporter bind:this={importer} {onchanged} />
 
 <style>

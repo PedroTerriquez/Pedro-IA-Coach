@@ -5,6 +5,7 @@
   import IconButton from './IconButton.svelte'
   import ExerciseMiniCard from './ExerciseMiniCard.svelte'
   import AltSearchSheet from './AltSearchSheet.svelte'
+  import Field from './Field.svelte'
 
   // Alternatives as mini cards with ✕; «Añadir alternativa» searches first.
   let { alternatives = $bindable([]), exercise, exercises }: {
@@ -25,8 +26,7 @@
   }
 </script>
 
-<div class="fw" data-component="AlternativesEditor">
-  <span class="fl">Alternativas</span>
+<Field label="Alternativas" data-component="AlternativesEditor">
   {#each alternatives as alt, i}
     <ExerciseMiniCard name={alt.name} imgUrl={alternativeImage(alt.name, exercises)}>
       {#snippet trailing()}
@@ -35,13 +35,11 @@
     </ExerciseMiniCard>
   {/each}
   <button type="button" class="add" onclick={() => searchOpen = true}><Icon name="search" size={18} />Añadir alternativa</button>
-</div>
+</Field>
 
 <AltSearchSheet bind:open={searchOpen} {exercise} {alternatives} {exercises} onpick={add} />
 
 <style>
-  .fw { display: flex; flex-direction: column; gap: 8px; }
-  .fl { font-size: 13px; color: var(--text-tertiary); padding-left: 4px; }
   .add {
     display: flex;
     align-items: center;

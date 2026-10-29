@@ -6,6 +6,7 @@
   import Icon from './Icon.svelte'
   import StatsGrid from './StatsGrid.svelte'
   import StatBlock from './StatBlock.svelte'
+  import Lead from './Lead.svelte'
 
   // Result of an action (backup, import, dictionary…): icon, sentence, file and
   // the next step. The error variant offers a retry plus «Cerrar».
@@ -33,7 +34,7 @@
     <div class="rs">
       <div class="rs-i" class:bad={!result.ok}><Icon name={result.ok ? 'check' : 'x'} size={result.ok ? 24 : 22} /></div>
       <div class="q">{result.heading}</div>
-      {#if result.text}<p class="note">{result.text}</p>{/if}
+      {#if result.text}<Lead>{result.text}</Lead>{/if}
     </div>
     {#if result.file}
       <div class="file"><b>{result.file.name}</b><span>{result.file.meta}</span></div>
@@ -69,7 +70,6 @@
   .rs-i { width: 48px; height: 48px; margin-bottom: 4px; border-radius: 50%; display: grid; place-items: center; background: var(--cv-fill-on); color: var(--text); }
   .rs-i.bad { background: var(--cv-danger-bg); color: var(--cv-danger-text); }
   .q { font-size: 24px; font-weight: 700; letter-spacing: -0.6px; line-height: 1.15; }
-  .note { font-size: 15px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
   .file { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 56px; padding: 0 16px; border-radius: var(--cv-radius-field); background: var(--cv-fill-1); }
   .file b { font-family: var(--font-mono); font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .file span { font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); }

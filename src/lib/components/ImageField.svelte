@@ -3,6 +3,7 @@
   import type { Exercise } from '$lib/types'
   import Button from './Button.svelte'
   import TextInput from './TextInput.svelte'
+  import Field from './Field.svelte'
 
   // The dictionary image by default. «Pegar URL» shows the field (and pastes the
   // clipboard if it holds a URL); «Volver a la del diccionario» undoes it.
@@ -42,14 +43,13 @@
 {/snippet}
 
 {#if editing}
-  <div class="fw" data-component="ImageField">
-    <span class="fl">Imagen · URL</span>
+  <Field label="Imagen · URL" data-component="ImageField">
     <div class="url">
       {@render preview(52)}
       <TextInput variant="field" type="url" mono bind:value placeholder="https://…" oninput={() => manual = true} />
     </div>
     <Button size="lg" variant="text" style="align-self:flex-start;height:44px;padding:0 4px" onclick={useDictionary}>Volver a la del diccionario</Button>
-  </div>
+  </Field>
 {:else}
   <div class="row" data-component="ImageField">
     {@render preview(40)}
@@ -62,8 +62,6 @@
 {/if}
 
 <style>
-  .fw { display: flex; flex-direction: column; gap: 8px; }
-  .fl { font-size: 13px; color: var(--text-tertiary); padding-left: 4px; }
   .url { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: center; }
   .row {
     display: grid;

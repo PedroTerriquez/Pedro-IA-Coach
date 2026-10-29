@@ -22,7 +22,8 @@
     onadjust = undefined,
     onrestart = undefined,
     onnext = undefined,
-    onclose = undefined
+    onclose = undefined,
+    onconfirmed = undefined
   }: {
     visible: boolean
     timer: RestTimerData
@@ -33,6 +34,8 @@
     onrestart?: () => void
     onnext?: () => void | Promise<void>
     onclose?: () => void
+    /** «Confirma tus series» saved: the detail moves on to the next exercise */
+    onconfirmed?: (exerciseId: string) => void
   } = $props()
 
   const WEIGHT_STEP = 5
@@ -167,31 +170,27 @@
       // Save the set that was being registered
       await commitShownSet()
       justSavedSetNo = setNo
-      phase = 'saved'
+      await refreshAutoFlags()
 
       // If this was the last set, go to confirm phase
       if (isLastSet) {
+        if (autoFillResult?.sets?.length) {
+          entries = autoFillResult.sets
+        }
         phase = 'confirm'
+      } else {
+        phase = 'saved'
       }
-      // Refresh auto-flags after commit
-      await refreshAutoFlags()
     }
   }
 
-  // Called when user taps "Serie N hecha · descansar" during rest - just commits the set
+  // «Registrar» during the rest: commits the set and folds the fields. The rest
+  // keeps running, also on the last set — «Confirma tus series» comes at zero.
   async function commitSet() {
     await commitShownSet()
     committedWeight = weight
     committedReps = reps
-    
-    // If this is the last set, go directly to confirm phase
-    if (isLastSet) {
-      phase = 'confirm'
-    } else {
-      // Minimize the weight/reps section instead of switching to 'saved' phase
-      weightRepsMinimized = true
-    }
-    // Refresh auto-flags after commit
+    weightRepsMinimized = true
     await refreshAutoFlags()
   }
 
@@ -247,8 +246,12 @@
   // «Terminar»: keeps the shown set and goes straight to «Confirma tus series»
   async function finish() {
     await commitShownSet()
-    phase = 'confirm'
     await refreshAutoFlags()
+    // Ensure entries include all planned sets (auto-fill missing ones)
+    if (autoFillResult?.sets?.length) {
+      entries = autoFillResult.sets
+    }
+    phase = 'confirm'
   }
 
   function stepWeight(delta: number) {
@@ -348,14 +351,16 @@
         {units}
         entries={withAutoFlag(entries, autoFlags)}
         onsave={(sets) => {
-          persistSets(timer.exerciseId, sets, units)
+          const exerciseId = timer.exerciseId
+          persistSets(exerciseId, sets, units)
           onclose?.()
+          onconfirmed?.(exerciseId)
         }}
         onclose={onclose}
       />
     {:else}
       <header class="sms-top">
-        {#if phase === 'registering'}
+        {#if phase === 'registering' || phase === 'saved'}
           <IconButton size="sm" variant="filled" icon="down" label="Minimizar descanso" onclick={onminimize} />
         {:else}
           <span class="sms-top-gap"></span>

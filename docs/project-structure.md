@@ -7,7 +7,7 @@ src/
   app.d.ts                 → Global types ($service-worker module decl)
   service-worker.js        → SvelteKit SW: network-first, caches scoped by build hash ($service-worker)
   routes/
-    +layout.svelte         → App shell: TabBar, Toast, RestTimerFullscreen + RestTimerBanner (minimizado), Onboarding, Coach FAB
+    +layout.svelte         → App shell: TabBar, Toast, SeriesModeScreen + RestTimerBanner (minimizado), Onboarding, Coach FAB
     +page.svelte           → Redirect: new user → /you, otherwise → /today
     today/                 → Session auto-detect, warmup, rest timer, ⌚ watch button
     plan/                  → Plan v2: week switch, week strip, day rows, Reprogramar

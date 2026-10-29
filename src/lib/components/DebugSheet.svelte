@@ -5,6 +5,8 @@
   import Sheet from './Sheet.svelte'
   import TextInput from './TextInput.svelte'
   import Button from './Button.svelte'
+  import DangerZone from './DangerZone.svelte'
+  import Lead from './Lead.svelte'
 
   // «Modo debug de IA»: password when off; status, last exchange, Mostrar / Copiar todo when on.
   let { open = $bindable(false) }: { open: boolean } = $props()
@@ -45,7 +47,7 @@
 
 <Sheet bind:open title="Modo debug de IA" id="debug-ai-section">
   {#if !$settings.debugAI}
-    <p class="lead">Guarda lo que la app le manda al coach y lo que responde, para revisar errores. Es para desarrolladores.</p>
+    <Lead style="margin-top:-6px">Guarda lo que la app le manda al coach y lo que responde, para revisar errores. Es para desarrolladores.</Lead>
     <TextInput variant="field" label="Contraseña" type="password" mono id="debug-pass-input" autocomplete="off" bind:value={pass} {error}
       onkeydown={(e) => { if (e.key === 'Enter') activate() }} />
     <Button size="lg" variant="primary" onclick={activate}>Activar</Button>
@@ -70,15 +72,12 @@
       </div>
     {:else}
       <Button size="lg" variant="secondary" disabled={!exchange} onclick={() => showing = true}>Mostrar</Button>
-      <div class="far">
-        <Button size="lg" variant="danger-text" style="align-self:center" onclick={deactivate}>Desactivar</Button>
-      </div>
+      <DangerZone label="Desactivar" onclick={deactivate} />
     {/if}
   {/if}
 </Sheet>
 
 <style>
-  .lead { margin-top: -6px; font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
   .ro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px; border-radius: var(--cv-radius-field); background: var(--cv-fill-1); }
   .l { font-size: 16px; font-weight: 500; }
   .on-dot { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--text-secondary); }
@@ -104,5 +103,4 @@
     -webkit-user-select: text;
   }
   .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .far { display: flex; flex-direction: column; padding-top: 6px; margin-bottom: -14px; border-top: 0.5px solid var(--border-medium); }
 </style>

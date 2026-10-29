@@ -3,6 +3,7 @@
   import Avatar from './Avatar.svelte'
   import Button from './Button.svelte'
   import StatBlock from './StatBlock.svelte'
+  import Caption from './Caption.svelte'
   import { TOUCH, TOUCH_SECONDARY, TOUCH_DANGER_TEXT } from './friends-touch'
   import type { LeagueEntry } from '$lib/league'
 
@@ -71,7 +72,7 @@
       {:else}
         <div class="remove">
           <Button variant="danger" fullWidth style={TOUCH_DANGER_TEXT} disabled={!online} onclick={() => confirming = true}>Quitar de mi liga</Button>
-          {#if !online}<p class="cap">Necesitas internet para quitar amigos.</p>{/if}
+          {#if !online}<Caption>Necesitas internet para quitar amigos.</Caption>{/if}
         </div>
       {/if}
     </div>
@@ -212,12 +213,5 @@
     flex-direction: column;
     gap: 4px;
     margin-top: -6px;
-  }
-  .cap {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.45;
-    color: var(--text-tertiary);
-    text-align: center;
   }
 </style>

@@ -15,7 +15,7 @@
   import Sheet from './Sheet.svelte'
   import TextInput from './TextInput.svelte'
   import Button from './Button.svelte'
-  import Icon from './Icon.svelte'
+  import DangerZone from './DangerZone.svelte'
   import MusclePicker from './MusclePicker.svelte'
   import ImageField from './ImageField.svelte'
   import TipsEditor from './TipsEditor.svelte'
@@ -25,9 +25,10 @@
   // The one exercise editor, everywhere an exercise is edited: name, muscle,
   // image, tips, alternatives and (with `ondelete`) delete. Nothing is saved
   // until Guardar; ✕ closes without saving.
-  let { open = $bindable(false), exercise, exercises = [], muscles = [], logCount = 0, onsave, ondelete = undefined, onclose = () => {} }: {
+  // Also used in create mode (exercise null / mode create) with same fields.
+  let { open = $bindable(false), exercise = null, exercises = [], muscles = [], logCount = 0, onsave, ondelete = undefined, onclose = () => {}, mode = 'edit', initialName = '' }: {
     open: boolean
-    exercise: Exercise | null
+    exercise?: Exercise | null
     /** The user's exercises, for alternative search and photos */
     exercises?: Exercise[]
     /** The user's muscles (display labels), shown before the basics */
@@ -37,7 +38,12 @@
     onsave: (edits: ExerciseEdits) => void
     ondelete?: () => void
     onclose?: () => void
+    mode?: 'create' | 'edit'
+    initialName?: string
   } = $props()
+
+  let isCreate = $derived(mode === 'create' || exercise === null)
+  let title = $derived(isCreate ? 'Nuevo ejercicio' : 'Editar ejercicio')
 
   let name = $state('')
   let muscle = $state('')
@@ -48,7 +54,19 @@
   let confirming = $state(false)
 
   $effect(() => {
-    if (open && exercise) load(exercise)
+    if (open) {
+      touched = false
+      confirming = false
+      if (!isCreate && exercise) {
+        load(exercise)
+      } else {
+        name = initialName || ''
+        muscle = ''
+        imgUrl = ''
+        tips = []
+        alternatives = []
+      }
+    }
   })
 
   function load(ex: Exercise) {
@@ -80,17 +98,15 @@
   }
 </script>
 
-<Sheet bind:open title="Editar ejercicio" full {onclose} id="edit-exercise-sheet">
+<Sheet bind:open title={title} full {onclose} id="edit-exercise-sheet">
   <div class="fset">
     <TextInput variant="field" label="Nombre" bind:value={name} oninput={() => touched = true} error={touched && empty ? 'Ponle un nombre.' : ''} />
     <MusclePicker bind:value={muscle} {muscles} />
-    <ImageField bind:value={imgUrl} {exercise} />
+    <ImageField bind:value={imgUrl} exercise={isCreate ? null : exercise} />
     <TipsEditor bind:tips />
-    {#if exercise}<AlternativesEditor bind:alternatives {exercise} {exercises} />{/if}
-    {#if ondelete}
-      <div class="far">
-        <Button size="lg" variant="danger" onclick={() => confirming = true}><Icon name="trash" size={18} />Eliminar ejercicio</Button>
-      </div>
+    {#if !isCreate && exercise}<AlternativesEditor bind:alternatives {exercise} {exercises} />{/if}
+    {#if !isCreate && ondelete}
+      <DangerZone filled label="Eliminar ejercicio" onclick={() => confirming = true} />
     {/if}
   </div>
   {#snippet footer()}
@@ -98,11 +114,10 @@
   {/snippet}
 </Sheet>
 
-{#if ondelete && exercise}
+{#if !isCreate && ondelete && exercise}
   <ConfirmSheet bind:open={confirming} elevated title="¿Eliminar «{exercise.name}»?" text={deleteText(logCount)} confirmLabel="Eliminar" onconfirm={ondelete} id="delete-exercise-sheet" />
 {/if}
 
 <style>
   .fset { display: flex; flex-direction: column; gap: 24px; }
-  .far { display: flex; flex-direction: column; padding-top: 20px; border-top: 0.5px solid var(--border-medium); }
 </style>

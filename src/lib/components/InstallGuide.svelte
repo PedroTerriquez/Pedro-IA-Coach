@@ -3,6 +3,7 @@
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
   import StepsList from './StepsList.svelte'
+  import Lead from './Lead.svelte'
 
   // «Instalar app»: Safari's three steps, or the native prompt where the browser offers one.
   let { open = $bindable(false) }: { open: boolean } = $props()
@@ -20,7 +21,7 @@
 </script>
 
 <Sheet bind:open title="Instalar app" id="install-guide">
-  <p class="lead">Queda en tu pantalla de inicio y abre sin la barra de Safari.</p>
+  <Lead style="margin-top:-6px">Queda en tu pantalla de inicio y abre sin la barra de Safari.</Lead>
   {#if useNativePrompt()}
     <Button size="lg" variant="primary" onclick={install}>Instalar</Button>
   {:else}
@@ -30,5 +31,4 @@
 </Sheet>
 
 <style>
-  .lead { margin-top: -6px; font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
 </style>

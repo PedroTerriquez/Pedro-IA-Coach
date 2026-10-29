@@ -4,6 +4,7 @@
   import NavRow from './NavRow.svelte'
   import Switch from './Switch.svelte'
   import Button from './Button.svelte'
+  import Lead from './Lead.svelte'
 
   // «Crear versión nueva»: name it and decide whether it becomes the active program.
   let { open = $bindable(false), programName, suggestedName, busy = false, oncreate }: {
@@ -29,7 +30,7 @@
       {#snippet control()}<Switch label="Usarla desde hoy" checked={activate} onchange={(v) => activate = v} />{/snippet}
     </NavRow>
   </div>
-  <p class="note">«{programName}» se queda en Otros programas con todo tu historial.</p>
+  <Lead>«{programName}» se queda en Otros programas con todo tu historial.</Lead>
   <Button size="lg" variant="primary" disabled={busy || !name.trim()} onclick={() => oncreate({ name: name.trim(), activate })}>
     {busy ? 'Creando versión…' : 'Crear versión'}
   </Button>
@@ -37,5 +38,4 @@
 
 <style>
   .row { border-radius: var(--radius-lg); overflow: hidden; background: var(--cv-fill-1); }
-  .note { font-size: 15px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { logWeight, getSettings, findOrCreateExerciseByName, swapExerciseForToday, revertExerciseSwapForToday } from '$lib/storage'
-  import { toast } from '$lib/stores/ui'
+  import { toast, restMinimized, seriesConfirmed } from '$lib/stores/ui'
+  import { restBannerState } from '$lib/rest-timer'
   import { settings } from '$lib/stores/settings'
   import { online } from '$lib/stores/network'
   import { parseRepsDefault, muscleLabel } from '$lib/exercise-utils'
@@ -268,9 +269,21 @@
     onRevert?.()
   }
 
+  // A rest of this exercise already up (running or at zero, maybe minimized)
+  let ownRest = $derived($restBannerState.visible && $restBannerState.exerciseId === currentExerciseKey)
+
+  // «Confirma tus series» saved for this exercise: on to the next one
+  $effect(() => {
+    if ($seriesConfirmed !== currentExerciseKey) return
+    seriesConfirmed.set(null)
+    if (hasNext) onNavigate?.('next')
+  })
+
   // The rest starts on the tap and the full-screen timer covers this sheet;
-  // the guard only keeps a double tap from counting two sets.
+  // the guard only keeps a double tap from counting two sets. With this
+  // exercise's rest already up, the button reopens it where it was.
   async function handleIniciar() {
+    if (ownRest) { restMinimized.set(false); return }
     if (iniciarLoading) return
     iniciarLoading = true
     try {

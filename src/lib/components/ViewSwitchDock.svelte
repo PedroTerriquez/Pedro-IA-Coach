@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import SegmentedControl from './SegmentedControl.svelte'
+  import Caption from './Caption.svelte'
 
   // Historial's dock (Historial · Nuevo): the Días / Ejercicios switch in the
   // thumb zone, with an optional caption and main button over it — the same
@@ -21,7 +22,7 @@
      follows the dock's height, which grows with the caption and the button -->
 <div class="dock-space" style="height:{Math.max(0, height - 28)}px" aria-hidden="true"></div>
 <div class="dock" bind:offsetHeight={height} data-component="ViewSwitchDock">
-  {#if caption}<p class="cap">{caption}</p>{/if}
+  {#if caption}<Caption>{caption}</Caption>{/if}
   {@render children?.()}
   <SegmentedControl size="tabs" {label} {options} bind:value {onchange} />
 </div>
@@ -40,5 +41,4 @@
     padding: 28px 20px 10px;
     background: linear-gradient(to bottom, transparent, var(--bg) 26px);
   }
-  .cap { font-size: 13px; color: var(--text-tertiary); text-align: center; text-wrap: pretty; }
 </style>

@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.93'
-const _VER_DESC = 'Buscador Google/TikTok arreglado, IA revisa el programa, hojas se cierran deslizando'
-const _VER_TIME = '2026-10-23 00:21'
+const _VER_BASE = 'v2.94'
+const _VER_DESC = 'Componentes compartidos, cierre con chevron, Saltar no cierra el timer, una sola hoja de ejercicio'
+const _VER_TIME = '2026-10-29 01:13'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

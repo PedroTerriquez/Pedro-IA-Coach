@@ -6,6 +6,7 @@
   import FilterChip from './FilterChip.svelte'
   import Button from './Button.svelte'
   import Icon from './Icon.svelte'
+  import Caption from './Caption.svelte'
 
   let { open = $bindable(false), online, onstart }: {
     open: boolean
@@ -63,12 +64,11 @@
   </div>
 
   {#snippet footer()}
-    <p class="cap">Primero lo platican; se crea cuando estén de acuerdo</p>
+    <Caption>Primero lo platican; se crea cuando estén de acuerdo</Caption>
     <Button size="lg" variant="primary" disabled={!online} onclick={start}>Platicar con el coach<Icon name="arrow" size={18} /></Button>
   {/snippet}
 </Sheet>
 
 <style>
   .cg { display: flex; flex-direction: column; gap: 10px; }
-  .cap { font-size: 13px; text-align: center; color: var(--text-tertiary); }
 </style>

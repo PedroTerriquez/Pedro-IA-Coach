@@ -2,6 +2,7 @@
   import Icon from './Icon.svelte'
   import IconButton from './IconButton.svelte'
   import TextInput from './TextInput.svelte'
+  import Field from './Field.svelte'
 
   // Short technique phrases: edit in place, ✕ to remove, add at the end.
   // Empty ones are dropped by whoever saves.
@@ -20,8 +21,7 @@
   }
 </script>
 
-<div class="fw" data-component="TipsEditor">
-  <span class="fl">Consejos</span>
+<Field label="Consejos" data-component="TipsEditor">
   {#each tips as _, i}
     <div class="row">
       <TextInput variant="field" bind:value={tips[i]} placeholder="Ej: baja en 3 segundos" autofocus={i === added} />
@@ -29,11 +29,9 @@
     </div>
   {/each}
   <button type="button" class="add" onclick={add}><Icon name="plus" size={18} />Añadir consejo</button>
-</div>
+</Field>
 
 <style>
-  .fw { display: flex; flex-direction: column; gap: 8px; }
-  .fl { font-size: 13px; color: var(--text-tertiary); padding-left: 4px; }
   .row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 4px; align-items: center; margin-right: -10px; }
   .add {
     display: flex;

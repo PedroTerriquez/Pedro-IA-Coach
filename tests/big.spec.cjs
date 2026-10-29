@@ -6,6 +6,8 @@
 // then keep the old intent in a comment next to the new assertion. Adding
 // tests never needs permission.
 //
+// RESTRUCTURACIÓN EN CURSO: adaptando bigtest al nuevo flujo lineal.
+//
 // GUARDRAIL: If you're removing/modifying steps below, STOP.
 // This is the single source of truth for behavioral/E2E coverage of the app —
 // all behavior tests live here, against the real SvelteKit app. Don't add new
@@ -294,9 +296,13 @@ async function backToYou(page) {
 async function createExercise(page, name, muscle) {
   // An empty list offers «Crear ejercicio»; after that it's the dock's +
   await page.getByRole('button', { name: /^(Crear ejercicio|Nuevo ejercicio)$/ }).click()
-  const sheet = page.locator('#new-exercise-sheet')
+  // Same sheet as editing, in create mode; the muscle is searched and picked
+  const sheet = page.locator('#edit-exercise-sheet')
+  await expect(sheet.getByText('Nuevo ejercicio')).toBeVisible()
   await sheet.getByLabel('Nombre').fill(name)
-  await sheet.getByLabel('Músculo').fill(muscle)
+  await sheet.locator('#muscle-search').fill(muscle)
+  // Filtered (accents ignored): the match, or «Añadir «…»» when none
+  await sheet.locator('[data-component="MusclePicker"] [data-component="FilterChip"]').first().click()
   await sheet.getByRole('button', { name: 'Guardar' }).click()
   await expect(sheet).toHaveCount(0)
   await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: name }).first()).toBeVisible()
@@ -616,6 +622,11 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await page.locator('#exercise-search').fill('Remo Z')
     await expect(page.locator('#you-ejercicios')).toContainText('No tienes «Remo Z»')
     await page.getByRole('button', { name: 'Crear «Remo Z»' }).click()
+    // Opens the create sheet with the searched name already filled
+    const createSheet = page.locator('#edit-exercise-sheet')
+    await expect(createSheet.getByLabel('Nombre')).toHaveValue('Remo Z')
+    await createSheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(createSheet).toHaveCount(0)
     await expect(page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo Z' })).toBeVisible()
     await page.locator('#exercise-search').fill('')
     await expect(page.locator('#ex-count')).toHaveText('8 ejercicios')
@@ -1727,14 +1738,16 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(timer).toBeVisible()
     await expect(banner).toHaveCount(0)
 
-    // Saltar cancels the queued push and clears the timer
+    // Saltar sends the rest to zero: it cancels the queued push and the screen
+    // stays, waiting for the next serie
     const cancels = api.restCancels.length
     await timer.getByRole('button', { name: 'Saltar descanso' }).click()
-    await expect(timer).toHaveCount(0)
+    await expect(timer).toHaveAttribute('data-phase', 'saved')
+    await expect(timerMain).toContainText('Empezar serie 2')
     await expect.poll(() => api.restCancels.length).toBe(cancels + 1)
     expect(api.restCancels.at(-1).tag).toBeTruthy()
     expect(api.restCancels.at(-1).deviceId).toBeTruthy()
-    await waitRestCleared(page)
+    await expect.poll(async () => (await cached(page, 'rest-timer'))?.phase).toBe('done')
 
     // With no rest running, tapping that notification means "terminé la
     // siguiente serie": it counts serie 2 and arms its rest — once, even with
@@ -1804,8 +1817,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect(log.blocks).toEqual([{ sets: 2, reps: 10, weight: 80 }, { sets: 1, reps: 10, weight: 85 }])
     expect(log.weight).toBe(85)
 
-    // Serie 4, the last, short of the 8-10 target: 85 × 7. Registering it
-    // ends on the summary instead of a next serie.
+    // Serie 4, the last, short of the 8-10 target: 85 × 7. Registering it folds
+    // the fields like any serie; its rest reaching zero opens the summary.
     await expect(timerMain).toContainText('Empezar serie 4')
     await timerMain.click()
     await expect(serieLabel).toContainText('Serie 4 de 4')
@@ -1814,7 +1827,9 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     for (let i = 0; i < 3; i++) await timer.getByRole('button', { name: 'Menos reps' }).click()
     await expect(wrsValue(1)).toContainText('7')
     await timerMain.click()
-    await expect(timer).toHaveAttribute('data-phase', 'confirm', { timeout: 10000 })
+    await expect(timer).toContainText('Serie 4 registrada')
+    await expect(timer).toHaveAttribute('data-phase', 'registering')
+    await waitPhase('confirm')
   })
 
   await step('Step 8d: Rest Timer — Confirma tus series', async () => {
@@ -1927,7 +1942,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(tnName).toContainText('Militar')
     await registrarTab.click()
 
-    // Serie 1 straight from the timer: never done, so it starts from nothing
+    // Serie 1 straight from the timer: never done, so it starts from nothing.
+    // «Registrar» folds the fields; the rest keeps running
     await logDock(page).getByRole('button', { name: 'Iniciar descanso' }).click()
     await expect(timer).toHaveAttribute('data-phase', 'registering')
     await expect(serieLabel).toContainText('Serie 1 de 3')
@@ -1935,18 +1951,27 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     for (let i = 0; i < 8; i++) await timer.getByRole('button', { name: 'Subir 5 kg' }).click()
     await expect(wrsValue(0)).toContainText('40')
     await timerMain.click()
-    await waitPhase('saved')
-    // «Terminar» goes straight to «Confirma tus series», keeping what was registered
-    await timer.getByRole('button', { name: 'Terminar ejercicio' }).click()
-    await expect(timer).toHaveAttribute('data-phase', 'confirm')
-    await expect(timer.locator(SEL.confirmRow)).toHaveCount(1)
-    await expect(timer.locator(SEL.confirmSave)).toContainText('Guardar 1 serie')
-    await timer.locator(SEL.confirmSave).click()
-    await expect(timer).toHaveCount(0)
+    await expect(timer).toHaveAttribute('data-phase', 'registering')
+    await expect(timer).toContainText('Serie 1 registrada')
     await expect.poll(async () => (await todayLogOf(ids.military))[0]?.sets).toBe(1)
-    await closeDetail()
+    // (+30 s keeps it running while minimized; at zero it would open full screen by itself)
+    await timer.getByRole('button', { name: '+30 s' }).click()
 
-    // Hoy: Banca done, Militar in progress with its marks, the dock on the next set
+    // Minimized inside the detail, the banner takes the dock's place and
+    // reopens the same rest (no new set counted)
+    const restBanner = page.locator('[data-component="RestTimerBanner"]')
+    await timer.getByRole('button', { name: 'Minimizar descanso' }).click()
+    await expect(timer).toHaveCount(0)
+    await expect(restBanner).toBeVisible()
+    await expect(logDock(page)).toHaveCount(0)
+    await restBanner.getByRole('button', { name: 'Abrir descanso a pantalla completa' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'registering')
+    await expect(serieLabel).toContainText('Serie 1 de 3')
+
+    // Minimized again and out to Hoy: the banner there, Militar in progress with its marks
+    await timer.getByRole('button', { name: 'Minimizar descanso' }).click()
+    await closeDetail()
+    await expect(restBanner).toBeVisible()
     const bench = training.locator(SEL.exerciseRow).nth(0)
     const military = training.locator(SEL.exerciseRow).nth(1)
     await expect(bench).toHaveAttribute('data-state', 'done')
@@ -1959,40 +1984,61 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(military.locator('.pips i.on')).toHaveCount(1)
     await expect(page.locator('[data-component="SessionClock"]')).toBeVisible()
     await expect(page.locator('[data-phase="stretch"]')).toContainText('Después')
-    // Offline, the dock says everything is still saved on the phone
+    expect((await storedSettings(page)).sessionState.endedAt ?? null).toBeNull()
+
+    // Back in the detail, the banner reopens it; «Saltar» sends the rest to
+    // zero and the screen stays, ready for the next serie
+    await openRow('Militar')
+    await restBanner.getByRole('button', { name: 'Abrir descanso a pantalla completa' }).click()
+    await expect(serieLabel).toContainText('Serie 1 de 3')
+    await timer.getByRole('button', { name: 'Saltar descanso' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'saved')
+    await expect(timer).toContainText('Serie 1 guardada')
+    // Minimized at zero there's no banner: the dock is back, and its rest
+    // button reopens the timer where it was, without counting another serie
+    await timer.getByRole('button', { name: 'Minimizar descanso' }).click()
+    await expect(restBanner).toHaveCount(0)
+    await logDock(page).getByRole('button', { name: /Iniciar descanso|Descansar/ }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'saved')
+    await expect(serieLabel).toContainText('Serie 1 de 3')
+
+    // Serie 2 through the timer, its rest skipped as well
+    await timerMain.click()
+    await expect(timer).toHaveAttribute('data-phase', 'registering')
+    await expect(serieLabel).toContainText('Serie 2 de 3')
+    await expect(timer.locator(SEL.seriesDot('done'))).toHaveCount(1)
+    await expect(wrsValue(0)).toContainText('40')
+    await timerMain.click()
+    await timer.getByRole('button', { name: 'Saltar descanso' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'saved')
+    await expect.poll(async () => (await todayLogOf(ids.military))[0]?.sets).toBe(2)
+
+    // «Terminar» goes straight to «Confirma tus series» with every planned serie:
+    // the registered ones as they were, the missing one filled in, all editable
+    await timer.getByRole('button', { name: 'Terminar ejercicio' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'confirm')
+    await expect(timer.locator(SEL.confirmRow)).toHaveCount(3)
+    await expect(timer.locator(SEL.confirmRow).nth(1)).not.toContainText('auto')
+    await expect(timer.locator(SEL.confirmRow).nth(2)).toContainText('auto')
+    await expect(timer.locator(SEL.confirmSave)).toContainText('Guardar 3 series')
+    await timer.locator(SEL.confirmSave).click()
+    await expect(timer).toHaveCount(0)
+    await expect.poll(async () => (await todayLogOf(ids.military))[0]?.sets).toBe(3)
+    await waitRestCleared(page)
+    // Saved, the detail moves on to the next exercise
+    await expect(tnName).toContainText('Fondos')
+
+    // Offline, Hoy's dock says everything is still saved on the phone
+    await closeDetail()
     await goOffline(page, context)
     await expect(todayDock(page)).toContainText('Sin internet también se guarda todo en tu teléfono.')
     await context.setOffline(false)
     await page.evaluate(() => window.dispatchEvent(new Event('online')))
     await expect(todayDock(page)).not.toContainText('Sin internet')
-    await todayDock(page).getByRole('button', { name: /Registrar serie 2 de Press Militar/ }).click()
-    await expect(tnName).toContainText('Militar')
-    expect((await storedSettings(page)).sessionState.endedAt ?? null).toBeNull()
-
-    // Series 2 and 3 through the timer, then «Guardar 3 series»
-    await logDock(page).getByRole('button', { name: /Iniciar descanso|Descansar/ }).click()
-    await expect(serieLabel).toContainText('Serie 2 de 3')
-    await expect(timer.locator(SEL.seriesDot('done'))).toHaveCount(1)
-    await expect(wrsValue(0)).toContainText('40')
-    await timerMain.click()
-    await waitPhase('saved')
-    await timerMain.click()
-    // The last serie, counted on screen; untouched, its rest running out opens
-    // «Confirma tus series» by itself
-    await expect(serieLabel).toContainText('Serie 3 de 3')
-    await expect(timer.locator(SEL.seriesDot('done'))).toHaveCount(2)
-    await expect(timer.locator(SEL.seriesDot('current'))).toHaveCount(1)
-    await expect(timerMain).toContainText('Registrar')
-    await waitPhase('confirm')
-    await expect(timer.locator(SEL.confirmRow)).toHaveCount(3)
-    await timer.locator(SEL.confirmSave).click()
-    await expect(timer).toHaveCount(0)
-    await expect.poll(async () => (await todayLogOf(ids.military))[0]?.sets).toBe(3)
-    await waitRestCleared(page)
   })
 
   await step('Step 8f: Hoy — Fondos por una alternativa', async () => {
-    await navNext.click()
+    await openRow('Fondos')
     await expect(tnName).toContainText('Fondos')
 
     // The search in the dock covers the whole dictionary
@@ -2022,7 +2068,10 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect.poll(async () => (await readLogs(page)).filter(l => l.date === localDate(0)).length).toBe(logsBefore + 1)
     const altLog = (await readLogs(page)).find(l => l.date === localDate(0) && ![ids.bench, ids.military, ids.dips, ids.long].includes(l.exerciseId) && l.weight === 5)
     expect(altLog, 'the skipped set is saved on the alternative').toBeTruthy()
-    await waitRestCleared(page)
+    // The rest at zero stays up; minimized, the detail is back
+    await expect(timer).toHaveAttribute('data-phase', 'saved')
+    await timer.getByRole('button', { name: 'Minimizar descanso' }).click()
+    await expect(timer).toHaveCount(0)
 
     // Registered under the alternative, it still counts as today's Fondos
     await weightInput.fill('60')
@@ -2124,6 +2173,11 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await page.waitForTimeout(100)
     expect(JSON.stringify(await todayLogOf(ids.long))).toBe(longBefore)
     await timer.getByRole('button', { name: 'Saltar descanso' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'saved')
+    // Closing «Confirma tus series» without saving ends the rest for good
+    await timer.getByRole('button', { name: 'Terminar ejercicio' }).click()
+    await expect(timer).toHaveAttribute('data-phase', 'confirm')
+    await timer.getByRole('button', { name: 'Cerrar' }).click()
     await expect(timer).toHaveCount(0)
     await waitRestCleared(page)
     await closeDetail()

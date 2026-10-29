@@ -2,6 +2,7 @@
   import Sheet from './Sheet.svelte'
   import SectionLabel from './SectionLabel.svelte'
   import AIEntry from './AIEntry.svelte'
+  import Caption from './Caption.svelte'
 
   // One «Crear programa», three paths. Offline the two AI paths turn off and say why.
   let { open = $bindable(false), online, oncoach, onpaste, onscratch }: {
@@ -35,7 +36,7 @@
     <SectionLabel>A mano</SectionLabel>
     <AIEntry id="create-scratch" ai={false} title="Desde cero" desc="Ponle nombre y agrega días y ejercicios." onclick={() => go(onscratch)} />
   </div>
-  {#if !online}<p class="cap">Sin conexión. Desde cero funciona igual.</p>{/if}
+  {#if !online}<Caption style="margin:-4px 0 -8px">Sin conexión. Desde cero funciona igual.</Caption>{/if}
 </Sheet>
 
 <style>
@@ -55,5 +56,4 @@
     letter-spacing: 0.6px;
     text-transform: uppercase;
   }
-  .cap { margin: -4px 0 -8px; font-size: 13px; text-align: center; color: var(--text-tertiary); }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import Icon from './Icon.svelte'
+  import SheetCloseButton from './SheetCloseButton.svelte'
   import { swipeToClose, CLOSED_OFFSET } from '$lib/swipe-to-close'
 
   let {
@@ -63,9 +64,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="sheet-backdrop" role="presentation" onclick={close} style="opacity: {1 - Math.min(dragOffset / CLOSED_OFFSET, 1)};"></div>
     {#if !isNew}
-      <button class="sheet-close-btn" onclick={close} aria-label="Cerrar">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l10 10M12 2L2 12"/></svg>
-      </button>
+      <SheetCloseButton floating onclick={close} />
     {/if}
     <!-- No transform at rest: it would trap the fixed layers of sheets opened inside -->
     <div class="sheet-content" class:v2={isNew} class:full style="transform: {dragOffset ? `translateY(${dragOffset}px)` : 'none'}; transition: {isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'};">
@@ -80,7 +79,7 @@
         {:else if isNew}
           <div class="sheet-head">
             <span class={titleStyle === 'label' ? 'sheet-label' : 'sheet-title'}>{title}</span>
-            <button class="sheet-x" onclick={close} aria-label="Cerrar"><Icon name="x" size={18} /></button>
+            <SheetCloseButton onclick={close} />
           </div>
         {:else if header}
           <div class="sheet-header">{@render header()}</div>
@@ -143,25 +142,6 @@
     font-size: 18px;
     font-weight: 700;
     color: var(--text);
-  }
-  .sheet-close-btn {
-    position: absolute;
-    right: 14px;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 0.5px solid var(--border-medium);
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 110;
-    padding: 0;
-    color: var(--text-secondary);
-    top: max(14px, env(safe-area-inset-top, 14px));
   }
   .sheet-body {
     overflow: auto;

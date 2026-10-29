@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte'
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
+  import DangerZone from './DangerZone.svelte'
   import InlineConfirm from './InlineConfirm.svelte'
 
   // Base for every edit sheet: title, body, Guardar (+ Cancelar), and an optional
@@ -59,9 +60,7 @@
       {#if cancel}<Button size="lg" variant="text" style="align-self:center" onclick={close}>Cancelar</Button>{/if}
     </div>
     {#if danger}
-      <div class="far">
-        <Button size="lg" variant="danger-text" style="align-self:center" onclick={() => asking = true}>{danger.label}</Button>
-      </div>
+      <DangerZone label={danger.label} onclick={() => asking = true} />
     {/if}
   {/if}
 </Sheet>
@@ -70,5 +69,4 @@
   .fset { display: flex; flex-direction: column; gap: 18px; }
   .fset.off { opacity: 0.35; pointer-events: none; }
   .acts { display: flex; flex-direction: column; gap: 4px; }
-  .far { display: flex; flex-direction: column; padding-top: 6px; margin-bottom: -14px; border-top: 0.5px solid var(--border-medium); }
 </style>

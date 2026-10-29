@@ -4,6 +4,8 @@
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
   import Icon from './Icon.svelte'
+  import Caption from './Caption.svelte'
+  import Lead from './Lead.svelte'
 
   // Step before the paste chat: the routine is pasted (or typed) here as is.
   let { open = $bindable(false), online, onsubmit }: {
@@ -47,7 +49,7 @@
 
 <Sheet bind:open full title="Pega tu rutina" eyebrow="Como la tengas anotada" titleStyle="center" id="paste-routine-sheet">
   {#if !writing}
-    <p class="lead">Días, ejercicios, series y repeticiones. Abreviado o con faltas, como se la dirías a un entrenador.</p>
+    <Lead size={16}>Días, ejercicios, series y repeticiones. Abreviado o con faltas, como se la dirías a un entrenador.</Lead>
     <div class="pst ph" aria-hidden="true">
       <span>Ejemplo:</span><span>Lunes pecho y tríceps</span><span>press banca 4x8</span><span>fondos 3 al fallo</span><span>…</span>
     </div>
@@ -65,7 +67,7 @@
 
   {#snippet footer()}
     {#if writing}
-      <p class="cap">Primero te muestra cómo queda; se crea cuando estés de acuerdo</p>
+      <Caption>Primero te muestra cómo queda; se crea cuando estés de acuerdo</Caption>
       <Button size="lg" variant="primary" disabled={!lines || !online} onclick={submit}>Ver cómo queda<Icon name="arrow" size={18} /></Button>
     {:else}
       <Button size="lg" variant="primary" onclick={pasteClipboard}>Pegar lo que copiaste</Button>
@@ -75,7 +77,6 @@
 </Sheet>
 
 <style>
-  .lead { font-size: 16px; line-height: 1.5; color: var(--text-secondary); }
   .pst {
     display: flex;
     flex-direction: column;
@@ -99,5 +100,4 @@
   .pst.ph span { color: var(--text-muted); }
   .count { margin-top: -10px; font-size: 13px; color: var(--text-tertiary); }
   .err { font-size: 13px; color: var(--cv-danger-text); }
-  .cap { font-size: 13px; text-align: center; color: var(--text-tertiary); }
 </style>

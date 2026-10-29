@@ -12,6 +12,6 @@
 ## Layout Shell (`+layout.svelte`)
 - TabBar (5 tabs)
 - Toast system
-- RestTimerFullscreen + RestTimerBanner (minimized)
+- SeriesModeScreen + RestTimerBanner (minimized)
 - Onboarding flow
 - Coach FAB (floating action button)

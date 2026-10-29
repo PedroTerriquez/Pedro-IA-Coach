@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte'
   import FilterChip from './FilterChip.svelte'
   import IconButton from './IconButton.svelte'
+  import Caption from './Caption.svelte'
 
   // Bottom of the text-only chat: caption, fixed quick replies, field + send,
   // and the chat's main button (passed as children).
@@ -51,7 +52,7 @@
 </script>
 
 <div class="cd" data-component="ChatDock">
-  {#if caption}<p class="cap">{caption}</p>{/if}
+  {#if caption}<Caption>{caption}</Caption>{/if}
   {@render top?.()}
   {#if chips.length}
     <div class="qr">
@@ -86,7 +87,6 @@
     border-top: 0.5px solid var(--border-medium);
     background: var(--bg);
   }
-  .cap { font-size: 13px; color: var(--text-tertiary); text-align: center; text-wrap: pretty; }
   .qr { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-right: -20px; padding-right: 20px; }
   .qr::-webkit-scrollbar { display: none; }
   .cf { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 8px; align-items: end; }

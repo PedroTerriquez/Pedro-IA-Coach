@@ -334,6 +334,17 @@ export async function completeRest(tag?: string): Promise<void> {
   await announceRestDone(data)
 }
 
+// «Saltar»: the rest ends now, exactly as if it reached zero — the screen
+// stays on the set and the next one starts when you tap. The queued push is dropped.
+export async function skipRest(): Promise<void> {
+  const current = await getRestTimer()
+  if (!current) return
+  cancelStartNotification()
+  await cancelDelayedPush(current.tag)
+  await storeRestTimer({ ...current, endTime: Date.now() })
+  await completeRest(current.tag)
+}
+
 // The screen itself announces the end ("Descanso terminado" a pantalla
 // completa) and the delayed push owns the notification, so all that's left in
 // the app is a buzz — and only once per rest, because the foreground checks

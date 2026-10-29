@@ -26,7 +26,7 @@ function leanBody(raw: Record<string, unknown>): Record<string, unknown> {
   return out
 }
 
-async function recordIfDebug(label: string, url: string, reqBody: unknown, parsed: unknown) {
+export async function recordIfDebug(label: string, url: string, reqBody: unknown, parsed: unknown) {
   const ts = new Date().toLocaleTimeString('es-MX')
   const endpoint = PUSH_SERVER_URL ? url.replace(PUSH_SERVER_URL, '') : url
   const lean = reqBody && typeof reqBody === 'object' && !Array.isArray(reqBody)

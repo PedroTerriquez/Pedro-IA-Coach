@@ -13,6 +13,7 @@
   import AccentSheet from './AccentSheet.svelte'
   import NotificationsSheet from './NotificationsSheet.svelte'
   import InstallGuide from './InstallGuide.svelte'
+  import Caption from './Caption.svelte'
 
   // Every setting applies on tap; nothing to save.
   let { settings, notifState, onupdate, onaccent, onactivatenotifs, ontestnotif, onback }: {
@@ -89,12 +90,12 @@
     <b>Press Banca</b>
     <span class="mono">4 × 8-10 · 120 s</span>
   </div>
-  <p class="cap">Se aplica al tocar, en toda la app</p>
+  <Caption style="margin-bottom:-8px">Se aplica al tocar, en toda la app</Caption>
 </Sheet>
 
 <Sheet bind:open={langOpen} title="Idioma" id="language-sheet">
   <OptionList label="Idioma" options={LANGUAGES} value={settings.language || 'es'} onselect={pickLanguage} />
-  <p class="cap">Se aplica al tocar. Tus ejercicios y programas conservan sus nombres.</p>
+  <Caption style="margin-bottom:-8px">Se aplica al tocar. Tus ejercicios y programas conservan sus nombres.</Caption>
 </Sheet>
 
 <AccentSheet bind:open={accentOpen} value={settings.accentColor || '#d4ff3a'} onpick={onaccent} />
@@ -107,5 +108,4 @@
   .prev b { font-size: 19px; }
   .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
   .mono { font-family: var(--font-mono); font-size: 16px; color: var(--text-secondary); }
-  .cap { margin-bottom: -8px; font-size: 13px; line-height: 1.45; text-align: center; color: var(--text-tertiary); }
 </style>

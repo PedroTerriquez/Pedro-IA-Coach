@@ -4,6 +4,8 @@
   import Sheet from './Sheet.svelte'
   import Button from './Button.svelte'
   import ProfileFieldControl from './ProfileFieldControl.svelte'
+  import Caption from './Caption.svelte'
+  import Lead from './Lead.svelte'
 
   let { open = $bindable(false), field, saved, units = 'kg', onsave }: {
     open: boolean
@@ -41,11 +43,11 @@
 
 <Sheet bind:open title={field?.label || ''} id="profile-field-sheet">
   {#if field}
-    {#if field.kind === 'text'}<p class="lead">{field.lead}</p>{/if}
+    {#if field.kind === 'text'}<Lead style="margin-top:-6px">{field.lead}</Lead>{/if}
     <ProfileFieldControl {field} bind:value {units} onpick={field.kind === 'option' ? pickAndClose : undefined} />
-    {#if field.kind === 'number'}<p class="cap">{stepCaption(field)}</p>{/if}
+    {#if field.kind === 'number'}<Caption>{stepCaption(field)}</Caption>{/if}
     {#if field.kind === 'option'}
-      <p class="cap last">Se guarda al tocar</p>
+      <Caption style="margin-bottom:-8px">Se guarda al tocar</Caption>
     {:else}
       <Button size="lg" variant="primary" onclick={save}>Guardar</Button>
     {/if}
@@ -53,7 +55,4 @@
 </Sheet>
 
 <style>
-  .lead { margin-top: -6px; font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
-  .cap { font-size: 13px; line-height: 1.45; text-align: center; color: var(--text-tertiary); }
-  .cap.last { margin-bottom: -8px; }
 </style>
