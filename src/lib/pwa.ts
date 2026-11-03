@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.95'
-const _VER_DESC = 'StatusRow, DayBadge, BottomDock y EffortSheet con ChoiceCard'
-const _VER_TIME = '2026-10-29 11:13'
+const _VER_BASE = 'v2.96'
+const _VER_DESC = 'Bigtest reordenado: Tú primero, IA aparte, copia de seguridad al final'
+const _VER_TIME = '2026-11-02 23:07'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

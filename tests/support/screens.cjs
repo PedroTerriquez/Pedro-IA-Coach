@@ -101,39 +101,8 @@ async function unblockExternalImages(context) {
   await context.unroute(EXTERNAL_IMAGE)
 }
 
-// ── Screens ──
-function screens(page) {
-  const detail = page.locator(component('ExerciseDetail'))
-  const timer = page.locator(component('SeriesModeScreen'))
-  return {
-    header: {
-      title: page.getByTestId(TID.pageTitle),
-      eyebrow: page.getByTestId(TID.pageEyebrow),
-    },
-    detail: {
-      root: detail,
-      name: page.getByTestId(TID.detailName),
-      prev: page.getByTestId(TID.detailNav).getByRole('button', { name: 'Anterior' }),
-      next: page.getByTestId(TID.detailNav).getByRole('button', { name: 'Siguiente' }),
-      tab: (label) => segTab(detail, label),
-    },
-    timer: {
-      root: timer,
-      time: timer.getByTestId(TID.seriesTime),
-      label: timer.getByTestId(TID.seriesLabel),
-      dots: (state) => timer.locator(SEL.seriesDot(state)),
-      rows: timer.getByTestId(TID.confirmRow),
-      save: timer.getByTestId(TID.confirmSave),
-    },
-    plan: {
-      slots: page.getByTestId(TID.dragSlot),
-      handles: page.getByTestId(TID.dragHandle),
-    },
-  }
-}
-
 module.exports = {
   TID, SEL, WEEKDAY_SHORT,
   todayDock, sheetHead, logDock, segTab, planDay, openFromPlan, lineCount,
-  nav, blockExternalImages, unblockExternalImages, screens,
+  nav, blockExternalImages, unblockExternalImages,
 }

@@ -30,48 +30,49 @@
 // the steps that actually RAN must equal this list, in order.
 
 const EXPECTED_STEPS = [
-  'Step 0: First Run',
+  'Step 0a: First Run',
   'Step 0b: Plan — Sin programa',
   'Step 0c: Historial — Sin programa',
-  'Step 1: Tú — Mis datos',
+  'Step 1a: Tú — Mis datos',
   'Step 1b: Tú — Ajustes',
-  'Step 2: Tú — Ejercicios',
-  'Step 2b: Tú — Editor de ejercicio',
-  'Step 3: Tú — Programas',
-  'Step 4: Hoy — Before The First Workout',
-  'Step 4b: Plan — Primera semana',
-  'Step 4c: Historial — Primera vez',
-  'Step 5: Tú — Copia de seguridad',
-  'Step 5c: Historial — Antes de entrenar hoy',
-  'Step 5b: Amigos — Primera vez y racha viva',
-  'Step 6: Plan — Weekdays And Weeks',
-  'Step 6b: Plan — Exercise Detail',
-  'Step 6c: Plan — Reprogramar',
-  'Step 7: Hoy — Calentamiento',
-  'Step 8: Hoy — Registrar Press Banca',
-  'Step 8b: Rest Timer — Iniciar y pantalla completa',
-  'Step 8c: Rest Timer — Ciclo de series',
-  'Step 8d: Rest Timer — Confirma tus series',
-  'Step 8e: Hoy — Press Militar',
-  'Step 8f: Hoy — Fondos por una alternativa',
-  'Step 8f2: Hoy — Otra alternativa queda hecha',
-  'Step 8g: Hoy — Series por bloque',
-  'Step 9: Hoy — Terminar entrenamiento',
-  'Step 9a: Hoy — Terminar desde el último ejercicio',
-  'Step 9b: Hoy — Estiramiento',
-  'Step 9c: Hoy — Racha, esfuerzo y resumen',
-  'Step 9d: Plan — Hoy hecho',
-  'Step 10: Historial — Constancia',
-  'Step 10b: Historial — Ejercicios',
-  'Step 11: Amigos — Liga después de entrenar',
-  'Step 11b: Amigos — Liga chica y agregar',
-  'Step 11c: Amigos — Podio, detalle y datos viejos',
-  'Step 12: Red — Sin conexión y ping',
-  'Step 12b: Offline — Las vistas y lo que pide internet',
-  'Step 13: Idioma, TabBar y nombres largos',
-  'Step 14: Copia — Teléfono nuevo',
-  'Step 14b: Eliminar un ejercicio con registros',
-  'Step 15: No Uncaught JS Errors',
+  'Step 1c: Tú — Ejercicios',
+  'Step 1d: Tú — Editor de ejercicio',
+  'Step 1e: Tú — Programas',
+  'Step 2a: Hoy — Before The First Workout',
+  'Step 2b: Plan — Primera semana',
+  'Step 2c: Historial — Primera vez',
+  'Step 2d: Tú — Diccionario y semanas pasadas',
+  'Step 2e: Historial — Antes de entrenar hoy',
+  'Step 2f: Amigos — Primera vez y racha viva',
+  'Step 3a: Plan — Weekdays And Weeks',
+  'Step 3b: Plan — Exercise Detail',
+  'Step 3c: Plan — Reprogramar',
+  'Step 4: Hoy — Calentamiento',
+  'Step 5a: Hoy — Registrar Press Banca',
+  'Step 5b: Rest Timer — Iniciar y pantalla completa',
+  'Step 5c: Rest Timer — Ciclo de series',
+  'Step 5d: Rest Timer — Confirma tus series',
+  'Step 5e: Hoy — Press Militar',
+  'Step 5f: Hoy — Fondos por una alternativa',
+  'Step 5g: Hoy — Otra alternativa queda hecha',
+  'Step 5h: Hoy — Series por bloque',
+  'Step 6a: Hoy — Terminar entrenamiento',
+  'Step 6b: Hoy — Terminar desde el último ejercicio',
+  'Step 6c: Hoy — Estiramiento',
+  'Step 6d: Hoy — Racha, esfuerzo y resumen',
+  'Step 6e: Plan — Hoy hecho',
+  'Step 7a: Historial — Constancia',
+  'Step 7b: Historial — Ejercicios',
+  'Step 8a: Amigos — Liga después de entrenar',
+  'Step 8b: Amigos — Liga chica y agregar',
+  'Step 8c: Amigos — Podio, detalle y datos viejos',
+  'Step 9a: Red — Sin conexión y ping',
+  'Step 9b: Offline — Las vistas y lo que pide internet',
+  'Step 10: Idioma, TabBar y nombres largos',
+  'Step 11a: Copia — Copia de seguridad',
+  'Step 11b: Copia — Teléfono nuevo',
+  'Step 11c: Eliminar un ejercicio con registros',
+  'Step 12: No Uncaught JS Errors',
 ]
 
 // Guardrail at import: the list above must not count as "present" — only real
@@ -88,8 +89,8 @@ if (new Set(EXPECTED_STEPS).size !== EXPECTED_STEPS.length) {
 
 const { test, expect } = require('@playwright/test')
 const {
-  SEL, WEEKDAY_SHORT, todayDock, sheetHead, logDock, segTab, planDay, openFromPlan, lineCount,
-  nav, blockExternalImages, unblockExternalImages, screens,
+  SEL, todayDock, sheetHead, logDock, segTab, planDay, openFromPlan, lineCount,
+  nav, blockExternalImages, unblockExternalImages,
 } = require('./support/screens.cjs')
 
 function getDayIdx() {
@@ -170,33 +171,39 @@ async function gotoFriendsLoaded(page) {
   await expect(page.locator('[data-component="WeekCard"], #username-prompt').first()).toBeVisible()
 }
 
-// Settings as persisted in IndexedDB. A goto/reload right after a tap can beat
-// settings.update()'s write; polling this is the real "it's saved" signal.
-function storedSettings(page) {
-  return page.evaluate(() => new Promise((resolve, reject) => {
+// Every record of one IndexedDB store, read in the page. It rejects on any
+// error or after 5 s: page.evaluate has no timeout of its own, so a stuck
+// open would otherwise hang until the flow's 10-minute budget.
+function readStore(page, store) {
+  return page.evaluate((store) => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`readStore(${store}) timed out`)), 5000)
+    const fail = (e) => { clearTimeout(timer); reject(e) }
     const req = indexedDB.open('coach-pedro-ai', 2)
+    req.onerror = () => fail(req.error)
+    req.onblocked = () => fail(new Error(`readStore(${store}) blocked`))
     req.onsuccess = () => {
       const db = req.result
-      const get = db.transaction('settings', 'readonly').objectStore('settings').get('settings')
-      get.onsuccess = () => { db.close(); resolve(get.result || null) }
-      get.onerror = () => reject(get.error)
+      try {
+        const all = db.transaction(store, 'readonly').objectStore(store).getAll()
+        all.onsuccess = () => { clearTimeout(timer); db.close(); resolve(all.result) }
+        all.onerror = () => { db.close(); fail(all.error) }
+      } catch (e) {
+        db.close()
+        fail(e)
+      }
     }
-    req.onerror = () => reject(req.error)
-  }))
+  }), store)
+}
+
+// Settings as persisted in IndexedDB. A goto/reload right after a tap can beat
+// settings.update()'s write; polling this is the real "it's saved" signal.
+async function storedSettings(page) {
+  return (await readStore(page, 'settings')).find(s => s.id === 'settings') || null
 }
 
 // A program as persisted in IndexedDB, by name
-function storedProgram(page, name) {
-  return page.evaluate((name) => new Promise((resolve, reject) => {
-    const req = indexedDB.open('coach-pedro-ai', 2)
-    req.onsuccess = () => {
-      const db = req.result
-      const all = db.transaction('programs', 'readonly').objectStore('programs').getAll()
-      all.onsuccess = () => { db.close(); resolve(all.result.find(p => p.name === name) || null) }
-      all.onerror = () => reject(all.error)
-    }
-    req.onerror = () => reject(req.error)
-  }), name)
+async function storedProgram(page, name) {
+  return (await readStore(page, 'programs')).find(p => p.name === name) || null
 }
 
 // Warmup/stretch sheet (Hoy v2): walks the → arrow until the last move, where
@@ -237,15 +244,20 @@ const WEEKDAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const WEEKDAY_NAMES_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
+// The local calendar date `daysAgo` days back (YYYY-MM-DD). Walks calendar
+// days at noon, so a DST change in between can't land on the wrong date.
 function localDate(daysAgo = 0) {
-  const now = new Date()
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000 - daysAgo * 86400000).toISOString().slice(0, 10)
+  const d = new Date()
+  d.setHours(12, 0, 0, 0)
+  d.setDate(d.getDate() - daysAgo)
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 }
 
-// The simulated Worker for the whole flow. `api` is mutated by the test to
-// steer it: friends (the league on the server), users (what search finds),
-// exists, registerStatus. Every POST lands in `api.calls`. AI chat routes are
-// registered on top where a step cares about their bodies.
+// The simulated Worker, for the flow and the tests apart. `api` is mutated by
+// the test to steer it: friends (the league on the server), users (what search
+// finds), exists, registerStatus, renameStatus. Every POST lands in
+// `api.calls` and every list request's username in `api.listUsers`. AI chat
+// routes are registered on top where a step cares about their bodies.
 async function mockWorker(page, api) {
   api.calls = []
   api.listUsers = []
@@ -283,6 +295,7 @@ async function mockWorker(page, api) {
     if (p.endsWith('/api/user/check')) return json({ exists: api.exists !== false })
     if (p.endsWith('/api/user/register')) return api.registerStatus === 500 ? json({ error: 'boom' }, 500) : json({ status: 'ok' })
     if (p.endsWith('/api/user/sync')) return json({ status: 'ok' })
+    if (p.endsWith('/api/user/rename')) return api.renameStatus === 409 ? json({ error: 'Ese usuario ya está tomado' }, 409) : json({ status: 'ok' })
     // Default: the post-workout coach analysis
     return json(api.analysis || { analysis: 'Buen trabajo.', verdict: 'positive', _provider: 'test' })
   })
@@ -483,7 +496,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   const dayCell = (iso) => hCal.getByRole('button', { name: String(Number(iso.slice(8))), exact: true })
   const sameMonth = (a, b) => a.slice(0, 7) === b.slice(0, 7)
 
-  await step('Step 0: First Run', async () => {
+  await step('Step 0a: First Run', async () => {
     await nav(page, 'today')
     await expect(page.getByText('Entrenemos.')).toBeVisible()
     for (const s of ['Arma tu rutina', 'Entrena desde Hoy', 'Suma con tus amigos']) {
@@ -521,7 +534,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page).toHaveURL(/\/you\/?$/)
   })
 
-  await step('Step 1: Tú — Mis datos', async () => {
+  await step('Step 1a: Tú — Mis datos', async () => {
     const first = page.locator('#you-first-time')
     await expect(first).toContainText('Hola.')
     await expect(page.locator('#you-step-datos')).toContainText('0 de 7')
@@ -609,7 +622,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await backToYou(page)
   })
 
-  await step('Step 2: Tú — Ejercicios', async () => {
+  await step('Step 1c: Tú — Ejercicios', async () => {
     await page.locator('#you-row-ejercicios').click()
     await expect(page.locator('#you-ejercicios')).toContainText('Aún no hay ejercicios')
     for (const ex of Object.values(EX)) await createExercise(page, ex.name, ex.muscle)
@@ -632,7 +645,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('#ex-count')).toHaveText('8 ejercicios')
   })
 
-  await step('Step 2b: Tú — Editor de ejercicio', async () => {
+  await step('Step 1d: Tú — Editor de ejercicio', async () => {
     // The open card only shows; the pencil opens the editor with every field
     const card = page.locator('[data-component="ExerciseCard"]')
     await page.locator('[data-component="ExerciseListItem"]', { hasText: 'Remo Z' }).locator(SEL.exerciseToggle).click()
@@ -709,7 +722,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('#ex-count')).toHaveText('7 ejercicios')
   })
 
-  await step('Step 3: Tú — Programas', async () => {
+  await step('Step 1e: Tú — Programas', async () => {
     await nav(page, 'you')
     const editor = page.locator('#program-editor')
     const cards = page.locator('[data-component="ProgramCard"]')
@@ -741,171 +754,9 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('#profile-row-occupation')).toContainText('Ingeniero')
     await backToYou(page)
 
-    // ── Platícalo con el coach: the coach proposes first (kickoff hidden), it's
-    // discussed, and «Crear este programa» sends the whole conversation ──
-    const chatBodies = []
-    let createBody = null
-    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
-      chatBodies.push(route.request().postDataJSON())
-      const reply = chatBodies.length === 1
-        ? 'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.'
-        : 'Va, bajamos piernas a 1 día.'
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply, _provider: 'test' }) })
-    })
-    // Two passes: the coach writes a draft, then reviews it (redundant same-muscle work) and that one is saved
-    let reviewBody = null
-    await page.route((url) => url.href.includes('/api/ai/generate-program'), async (route) => {
-      const body = route.request().postDataJSON()
-      if (createBody) reviewBody = body
-      else createBody = body
-      const days = reviewBody
-        ? [{ name: 'Espalda', weekday: 1, subtitle: '', exercises: [{ exercise_name: 'Peso Muerto', muscle: 'Back', sets: 4, reps: '8-12', rest_sec: 90 }] }]
-        : [{ name: 'Espalda', weekday: 1, subtitle: '', exercises: [{ exercise_name: 'Peso Muerto', muscle: 'Back', sets: 4, reps: '8-12', rest_sec: 90 }, { exercise_name: 'Rack Pull', muscle: 'Back', sets: 4, reps: '8', rest_sec: 90 }] }]
-      await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({ program_name: reviewBody ? 'Upper/Lower Acordado' : 'Borrador', weeks: [{ name: 'Semana 1', tag: '', days }], _provider: 'test' }),
-      })
-    })
+    // ── Duplicar y Eliminar (with the confirmation in the sheet). The coach's
+    // ways to create and improve a program live apart: «IA — programas con el coach» ──
     await page.locator('#you-row-programas').click()
-    await page.locator('#create-program-btn').click()
-    await page.locator('#create-coach').click()
-    const setup = page.locator('#coach-setup-sheet')
-    await setup.getByRole('button', { name: '4', exact: true }).click()
-    await setup.getByRole('button', { name: 'Rodilla' }).click()
-    await setup.getByRole('button', { name: 'Platicar con el coach' }).click()
-    const chat = page.locator('[data-component="CoachChat"]')
-    await expect(chat).toContainText('Con el coach')
-    await expect(chat).toContainText('4 días')
-    await expect(chat).toContainText('Cuidar rodilla')
-    await expect(chat).toContainText('Propuesta: por tu trabajo de oficina')
-    await expect(chat).not.toContainText('dame tu propuesta inicial')
-    expect(chatBodies[0].messages).toHaveLength(1)
-    expect(chatBodies[0].systemPrompt).toContain('PERFIL DEL USUARIO')
-    expect(chatBodies[0].systemPrompt).toContain('Ingeniero')
-    expect(chatBodies[0].systemPrompt).toContain('"daysPerWeek":4')
-    expect(chatBodies[0].systemPrompt).toContain('Rodilla')
-    await chat.locator('textarea').fill('Prefiero menos pierna')
-    await chat.locator('textarea').press('Enter')
-    await expect(chat).toContainText('Va, bajamos piernas a 1 día.')
-    await chat.getByRole('button', { name: 'Crear este programa' }).click()
-    await expect(chat).not.toBeVisible({ timeout: 10000 })
-    expect(createBody.messages.map(m => m.content)).toEqual([
-      chatBodies[0].messages[0].content,
-      'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.',
-      'Prefiero menos pierna',
-      'Va, bajamos piernas a 1 día.',
-      'Crea el programa completo con el enfoque que acordamos en esta conversación.',
-    ])
-    expect(createBody.systemPrompt).toContain('"daysPerWeek":4')
-    // The review keeps the same coach persona and conversation, and gets the draft
-    expect(reviewBody.systemPrompt).toContain('Act as an Elite Personal Trainer')
-    expect(reviewBody.systemPrompt).toContain('REVISOR')
-    expect(reviewBody.systemPrompt).toContain('"daysPerWeek":4')
-    expect(reviewBody.messages.slice(0, 4).map(m => m.content)).toEqual(createBody.messages.slice(0, 4).map(m => m.content))
-    expect(reviewBody.messages[4].content).toContain('BORRADOR:')
-    expect(reviewBody.messages[4].content).toContain('Rack Pull')
-    const ready = page.locator('[data-component="ProgramReady"]')
-    await expect(ready).toContainText('Listo, Pedro.')
-    await expect(ready).toContainText('«Upper/Lower Acordado» ya es tu programa activo.')
-    await ready.getByRole('button', { name: 'Ver programa' }).click()
-    await expect(activeCard).toContainText('Upper/Lower Acordado')
-    const saved = await storedProgram(page, 'Upper/Lower Acordado')
-    expect(saved.weeks[0].days[0].exercises).toHaveLength(1)
-    expect(saved.weeks[0].days[0].weekday).toBe(1)
-
-    // ── Pega tu rutina: a chat reads it back, «Crear este programa» creates it ──
-    const pasteBodies = []
-    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
-      pasteBodies.push(route.request().postDataJSON())
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: 'Entendí 1 día: Lunes · Press Banca 4 × 8.', _provider: 'test' }) })
-    })
-    await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => route.fulfill({
-      status: 200, contentType: 'application/json',
-      body: JSON.stringify({
-        program_name: 'Programa IA',
-        weeks: [{ name: 'Semana 1', subtitle: '', tag: 'VOLUMEN', days: [{ name: 'Pecho', subtitle: '', weekday: 1, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }] }],
-      }),
-    }))
-    await page.locator('#create-program-btn').click()
-    await page.locator('#create-paste').click()
-    const paste = page.locator('#paste-routine-sheet')
-    await paste.getByRole('button', { name: 'Escribirla aquí' }).click()
-    await paste.getByRole('textbox', { name: 'Tu rutina' }).fill('Lunes: Press banca 4x8')
-    await paste.getByRole('button', { name: 'Ver cómo queda' }).click()
-    await expect(chat).toContainText('Tu rutina · 1 línea')
-    await expect(chat).toContainText('Entendí 1 día')
-    expect(pasteBodies[0].messages[0].content).toBe('Lunes: Press banca 4x8')
-    await chat.getByRole('button', { name: 'Crear este programa' }).click()
-    await expect(ready).toContainText('«Programa IA» ya es tu programa activo.', { timeout: 5000 })
-    await ready.getByRole('button', { name: 'Ver programa' }).click()
-    await expect(activeCard).toContainText('Programa IA')
-    const iaId = await activeCard.getAttribute('data-program-id')
-
-    // ── Mejorar con el coach: two turns carry the whole thread and the
-    // program; «Crear versión nueva» makes «Programa IA · v2» the active one ──
-    const improveBodies = []
-    let applyBody = null
-    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
-      improveBodies.push(route.request().postDataJSON())
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: `Respuesta del coach ${improveBodies.length}`, _provider: 'test' }) })
-    })
-    await page.route((url) => url.href.includes('/api/ai/program-coach'), async (route) => {
-      applyBody = route.request().postDataJSON()
-      await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({
-          program: { program_name: 'Programa Acordado', weeks: [{ name: 'Semana 1', tag: '', days: [{ name: 'Pecho', subtitle: '', duration_min: 60, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }] }] },
-          _provider: 'test',
-        }),
-      })
-    })
-    // The review pass fails here: the version is still created from the draft
-    let improveReviews = 0
-    await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => {
-      improveReviews++
-      return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'La IA no generó JSON válido.' }) })
-    })
-    await page.locator('#improve-program-row').click()
-    await expect(chat).toContainText('Mejorar con el coach')
-    await expect(chat).toContainText('Qué onda, Pedro.')
-    await expect(chat).toContainText('«Programa IA»')
-    await expect(chat.getByRole('button', { name: 'Tengo menos tiempo' })).toBeVisible()
-    const applyBtn = chat.getByRole('button', { name: 'Crear versión nueva' })
-    await expect(applyBtn).toBeDisabled()
-    await chat.locator('textarea').fill('¿Está balanceada mi rutina?')
-    await chat.locator('textarea').press('Enter')
-    await expect(chat).toContainText('Respuesta del coach 1')
-    await chat.locator('textarea').fill('Agrega más pecho')
-    await chat.locator('textarea').press('Enter')
-    await expect(chat).toContainText('Respuesta del coach 2')
-    expect(improveBodies[1].messages.map(m => m.content)).toEqual(['¿Está balanceada mi rutina?', 'Respuesta del coach 1', 'Agrega más pecho'])
-    expect(improveBodies[1].systemPrompt).toContain('PROGRAMA ACTUAL:')
-    expect(improveBodies[1].systemPrompt).toContain('Programa IA')
-    await expect(applyBtn).toBeEnabled()
-    await applyBtn.click()
-    const versionSheet = page.locator('#new-version-sheet')
-    await expect(versionSheet.getByLabel('Nombre')).toHaveValue('Programa IA · v2')
-    await expect(versionSheet.getByRole('switch', { name: 'Usarla desde hoy' })).toHaveAttribute('aria-checked', 'true')
-    await versionSheet.getByRole('button', { name: 'Crear versión' }).click()
-    await expect(chat).not.toBeVisible({ timeout: 10000 })
-    expect(applyBody.messages).toHaveLength(5)
-    expect(applyBody.messages[4].content).toContain('Aplica los cambios que acordamos')
-    expect(improveReviews).toBe(1)
-    await expect(page.locator('body')).toContainText('Versión nueva activa. La anterior sigue abajo.')
-    await expect(activeCard).toContainText('Programa IA · v2')
-    // The original stays untouched, in «Otros programas»
-    await expect(page.locator(`[data-component="ProgramCard"][data-program-id="${iaId}"]:not(.active)`)).toBeVisible()
-    // Reopening starts from scratch
-    await page.locator('#improve-program-row').click()
-    await expect(chat).toBeVisible()
-    await expect(chat).not.toContainText('Respuesta del coach')
-    await chat.getByRole('button', { name: 'Volver' }).click()
-    await expect(chat).not.toBeVisible()
-
-    // ── Activar, Duplicar, Eliminar (with the confirmation in the sheet) ──
-    const nuevo = cards.filter({ hasText: 'Programa Nuevo' }).first()
-    await nuevo.getByRole('button', { name: 'Activar' }).click()
-    await expect(activeCard).toContainText('Programa Nuevo')
     await activeCard.getByRole('button', { name: 'Más opciones' }).click()
     await page.locator('#program-options').getByRole('button', { name: 'Duplicar' }).click()
     const dupCard = cards.filter({ hasText: 'Programa Nuevo (copia)' })
@@ -949,7 +800,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect.poll(async () => (await storedSettings(page))?.activeProgramId).toBe(await activeCard.getAttribute('data-program-id'))
   })
 
-  await step('Step 4: Hoy — Before The First Workout', async () => {
+  await step('Step 2a: Hoy — Before The First Workout', async () => {
     await nav(page, 'today')
     const header = page.locator('[data-component="PageHeader"]')
     await expect(header.locator(SEL.pageEyebrow)).toContainText('Semana 1')
@@ -990,7 +841,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(banner).toHaveCount(0)
   })
 
-  await step('Step 4b: Plan — Primera semana', async () => {
+  await step('Step 2b: Plan — Primera semana', async () => {
     await nav(page, 'plan')
     // No workout yet: no count to fall behind on, and no friends to show
     const strip = page.locator('#plan-week-strip')
@@ -1005,7 +856,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page).toHaveURL(/\/today\/?$/)
   })
 
-  await step('Step 4c: Historial — Primera vez', async () => {
+  await step('Step 2c: Historial — Primera vez', async () => {
     await nav(page, 'history')
     // A clean month with today marked, and nowhere else to go
     await expect(hHeader).toContainText('Aún sin entrenos este mes')
@@ -1025,10 +876,13 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(hDock.getByRole('button', { name: /Ir a entrenar/ })).toBeVisible()
   })
 
-  // Filled in by Step 5 from the exported exercises file
+  // The exercises' ids, filled in by «Diccionario y semanas pasadas»
   const ids = {}
 
-  await step('Step 5: Tú — Copia de seguridad', async () => {
+  // Only the seed the rest of the flow needs: canonical names and the past
+  // weeks. The backup itself (exportar, importar, guardar, what the file holds
+  // and a new phone) is checked at the end, once the flow has filled the app.
+  await step('Step 2d: Tú — Diccionario y semanas pasadas', async () => {
     const fs = require('fs')
     const os = require('os')
     const path = require('path')
@@ -1054,41 +908,14 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await page.getByRole('button', { name: 'Copia de seguridad', exact: true }).click()
     await expect(page.locator('#you-copia')).toBeVisible()
 
-    // Exportar ejercicios: the file has every exercise, with its id
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.locator('#export-exercises-row').click(),
-    ])
-    expect(download.suggestedFilename()).toMatch(/^ejercicios-\d{4}-\d{2}-\d{2}\.json$/)
-    await expect(resultSheet).toContainText('7 ejercicios exportados')
-    await page.getByRole('button', { name: 'Listo' }).click()
-    const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'))
-    expect(exported).toHaveLength(7)
-    const idOf = (re) => exported.find(e => re.test(e.name)).id
+    // The ids the past weeks are written against, as stored
+    const stored = await readExercises(page)
+    expect(stored).toHaveLength(7)
+    const idOf = (re) => stored.find(e => re.test(e.name)).id
     Object.assign(ids, {
       bench: idOf(/Banca/), military: idOf(/Militar/), dips: idOf(/Fondos/),
       squat: idOf(/Sentadilla/), deadlift: idOf(/Muerto/), long: idOf(/Flexiones/),
     })
-
-    // Importar ejercicios: one new, one you already have (left as it was)
-    const exFile = path.join(os.tmpdir(), `pw-exercises-${Date.now()}.json`)
-    fs.writeFileSync(exFile, JSON.stringify([
-      { id: 'ex-imported', name: 'Curl de Bíceps', muscle: 'Biceps', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
-      { ...exported.find(e => e.id === ids.bench), muscle: 'Músculo Pisado' },
-    ]))
-    try {
-      const [chooser] = await Promise.all([
-        page.waitForEvent('filechooser'),
-        page.locator('#import-exercises-row').click(),
-      ])
-      await chooser.setFiles(exFile)
-      await expect(resultSheet).toContainText('2 ejercicios en el archivo')
-      await expect(resultSheet).toContainText('Nuevos1')
-      await expect(resultSheet).toContainText('Ya los tenías')
-      await page.getByRole('button', { name: 'Listo' }).click()
-    } finally {
-      fs.unlinkSync(exFile)
-    }
 
     // Restaurar una copia with the past weeks: Press Banca climbing 60 → 75 kg
     // over 4 weeks (7 sessions) and two Peso Muerto days. It merges.
@@ -1115,13 +942,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     }
     expect((await readLogs(page)).length).toBe(history.length)
 
-    // The exercise you already had kept its own muscle; the new one is there
     await nav(page, 'you')
     await page.locator('#you-row-ejercicios').click()
-    await expect(page.locator('#you-ejercicios')).toContainText('Curl de Bíceps')
-    await expect(page.locator('#you-ejercicios')).not.toContainText('Músculo Pisado')
-    await expect(page.locator('#ex-count')).toHaveText('8 ejercicios')
-
     // A hand-written alternative for Press Militar (no dictionary entry, so
     // once swapped in it has no suggestions of its own)
     await page.locator('[data-component="ExerciseListItem"]', { hasText: 'Militar' }).locator(SEL.exerciseToggle).click()
@@ -1135,7 +957,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(card).toContainText('press casero de prueba')
   })
 
-  await step('Step 5c: Historial — Antes de entrenar hoy', async () => {
+  await step('Step 2e: Historial — Antes de entrenar hoy', async () => {
     await nav(page, 'history')
     // It opens on the last trained day (the restored copy's, a week ago), with its weights
     const lastTrained = localDate(7)
@@ -1161,7 +983,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   const sheetClose = () => page.locator('[data-component="Sheet"]').getByRole('button', { name: 'Cerrar' }).click()
   let streakBefore = 0
 
-  await step('Step 5b: Amigos — Primera vez y racha viva', async () => {
+  await step('Step 2f: Amigos — Primera vez y racha viva', async () => {
     await nav(page, 'friends')
     // No username yet: pick one (1–20 characters)
     const prompt = page.locator('#username-prompt')
@@ -1201,7 +1023,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await sheetClose()
   })
 
-  await step('Step 6: Plan — Weekdays And Weeks', async () => {
+  await step('Step 3a: Plan — Weekdays And Weeks', async () => {
     await nav(page, 'plan')
     const grid = page.locator('#plan-days-grid')
     const tiron = (t + 2) % 7
@@ -1247,7 +1069,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect.poll(async () => (await storedSettings(page))?.currentWeekIdx).toBe(0)
   })
 
-  await step('Step 6b: Plan — Exercise Detail', async () => {
+  await step('Step 3b: Plan — Exercise Detail', async () => {
     await openFromPlan(page, 'Banca')
     // Position, media searches, name and arrows
     await expect(sheetHead(page)).toContainText('1 de 4')
@@ -1318,27 +1140,14 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator(SEL.detailName)).toContainText('Banca')
     await expect(weightInput).toHaveValue('75')
 
-    // The coach: quick questions on screen, body parts for pain
-    await page.getByRole('button', { name: /Pregúntale al coach/ }).click()
-    const chat = page.locator('[data-component="CoachChat"]')
-    await expect(chat).toContainText('Hola. Soy tu coach')
-    await expect(chat).toContainText('Preguntas rápidas')
-    for (const q of ['Mejorar técnica', 'Me duele algo', '¿Voy muy pesado?', 'Dame una variante']) {
-      await expect(chat.getByRole('button', { name: q })).toBeInViewport({ ratio: 1 })
-    }
-    await chat.getByRole('button', { name: 'Me duele algo' }).click()
-    await expect(chat).toContainText('¿Dónde lo sientes?')
-    await expect(chat.getByRole('button', { name: 'Codo' })).toBeVisible()
-    await expect(chat.getByRole('button', { name: 'Cancelar' })).toBeVisible()
-    await chat.getByRole('button', { name: 'Volver' }).click()
-    await expect(chat).toHaveCount(0)
+    // (the coach's chat itself lives apart: «IA — coach del ejercicio y análisis»)
     await page.getByRole('button', { name: 'Cerrar' }).first().click()
     await expect(page.locator('[data-component="ExerciseDetail"]')).toHaveCount(0)
     // Nothing was registered from Plan
     expect((await readLogs(page)).filter(l => l.date === localDate(0))).toHaveLength(0)
   })
 
-  await step('Step 6c: Plan — Reprogramar', async () => {
+  await step('Step 3c: Plan — Reprogramar', async () => {
     const slots = page.locator(SEL.dragSlot)
     const grid = page.locator('#plan-days-grid')
     const free = (t + 1) % 7
@@ -1437,7 +1246,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator(SEL.pageTitle)).toHaveText('Empuje.')
   })
 
-  await step('Step 7: Hoy — Calentamiento', async () => {
+  await step('Step 4: Hoy — Calentamiento', async () => {
     // With a history the dock no longer greets a first workout
     await expect(todayDock(page)).toContainText(/\d+ movimientos, uno a la vez/)
     const warmup = page.locator('[data-phase="warmup"]')
@@ -1518,7 +1327,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('[data-component="ExerciseDetail"]')).toBeVisible()
   }
 
-  await step('Step 8: Hoy — Registrar Press Banca', async () => {
+  await step('Step 5a: Hoy — Registrar Press Banca', async () => {
     await openRow('Banca')
     await expect(page.locator(SEL.detailName)).toContainText('Banca')
     await expect(weightInput).toHaveValue('75')
@@ -1609,7 +1418,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(timer).toHaveAttribute('data-phase', phase)
   }
 
-  await step('Step 8b: Rest Timer — Iniciar y pantalla completa', async () => {
+  await step('Step 5b: Rest Timer — Iniciar y pantalla completa', async () => {
     const probe = await pushProbe(page, context)
     const starts0 = api.restStarts.length
     const pushes0 = api.startPushes
@@ -1761,7 +1570,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect(api.restStarts.at(-1).restSec).toBe(REST)
   })
 
-  await step('Step 8c: Rest Timer — Ciclo de series', async () => {
+  await step('Step 5c: Rest Timer — Ciclo de series', async () => {
     const benchLog = async () => (await todayLogOf(ids.bench))[0]
     // Serie 2 is seeded from the previous set and the prescribed reps — nobody types
     await expect(timer).toHaveAttribute('data-phase', 'registering')
@@ -1832,7 +1641,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await waitPhase('confirm')
   })
 
-  await step('Step 8d: Rest Timer — Confirma tus series', async () => {
+  await step('Step 5d: Rest Timer — Confirma tus series', async () => {
     const benchLog = async () => (await todayLogOf(ids.bench))[0]
     await expect(timer).toContainText('Completado')
     await expect(timer).toContainText('Confirma tus series')
@@ -1928,7 +1737,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(detail).toHaveCount(0)
   }
 
-  await step('Step 8e: Hoy — Press Militar', async () => {
+  await step('Step 5e: Hoy — Press Militar', async () => {
     await openRow('Militar')
     await expect(tnName).toContainText('Militar')
 
@@ -2037,7 +1846,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(todayDock(page)).not.toContainText('Sin internet')
   })
 
-  await step('Step 8f: Hoy — Fondos por una alternativa', async () => {
+  await step('Step 5f: Hoy — Fondos por una alternativa', async () => {
     await openRow('Fondos')
     await expect(tnName).toContainText('Fondos')
 
@@ -2090,7 +1899,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect((await storedSettings(page)).sessionState.endedAt ?? null).toBeNull()
   })
 
-  await step('Step 8f2: Hoy — Otra alternativa queda hecha', async () => {
+  await step('Step 5g: Hoy — Otra alternativa queda hecha', async () => {
     // Back to Fondos, then a curated alternative with a plain weight log
     await openRow('Sentadilla Hack')
     await altTab.click()
@@ -2116,7 +1925,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('[data-component="ExerciseRow"]', { hasText: 'Sentadilla Hack' })).toHaveCount(0)
   })
 
-  await step('Step 8g: Hoy — Series por bloque', async () => {
+  await step('Step 5h: Hoy — Series por bloque', async () => {
     await openRow('Flexiones dinámicas')
     // The name takes at most two lines in the detail
     expect(await lineCount(tnName)).toBeLessThanOrEqual(2.05)
@@ -2184,7 +1993,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   })
 
   let endedAt = null
-  await step('Step 9: Hoy — Terminar entrenamiento', async () => {
+  await step('Step 6a: Hoy — Terminar entrenamiento', async () => {
     // Closing the last exercise ends the training: «Estira bb» with the time,
     // and the session clock stops there — stretching is not counted
     const stretchToast = page.locator('[data-component="CenterToast"]', { hasText: 'Estira bb' })
@@ -2223,7 +2032,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('[data-phase="stretch"][data-state="open"]')).toBeVisible()
   })
 
-  await step('Step 9a: Hoy — Terminar desde el último ejercicio', async () => {
+  await step('Step 6b: Hoy — Terminar desde el último ejercicio', async () => {
     // Every exercise done: the one before the last still moves on with «Siguiente»
     if (await training.locator(SEL.phaseToggle).count()) await training.locator(SEL.phaseToggle).click()
     await training.locator('[data-component="ExerciseRow"]').nth(2).click()
@@ -2247,7 +2056,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('[data-component="MovementSheet"]')).toHaveCount(0)
   })
 
-  await step('Step 9b: Hoy — Estiramiento', async () => {
+  await step('Step 6c: Hoy — Estiramiento', async () => {
     await todayDock(page).getByRole('button', { name: /Empezar estiramiento/ }).click()
     await expect(sheetHead(page)).toContainText(/Estiramiento · 1 de \d+/)
     const sheet = page.locator('[data-component="MovementSheet"]')
@@ -2290,7 +2099,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await logDock(page).getByRole('button', { name: 'Terminar sesión' }).click()
   })
 
-  await step('Step 9c: Hoy — Racha, esfuerzo y resumen', async () => {
+  await step('Step 6d: Hoy — Racha, esfuerzo y resumen', async () => {
     // The streak (the restored weeks + this one) waits for «Seguir»
     const streak = page.locator('#streak-overlay')
     await expect(streak).toBeVisible()
@@ -2307,37 +2116,23 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect(/\p{Extended_Pictographic}/u.test(await effort.innerText())).toBe(false)
     await effort.getByRole('button', { name: 'Ahora no' }).click()
     await expect(page.locator(SEL.pageEyebrow)).toContainText('Hoy · terminado en')
-    api.analysis = {
-      analysis: 'Sesión sólida, buen control.', verdict: 'positive',
-      proximo_objetivo: 'Press Banca → 87.5 kg', recommendations: ['Baja más lento en el Militar'],
-      total_volume: 4200, pr_count: 1, _provider: 'test',
-    }
-    const coachCalls = api.calls.length
-    await page.getByRole('button', { name: 'Pedir análisis al coach' }).click()
-    await expect(effort).toBeVisible()
-    await effort.locator('[data-effort="Justo"]').click()
 
-    // The summary shows the REAL /api/ai/coach answer (mocked here), not a canned line
+    // The summary without the coach: the duration (volume and records come with
+    // the coach's answer, which lives apart: «IA — coach del ejercicio y análisis»)
+    // and the way to ask for it
     const summary = page.locator('[data-component="SessionSummary"]')
     const checkSummary = async () => {
-      await expect(summary).toContainText('Tu coach', { timeout: 10000 })
-      await expect(summary).toContainText(api.analysis.analysis)
-      await expect(summary).toContainText('Para la próxima')
-      await expect(summary).toContainText(api.analysis.proximo_objetivo)
-      await expect(summary).toContainText(api.analysis.recommendations[0])
-      await expect(summary.locator('[data-component="StatBlock"]')).toHaveCount(3)
       await expect(summary.locator('[data-component="StatBlock"]', { hasText: 'duración' })).toContainText(/\d+\s*min/)
+      await expect(summary.getByRole('button', { name: 'Pedir análisis al coach' })).toBeVisible()
       await expect(summary.getByRole('button', { name: /Reiniciar día/ })).toBeVisible()
-      await expect(page.locator('body')).not.toContainText('WORKOUT_ANALYSIS')
     }
     await checkSummary()
-    expect(api.calls.slice(coachCalls).some(c => c.path.includes('/api/ai/coach'))).toBe(true)
     // It survives closing and reopening the app
     await page.reload()
     await checkSummary()
   })
 
-  await step('Step 9d: Plan — Hoy hecho', async () => {
+  await step('Step 6e: Plan — Hoy hecho', async () => {
     await nav(page, 'plan')
     // Today is done: accent ring, its time, and the week counts it
     const today = planDay(page, t)
@@ -2353,7 +2148,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(todayDock(page)).toContainText(t <= 4 ? /: Tirón · \d+ min/ : /No quedan entrenos esta semana/)
   })
 
-  await step('Step 10: Historial — Constancia', async () => {
+  await step('Step 7a: Historial — Constancia', async () => {
     // Rewritten for Historial v2 with Pedro's yes (2026-10-22). It keeps the
     // promise of the old one: today's session (was the «Completado» pill in
     // .cal-detail), names resolved and never a raw exercise id, and a row
@@ -2428,7 +2223,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(hHeader.locator(SEL.pageTitle)).toHaveText(`${MONTHS_ES[Number(oldest.slice(5, 7)) - 1]}.`)
   })
 
-  await step('Step 10b: Historial — Ejercicios', async () => {
+  await step('Step 7b: Historial — Ejercicios', async () => {
     // Rewritten for Historial v2 with Pedro's yes (2026-10-22). Same promise
     // as the .ex-card version: last weight, how much it went up («+25.0» is
     // now «+25 kg»), its trend line, no empty chip, filter by muscle and back.
@@ -2440,7 +2235,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     // Only what has logs, the latest first; exercises never logged don't show
     await expect(rows.first()).toContainText('· hoy')
     await expect(rows.filter({ hasText: 'Ejercicio Inventado X7' })).toHaveCount(0)
-    await expect(rows.filter({ hasText: 'Curl de Bíceps' })).toHaveCount(0)
+    // (the imported «Curl de Bíceps» is checked the same way in «Copia de seguridad», where it's imported now)
     // Press Banca: last 85 kg, +25 since the first restored 60, with its trend line
     const benchRow = rows.filter({ hasText: 'Press de Banca con Barra' })
     await expect(benchRow).toContainText('85 kg')
@@ -2491,7 +2286,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(rows.getByRole('button', { name: /^Editar / })).toHaveCount(0)
   })
 
-  await step('Step 11: Amigos — Liga después de entrenar', async () => {
+  await step('Step 8a: Amigos — Liga después de entrenar', async () => {
     await nav(page, 'friends')
     // Today counts now: the week is done and the streak grew by one
     await expect(card.locator('.day').nth(t)).toHaveAttribute('data-day', 'done')
@@ -2500,7 +2295,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('body')).not.toContainText('0 semanas')
   })
 
-  await step('Step 11b: Amigos — Liga chica y agregar', async () => {
+  await step('Step 8b: Amigos — Liga chica y agregar', async () => {
     // Alone: the invitation, adding is the primary action, and sharing
     await expect(list).toContainText('Entrena con tu gente')
     await expect(addBtn).toHaveClass(/btn-primary/)
@@ -2557,7 +2352,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(addBtn).toHaveClass(/btn-secondary/)
   })
 
-  await step('Step 11c: Amigos — Podio, detalle y datos viejos', async () => {
+  await step('Step 8c: Amigos — Podio, detalle y datos viejos', async () => {
     const hoursAgo = (h) => new Date(Date.now() - h * 3600000).toISOString()
     api.friends = [
       ...api.friends,
@@ -2621,7 +2416,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
 
   const banner = page.locator('#offline-banner')
 
-  await step('Step 12: Red — Sin conexión y ping', async () => {
+  await step('Step 9a: Red — Sin conexión y ping', async () => {
     // With the network there from the start, nothing shows
     await nav(page, 'today')
     await waitForApp(page)
@@ -2662,7 +2457,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect(pings.length).toBe(count)
   })
 
-  await step('Step 12b: Offline — Las vistas y lo que pide internet', async () => {
+  await step('Step 9b: Offline — Las vistas y lo que pide internet', async () => {
     await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 })
     // The Worker unreachable for real: drop the simulated one (and the stand-in
     // images: the placeholder below must come from the Service Worker)
@@ -2757,7 +2552,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await blockExternalImages(context)
   })
 
-  await step('Step 13: Idioma, TabBar y nombres largos', async () => {
+  await step('Step 10: Idioma, TabBar y nombres largos', async () => {
     // English names everywhere, then back to Spanish
     await nav(page, 'you')
     await page.locator('#you-row-ajustes').click()
@@ -2787,8 +2582,62 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     }
   })
 
-  await step('Step 14: Copia — Teléfono nuevo', async () => {
+  // The backup saved in «Copia de seguridad», restored on the new phone
+  let backup = null
+
+  // At the end on purpose (Pedro, 2026-10-30): the flow has filled the app, so
+  // the copy is checked against everything it holds by now
+  await step('Step 11a: Copia — Copia de seguridad', async () => {
     const fs = require('fs')
+    const os = require('os')
+    const path = require('path')
+    const resultSheet = page.locator('[data-component="ResultSheet"]')
+    await nav(page, 'you')
+    await page.locator('#you-row-copia').click()
+
+    // Exportar ejercicios: the file has every exercise, with its id
+    const exercisesNow = await readExercises(page)
+    const [exDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#export-exercises-row').click(),
+    ])
+    expect(exDownload.suggestedFilename()).toMatch(/^ejercicios-\d{4}-\d{2}-\d{2}\.json$/)
+    await expect(resultSheet).toContainText(`${exercisesNow.length} ejercicios exportados`)
+    await page.getByRole('button', { name: 'Listo' }).click()
+    const exported = JSON.parse(fs.readFileSync(await exDownload.path(), 'utf8'))
+    expect(exported.map(e => e.id).sort()).toEqual(exercisesNow.map(e => e.id).sort())
+
+    // Importar ejercicios: one new, one you already have (left as it was)
+    const exFile = path.join(os.tmpdir(), `pw-exercises-${Date.now()}.json`)
+    fs.writeFileSync(exFile, JSON.stringify([
+      { id: 'ex-imported', name: 'Curl de Bíceps', muscle: 'Biceps', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
+      { ...exported.find(e => e.id === ids.bench), muscle: 'Músculo Pisado' },
+    ]))
+    try {
+      const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser'),
+        page.locator('#import-exercises-row').click(),
+      ])
+      await chooser.setFiles(exFile)
+      await expect(resultSheet).toContainText('2 ejercicios en el archivo')
+      await expect(resultSheet).toContainText('Nuevos1')
+      await expect(resultSheet).toContainText('Ya los tenías')
+      await page.getByRole('button', { name: 'Listo' }).click()
+    } finally {
+      fs.unlinkSync(exFile)
+    }
+    await nav(page, 'you')
+    await page.locator('#you-row-ejercicios').click()
+    await expect(page.locator('#you-ejercicios')).toContainText('Curl de Bíceps')
+    await expect(page.locator('#you-ejercicios')).not.toContainText('Músculo Pisado')
+    await expect(page.locator('#ex-count')).toHaveText(`${exercisesNow.length + 1} ejercicios`)
+    // Never logged, so Historial › Ejercicios doesn't list it
+    await nav(page, 'history')
+    await hDock.getByRole('button', { name: 'Ejercicios', exact: true }).click()
+    await expect(page.locator('[data-component="ExerciseProgressRow"]').first()).toBeVisible()
+    await expect(page.locator('[data-component="ExerciseProgressRow"]', { hasText: 'Curl de Bíceps' })).toHaveCount(0)
+
+    // Guardar copia: one file with everything the app holds
     await nav(page, 'you')
     await page.locator('#you-row-copia').click()
     const [download] = await Promise.all([
@@ -2796,22 +2645,49 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
       page.locator('#save-backup-btn').click(),
     ])
     expect(download.suggestedFilename()).toMatch(/^training-backup-\d{4}-\d{2}-\d{2}\.json$/)
-    await expect(page.locator('[data-component="ResultSheet"]')).toContainText('Copia guardada')
+    await expect(resultSheet).toContainText('Copia guardada')
     await page.getByRole('button', { name: 'Listo' }).click()
     const filePath = await download.path()
     const data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    expect(data.exportedAt).toBeDefined()
+
+    // Its exercises: all of them, the canonical names and the imported one
+    const exercises = await readExercises(page)
+    expect(data.exercises.map(e => e.id).sort()).toEqual(exercises.map(e => e.id).sort())
+    expect(data.exercises.find(e => e.id === ids.bench).name).toBe('Press de Banca con Barra')
+    expect(data.exercises.some(e => e.name === 'Curl de Bíceps')).toBe(true)
+
+    // Its workouts: every log, the restored weeks and today's as confirmed
     const logs = await readLogs(page)
     expect(data.exerciseLogs).toHaveLength(logs.length)
-    expect(data.exercises.length).toBeGreaterThanOrEqual(8)
-    expect(data.programs.length).toBe(5)
+    expect(data.exerciseLogs.find(l => l.id === 'log-past-bench-27').weight).toBe(60)
+    const benchToday = data.exerciseLogs.find(l => l.exerciseId === ids.bench && l.date === localDate(0))
+    expect(benchToday).toMatchObject({ weight: 85, sets: 4, reps: '9' })
+    expect(data.exerciseLogs.find(l => l.exerciseId === ids.long && l.date === localDate(0)).blocks).toHaveLength(3)
+    expect(data.exerciseLogs.some(l => l.exerciseId === '__day__')).toBe(true)
+    expect(data.gymSessions.find(g => g.date === localDate(0))?.seconds).toBeGreaterThan(0)
+
+    // Its programs: Programa Nuevo and Torso Pierna, the active one marked
+    // (was 5 while the coach's three lived in the flow)
+    expect(data.programs.map(p => p.name).sort()).toEqual(['Programa Nuevo', 'Torso Pierna'])
     expect(data.settings.activeProgramId).toBe((await storedSettings(page)).activeProgramId)
-    expect(data.settings.language).toBe('es')
-    expect(data.exportedAt).toBeDefined()
-    const trainedDays = new Set(logs.map(l => l.date)).size
+
+    // The user's data: Mis datos, the username and the settings
+    expect(data.settings).toMatchObject({ height: '180', weight: '80', age: '28', occupation: 'Ingeniero', username: 'Pedro', language: 'es', units: 'kg' })
+    backup = { filePath, data, trainedDays: new Set(logs.map(l => l.date)).size }
+  })
+
+  await step('Step 11b: Copia — Teléfono nuevo', async () => {
+    const { filePath, data, trainedDays } = backup
 
     // A new phone: empty, until the copy comes back
-    const phone = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 390, height: 844 } })
+    // Same conditions as the flow's phone: no motion, stand-in images, and its
+    // JS errors count in «No Uncaught JS Errors» too
+    const { baseURL, viewport, reducedMotion } = test.info().project.use
+    const phone = await browser.newContext({ baseURL, viewport, reducedMotion })
+    await blockExternalImages(phone)
     const p2 = await phone.newPage()
+    p2.on('pageerror', err => jsErrors.push(`[teléfono nuevo] ${err.message}`))
     await mockWorker(p2, { friends: [], users: [] })
     try {
       await p2.goto('you')
@@ -2826,17 +2702,26 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
       const restored = p2.locator('[data-component="ResultSheet"]')
       await expect(restored).toContainText('Copia restaurada')
       await expect(restored.locator('[data-component="StatBlock"]').nth(0)).toContainText(`${trainedDays}`)
-      await expect(restored.locator('[data-component="StatBlock"]').nth(1)).toContainText('5')
+      await expect(restored.locator('[data-component="StatBlock"]').nth(1)).toContainText(`${data.programs.length}`)
       await expect(restored.locator('[data-component="StatBlock"]').nth(2)).toContainText(`${data.exercises.length}`)
       await p2.reload()
-      // Everything is back: exercises, profile, the active program and the username
+      // Everything is back: exercises, profile, the active program, the workouts and the username
       await p2.locator('#you-row-ejercicios').click()
       await expect(p2.locator('#ex-count')).toHaveText(`${data.exercises.length} ejercicios`)
       await p2.goto('you')
       await expect(p2.locator('[data-component="ProgramCard"].active')).toContainText('Torso Pierna')
+      await expect(p2.locator('#you-row-datos')).toContainText('7 de 7')
       await p2.locator('#you-row-datos').click()
       await expect(p2.locator('#profile-row-height')).toContainText('180 cm')
       await expect(p2.locator('#profile-row-weight')).toContainText('80 kg')
+      await expect(p2.locator('#profile-row-occupation')).toContainText('Ingeniero')
+      // Today's workout in Historial, with its weights, and the bench's whole climb
+      await p2.goto('history')
+      const p2Panel = p2.locator('[data-component="HistoryDayPanel"]')
+      await expect(p2.locator('[data-component="MonthCalendar"] .now')).toHaveAttribute('data-state', 'done')
+      await expect(p2Panel.locator(SEL.exerciseRow, { hasText: 'Press de Banca con Barra' })).toContainText('85 kg')
+      await p2.locator('[data-component="ViewSwitchDock"]').getByRole('button', { name: 'Ejercicios', exact: true }).click()
+      await expect(p2.locator('[data-component="ExerciseProgressRow"]', { hasText: 'Press de Banca con Barra' })).toContainText('+25 kg')
       await p2.goto('friends')
       await p2.getByRole('button', { name: 'Mi perfil' }).click()
       await expect(p2.locator('[data-component="ProfileSheet"]')).toContainText('Pedro')
@@ -2845,7 +2730,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     }
   })
 
-  await step('Step 14b: Eliminar un ejercicio con registros', async () => {
+  await step('Step 11c: Eliminar un ejercicio con registros', async () => {
     // Deleting says how many logs go with it
     await nav(page, 'you')
     await page.locator('#you-row-ejercicios').click()
@@ -2862,7 +2747,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect((await readLogs(page)).filter(l => l.exerciseId === ids.deadlift)).toHaveLength(0)
   })
 
-  await step('Step 15: No Uncaught JS Errors', async () => {
+  await step('Step 12: No Uncaught JS Errors', async () => {
     expect(jsErrors).toEqual([])
   })
 
@@ -3004,29 +2889,13 @@ test.describe('Offline — la red que se cuelga sin responder', () => {
 // Sunday, so they hold whatever day the suite runs) — used by the full flow's
 // Amigos steps and by «racha nueva» below, which seeds a broken streak.
 const LEAGUE = {
-  dateStr(d) {
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
-  },
-  today() {
-    return LEAGUE.dateStr(new Date())
-  },
   // Local date `days` after this week's Monday (negative = earlier weeks).
   fromMonday(days) {
-    const d = new Date()
-    d.setHours(12, 0, 0, 0)
-    d.setDate(d.getDate() - getDayIdx() + days)
-    return LEAGUE.dateStr(d)
+    return localDate(getDayIdx() - days)
   },
   // Monday–Wednesday of the week `weeksAgo` weeks back: a completed week for a 4-day program.
   fullWeek(weeksAgo) {
     return [0, 1, 2].map((i) => ({ id: `log-w${weeksAgo}-${i}`, exerciseId: 'ex-bench', date: LEAGUE.fromMonday(-7 * weeksAgo + i), weight: 50, units: 'kg' }))
-  },
-  todayLog() {
-    return { id: 'log-liga-today', exerciseId: 'ex-bench', date: LEAGUE.today(), weight: 50, units: 'kg' }
-  },
-  gymToday(seconds) {
-    const date = LEAGUE.today()
-    return { id: date, date, seconds, weekStart: LEAGUE.fromMonday(0) }
   },
   exercises: [
     { id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
@@ -3044,7 +2913,7 @@ const LEAGUE = {
     return {
       id: 'settings', activeProgramId: 'prog-liga', currentWeekIdx: 0, units: 'kg',
       accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
-      sessionState: { date: LEAGUE.today(), phase: 2, todayExDone: 0 }, lastCoachAnalysis: null,
+      sessionState: { date: localDate(0), phase: 2, todayExDone: 0 }, lastCoachAnalysis: null,
       rescheduleWeekOrder: {}, language: 'es', onboarded: true, username: 'TestUser',
       ...over,
     }
@@ -3052,41 +2921,6 @@ const LEAGUE = {
   friend(username, minutes, over = {}) {
     return { username, streak: 3, exercisedToday: false, gymTime: minutes * 60, lastUpdate: new Date().toISOString(), ...over }
   },
-}
-
-// `api` fields: friends (the league on the server), users (what search can
-// find), exists, registerStatus, renameStatus. Every POST body lands in
-// `api.calls` and every list request's username in `api.listUsers`.
-async function mockFriendsWorker(page, api) {
-  api.calls = []
-  api.listUsers = []
-  await page.route(/\/api\//, async (route) => {
-    const req = route.request()
-    const url = new URL(req.url())
-    const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
-    const body = req.method() === 'POST' ? req.postDataJSON() : null
-    if (body) api.calls.push({ path: url.pathname, body })
-    if (url.pathname.endsWith('/api/friends/list')) {
-      api.listUsers.push(url.searchParams.get('username'))
-      return json({ friends: api.friends || [] })
-    }
-    if (url.pathname.endsWith('/api/friends/search')) {
-      const q = (url.searchParams.get('q') || '').toLowerCase()
-      return json({ results: (api.users || []).filter((u) => u.username.toLowerCase().includes(q)) })
-    }
-    if (url.pathname.endsWith('/api/friends/add')) {
-      api.friends = [...(api.friends || []), (api.users || []).find((u) => u.username === body.friendUsername)]
-      return json({ status: 'ok' })
-    }
-    if (url.pathname.endsWith('/api/friends/remove')) {
-      api.friends = (api.friends || []).filter((f) => f.username !== body.friendUsername)
-      return json({ status: 'ok' })
-    }
-    if (url.pathname.endsWith('/api/user/check')) return json({ exists: api.exists !== false })
-    if (url.pathname.endsWith('/api/user/register')) return api.registerStatus === 500 ? json({ error: 'boom' }, 500) : json({ status: 'ok' })
-    if (url.pathname.endsWith('/api/user/rename')) return api.renameStatus === 409 ? json({ error: 'Ese usuario ya está tomado' }, 409) : json({ status: 'ok' })
-    return json({ status: 'ok' })
-  })
 }
 
 async function openFriends(page, data) {
@@ -3115,7 +2949,7 @@ async function logWeightToday(page) {
 test.describe('Amigos v2 — racha nueva', () => {
   test('never shows a 0 streak: progress of the week instead, and it moves after training', async ({ page }) => {
     const api = { friends: [] }
-    await mockFriendsWorker(page, api)
+    await mockWorker(page, api)
     await openFriends(page, {
       exerciseLogs: [...LEAGUE.fullWeek(6), ...LEAGUE.fullWeek(7), ...LEAGUE.fullWeek(8)],
       program: LEAGUE.program(),
@@ -3146,7 +2980,7 @@ test.describe('Amigos v2 — racha nueva', () => {
 test.describe('Amigos v2 — mi perfil y renombrar', () => {
   test('renames on the Worker, rejects a taken name, and keeps the new name after reload', async ({ page }) => {
     const api = { friends: [LEAGUE.friend('Ana', 60), LEAGUE.friend('Luis', 30)], renameStatus: 409 }
-    await mockFriendsWorker(page, api)
+    await mockWorker(page, api)
     await openFriends(page, {
       exerciseLogs: [...LEAGUE.fullWeek(1), ...LEAGUE.fullWeek(2), ...LEAGUE.fullWeek(3)],
       program: LEAGUE.program(),
@@ -3201,10 +3035,6 @@ test.describe('Amigos v2 — mi perfil y renombrar', () => {
 // BUILD, no Watch. Each scenario seeds once and then drives the real UI.
 
 const V2 = {
-  date(daysAgo = 0) {
-    const now = new Date()
-    return new Date(now.getTime() - now.getTimezoneOffset() * 60000 - daysAgo * 86400000).toISOString().slice(0, 10)
-  },
   bench: { id: 'ex-bench', name: 'Press Banca', muscle: 'Chest', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
   military: { id: 'ex-military', name: 'Press Militar', muscle: 'Shoulders', imgUrl: '', gifUrl: '', tips: [], alternatives: [] },
   program(day = {}) {
@@ -3232,10 +3062,10 @@ const V2 = {
     }
   },
   log(exerciseId, daysAgo, weight, extra = {}) {
-    return { id: `log-${exerciseId}-${daysAgo}`, exerciseId, date: V2.date(daysAgo), weight, units: 'kg', ...extra }
+    return { id: `log-${exerciseId}-${daysAgo}`, exerciseId, date: localDate(daysAgo), weight, units: 'kg', ...extra }
   },
   session(over = {}) {
-    return { date: V2.date(0), phase: 1, todayExDone: 0, ...over }
+    return { date: localDate(0), phase: 1, todayExDone: 0, ...over }
   },
 }
 
@@ -3252,23 +3082,11 @@ async function seedV2(page, data = {}, route = 'today') {
 }
 
 function readLogs(page) {
-  return page.evaluate(() => new Promise((resolve) => {
-    const req = indexedDB.open('coach-pedro-ai', 2)
-    req.onsuccess = () => {
-      const get = req.result.transaction('exerciseLogs', 'readonly').objectStore('exerciseLogs').getAll()
-      get.onsuccess = () => { req.result.close(); resolve(get.result) }
-    }
-  }))
+  return readStore(page, 'exerciseLogs')
 }
 
 function readExercises(page) {
-  return page.evaluate(() => new Promise((resolve) => {
-    const req = indexedDB.open('coach-pedro-ai', 2)
-    req.onsuccess = () => {
-      const get = req.result.transaction('exercises', 'readonly').objectStore('exercises').getAll()
-      get.onsuccess = () => { req.result.close(); resolve(get.result) }
-    }
-  }))
+  return readStore(page, 'exercises')
 }
 
 async function goOffline(page, context) {
@@ -3316,6 +3134,252 @@ test.describe('Hoy v2 — comparativa Detalle / Calentamiento', () => {
     // Added 2026-10-15 (Pedro, «v2 · 12 Comparativa»): muscle + arrows on top,
     // the name below at full width — in both sheets.
     for (const m of [detail, warmup]) expect(m.arrows).toBeLessThan(m.name)
+  })
+})
+
+// ═══════════════════════════════ IA ═══════════════════════════════
+// Apart from the flow (Pedro, 2026-10-30): the flow builds its program by hand
+// with its own exercises; everything that talks to the AI lives here, each
+// test with its answers mocked and the bodies it sends checked.
+
+const AI_PROFILE = { userName: 'Pedro', height: '180', weight: '80', sex: 'male', age: '28', goal: 'hypertrophy', experience: 'intermediate', occupation: 'Ingeniero', onboarded: true }
+
+// Moved from the flow's «Tú — Programas»: the three ways the coach
+// makes a program, with the same promises.
+test.describe('IA — programas con el coach', () => {
+  test('platicarlo, pegar la rutina y mejorarla: cada uno manda la conversación completa y deja su programa activo', async ({ page }) => {
+    await mockWorker(page, {})
+    await seedV2(page, { settings: V2.settings(AI_PROFILE) }, 'you')
+    const activeCard = page.locator('[data-component="ProgramCard"].active')
+
+    // ── Platícalo con el coach: the coach proposes first (kickoff hidden), it's
+    // discussed, and «Crear este programa» sends the whole conversation ──
+    const chatBodies = []
+    let createBody = null
+    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+      chatBodies.push(route.request().postDataJSON())
+      const reply = chatBodies.length === 1
+        ? 'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.'
+        : 'Va, bajamos piernas a 1 día.'
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply, _provider: 'test' }) })
+    })
+    // Two passes: the coach writes a draft, then reviews it (redundant same-muscle work) and that one is saved
+    let reviewBody = null
+    await page.route((url) => url.href.includes('/api/ai/generate-program'), async (route) => {
+      const body = route.request().postDataJSON()
+      if (createBody) reviewBody = body
+      else createBody = body
+      const days = reviewBody
+        ? [{ name: 'Espalda', weekday: 1, subtitle: '', exercises: [{ exercise_name: 'Peso Muerto', muscle: 'Back', sets: 4, reps: '8-12', rest_sec: 90 }] }]
+        : [{ name: 'Espalda', weekday: 1, subtitle: '', exercises: [{ exercise_name: 'Peso Muerto', muscle: 'Back', sets: 4, reps: '8-12', rest_sec: 90 }, { exercise_name: 'Rack Pull', muscle: 'Back', sets: 4, reps: '8', rest_sec: 90 }] }]
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ program_name: reviewBody ? 'Upper/Lower Acordado' : 'Borrador', weeks: [{ name: 'Semana 1', tag: '', days }], _provider: 'test' }),
+      })
+    })
+    await page.locator('#you-row-programas').click()
+    await page.locator('#create-program-btn').click()
+    const createSheet = page.locator('#create-program-sheet')
+    await expect(createSheet).toContainText('Platícalo con el coach')
+    await expect(createSheet).toContainText('Pega tu rutina')
+    await page.locator('#create-coach').click()
+    const setup = page.locator('#coach-setup-sheet')
+    await setup.getByRole('button', { name: '4', exact: true }).click()
+    await setup.getByRole('button', { name: 'Rodilla' }).click()
+    await setup.getByRole('button', { name: 'Platicar con el coach' }).click()
+    const chat = page.locator('[data-component="CoachChat"]')
+    await expect(chat).toContainText('Con el coach')
+    await expect(chat).toContainText('4 días')
+    await expect(chat).toContainText('Cuidar rodilla')
+    await expect(chat).toContainText('Propuesta: por tu trabajo de oficina')
+    await expect(chat).not.toContainText('dame tu propuesta inicial')
+    expect(chatBodies[0].messages).toHaveLength(1)
+    expect(chatBodies[0].systemPrompt).toContain('PERFIL DEL USUARIO')
+    expect(chatBodies[0].systemPrompt).toContain('Ingeniero')
+    expect(chatBodies[0].systemPrompt).toContain('"daysPerWeek":4')
+    expect(chatBodies[0].systemPrompt).toContain('Rodilla')
+    await chat.locator('textarea').fill('Prefiero menos pierna')
+    await chat.locator('textarea').press('Enter')
+    await expect(chat).toContainText('Va, bajamos piernas a 1 día.')
+    await chat.getByRole('button', { name: 'Crear este programa' }).click()
+    await expect(chat).not.toBeVisible({ timeout: 10000 })
+    expect(createBody.messages.map(m => m.content)).toEqual([
+      chatBodies[0].messages[0].content,
+      'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.',
+      'Prefiero menos pierna',
+      'Va, bajamos piernas a 1 día.',
+      'Crea el programa completo con el enfoque que acordamos en esta conversación.',
+    ])
+    expect(createBody.systemPrompt).toContain('"daysPerWeek":4')
+    // The review keeps the same coach persona and conversation, and gets the draft
+    expect(reviewBody.systemPrompt).toContain('Act as an Elite Personal Trainer')
+    expect(reviewBody.systemPrompt).toContain('REVISOR')
+    expect(reviewBody.systemPrompt).toContain('"daysPerWeek":4')
+    expect(reviewBody.messages.slice(0, 4).map(m => m.content)).toEqual(createBody.messages.slice(0, 4).map(m => m.content))
+    expect(reviewBody.messages[4].content).toContain('BORRADOR:')
+    expect(reviewBody.messages[4].content).toContain('Rack Pull')
+    const ready = page.locator('[data-component="ProgramReady"]')
+    await expect(ready).toContainText('Listo, Pedro.')
+    await expect(ready).toContainText('«Upper/Lower Acordado» ya es tu programa activo.')
+    await ready.getByRole('button', { name: 'Ver programa' }).click()
+    await expect(activeCard).toContainText('Upper/Lower Acordado')
+    const saved = await storedProgram(page, 'Upper/Lower Acordado')
+    expect(saved.weeks[0].days[0].exercises).toHaveLength(1)
+    expect(saved.weeks[0].days[0].weekday).toBe(1)
+
+    // ── Pega tu rutina: a chat reads it back, «Crear este programa» creates it ──
+    const pasteBodies = []
+    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+      pasteBodies.push(route.request().postDataJSON())
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: 'Entendí 1 día: Lunes · Press Banca 4 × 8.', _provider: 'test' }) })
+    })
+    await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        program_name: 'Programa IA',
+        weeks: [{ name: 'Semana 1', subtitle: '', tag: 'VOLUMEN', days: [{ name: 'Pecho', subtitle: '', weekday: 1, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }] }],
+      }),
+    }))
+    await page.locator('#create-program-btn').click()
+    await page.locator('#create-paste').click()
+    const paste = page.locator('#paste-routine-sheet')
+    await paste.getByRole('button', { name: 'Escribirla aquí' }).click()
+    await paste.getByRole('textbox', { name: 'Tu rutina' }).fill('Lunes: Press banca 4x8')
+    await paste.getByRole('button', { name: 'Ver cómo queda' }).click()
+    await expect(chat).toContainText('Tu rutina · 1 línea')
+    await expect(chat).toContainText('Entendí 1 día')
+    expect(pasteBodies[0].messages[0].content).toBe('Lunes: Press banca 4x8')
+    await chat.getByRole('button', { name: 'Crear este programa' }).click()
+    await expect(ready).toContainText('«Programa IA» ya es tu programa activo.', { timeout: 5000 })
+    await ready.getByRole('button', { name: 'Ver programa' }).click()
+    await expect(activeCard).toContainText('Programa IA')
+    const iaId = await activeCard.getAttribute('data-program-id')
+
+    // ── Mejorar con el coach: two turns carry the whole thread and the
+    // program; «Crear versión nueva» makes «Programa IA · v2» the active one ──
+    const improveBodies = []
+    let applyBody = null
+    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+      improveBodies.push(route.request().postDataJSON())
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: `Respuesta del coach ${improveBodies.length}`, _provider: 'test' }) })
+    })
+    await page.route((url) => url.href.includes('/api/ai/program-coach'), async (route) => {
+      applyBody = route.request().postDataJSON()
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+          program: { program_name: 'Programa Acordado', weeks: [{ name: 'Semana 1', tag: '', days: [{ name: 'Pecho', subtitle: '', duration_min: 60, exercises: [{ exercise_name: 'Press Banca', muscle: 'Chest', sets: 4, reps: '8', rest_sec: 120 }] }] }] },
+          _provider: 'test',
+        }),
+      })
+    })
+    // The review pass fails here: the version is still created from the draft
+    let improveReviews = 0
+    await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => {
+      improveReviews++
+      return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'La IA no generó JSON válido.' }) })
+    })
+    await page.locator('#improve-program-row').click()
+    await expect(chat).toContainText('Mejorar con el coach')
+    await expect(chat).toContainText('Qué onda, Pedro.')
+    await expect(chat).toContainText('«Programa IA»')
+    await expect(chat.getByRole('button', { name: 'Tengo menos tiempo' })).toBeVisible()
+    const applyBtn = chat.getByRole('button', { name: 'Crear versión nueva' })
+    await expect(applyBtn).toBeDisabled()
+    await chat.locator('textarea').fill('¿Está balanceada mi rutina?')
+    await chat.locator('textarea').press('Enter')
+    await expect(chat).toContainText('Respuesta del coach 1')
+    await chat.locator('textarea').fill('Agrega más pecho')
+    await chat.locator('textarea').press('Enter')
+    await expect(chat).toContainText('Respuesta del coach 2')
+    expect(improveBodies[1].messages.map(m => m.content)).toEqual(['¿Está balanceada mi rutina?', 'Respuesta del coach 1', 'Agrega más pecho'])
+    expect(improveBodies[1].systemPrompt).toContain('PROGRAMA ACTUAL:')
+    expect(improveBodies[1].systemPrompt).toContain('Programa IA')
+    await expect(applyBtn).toBeEnabled()
+    await applyBtn.click()
+    const versionSheet = page.locator('#new-version-sheet')
+    await expect(versionSheet.getByLabel('Nombre')).toHaveValue('Programa IA · v2')
+    await expect(versionSheet.getByRole('switch', { name: 'Usarla desde hoy' })).toHaveAttribute('aria-checked', 'true')
+    await versionSheet.getByRole('button', { name: 'Crear versión' }).click()
+    await expect(chat).not.toBeVisible({ timeout: 10000 })
+    expect(applyBody.messages).toHaveLength(5)
+    expect(applyBody.messages[4].content).toContain('Aplica los cambios que acordamos')
+    expect(improveReviews).toBe(1)
+    await expect(page.locator('body')).toContainText('Versión nueva activa. La anterior sigue abajo.')
+    await expect(activeCard).toContainText('Programa IA · v2')
+    // The original stays untouched, in «Otros programas»
+    await expect(page.locator(`[data-component="ProgramCard"][data-program-id="${iaId}"]:not(.active)`)).toBeVisible()
+    // Reopening starts from scratch
+    await page.locator('#improve-program-row').click()
+    await expect(chat).toBeVisible()
+    await expect(chat).not.toContainText('Respuesta del coach')
+    await chat.getByRole('button', { name: 'Volver' }).click()
+    await expect(chat).not.toBeVisible()
+  })
+})
+
+// Moved from the flow's «Plan — Exercise Detail» (the coach in the detail) and
+// «Hoy — Racha, esfuerzo y resumen» (the coach's analysis of the session).
+test.describe('IA — coach del ejercicio y análisis', () => {
+  test('preguntas rápidas en el detalle, y el resumen muestra la respuesta real del coach', async ({ page }) => {
+    const api = {
+      analysis: {
+        analysis: 'Sesión sólida, buen control.', verdict: 'positive',
+        proximo_objetivo: 'Press Banca → 87.5 kg', recommendations: ['Baja más lento en el Militar'],
+        total_volume: 4200, pr_count: 1, _provider: 'test',
+      },
+    }
+    await mockWorker(page, api)
+    // Today trained and finished (phase 5): the summary is up, without the coach yet
+    const now = Date.now()
+    await seedV2(page, {
+      exerciseLogs: [V2.log('ex-bench', 0, 80), V2.log('ex-military', 0, 40)],
+      settings: V2.settings({ ...AI_PROFILE, sessionState: V2.session({ phase: 5, startedAt: now - 40 * 60000, endedAt: now }) }),
+    }, 'plan')
+
+    // The coach in the detail: quick questions on screen, body parts for pain
+    await openFromPlan(page, 'Banca')
+    await page.getByRole('button', { name: /Pregúntale al coach/ }).click()
+    const chat = page.locator('[data-component="CoachChat"]')
+    await expect(chat).toContainText('Hola. Soy tu coach')
+    await expect(chat).toContainText('Preguntas rápidas')
+    for (const q of ['Mejorar técnica', 'Me duele algo', '¿Voy muy pesado?', 'Dame una variante']) {
+      await expect(chat.getByRole('button', { name: q })).toBeInViewport({ ratio: 1 })
+    }
+    await chat.getByRole('button', { name: 'Me duele algo' }).click()
+    await expect(chat).toContainText('¿Dónde lo sientes?')
+    await expect(chat.getByRole('button', { name: 'Codo' })).toBeVisible()
+    await expect(chat.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+    await chat.getByRole('button', { name: 'Volver' }).click()
+    await expect(chat).toHaveCount(0)
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+
+    // «Pedir análisis al coach» asks the effort first, then calls /api/ai/coach
+    await nav(page, 'today')
+    const effort = page.locator('#effort-overlay')
+    const coachCalls = api.calls.length
+    await page.getByRole('button', { name: 'Pedir análisis al coach' }).click()
+    await expect(effort).toBeVisible()
+    await effort.locator('[data-effort="Justo"]').click()
+
+    // The summary shows the REAL /api/ai/coach answer (mocked here), not a canned line
+    const summary = page.locator('[data-component="SessionSummary"]')
+    const checkSummary = async () => {
+      await expect(summary).toContainText('Tu coach', { timeout: 10000 })
+      await expect(summary).toContainText(api.analysis.analysis)
+      await expect(summary).toContainText('Para la próxima')
+      await expect(summary).toContainText(api.analysis.proximo_objetivo)
+      await expect(summary).toContainText(api.analysis.recommendations[0])
+      await expect(summary.locator('[data-component="StatBlock"]')).toHaveCount(3)
+      await expect(summary.locator('[data-component="StatBlock"]', { hasText: 'duración' })).toContainText(/\d+\s*min/)
+      await expect(summary.getByRole('button', { name: /Reiniciar día/ })).toBeVisible()
+      await expect(page.locator('body')).not.toContainText('WORKOUT_ANALYSIS')
+    }
+    await checkSummary()
+    expect(api.calls.slice(coachCalls).some(c => c.path.includes('/api/ai/coach'))).toBe(true)
+    // It survives closing and reopening the app
+    await page.reload()
+    await checkSummary()
   })
 })
 
