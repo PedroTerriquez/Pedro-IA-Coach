@@ -2955,6 +2955,344 @@ test.describe('Amigos v2 — mi perfil y renombrar', () => {
   })
 })
 
+// ═══════════════════ Nube — cuenta y copia (spec 2026-10-14, Fase A) ═══════════════════
+// The Worker is simulated (mockWorker → cloudRoute); each test seeds once and
+// drives the real UI. A seeded account lives in localStorage like the app's.
+
+const CLOUD = {
+  account: { username: 'TestUser', email: 'test@mail.com', token: 'tok-test' },
+  logs: [
+    { id: 'log-c1', exerciseId: 'ex-bench', date: localDate(3), weight: 50, units: 'kg' },
+    { id: 'log-c2', exerciseId: 'ex-military', date: localDate(3), weight: 30, units: 'kg' },
+  ],
+  gymSession: { id: localDate(3), date: localDate(3), seconds: 1800, weekStart: localDate(3) },
+  uploadKeys(api) {
+    return api.uploads.flatMap((u) => (u.body.upserts || []).map((r) => `${r.store}:${r.id}`))
+  },
+}
+
+async function seedCloud(page, route, data, account = null) {
+  await page.goto(route)
+  await seedIndexedDB(page, data)
+  await page.evaluate((a) => {
+    localStorage.removeItem('cloud-hashes')
+    localStorage.removeItem('cloud-upload')
+    if (a) localStorage.setItem('cloud-account', JSON.stringify(a))
+    else localStorage.removeItem('cloud-account')
+  }, account)
+  await page.reload()
+  await waitForApp(page)
+}
+
+// Today's two exercises (V2 program: Press Banca, Press Militar), one weight
+// each through the detail, closing it like a user. Two minutes pass between
+// them so today's gym time is not 0.
+async function registerBothExercises(page) {
+  const training = page.locator('[data-phase="training"]')
+  const rows = training.locator(SEL.exerciseRow)
+  for (let i = 0; i < 2; i++) {
+    if (await rows.count() === 0) await training.locator(SEL.phaseToggle).click()
+    await rows.nth(i).click()
+    await page.getByRole('button', { name: 'Más peso' }).first().click()
+    await page.getByRole('button', { name: /^Registrar \d/ }).click()
+    await expect(page.getByText('Registrado hoy')).toBeVisible()
+    if (i === 0) await page.clock.fastForward('02:00')
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+    await expect(page.locator('[data-component="ExerciseDetail"]')).toHaveCount(0)
+  }
+}
+
+function syncsWithGymTime(api) {
+  return api.calls.filter((c) => c.path.endsWith('/api/user/sync') && c.body.gymTime > 0)
+}
+
+test.describe('Nube — proteger mi usuario', () => {
+  test('crea la cuenta con correo y contraseña, sube todo y Tú muestra «Guardado hoy»', async ({ page }) => {
+    const api = { createStatus: 409 }
+    await mockWorker(page, api)
+    await seedCloud(page, 'you', {
+      exercises: LEAGUE.exercises, program: LEAGUE.program(), exerciseLogs: CLOUD.logs,
+      gymSessions: [CLOUD.gymSession], settings: LEAGUE.settings(),
+    })
+    const creates = () => api.calls.filter((c) => c.path.endsWith('/api/account/create'))
+
+    await expect(page.locator('#cloud-card')).toContainText('Guarda tus datos en la nube')
+    await page.locator('#cloud-card-create').click()
+    // The user already has a name: only email and password
+    await expect(page.locator('#account-email')).toBeVisible()
+    await expect(page.locator('#account-username')).toHaveCount(0)
+
+    await page.locator('#account-email').fill('ana@')
+    await page.locator('#account-password').fill('1234')
+    await page.locator('#account-submit').click()
+    await expect(page.getByText('Correo no válido')).toBeVisible()
+    await expect(page.getByText('Mínimo 8 caracteres')).toBeVisible()
+    expect(creates()).toHaveLength(0)
+
+    // Someone protected it first (once): the sheet offers signing in
+    await page.locator('#account-email').fill('test@mail.com')
+    await page.locator('#account-password').fill('secreta123')
+    await page.locator('#account-submit').click()
+    await expect(page.getByText('Ese usuario ya está protegido')).toBeVisible()
+    await expect(page.locator('#account-go-login')).toBeVisible()
+
+    // Free now: created, and everything goes up
+    await page.locator('#account-submit').click()
+    await expect(page.getByText('Tus datos están en la nube', { exact: true })).toBeVisible()
+    expect(creates().at(-1).body).toEqual({ username: 'TestUser', email: 'test@mail.com', password: 'secreta123' })
+    const keys = CLOUD.uploadKeys(api)
+    for (const k of ['exerciseLogs:log-c1', 'exerciseLogs:log-c2', 'programs:prog-liga', 'exercises:ex-bench', 'exercises:ex-military', `gymSessions:${localDate(3)}`, 'settings:settings']) {
+      expect(keys).toContain(k)
+    }
+    expect(api.uploads[0].auth).toBe('Bearer tok-test')
+    // The phone's own fields never go up
+    const settingsUp = api.uploads[0].body.upserts.find((r) => r.store === 'settings').data
+    expect(settingsUp).not.toHaveProperty('sessionState')
+    expect(settingsUp).not.toHaveProperty('pushSubscribed')
+
+    await page.reload()
+    await waitForApp(page)
+    await expect(page.locator('#cloud-card')).toHaveCount(0)
+    await expect(page.locator('#you-row-cuenta')).toContainText('Guardado hoy')
+    await expect(page.locator('#you-row-cuenta')).toContainText('test@mail.com')
+    await expect(page.locator('#you-row-copia')).not.toContainText('solo en este teléfono')
+  })
+})
+
+test.describe('Nube — sin usuario todavía', () => {
+  test('la hoja pide el usuario, y Amigos ya no lo pide después', async ({ page }) => {
+    const api = {}
+    await mockWorker(page, api)
+    await seedCloud(page, 'you', { exercises: LEAGUE.exercises, program: LEAGUE.program(), settings: LEAGUE.settings({ username: '' }) })
+
+    await page.locator('#cloud-card-create').click()
+    await expect(page.locator('#account-username')).toBeVisible()
+    await page.locator('#account-username').fill('Nuevo')
+    await page.locator('#account-email').fill('nuevo@mail.com')
+    await page.locator('#account-password').fill('secreta123')
+    await page.locator('#account-submit').click()
+    await expect(page.getByText('Tus datos están en la nube', { exact: true })).toBeVisible()
+    expect(api.calls.find((c) => c.path.endsWith('/api/account/create')).body.username).toBe('Nuevo')
+
+    await page.reload()
+    await gotoFriendsLoaded(page)
+    await expect(page.locator('#username-prompt')).toHaveCount(0)
+    await expect(page.locator('[data-component="WeekCard"]')).toBeVisible()
+    expect(api.listUsers.at(-1)).toBe('Nuevo')
+  })
+})
+
+test.describe('Nube — sube al terminar los ejercicios, sin estirar', () => {
+  test('los minutos, la liga y la copia van al terminar los ejercicios; estirar sube otra vez', async ({ page }) => {
+    await page.clock.install()
+    const api = {}
+    await mockWorker(page, api)
+    await seedCloud(page, 'today', {
+      exercises: [V2.bench, V2.military], program: V2.program(),
+      settings: V2.settings({ onboarded: true, username: 'TestUser', sessionState: V2.session({ phase: 2 }) }),
+    }, CLOUD.account)
+    const training = page.locator('[data-phase="training"]')
+    const rows = training.locator(SEL.exerciseRow)
+
+    // One exercise is not the end: nothing goes up
+    await rows.first().click()
+    await page.getByRole('button', { name: 'Más peso' }).first().click()
+    await page.getByRole('button', { name: /^Registrar \d/ }).click()
+    await expect(page.getByText('Registrado hoy')).toBeVisible()
+    await page.clock.fastForward('02:00')
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+    expect(api.uploads).toHaveLength(0)
+
+    if (await rows.count() === 0) await training.locator(SEL.phaseToggle).click()
+    await rows.nth(1).click()
+    await page.getByRole('button', { name: 'Más peso' }).first().click()
+    await page.getByRole('button', { name: /^Registrar \d/ }).click()
+    await expect(page.getByText('Registrado hoy')).toBeVisible()
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+    await expect(page.locator('[data-component="CenterToast"]', { hasText: 'Estira bb' })).toBeVisible()
+
+    // Before stretching: league synced with today's minutes, copy uploaded
+    await expect.poll(() => api.uploads.length).toBe(1)
+    await expect.poll(() => syncsWithGymTime(api).length).toBeGreaterThan(0)
+    const todayLogs = (await readLogs(page)).filter((l) => l.date === localDate(0))
+    expect(todayLogs).toHaveLength(2)
+    const keys = CLOUD.uploadKeys(api)
+    for (const l of todayLogs) expect(keys).toContain(`exerciseLogs:${l.id}`)
+    const gym = api.uploads[0].body.upserts.find((r) => r.store === 'gymSessions' && r.id === localDate(0))
+    expect(gym.data.seconds).toBeGreaterThan(0)
+
+    await nav(page, 'you')
+    await expect(page.locator('#you-row-cuenta')).toContainText('Guardado hoy')
+
+    // Back to Hoy: the toast may show again, but nothing goes up again
+    await nav(page, 'today')
+    await todayDock(page).getByRole('button', { name: 'Terminar entrenamiento' }).click()
+    await todayDock(page).getByRole('button', { name: /Empezar estiramiento/ }).click()
+    expect(api.uploads).toHaveLength(1)
+    await goToLastMove(page)
+    await logDock(page).getByRole('button', { name: 'Terminar estiramiento' }).click()
+    await expect.poll(() => api.uploads.length).toBe(2)
+  })
+})
+
+test.describe('Nube — sin cuenta, los minutos se guardan igual sin estirar', () => {
+  test('la liga recibe los minutos al terminar los ejercicios, sin tocar la nube', async ({ page }) => {
+    await page.clock.install()
+    const api = {}
+    await mockWorker(page, api)
+    await seedCloud(page, 'today', {
+      exercises: [V2.bench, V2.military], program: V2.program(),
+      settings: V2.settings({ onboarded: true, username: 'TestUser', sessionState: V2.session({ phase: 2 }) }),
+    })
+
+    await registerBothExercises(page)
+    await expect(page.locator('[data-component="CenterToast"]', { hasText: 'Estira bb' })).toBeVisible()
+    await expect.poll(() => syncsWithGymTime(api).length).toBeGreaterThan(0)
+    expect(api.calls.filter((c) => c.path.includes('/api/cloud/') || c.path.includes('/api/account/'))).toHaveLength(0)
+    expect(api.downloads).toHaveLength(0)
+
+    await gotoFriendsLoaded(page)
+    await expect(page.locator('[data-component="WeekCard"] .minutes b')).not.toHaveText('0')
+  })
+})
+
+test.describe('Nube — iniciar sesión en un teléfono nuevo', () => {
+  test('«Ya tengo cuenta» baja la copia, conserva lo del teléfono y abre Hoy', async ({ page }) => {
+    const program = V2.program()
+    const logs = [V2.log('ex-bench', 3, 50), V2.log('ex-military', 3, 30), V2.log('ex-bench', 10, 47.5)]
+    const cloudSettings = V2.settings({
+      activeProgramId: 'prog-v2', username: 'TestUser', onboarded: true, onboardingStep: -1, pushSubscribed: true,
+      sessionState: V2.session({ date: localDate(5), phase: 3 }),
+    })
+    const rec = (store, data) => ({ store, id: String(data.id), data })
+    const api = {
+      cloudPages: [
+        [rec('exerciseLogs', logs[0]), rec('exerciseLogs', logs[1]), rec('exerciseLogs', logs[2]), rec('exercises', V2.bench), rec('exercises', V2.military)],
+        [rec('gymSessions', CLOUD.gymSession), rec('programs', program), rec('settings', cloudSettings)],
+      ],
+    }
+    await mockWorker(page, api)
+    // A fresh context is a phone with nothing: no IndexedDB, no account
+    await page.goto('you')
+    await expect(page.locator('#you-first-time')).toBeVisible()
+    await expect(page.locator('#you-first-time')).toContainText('Hola.')
+
+    await page.locator('#you-row-login').click()
+    await expect(page.locator('#account-username')).toBeVisible()
+    await page.locator('#account-forgot').click()
+    await expect(page.getByText('Escríbele a Pedro para restablecerla.')).toBeVisible()
+
+    await page.locator('#account-username').fill('TestUser')
+    await page.locator('#account-password').fill('secreta000')
+    await page.locator('#account-submit').click()
+    await expect(page.getByText('Usuario o contraseña incorrectos')).toBeVisible()
+
+    await page.locator('#account-password').fill('secreta123')
+    await page.locator('#account-submit').click()
+    await expect(page).toHaveURL(/\/today$/)
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Empuje.')
+    expect(api.downloads).toEqual([0, 1])
+
+    expect(await readLogs(page)).toHaveLength(3)
+    const s = await storedSettings(page)
+    expect(s.username).toBe('TestUser')
+    expect(s.activeProgramId).toBe('prog-v2')
+    expect(s.pushSubscribed).toBe(false)
+    // The cloud's old session (5 days ago) never lands; Hoy may start today's own
+    expect(s.sessionState?.date ?? null).not.toBe(localDate(5))
+
+    await nav(page, 'history')
+    await expect(page.locator('body')).toContainText('Press de Banca')
+    await nav(page, 'you')
+    await expect(page.locator('#you-row-cuenta')).toBeVisible()
+    await expect(page.locator('#cloud-card')).toHaveCount(0)
+  })
+})
+
+test.describe('Nube — usuario protegido en Amigos', () => {
+  test('escribir un usuario protegido pide iniciar sesión, y renombrarlo manda el token', async ({ page }) => {
+    const api = { protectedUsers: ['Ana'], friends: [] }
+    await mockWorker(page, api)
+    await gotoFriendsLoaded(page)
+    await seedIndexedDB(page, { exercises: LEAGUE.exercises, program: LEAGUE.program(), settings: LEAGUE.settings({ username: '' }) })
+    await page.reload()
+    await expect(page.locator('#username-prompt')).toBeVisible()
+
+    await page.locator('#username-input').fill('Ana')
+    await page.locator('#username-btn').click()
+    await expect(page.getByText('Ese usuario está protegido')).toBeVisible()
+    await expect(page.locator('#account-sheet')).toBeVisible()
+    await expect(page.locator('#account-username')).toHaveValue('Ana')
+    expect(api.calls.filter((c) => c.path.endsWith('/api/user/register'))).toHaveLength(0)
+    expect((await storedSettings(page)).username || '').toBe('')
+
+    // Signing in as Ana gives the name back
+    await page.locator('#account-password').fill('secreta123')
+    await page.locator('#account-submit').click()
+    await expect(page).toHaveURL(/\/today$/)
+    await gotoFriendsLoaded(page)
+    await page.getByRole('button', { name: 'Mi perfil' }).click()
+    const profile = page.locator('[data-component="ProfileSheet"]')
+    await expect(profile.locator('.who-name')).toHaveText('Ana')
+
+    // The rename pencil is hidden for now (see «mi perfil y renombrar»)
+    await profile.locator('button.edit').evaluate((el) => { el.hidden = false })
+    await page.getByRole('button', { name: 'Editar usuario' }).click()
+    await page.locator('#rename-input').fill('Anita')
+    await page.getByRole('button', { name: 'Guardar' }).click()
+    await expect(page.locator('#backup-toast')).toContainText('Usuario actualizado')
+    const rename = api.calls.filter((c) => c.path.endsWith('/api/user/rename')).at(-1)
+    expect(rename.body).toEqual({ username: 'Ana', newUsername: 'Anita' })
+    expect(rename.auth).toBe('Bearer tok-test')
+  })
+})
+
+test.describe('Nube — sin conexión al terminar', () => {
+  test('queda «Pendiente de subir» y sube al volver a abrir la app', async ({ page }) => {
+    await page.clock.install()
+    const api = { uploadAbort: true }
+    await mockWorker(page, api)
+    await seedCloud(page, 'today', {
+      exercises: [V2.bench, V2.military], program: V2.program(),
+      settings: V2.settings({ onboarded: true, username: 'TestUser', sessionState: V2.session({ phase: 2 }) }),
+    }, CLOUD.account)
+
+    await registerBothExercises(page)
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cloud-upload') || '{}').pending)).toBe(true)
+    await nav(page, 'you')
+    await expect(page.locator('#you-row-cuenta')).toContainText('Pendiente de subir')
+    expect(api.uploads).toHaveLength(0)
+
+    api.uploadAbort = false
+    await page.reload()
+    await waitForApp(page)
+    await expect.poll(() => api.uploads.length).toBeGreaterThan(0)
+    const todayLogs = (await readLogs(page)).filter((l) => l.date === localDate(0))
+    const keys = CLOUD.uploadKeys(api)
+    for (const l of todayLogs) expect(keys).toContain(`exerciseLogs:${l.id}`)
+    await expect(page.locator('#you-row-cuenta')).toContainText('Guardado hoy')
+  })
+})
+
+test.describe('Nube — cuenta borrada por Pedro', () => {
+  test('la subida da 401: la app olvida la cuenta y vuelve la tarjeta', async ({ page }) => {
+    await page.clock.install()
+    const api = { uploadStatus: 401 }
+    await mockWorker(page, api)
+    await seedCloud(page, 'today', {
+      exercises: [V2.bench, V2.military], program: V2.program(),
+      settings: V2.settings({ onboarded: true, username: 'TestUser', sessionState: V2.session({ phase: 2 }) }),
+    }, CLOUD.account)
+
+    await registerBothExercises(page)
+    await expect.poll(() => api.uploads.length).toBe(1)
+    await nav(page, 'you')
+    await expect(page.locator('#cloud-card')).toBeVisible()
+    await expect(page.locator('#you-row-cuenta')).toHaveCount(0)
+    expect(await page.evaluate(() => localStorage.getItem('cloud-account'))).toBeNull()
+  })
+})
+
 // ═══════════════════ Hoy v2 / Detalle v2 (spec 2026-10-15) ═══════════════════
 // Base data of the spec: day «Empuje» (Press Banca Chest 4 × 8-10 / 120 s,
 // Press Militar Shoulders 3 × 10-12 / 90 s), week «Semana 1» · «Volumen» ·

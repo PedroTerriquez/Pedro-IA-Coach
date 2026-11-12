@@ -15,14 +15,17 @@ async function mockWorker(page, api) {
   api.restStarts = []
   api.restCancels = []
   api.startPushes = 0
+  api.uploads = []
+  api.downloads = []
   await page.route(/\/api\/|rest-timer\/|push\/start/, async (route) => {
     const req = route.request()
     const url = new URL(req.url())
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(body) })
     let body = null
     try { body = req.method() === 'POST' ? req.postDataJSON() : null } catch { body = req.postData() }
-    if (body) api.calls.push({ path: url.pathname, body })
+    if (body) api.calls.push({ path: url.pathname, body, auth: req.headers()['authorization'] || '' })
     const p = url.pathname
+    if (p.includes('/api/account/') || p.includes('/api/cloud/')) return cloudRoute(route, api, p, url, body, json)
     if (p.endsWith('/api/ping')) return route.fulfill({ status: 405, headers: { 'Access-Control-Allow-Origin': '*' } })
     if (p.includes('rest-timer/start')) { api.restStarts.push(body); return json({ status: 'scheduled' }) }
     if (p.includes('rest-timer/cancel')) { api.restCancels.push(body); return json({ status: 'ok' }) }
@@ -43,13 +46,54 @@ async function mockWorker(page, api) {
       api.friends = (api.friends || []).filter((f) => f.username !== body.friendUsername)
       return json({ status: 'ok' })
     }
-    if (p.endsWith('/api/user/check')) return json({ exists: api.exists !== false })
+    if (p.endsWith('/api/user/check')) return json({ exists: api.exists !== false, protected: isProtected(api, url.searchParams.get('username')) })
+    if (p.endsWith('/api/user/register') && isProtected(api, body && body.username)) return json({ error: 'Ese usuario está protegido', protected: true }, 403)
     if (p.endsWith('/api/user/register')) return api.registerStatus === 500 ? json({ error: 'boom' }, 500) : json({ status: 'ok' })
     if (p.endsWith('/api/user/sync')) return json({ status: 'ok' })
     if (p.endsWith('/api/user/rename')) return api.renameStatus === 409 ? json({ error: 'Ese usuario ya está tomado' }, 409) : json({ status: 'ok' })
     // Default: the post-workout coach analysis
     return json(api.analysis || { analysis: 'Buen trabajo.', verdict: 'positive', _provider: 'test' })
   })
+}
+
+function isProtected(api, username) {
+  return (api.protectedUsers || []).includes(username)
+}
+
+// Accounts and the cloud copy (spec 2026-10-14). Steered by `api`:
+//   createStatus  409 → the next create answers «ya está protegido» (once)
+//   password      the one login accepts (default 'secreta123')
+//   cloudPages    pages of records the download returns, in order
+//   uploadStatus  401 → the token stopped working
+//   uploadAbort   true → the upload request dies (no signal)
+// Every upload lands in `api.uploads` ({ body, auth }), every download in `api.downloads`.
+function cloudRoute(route, api, p, url, body, json) {
+  api.uploads = api.uploads || []
+  api.downloads = api.downloads || []
+  if (p.endsWith('/api/account/create')) {
+    if (api.createStatus === 409) {
+      api.createStatus = 200
+      return json({ error: 'Ese usuario ya está protegido', protected: true }, 409)
+    }
+    return json({ token: 'tok-test' })
+  }
+  if (p.endsWith('/api/account/login')) {
+    if (body.password !== (api.password || 'secreta123')) return json({ error: 'Usuario o contraseña incorrectos' }, 401)
+    return json({ token: 'tok-test', email: 'test@mail.com' })
+  }
+  if (p.endsWith('/api/cloud/upload')) {
+    if (api.uploadAbort) return route.abort()
+    api.uploads.push({ body, auth: route.request().headers()['authorization'] || '' })
+    if (api.uploadStatus === 401) return json({ error: 'Sesión no válida' }, 401)
+    return json({ uploadedAt: new Date().toISOString() })
+  }
+  if (p.endsWith('/api/cloud/download')) {
+    const pages = api.cloudPages || [[]]
+    const idx = Number(url.searchParams.get('after') || 0)
+    api.downloads.push(idx)
+    return json({ records: pages[idx] || [], next: idx + 1 < pages.length ? String(idx + 1) : null })
+  }
+  return json({ error: 'Not Found' }, 404)
 }
 
 // Delivers payload-less pushes (like the Worker's) to the real Service Worker.

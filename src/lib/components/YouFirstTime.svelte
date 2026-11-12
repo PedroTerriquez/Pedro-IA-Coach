@@ -6,6 +6,8 @@
   import NextStepDock from './NextStepDock.svelte'
   import Button from './Button.svelte'
   import Icon from './Icon.svelte'
+  import AccountSheet from './AccountSheet.svelte'
+  import { cloudState } from '$lib/cloud'
 
   type View = 'ejercicios' | 'ajustes' | 'copia'
 
@@ -19,6 +21,7 @@
   } = $props()
 
   let dataDone = $derived(profileFilled >= 7)
+  let loginOpen = $state(false)
 </script>
 
 <YouScreen gap={28} id="you-first-time">
@@ -37,6 +40,12 @@
     </button>
   </div>
 
+  {#if !$cloudState.account}
+    <NavGroup>
+      <NavRow id="you-row-login" label="Ya tengo cuenta" sub="Inicia sesión y recupera tus datos" onclick={() => (loginOpen = true)} />
+    </NavGroup>
+  {/if}
+
   <NavGroup>
     <NavRow id="you-row-ejercicios" label="Ejercicios" value={exerciseCount} onclick={() => onnavigate('ejercicios')} />
     <NavRow id="you-row-ajustes" label="Ajustes" onclick={() => onnavigate('ajustes')} />
@@ -51,6 +60,8 @@
     {/if}
   </NextStepDock>
 </YouScreen>
+
+<AccountSheet bind:open={loginOpen} mode="entrar" />
 
 <style>
   .sess { display: flex; flex-direction: column; gap: 12px; }

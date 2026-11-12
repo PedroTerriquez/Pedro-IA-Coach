@@ -26,7 +26,7 @@
   }: {
     value?: string
     placeholder?: string
-    type?: 'text' | 'number' | 'password' | 'url'
+    type?: 'text' | 'number' | 'password' | 'url' | 'email'
     mono?: boolean
     disabled?: boolean
     compact?: boolean
@@ -44,7 +44,7 @@
     label?: string
     unit?: string
     error?: string
-    inputmode?: 'text' | 'numeric' | 'decimal' | 'url'
+    inputmode?: 'text' | 'numeric' | 'decimal' | 'url' | 'email'
   } = $props()
 
   let inputEl: HTMLInputElement | null = $state(null)

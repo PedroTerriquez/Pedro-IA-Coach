@@ -15,3 +15,9 @@
 - Keys: `idb_backup_<store>` (one per store: exercises, exerciseLogs, programs, gymSessions, settings)
 - Updated via `Storage.backupAll()` after every write
 - Used by `restoreFromBackup()` on data loss
+
+## Cloud copy (`src/lib/cloud.ts`, Worker D1)
+- Optional account (Tú → «Guarda tus datos en la nube»); `localStorage`: `cloud-account` {username, email, token}, `cloud-hashes` (FNV-1a per `store:id`), `cloud-upload` {lastAt, pending}
+- `uploadSnapshot()` sends only changed/deleted records (≤ 500 per batch) when the exercises end (Hoy `onExercisesDone`, once per day) and when the stretch ends; a failed upload is `pending` and retried on app open / `visibilitychange`; a 401 forgets the account
+- `downloadAll()` (Iniciar sesión) adds the cloud records like a backup restore, keeping this phone's `pushSubscribed`, `pushServerUrl`, `sessionState` (never uploaded)
+- Spec: `docs/superpowers/specs/2026-10-14-migracion-hosting-cloudflare-design.md`

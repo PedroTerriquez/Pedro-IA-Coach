@@ -57,6 +57,6 @@ Las propuestas de diseño se piden en Claude Design sobre estas cards; al implem
 
 ## Pendiente
 
-- **Tú v2**: el recorrido `tu` solo cubre Ejercicios (`vistas/tu/`). Falta el walk de `NavGroup`, `ProgramEditor`, `YouHub`, `SettingsScreen`, `BackupScreen`, `ProgramsScreen`, `ProfileData`, `ProfileSheet`, `UnmatchedScreen`.
+- **Tú v2**: el recorrido `tu` cubre la cuenta en la nube (`YouHub` con y sin cuenta, `CloudCard`, `AccountSheet`, «Hola.» con «Ya tengo cuenta») y Ejercicios (`vistas/tu/`). Falta el walk de `NavGroup`, `ProgramEditor`, `SettingsScreen`, `BackupScreen`, `ProgramsScreen`, `ProfileData`, `ProfileSheet`, `UnmatchedScreen`.
 - **Atomos de Compartidos** `button`, `inputs`, `section-label`, `empty`, `debug`: sus colectores se perdieron con Tú v2 → salen "sin muestras" y no tienen card (se borraron las viejas el 2026-10-22).
 - El recorrido de **Amigos** ya no captura la card de "Cambiar usuario": el lápiz "Editar usuario" (`ProfileSheet`) quedó oculto el 2026-10-14, así que ese flujo no es alcanzable (líneas comentadas en `groups.mjs`).

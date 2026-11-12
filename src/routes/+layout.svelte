@@ -12,11 +12,22 @@
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
   import { ROUTES } from '$lib/routes'
+  import { retryPendingUpload, refreshCloudState } from '$lib/cloud'
 
   let { children } = $props()
 
+  // A cloud upload that failed (no signal at the gym) goes up when the app
+  // opens or comes back to the front — never in the background.
+  function retryCloudWhenVisible() {
+    if (document.visibilityState === 'visible') retryPendingUpload().catch(() => {})
+  }
+
   onMount(() => {
     settings.load()
+    refreshCloudState()
+    retryPendingUpload().catch(() => {})
+    document.addEventListener('visibilitychange', retryCloudWhenVisible)
+    return () => document.removeEventListener('visibilitychange', retryCloudWhenVisible)
   })
 
   $effect(() => {

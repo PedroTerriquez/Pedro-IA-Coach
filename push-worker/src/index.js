@@ -1,3 +1,8 @@
+import {
+  accountFromToken, isProtected, moveAccount,
+  handleAccountCreate, handleAccountLogin, handleCloudUpload, handleCloudDownload,
+} from './accounts.js'
+
 // Only the app (GitHub Pages) and local dev may call the Worker. Origin can be
 // faked outside a browser, so this stops other sites, not determined scripts.
 const ALLOWED_ORIGINS = ['https://pedroterriquez.github.io']
@@ -9,7 +14,7 @@ function isAllowedOrigin(origin) {
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   Vary: 'Origin',
 }
 
@@ -385,6 +390,27 @@ export default {
       return new Response(body, { status, headers })
     }
 
+    function respondJsonText(text, status = 200) {
+      return new Response(text, { status, headers: { ...cors, 'Content-Type': 'application/json' } })
+    }
+
+    // ── Accounts & cloud copy (D1) ──
+
+    const accountRoutes = {
+      '/api/account/create': () => handleAccountCreate(req, env, respond),
+      '/api/account/login': () => handleAccountLogin(req, env, respond),
+      '/api/cloud/upload': () => handleCloudUpload(req, env, respond),
+      '/api/cloud/download': () => handleCloudDownload(req, env, respond, url, respondJsonText),
+    }
+    if (accountRoutes[url.pathname]) {
+      if (!env.DB) return respond('D1 not configured', 501)
+      try {
+        return await accountRoutes[url.pathname]()
+      } catch (err) {
+        return respond({ error: err.message }, 500)
+      }
+    }
+
     if (url.pathname === '/api/push/subscribe') {
       if (!env.PUSH_KV) return respond('Push KV not configured', 501)
       try {
@@ -553,6 +579,7 @@ export default {
       try {
         const { username } = await req.json()
         if (!username || username.length < 2) return respond({ error: 'Username must be at least 2 characters' }, 400)
+        if (await isProtected(env, username)) return respond({ error: 'Ese usuario está protegido', protected: true }, 403)
         const existing = await env.PUSH_KV.get(`user_${username}`)
         if (existing) return respond({ error: 'Nombre de usuario ya registrado' }, 409)
         await env.PUSH_KV.put(`user_${username}`, JSON.stringify({ username, streak: 0, exercisedToday: false, gymTime: 0, lastExerciseDate: '', lastUpdate: new Date().toISOString() }))
@@ -567,7 +594,7 @@ export default {
         const username = url.searchParams.get('username') || ''
         if (!username) return respond({ error: 'username required' }, 400)
         const existing = await env.PUSH_KV.get(`user_${username}`)
-        return respond({ exists: !!existing })
+        return respond({ exists: !!existing, protected: await isProtected(env, username) })
       } catch (err) {
         return respond({ error: err.message }, 500)
       }
@@ -597,10 +624,13 @@ export default {
         if (!username || !newUsername) return respond({ error: 'username and newUsername required' }, 400)
         if (username === newUsername) return respond({ error: 'newUsername must be different' }, 400)
         if (newUsername.length < 2 || newUsername.length > 20) return respond({ error: 'Username must be 2-20 characters' }, 400)
-        if (await env.PUSH_KV.get(`user_${newUsername}`)) return respond({ error: 'Ese usuario ya está tomado' }, 409)
+        const hasAccount = await isProtected(env, username)
+        if (hasAccount && await accountFromToken(env, req) !== username) return respond({ error: 'Inicia sesión para cambiar tu usuario' }, 403)
+        if (await env.PUSH_KV.get(`user_${newUsername}`) || await isProtected(env, newUsername)) return respond({ error: 'Ese usuario ya está tomado' }, 409)
         await moveUserRecord(env, username, newUsername)
         await moveFriendsList(env, username, newUsername)
         await renameInFriendLists(env, username, newUsername)
+        if (hasAccount) await moveAccount(env, username, newUsername)
         return respond({ status: 'ok' })
       } catch (err) {
         return respond({ error: err.message }, 500)

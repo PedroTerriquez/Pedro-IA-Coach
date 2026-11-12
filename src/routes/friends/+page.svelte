@@ -16,7 +16,8 @@
   import { onMount } from 'svelte'
   import { toast } from '$lib/stores/ui'
   import { online } from '$lib/stores/network'
-  import { registerUser, renameUser, syncUserToWorker, checkUserExists } from '$lib/push'
+  import { registerUser, renameUser, syncUserToWorker, checkUserExists, checkUser } from '$lib/push'
+  import AccountSheet from '$lib/components/AccountSheet.svelte'
   import { getAllLogs, getSettings, getPrograms, saveSettings, getWeeklyGymSeconds } from '$lib/storage'
   import { computeStreakWeeks, computeBestStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { toLocalDateStr, mondayOf } from '$lib/calendar-utils'
@@ -51,6 +52,8 @@
   let searchSeq = 0
   let searchTimer: ReturnType<typeof setTimeout> | null = null
 
+  let protectedError = $state('')
+  let loginOpen = $state(false)
   let profileOpen = $state(false)
   let addOpen = $state(false)
   let detailOpen = $state(false)
@@ -143,15 +146,29 @@
     username = val
   }
 
+  // A protected name (it has an account) is not taken over by typing it:
+  // the person signs in instead, with the name already written.
+  async function isProtectedName(val: string): Promise<boolean> {
+    if (!PUSH_SERVER_URL) return false
+    if ((await checkUser(val)).protected) {
+      protectedError = 'Ese usuario está protegido'
+      loginOpen = true
+      return true
+    }
+    return false
+  }
+
   // "Listo" registers right away. A name that already exists is accepted
   // (registerUser treats 409 as success): it is the only way to get your user
-  // back after reinstalling.
+  // back after reinstalling — unless the name is protected.
   async function handleSubmitUsername() {
     const val = inputUsername.trim()
     if (val.length < 2 || saving) return
     saving = true
-    loading = true
+    protectedError = ''
     try {
+      if (await isProtectedName(val)) return
+      loading = true
       await saveUsername(val)
       registered = !PUSH_SERVER_URL || await registerUser(val)
       await loadLeague()
@@ -163,6 +180,10 @@
 
   async function handleRename(newName: string): Promise<'ok' | 'taken' | 'error'> {
     const result = await renameUser(username, newName)
+    if (result === 'login') {
+      toast.show('Inicia sesión para cambiar tu usuario', true)
+      return 'error'
+    }
     if (result === 'error') toast.show('No se pudo cambiar el usuario', true)
     if (result !== 'ok') return result
     await saveUsername(newName)
@@ -305,10 +326,11 @@
     <h1>Elige tu usuario</h1>
     <p>Así te encuentran tus amigos para ver quién entrena más cada semana.</p>
     <div class="first-form">
-      <UsernameField id="username-input" bind:value={inputUsername} />
+      <UsernameField id="username-input" bind:value={inputUsername} error={protectedError} oninput={() => (protectedError = '')} />
       <Button id="username-btn" variant="primary" fullWidth style={TOUCH} onclick={handleSubmitUsername} disabled={inputUsername.trim().length < 2 || saving}>Listo</Button>
     </div>
   </div>
+  <AccountSheet bind:open={loginOpen} mode="entrar" presetUsername={inputUsername.trim()} />
 {:else}
   <div class="screen" id="friends">
     <PageHeader eyebrow={weekEyebrow(today)} title="Amigos.">

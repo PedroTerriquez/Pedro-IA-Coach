@@ -15,6 +15,12 @@ id = "96139c40523448939c29acf202c4ff16"
 binding = "UNMATCHED_KV"
 id = "c75316ad7be84b9da8915454566129b0"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "coach-pedro-db"
+database_id = "5d89da43-8a90-4ddc-9b96-a795b67a054a"
+migrations_dir = "migrations"
+
 [vars]
 VAPID_EMAIL = "mailto:pedro@example.com"
 

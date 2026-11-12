@@ -1,4 +1,5 @@
 import { PUSH_SERVER_URL, VAPID_PUBLIC_KEY } from '$lib/config'
+import { authHeader } from '$lib/cloud'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -91,13 +92,13 @@ export async function notifyWatch(title: string, body: string, tag?: string): Pr
   } catch {}
 }
 
-async function postJSON(path: string, body: Record<string, unknown>, attempts = 1): Promise<Response | null> {
+async function postJSON(path: string, body: Record<string, unknown>, attempts = 1, extraHeaders: Record<string, string> = {}): Promise<Response | null> {
   if (!PUSH_SERVER_URL) return null
   for (let i = 0; i <= attempts; i++) {
     try {
       const res = await fetch(`${PUSH_SERVER_URL}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...extraHeaders },
         body: JSON.stringify(body),
       })
       return res
@@ -111,34 +112,47 @@ async function postJSON(path: string, body: Record<string, unknown>, attempts = 
 // Registers the username with the Worker so the user is searchable and addable by
 // friends. Tolerates a 409 ("already registered") — that means it already exists,
 // which is a success for us. Returns true only if the user is confirmed registered.
+// A user with an account answers 403 {protected:true}: that is not "registered"
+// for someone without the account's session.
 export async function registerUser(username: string): Promise<boolean> {
+  return (await registerUserStatus(username)) === 'ok'
+}
+
+export async function registerUserStatus(username: string): Promise<'ok' | 'protected' | 'error'> {
   const res = await postJSON('/api/user/register', { username }, 1)
-  if (!res) return false
-  if (res.ok || res.status === 409) return true
-  return false
+  if (!res) return 'error'
+  if (res.ok || res.status === 409) return 'ok'
+  return res.status === 403 ? 'protected' : 'error'
 }
 
 // Moves the user to a new name on the Worker (record, own friends list and every
-// list that had them added). 'taken' = someone already owns the new name.
-export async function renameUser(oldName: string, newName: string): Promise<'ok' | 'taken' | 'error'> {
-  const res = await postJSON('/api/user/rename', { username: oldName, newUsername: newName }, 0)
+// list that had them added). 'taken' = someone already owns the new name;
+// 'login' = the user has an account and this phone has no session for it.
+export async function renameUser(oldName: string, newName: string): Promise<'ok' | 'taken' | 'login' | 'error'> {
+  const res = await postJSON('/api/user/rename', { username: oldName, newUsername: newName }, 0, authHeader())
   if (!res) return 'error'
   if (res.ok) return 'ok'
+  if (res.status === 403) return 'login'
   return res.status === 409 ? 'taken' : 'error'
 }
 
-// Checks whether a username is already registered with the Worker, without
-// creating/modifying anything. Used to decide whether to show the register button.
-export async function checkUserExists(username: string): Promise<boolean> {
-  if (!username || !PUSH_SERVER_URL) return true
+// Checks a username on the Worker without creating/modifying anything.
+// On any failure it reads as "exists, not protected" (the old, safe default).
+export async function checkUser(username: string): Promise<{ exists: boolean; protected: boolean }> {
+  if (!username || !PUSH_SERVER_URL) return { exists: true, protected: false }
   try {
     const res = await fetch(`${PUSH_SERVER_URL}/api/user/check?username=${encodeURIComponent(username)}`)
-    if (!res.ok) return true
+    if (!res.ok) return { exists: true, protected: false }
     const data = await res.json()
-    return !!data.exists
+    return { exists: !!data.exists, protected: !!data.protected }
   } catch {
-    return true
+    return { exists: true, protected: false }
   }
+}
+
+// Used to decide whether to show the register button.
+export async function checkUserExists(username: string): Promise<boolean> {
+  return (await checkUser(username)).exists
 }
 
 // Pushes the user's current weekly streak, whether they trained today, and their

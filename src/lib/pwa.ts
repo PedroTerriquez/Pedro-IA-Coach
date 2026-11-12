@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.98'
-const _VER_DESC = 'Spec Cloudflare: GitHub y Cloudflare conviven, build sin rastro del repo'
-const _VER_TIME = '2026-11-12 01:52'
+const _VER_BASE = 'v2.99'
+const _VER_DESC = 'Cuenta y copia en la nube: protege tu usuario y recupera tus datos'
+const _VER_TIME = '2026-11-12 02:18'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -116,16 +116,26 @@ export const groups = {
     await anon.go('friends')
     await anon.card({ path: at('pantalla-elegir-nombre'), group: G, name: 'Amigos · Elegir usuario', subtitle: 'primera vez: avatar, campo con contador y Listo', source: src, screen: true })
     await anon.context().close()
+
+    const taken = await open(world(S, { settings: S.settings({ username: '', userName: '' }) }), { protectedUsers: ['Ana'] })
+    await taken.go('friends')
+    await taken.locator('#username-input').fill('Ana')
+    await taken.locator('#username-btn').click()
+    await taken.locator('#account-sheet').waitFor({ timeout: 5000 })
+    await taken.waitForTimeout(500)
+    await sheet(taken, 'pantalla-usuario-protegido', 'Amigos · Usuario protegido', '«Ese usuario está protegido» y la hoja de iniciar sesión con el nombre escrito', 'AccountSheet.svelte')
+    await taken.context().close()
   },
 
   // ────────────────────────────────── Tú ──────────────────────────────────
-  // Only covers Ejercicios so far; the hub, Programas, Ajustes and Copia are
-  // still to be written.
+  // Covers the hub's cloud account and Ejercicios; Programas, Ajustes and
+  // Copia are still to be written.
   async tu({ open, S }) {
     const G = 'Tú'
     const at = (p) => `vistas/tu/${p}`
     const src = C + 'ExercisesScreen.svelte'
     const shot = (p, path, name, subtitle, file = 'ExercisesScreen.svelte') => p.card({ path: at(path), group: G, name, subtitle, source: C + file, screen: true, fold: true })
+    await cloudCards({ open, S, G, at, shot })
     const page = await open(world(S))
     await page.go('you')
     await page.locator('#you-row-ejercicios').click()
@@ -272,6 +282,62 @@ function dedupeIcons(snaps) {
   const svgs = [...new Set(snaps.flatMap((s) => s.html.match(/<svg[\s\S]*?<\/svg>/g) ?? []))]
   const html = `<figure class="ds-spec"><figcaption>Icon · ${svgs.length} íconos</figcaption><div class="ds-box ds-row" style="width:720px;gap:18px">${svgs.join('')}</div></figure>`
   return { ...snaps[0], html, rules: [...new Set(snaps.flatMap((s) => s.rules))] }
+}
+
+// ─────────────────────── Tú · cuenta y nube (spec 2026-10-14) ───────────────────────
+const CLOUD_ACCOUNT = { username: 'pedro_t', email: 'pedro@correo.com', token: 'tok-ds' }
+
+async function cloudCards({ open, S, G, at, shot }) {
+  // Hub without an account: the card invites to protect the user
+  const page = await open(world(S))
+  await page.go('you')
+  await page.card({ path: at('inicio-sin-cuenta'), group: G, name: 'Tú · Inicio sin cuenta', subtitle: 'tarjeta «Guarda tus datos en la nube» arriba; la copia vive solo en el teléfono', source: C + 'YouHub.svelte', screen: true })
+  await page.card({ path: at('cloud-card'), group: G, name: 'CloudCard', subtitle: 'invita a crear la cuenta: título, texto y Crear cuenta', source: C + 'CloudCard.svelte', specimens: [{ label: 'CloudCard', selector: '#cloud-card', width: 358 }], viewport: '430x280' })
+
+  await page.locator('#cloud-card-create').click()
+  await page.locator('#account-sheet').waitFor({ timeout: 5000 })
+  await shot(page, 'cuenta-crear', 'Tú · Crear cuenta', 'el usuario ya existe: solo correo y contraseña', 'AccountSheet.svelte')
+  await page.locator('#account-email').fill('pedro@')
+  await page.locator('#account-password').fill('1234')
+  await page.locator('#account-submit').click()
+  await page.waitForTimeout(300)
+  await shot(page, 'cuenta-crear-error', 'Tú · Crear cuenta con errores', '«Correo no válido» y «Mínimo 8 caracteres» en línea', 'AccountSheet.svelte')
+  await page.context().close()
+
+  const anon = await open(world(S, { settings: S.settings({ username: '', userName: '' }) }))
+  await anon.go('you')
+  await anon.locator('#cloud-card-create').click()
+  await anon.locator('#account-sheet').waitFor({ timeout: 5000 })
+  await shot(anon, 'cuenta-crear-sin-usuario', 'Tú · Crear cuenta sin usuario', 'sin usuario todavía: también pide «Usuario»', 'AccountSheet.svelte')
+  await anon.context().close()
+
+  // With an account: the Cuenta row, saved and pending
+  const saved = await open(world(S), { account: CLOUD_ACCOUNT, upload: { lastAt: new Date().toISOString(), pending: false } })
+  await saved.go('you')
+  await saved.card({ path: at('inicio-con-cuenta'), group: G, name: 'Tú · Inicio con cuenta', subtitle: 'sin tarjeta; fila Cuenta con usuario, correo y «Guardado hoy»', source: C + 'YouHub.svelte', screen: true })
+  const rowSaved = await grab(saved, [{ label: 'Cuenta · guardado', selector: '#you-row-cuenta', width: 358 }])
+  await saved.context().close()
+  const pending = await open(world(S), { account: CLOUD_ACCOUNT, upload: { lastAt: null, pending: true } })
+  await pending.go('you')
+  const rowPending = await grab(pending, [{ label: 'Cuenta · pendiente', selector: '#you-row-cuenta', width: 358 }])
+  await pending.context().close()
+  await card(null, { path: at('fila-cuenta'), group: G, name: 'Fila Cuenta', subtitle: '«Guardado hoy 18:42» o «Pendiente de subir»', source: C + 'YouHub.svelte', snaps: [rowSaved, rowPending], viewport: '430x300' })
+
+  // A new phone: «Hola.» offers signing in
+  const fresh = await open(world(S, { programs: [], exerciseLogs: [], gymSessions: [], settings: S.settings({ activeProgramId: null }) }))
+  await fresh.go('you')
+  await fresh.card({ path: at('hola-ya-tengo-cuenta'), group: G, name: 'Tú · Hola. con Ya tengo cuenta', subtitle: 'instalación nueva: iniciar sesión y recuperar los datos', source: C + 'YouFirstTime.svelte', screen: true })
+  await fresh.locator('#you-row-login').click()
+  await fresh.locator('#account-sheet').waitFor({ timeout: 5000 })
+  await fresh.locator('#account-username').fill('pedro_t')
+  await shot(fresh, 'cuenta-entrar', 'Tú · Iniciar sesión', 'usuario, contraseña y «¿Olvidaste tu contraseña?»', 'AccountSheet.svelte')
+  await fresh.locator('#account-password').fill('secreta000')
+  await fresh.locator('#account-submit').click()
+  await fresh.getByText('Usuario o contraseña incorrectos').waitFor({ timeout: 5000 })
+  await fresh.locator('#account-forgot').click()
+  await fresh.waitForTimeout(300)
+  await shot(fresh, 'cuenta-entrar-error', 'Tú · Iniciar sesión con error', 'contraseña incorrecta y «Escríbele a Pedro para restablecerla.»', 'AccountSheet.svelte')
+  await fresh.context().close()
 }
 
 // Standalone because the pages that produced the snaps are already closed.

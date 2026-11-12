@@ -18,7 +18,7 @@ if (!only.length) for (const d of ['vistas', 'shell', 'compartidos']) await rm(O
 const browser = await chromium.launch()
 
 /** Fresh browser context per group: each group seeds its own world once. */
-async function open(data, { friends = S.friends, registered = true } = {}) {
+async function open(data, { friends = S.friends, registered = true, protectedUsers = [], account = null, upload = null } = {}) {
   // Search finds league members too, so a result can show "En tu liga".
   const users = [...friends, { username: 'Sofía', streak: 7, exercisedToday: true }, { username: 'Sofi_fit', streak: 1, exercisedToday: false }]
   const search = (url) => {
@@ -29,16 +29,25 @@ async function open(data, { friends = S.friends, registered = true } = {}) {
   const page = await ctx.newPage()
   await page.route(/\/api\//, (route) => {
     const url = route.request().url()
-    const json = (body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+    const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
     if (url.includes('/api/friends/list')) return json({ friends })
     if (url.includes('/api/friends/search')) return json({ results: search(url) })
-    if (url.includes('/api/user/check')) return json({ exists: registered })
+    if (url.includes('/api/user/check')) return json({ exists: registered, protected: protectedUsers.includes(new URL(url).searchParams.get('username')) })
+    // The account cards show the wrong-password state; nothing signs in for real.
+    if (url.includes('/api/account/login')) return json({ error: 'Usuario o contraseña incorrectos' }, 401)
+    // A pending upload stays pending (no signal), so its card can show it.
+    if (url.includes('/api/cloud/upload')) return upload?.pending ? route.abort() : json({ uploadedAt: new Date().toISOString() })
     if (url.includes('/api/ai/exercise-coach')) return json({ reply: 'Baja la barra controlada en 2 segundos y aprieta las escápulas antes de empujar. Si el codo se abre de más, reduce 5 kg.', _provider: 'test' })
     return json({ status: 'ok', analysis: 'Buen trabajo hoy, Pedro. Subiste carga en Press Banca sin perder repeticiones.', verdict: 'positive', proximo_objetivo: 'Press Banca → 77.5 kg @ RIR 1-2', recommendations: ['Sube Press Banca 2.5 kg la próxima sesión', 'Mantén Press Militar una semana más'], rotation_topic: 'comparativa', _provider: 'test' })
   })
   await page.goto(BASE + 'today')
   await page.waitForTimeout(500)
   await S.seed(page, data)
+  // A cloud account (and its upload status) lives in localStorage, like the app's.
+  await page.evaluate(({ account, upload }) => {
+    if (account) localStorage.setItem('cloud-account', JSON.stringify(account))
+    if (upload) localStorage.setItem('cloud-upload', JSON.stringify(upload))
+  }, { account, upload })
   page.go = async (route) => {
     await page.goto(BASE + route)
     await page.waitForTimeout(900)

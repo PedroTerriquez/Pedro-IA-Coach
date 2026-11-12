@@ -15,6 +15,7 @@
   import { computeStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { resolveWeekOrder } from '$lib/week-order'
   import { syncUserToWorker } from '$lib/push'
+  import { uploadSnapshot } from '$lib/cloud'
   import { PUSH_SERVER_URL } from '$lib/config'
   import {
     exerciseStatus, isTrainingDone, firstPending, sessionStage, sessionEyebrow, dayMuscles, formatClock,
@@ -323,8 +324,12 @@
   // Session time stops when the exercises are done — stretching is not counted.
   function onTrainingDone() {
     completionToastShown = true
+    // Coming back to Hoy after the training shows the toast again, but the
+    // end of the exercises (time, league, cloud) happens once.
+    const firstEnd = !endedAt
     if (!endedAt) endedAt = Date.now()
     persistPhase()
+    if (firstEnd) onExercisesDone()
     if (!hasStretch) {
       finishSession()
       return
@@ -403,6 +408,7 @@
     stretchDone = true
     if (!endedAt) endedAt = Date.now()
     persistPhase()
+    uploadSnapshot().catch(() => {})
   }
 
   function moveNextStep(mode: MoveMode) {
@@ -445,9 +451,11 @@
   function finishFromDetail() {
     showDetail = false
     completionToastShown = true
+    const firstEnd = !endedAt
     if (!endedAt) endedAt = Date.now()
     trainingCompleted = true
     persistPhase()
+    if (firstEnd) onExercisesDone()
     if (hasStretch) openMoves('stretch', 0)
     else finishSession()
   }
@@ -493,18 +501,31 @@
     } else {
       effortModalShow = true
     }
-    // Session just completed: record today's gym time (startedAt → endedAt) into
-    // the weekly accumulator, then push fresh streak + weekly gym time to friends.
-    if (startedAt && endedAt) {
-      await recordGymSession(todayDate, Math.max(0, Math.round((endedAt - startedAt) / 1000)))
-    }
-    if (PUSH_SERVER_URL && s.username) {
-      const all = allLogs.length > 0 ? allLogs : await Storage.getAllLogs()
-      const streak = await computeStreak(todayDate)
-      const exercisedToday = all.some(l => l.date === todayDate && l.weight > 0)
-      const gymTime = await getWeeklyGymSeconds(mondayOf(todayDate))
-      syncUserToWorker(s.username, streak, exercisedToday, gymTime).catch(() => {})
-    }
+  }
+
+  // The exercises are over (stretching or not): today's gym time counts now,
+  // friends see it, and the cloud copy goes up. None of it blocks the UI.
+  async function onExercisesDone() {
+    try {
+      await saveTodayGymTime()
+      await syncLeague()
+    } catch {}
+    uploadSnapshot().catch(() => {})
+  }
+
+  async function saveTodayGymTime() {
+    if (!startedAt || !endedAt) return
+    await recordGymSession(todayDate, Math.max(0, Math.round((endedAt - startedAt) / 1000)))
+  }
+
+  async function syncLeague() {
+    const s = await Storage.getSettings()
+    if (!PUSH_SERVER_URL || !s.username) return
+    const all = allLogs.length > 0 ? allLogs : await Storage.getAllLogs()
+    const streak = await computeStreak(todayDate)
+    const exercisedToday = all.some(l => l.date === todayDate && l.weight > 0)
+    const gymTime = await getWeeklyGymSeconds(mondayOf(todayDate))
+    syncUserToWorker(s.username, streak, exercisedToday, gymTime).catch(() => {})
   }
 
   function onStreakDone() {
