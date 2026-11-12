@@ -1,7 +1,8 @@
 # Push Worker (`coach-pedro-ai`)
 
 Cloudflare Worker that backs the PWA's **push notifications** and **AI features**.
-It is the only server-side component; the app itself is a static PWA on GitHub Pages.
+It is the only server-side component; the app itself is a static PWA with two homes,
+GitHub Pages (`/Pedro-IA-Coach`) and Cloudflare (`fitfriends`, root). `ALLOWED_ORIGINS` accepts both.
 
 > Architecture & the iOS empty-push design: [`../docs/PUSH_NOTIFICATIONS_FINDINGS.md`](../docs/PUSH_NOTIFICATIONS_FINDINGS.md).
 

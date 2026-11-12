@@ -276,8 +276,8 @@ Regenerar, revisar y subir según `docs/design-system.md`. No tocar «· Nuevo»
 **Verify:** `npm run build:cf` pasa; copiar el `build/` de GitHub sobre `build-cf/` y correr el script → falla nombrando los archivos.
 
 #### T15: Config del Worker de hosting
-**What:** `wrangler.jsonc` en la raíz con `name: "fitfriends"`, un `compatibility_date` reciente y `assets: { directory: "./build-cf", not_found_handling: "single-page-application" }`, sin `main`.
-**Files:** `wrangler.jsonc`
+**What:** `cloudflare/wrangler.jsonc` con `name: "fitfriends"`, un `compatibility_date` reciente y `assets: { directory: "../build-cf", not_found_handling: "single-page-application" }`, sin `main`. **No en la raíz** (cambio del 2026-11-12): wrangler busca `wrangler.json(c)` hacia arriba antes que `wrangler.toml`, así que uno en la raíz secuestra `cd push-worker && npx wrangler deploy`. El workflow usa `deploy --config cloudflare/wrangler.jsonc`.
+**Files:** `cloudflare/wrangler.jsonc`
 **Verify:** `npm run build:cf && npx wrangler deploy --dry-run`
 
 #### T16: Deploy a las dos casas con GitHub Actions

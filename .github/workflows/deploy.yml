@@ -1,4 +1,8 @@
-name: Deploy SvelteKit to GitHub Pages
+name: Deploy (GitHub Pages + Cloudflare)
+
+# One push to main publishes the same code to both homes (spec 2026-10-14,
+# Fase B): GitHub Pages under /Pedro-IA-Coach and Cloudflare at the root.
+# The jobs are independent: one failing never blocks the other.
 
 on:
   push:
@@ -44,3 +48,31 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  cloudflare:
+    runs-on: ubuntu-latest
+    env:
+      # Secrets can't be read in `if:` directly; without the token the job
+      # builds (and checks) but skips the deploy instead of failing.
+      HAS_CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build for Cloudflare (root, no repo traces)
+        run: npm run build:cf
+
+      - name: Deploy to Cloudflare
+        if: env.HAS_CF_TOKEN == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Not at the root: a root wrangler.jsonc would hijack push-worker's deploys
+          command: deploy --config cloudflare/wrangler.jsonc

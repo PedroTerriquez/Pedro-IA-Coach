@@ -3,9 +3,10 @@ import {
   handleAccountCreate, handleAccountLogin, handleCloudUpload, handleCloudDownload,
 } from './accounts.js'
 
-// Only the app (GitHub Pages) and local dev may call the Worker. Origin can be
-// faked outside a browser, so this stops other sites, not determined scripts.
-const ALLOWED_ORIGINS = ['https://pedroterriquez.github.io']
+// Only the app's two homes (GitHub Pages and Cloudflare, both permanent — spec
+// 2026-10-14, Fase B) and local dev may call the Worker. Origin can be faked
+// outside a browser, so this stops other sites, not determined scripts.
+const ALLOWED_ORIGINS = ['https://pedroterriquez.github.io', 'https://fitfriends.pollothe.workers.dev']
 const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
 
 function isAllowedOrigin(origin) {

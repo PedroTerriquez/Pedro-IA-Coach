@@ -25,8 +25,8 @@ Most gym apps require:
 
 | Problem | Solution |
 |---|---|
-| Account required | **Zero sign-up.** All data lives in your browser's IndexedDB. Close the tab and it's gone — your data stays with you. |
-| Paid subscriptions | **100% free.** Hosted on GitHub Pages. AI runs on Cloudflare Workers free tier. No server costs. |
+| Account required | **Zero sign-up.** All data lives in your browser's IndexedDB. An optional account (email + password) keeps a cloud copy to recover it on another phone. |
+| Paid subscriptions | **100% free.** Hosted on GitHub Pages and Cloudflare Workers static assets. AI and the cloud copy run on Cloudflare Workers free tier (D1). No server costs. |
 | Internet dependency | **Offline-first.** The full app works without connectivity (except AI features). |
 | App store friction | **PWA.** Open the URL, add to home screen. That's it. No store, no updates, no bloat. |
 | Build setup | **Zero build step.** Vanilla HTML/CSS/JS. Open `index.html` and it runs. |
@@ -92,8 +92,8 @@ Open the app on workout day. The **Today** screen auto-detects the day and shows
 |---|---|
 | Frontend | Vanilla HTML/CSS/JS — no frameworks, no build step |
 | Persistence | IndexedDB (4 object stores) + localStorage backup mirror |
-| Hosting | GitHub Pages (static, free) |
-| Serverless | Cloudflare Worker (push notifications + AI inference) |
+| Hosting | GitHub Pages under `/Pedro-IA-Coach` + Cloudflare Workers static assets at the root (`npm run build:cf`), both from every push |
+| Serverless | Cloudflare Worker (push notifications, AI inference, accounts + cloud copy in D1) |
 | AI | Cloudflare Workers AI — Llama 3.1 8B (free tier, zero setup) |
 | Notifications | Web Push API with VAPID |
 | PWA | Manifest + Service Worker (network-first, cache fallback) |
@@ -147,6 +147,7 @@ git clone git@github.com:PedroTerriquez/Pedro-IA-Coach.git
 ```
 
 Then enable GitHub Pages in repo Settings → Pages → Deploy from branch `main`, root folder.
+For the Cloudflare copy, add the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets: `.github/workflows/deploy.yml` builds `build-cf/` and deploys it with `cloudflare/wrangler.jsonc` (without the token the job builds and skips the deploy).
 
 Or just use the live version — it's free and always up.
 

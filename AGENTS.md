@@ -8,7 +8,7 @@
 - **Mobile-only (iPhone PWA), dark mode only** — no desktop view; `npm run dev` works in mobile emulation only
 - IndexedDB for all persistence (5 object stores) + localStorage mirror (`idb_backup_<store>` keys)
 - No runtime backend — Cloudflare Worker (`push-worker/`) for Web Push, AI (Workers AI), users/friends, accounts + cloud copy (D1 `DB`, `src/lib/cloud.ts`)
-- Deploy: GitHub Pages via `.github/workflows/deploy.yml` (push to `main`)
+- Deploy: GitHub Pages (`/Pedro-IA-Coach`) + Cloudflare Workers static assets (root, `build:cf`, `cloudflare/wrangler.jsonc` — never at the repo root: it would hijack `push-worker` deploys) via `.github/workflows/deploy.yml` (push to `main`)
 - Entry: `src/routes/` (SPA). No SSR — all routes static, client-rendered
 
 ## Project Structure (Key Dirs)
@@ -101,5 +101,5 @@ tests/                → Single E2E file: big.spec.cjs
 
 ## Build/Deploy
 - `npm run dev` local, `npm run build` static output, `npm run preview` test build
-- GitHub Pages: push to `main` → `.github/workflows/deploy.yml` builds/deploys to `/Pedro-IA-Coach`
+- GitHub Pages: push to `main` → `.github/workflows/deploy.yml` builds/deploys to `/Pedro-IA-Coach`; same push → `npm run build:cf` (root, `build-cf/`, fails on sourcemaps/repo traces) → Cloudflare `fitfriends`
 - Base path `/Pedro-IA-Coach` (must match `vite.config.ts` and Playwright base URL)

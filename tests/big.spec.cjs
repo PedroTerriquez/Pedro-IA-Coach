@@ -2802,6 +2802,104 @@ test.describe('Offline — la red que se cuelga sin responder', () => {
   })
 })
 
+// ── Cloudflare: la segunda casa (spec 2026-10-14, Fase B) ──
+// The suite tests the GitHub Pages build; this one builds the Cloudflare
+// version (`npm run build:cf`, only if stale) and serves build-cf/ at the root
+// with the SPA fallback Cloudflare uses.
+test.describe('Cloudflare: la app vive en la raíz y no lleva al repo', () => {
+  const http = require('http')
+  const fs = require('fs')
+  const path = require('path')
+  const ROOT = path.join(__dirname, '..', 'build-cf')
+  const MIME = {
+    '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
+    '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.txt': 'text/plain',
+  }
+  let server = null
+  const requested = []
+
+  // Like Cloudflare's assets: the file, else `<path>.html`, else index.html.
+  function resolveFile(url) {
+    const file = path.join(ROOT, url === '/' ? '/index.html' : url)
+    if (fs.existsSync(file) && !fs.statSync(file).isDirectory()) return file
+    if (fs.existsSync(`${file}.html`)) return `${file}.html`
+    return path.join(ROOT, 'index.html')
+  }
+
+  test.beforeAll(async () => {
+    test.setTimeout(240000)
+    require('child_process').execSync('node scripts/build-if-stale.mjs cf', { cwd: path.join(__dirname, '..'), stdio: 'inherit' })
+    server = http.createServer((req, res) => {
+      const url = req.url.split('?')[0]
+      requested.push(url)
+      const file = resolveFile(url)
+      res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' })
+      fs.createReadStream(file).pipe(res)
+    })
+    await new Promise((r) => server.listen(0, r))
+  })
+
+  test.afterAll(async () => {
+    if (server) await new Promise((r) => server.close(r))
+  })
+
+  test('las pestañas, recargar, el manifest, el service worker y el enlace compartido van a la raíz', async ({ page }) => {
+    const origin = `http://localhost:${server.address().port}`
+    await mockWorker(page, { friends: [] })
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, 'share', { value: undefined, configurable: true })
+      Object.defineProperty(Navigator.prototype, 'clipboard', { value: { writeText: async (t) => { window.__copied = t } }, configurable: true })
+    })
+    await page.goto(`${origin}/today`)
+    await seedIndexedDB(page, {
+      exercises: [V2.bench, V2.military], program: V2.program(),
+      // Name and age: «/» sends someone new to Tú, a known user to Hoy
+      settings: V2.settings({ onboarded: true, username: 'TestUser', userName: 'Ana', age: '30' }),
+    })
+
+    await page.goto(`${origin}/`)
+    await expect(page).toHaveURL(`${origin}/today`)
+    await waitForApp(page)
+
+    const hrefs = await page.locator('[data-component="TabBar"] a').evaluateAll((as) => as.map((a) => a.getAttribute('href')))
+    expect(hrefs.length).toBeGreaterThan(0)
+    for (const h of hrefs) expect(h).not.toContain('/Pedro-IA-Coach')
+    // Tapped by their root href (nav() would fall back to the GitHub base URL)
+    const tapTab = async (tab) => {
+      await page.locator(`[data-component="TabBar"] a[href="/${tab}"]`).click()
+      await expect(page).toHaveURL(`${origin}/${tab}`)
+    }
+    for (const tab of ['plan', 'history', 'friends', 'you']) await tapTab(tab)
+
+    for (const route of ['history', 'friends']) {
+      await page.goto(`${origin}/${route}`)
+      await page.reload()
+      await waitForApp(page)
+      await expect(page).toHaveURL(`${origin}/${route}`)
+    }
+
+    const manifest = await page.request.get(`${origin}/manifest.json`)
+    expect(manifest.status()).toBe(200)
+    const m = await manifest.json()
+    expect(m.start_url).toBe('.')
+    expect(m.name).toBe('FitFriends')
+
+    await page.waitForFunction(() => navigator.serviceWorker.ready.then(() => true), null, { timeout: 20000 })
+    expect(await page.evaluate(async () => (await navigator.serviceWorker.ready).scope)).toBe(`${origin}/`)
+
+    // The shared link is this home's, never GitHub's
+    await tapTab('friends')
+    await page.getByRole('button', { name: 'Compartir mi usuario' }).click()
+    await expect(page.locator('#backup-toast')).toContainText('Copiado')
+    const copied = await page.evaluate(() => window.__copied)
+    expect(copied).toContain(`${origin}/`)
+    expect(copied).not.toContain('/Pedro-IA-Coach')
+
+    expect(requested.filter((u) => u.endsWith('.map'))).toEqual([])
+  })
+})
+
 // ── Amigos v2 — liga semanal ──
 // Spec: docs/superpowers/specs/2026-10-07-amigos-v2-liga-semanal-design.md.
 // Friends built around today's date (the league week is always Monday →

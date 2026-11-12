@@ -1,0 +1,17 @@
+// The app's second home: a static-assets-only Worker serving build-cf/ at the
+// root of https://fitfriends.pollothe.workers.dev/ (spec 2026-10-14, Fase B).
+// Built with `npm run build:cf`; deployed by .github/workflows/deploy.yml with
+// `wrangler deploy --config cloudflare/wrangler.jsonc`.
+//
+// It lives in its own folder on purpose: wrangler looks for wrangler.json(c)
+// up the tree BEFORE wrangler.toml, so a root wrangler.jsonc would hijack
+// `cd push-worker && npx wrangler deploy` (the backend, push-worker/wrangler.toml).
+{
+  "name": "fitfriends",
+  "compatibility_date": "2026-01-15",
+  "workers_dev": true,
+  "assets": {
+    "directory": "../build-cf",
+    "not_found_handling": "single-page-application"
+  }
+}
