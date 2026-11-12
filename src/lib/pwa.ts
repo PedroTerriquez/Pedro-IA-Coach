@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.97'
-const _VER_DESC = 'Registrar cancela su descanso, test Reiniciar día, helpers de test separados'
-const _VER_TIME = '2026-11-11 22:03'
+const _VER_BASE = 'v2.98'
+const _VER_DESC = 'Spec Cloudflare: GitHub y Cloudflare conviven, build sin rastro del repo'
+const _VER_TIME = '2026-11-12 01:52'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

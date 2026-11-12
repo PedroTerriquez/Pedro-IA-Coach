@@ -1,11 +1,11 @@
 # Design: Cuenta con copia en la nube y mudanza del hosting a Cloudflare (gratis)
 
 Fecha: 2026-10-14
-Estado: Aprobado
+Estado: Aprobado · Revisado 2026-11-11 (Fase B: las dos versiones conviven y se actualizan; la de Cloudflare no lleva al repo)
 
 ## Why
 
-La app vive en dos plataformas: el frontend está en GitHub Pages (`/Pedro-IA-Coach`) y el backend en un Cloudflare Worker (`coach-pedro-ai`). Pedro quiere todo en Cloudflare, gratis. Cambiar la dirección de la app hace que el iPhone la vea como una app nueva y vacía (ver glosario: *Dirección de la app*). Para que nadie pierda sus datos en la mudanza, primero llega la **cuenta** (usuario + correo + contraseña) con su **copia en la nube**. Así, en la app nueva basta con iniciar sesión.
+La app vive en dos plataformas: el frontend está en GitHub Pages (`/Pedro-IA-Coach`) y el backend en un Cloudflare Worker (`coach-pedro-ai`). Pedro quiere una segunda casa en Cloudflare, gratis, **sin apagar la de GitHub**: quien ya la usa sigue ahí y recibe cada actualización, y la gente nueva entra por Cloudflare sin un camino fácil hacia su repo (que es público). Cambiar la dirección de la app hace que el iPhone la vea como una app nueva y vacía (ver glosario: *Dirección de la app*). Para que quien quiera cambiarse no pierda sus datos, primero llega la **cuenta** (usuario + correo + contraseña) con su **copia en la nube**. Así, en la otra versión basta con iniciar sesión.
 
 ## What
 
@@ -19,10 +19,13 @@ Dos fases que se publican **por separado y en este orden**.
 - **«¿Olvidaste tu contraseña?»** muestra «Escríbele a Pedro». Pedro borra la cuenta con un comando documentado; los datos de la nube se conservan, y el usuario vuelve a proteger su nombre y sube su copia.
 - **Amigos:** escribir un usuario *protegido* ya no te convierte en él: aparece «Ese usuario está protegido» y se abre el inicio de sesión. Renombrar un usuario protegido exige la sesión.
 
-**Fase B — Hosting en Cloudflare** (se publica cuando Pedro lo decida, después de que su gente haya protegido su usuario):
-- El build estático se sirve desde un **Worker de solo assets** en la raíz de `https://<nombre>.pollothe.workers.dev/`. El nombre propuesto es `fitfriends`, pendiente de confirmar. `base` pasa a `''`.
-- Cada push a `main` publica en Cloudflare con GitHub Actions. GitHub Pages deja de recibir publicaciones, pero su última versión sigue viva hasta que Pedro la apague.
-- El Worker `coach-pedro-ai` acepta la nueva dirección y conserva `github.io` mientras convivan.
+**Fase B — Segunda casa en Cloudflare** (se publica cuando Pedro lo decida):
+- El mismo código se compila **dos veces**: con `base` `/Pedro-IA-Coach` para GitHub Pages (como hoy) y con `base` `''` para Cloudflare. La ruta base sale de una variable de entorno; sin ella, todo sigue como hoy.
+- La versión de Cloudflare se sirve desde un **Worker de solo assets** en la raíz de `https://<nombre>.pollothe.workers.dev/`. El nombre propuesto es `fitfriends`, pendiente de confirmar.
+- Cada push a `main` publica **en las dos**, con GitHub Actions. Ninguna se congela ni se apaga.
+- El Worker `coach-pedro-ai` acepta las dos direcciones, de forma permanente.
+- **La versión de Cloudflare no lleva al repo:** sin `Pedro-IA-Coach` ni `PedroTerriquez` en sus archivos, sin sourcemaps y con el JS minificado (Vite ya minifica; se verifica en cada build). Cloudflare recibe solo la carpeta compilada, nunca el código fuente.
+- Las dos versiones comparten Worker: amigos, liga, push, IA y la nube funcionan igual en ambas. Los datos del teléfono no se comparten entre ellas; para cambiarse se inicia sesión (Fase A).
 
 ## Constraints
 
@@ -37,7 +40,9 @@ Dos fases que se publican **por separado y en este orden**.
 - Hay que publicar y desplegar la Fase A antes de empezar la Fase B.
 - Textos solo en español, como el resto de Tú y Amigos.
 - Respaldo de SPA en Cloudflare: `assets.not_found_handling = "single-page-application"`.
-- En `tests/big.spec.cjs:4565`, la aserción nueva conserva en un comentario la intención original.
+- Sin variables de entorno, `npm run build`, `npm run dev`, Playwright y los scripts del design system se comportan exactamente como hoy (`/Pedro-IA-Coach`, carpeta `build/`).
+- El build de Cloudflare va a su propia carpeta (`build-cf/`), para que nunca lo sirva el preview de Playwright por error.
+- El build de Cloudflare no contiene `.map`, ni las cadenas `Pedro-IA-Coach` o `PedroTerriquez`. Si las tiene, el deploy falla.
 
 ### Must Not
 - Sin inicio de sesión con Google ni Apple. Apple está descartado por su costo (Apple Developer Program, ~99 USD/año).
@@ -48,13 +53,18 @@ Dos fases que se publican **por separado y en este orden**.
 - No fusionar el frontend con el Worker `coach-pedro-ai`. No agregar `wrangler` como dependencia de la raíz.
 - No cambiar el nombre visible fuera de `static/manifest.json`, donde ya dice «FitFriends».
 - No crear una pantalla de «nos mudamos».
+- No congelar ni apagar GitHub Pages; no quitar `github.io` de `ALLOWED_ORIGINS`.
+- No agregar un ofuscador (tipo `javascript-obfuscator`): agranda el bundle y hace más lenta la app en el iPhone. Basta con el minificado de Vite.
+- No conectar el repo a Cloudflare (Pages con Git): se sube solo la carpeta compilada.
 
 ### Out of Scope
 - Recuperar la contraseña por correo. Paso futuro, cuando haya dominio; el correo ya queda guardado.
 - Tabla de amistades en D1 que reemplace la liga en KV. Paso futuro.
 - Proteger con token `user/sync`, `friends/add` y `friends/remove`: siguen confiando en el nombre de usuario. Solo cambian el registro y el renombrado.
 - Sincronizar entre dos teléfonos en uso a la vez. La nube es la copia de respaldo y gana la última subida.
-- Dominio propio. Renombrar el repo o el Worker. Apagar GitHub Pages, que es un paso manual.
+- Dominio propio. Renombrar el repo o el Worker. Apagar GitHub Pages.
+- Hacer el repo privado: en el plan gratis de GitHub apaga Pages. El código queda público para quien busque el repo; la versión de Cloudflare solo no lo señala.
+- Sacar `/admin` del build de Cloudflare (hoy viaja en producción en modo lectura y solo menciona repos de terceros).
 
 ## Current State
 
@@ -95,19 +105,21 @@ Dos fases que se publican **por separado y en este orden**.
 - `push-worker/README.md` documenta los endpoints.
 
 **Hosting**
-- `svelte.config.js`: `paths.base: '/Pedro-IA-Coach'`, `fallback: 'index.html'`. Las rutas usan `base` (`src/lib/routes.ts`, `src/lib/share.ts:10`). El service worker usa `$service-worker`. El manifest usa `start_url`/`scope` relativos.
-- `.github/workflows/deploy.yml`: Node 22, `npm install`, `npm run build`, `upload-pages-artifact`, `deploy-pages`.
+- `svelte.config.js`: `adapter({ pages: 'build', assets: 'build', fallback: 'index.html' })` y `paths.base: '/Pedro-IA-Coach'`, ambos fijos. Las rutas usan `base` (`src/lib/routes.ts`, `src/lib/share.ts:10`). El service worker usa `$service-worker`. El manifest usa `start_url`/`scope` relativos.
+- `.github/workflows/deploy.yml`: un job `build` (Node 22, `npm install`, `npm run build`, `upload-pages-artifact`) y un job `deploy` (`deploy-pages`).
 - `src/lib/config.ts`: `PUSH_SERVER_URL = 'https://coach-pedro-ai.pollothe.workers.dev'`. El subdominio de la cuenta es `pollothe`.
-- Tests y scripts que dependen de la ruta base:
+- `.gitignore` ya ignora `.wrangler` y `/build`.
+- El build de hoy ya va minificado y sin `.map` (revisado el 2026-11-11). La única referencia al repo es la ruta base `/Pedro-IA-Coach` (p. ej. en un chunk de `_app/immutable/chunks/`); con `base` `''` desaparece. Las URLs de `github` que quedan son de repos de terceros (imágenes de `yuhonas/free-exercise-db` y los catálogos de `/admin`).
+- Tests y scripts que dependen de la ruta base (se quedan como están, porque `/Pedro-IA-Coach` sigue siendo el default):
   - `playwright.config.cjs` (`baseURL`, `webServer.url`).
-  - `tests/big.spec.cjs:4152`, `:4174` y `:4565`.
+  - `tests/big.spec.cjs:2232` («Compartir mi usuario»), `:2746` y `:2768` (servidor propio del test Offline).
   - `scripts/ds/build.mjs:11` (`BASE`) y `scripts/ds/capture.mjs:8` (`PUBLIC`), con sus regex en `:198-199`.
-  - `README.md` (líneas 10, 29, 95, 116 y 149).
 - El build tiene 77 archivos y pesa 2.3 MB, muy por debajo de los límites de static assets.
 
 **Tests**
-- `mockFriendsWorker(page, api)` (`tests/big.spec.cjs:4101`) responde `{status:'ok'}` a cualquier `/api/` desconocido. Los tests actuales no se rompen con las llamadas nuevas.
-- Helpers `LEAGUE.*` (:4040-4096) y `logWeightToday(page)` (:4140).
+- `mockWorker(page, api)` (`tests/support/worker.cjs:12`) responde `{status:'ok'}` a cualquier `/api/` desconocido. Los tests actuales no se rompen con las llamadas nuevas.
+- Helpers `LEAGUE.*` (`tests/big.spec.cjs:2810`) y `logWeightToday(page)` (:2856).
+- El test Offline (`tests/big.spec.cjs:2746-2768`) ya levanta su propio servidor estático: es el patrón para servir `build-cf/`.
 
 ## Tasks
 
@@ -223,7 +235,7 @@ Si no hay cuenta, todo es no-op. Sin `PUSH_SERVER_URL`, también no-op.
 **Verify:** el `curl` de T2 contra `https://coach-pedro-ai.pollothe.workers.dev`.
 
 #### T10: Tests de la Fase A
-**What:** Los escenarios 1 a 6b de «Test Scenarios», con el Worker simulado con `page.route` (extender `mockFriendsWorker` con `account/*` y `cloud/*`, y registrar los bodies en `api.calls`).
+**What:** Los escenarios 1 a 6b de «Test Scenarios», con el Worker simulado con `page.route` (extender `mockWorker` de `tests/support/worker.cjs` con `account/*` y `cloud/*`, y registrar los bodies en `api.calls`).
 **Files:** `tests/big.spec.cjs`
 **Verify:** `npx playwright test`
 
@@ -238,7 +250,7 @@ Regenerar, revisar y subir según `docs/design-system.md`. No tocar «· Nuevo»
 
 #### T12: AGENTS.md (Fase A)
 **What:** Solo corregir líneas existentes:
-- «4 object stores» → 5, con `gymSessions` en Schema.
+- ~~«4 object stores» → 5, con `gymSessions` en Schema.~~ Ya hecho en v2.97.
 - En Stack/Worker, mencionar D1 (`DB`) para cuentas.
 - En la tabla de AI/Worker no se agregan secciones: el detalle está en este spec.
 
@@ -247,54 +259,51 @@ Regenerar, revisar y subir según `docs/design-system.md`. No tocar «· Nuevo»
 
 > **Release Fase A:** bump, commit, push (publica en GitHub Pages) y despliegue del Worker. **El implementer se detiene aquí.** La Fase B empieza solo cuando Pedro lo pida.
 
-### Fase B — Hosting en Cloudflare
+### Fase B — Segunda casa en Cloudflare
 
-#### T13: Base en la raíz
-**What:** `paths.base` → `''` en `svelte.config.js`.
-**Files:** `svelte.config.js`
-**Verify:** `npm run build`; `build/index.html` referencia `/_app/...`.
+#### T13: Ruta base y carpeta configurables
+**What:**
+- `svelte.config.js`: `paths.base: process.env.BASE_PATH ?? '/Pedro-IA-Coach'` y `pages`/`assets: process.env.BUILD_DIR ?? 'build'`. `BASE_PATH=''` debe dar `''` (por eso `??` y no `||`).
+- `package.json`: script `"build:cf": "BASE_PATH= BUILD_DIR=build-cf vite build && node scripts/check-cf-build.mjs"`.
+- `.gitignore`: agregar `/build-cf`.
 
-#### T14: Config del Worker de hosting
-**What:** `wrangler.jsonc` en la raíz con `name: "fitfriends"`, un `compatibility_date` reciente y `assets: { directory: "./build", not_found_handling: "single-page-application" }`, sin `main`. Agregar `.wrangler/` a `.gitignore`.
-**Files:** `wrangler.jsonc`, `.gitignore`
-**Verify:** `npm run build && npx wrangler deploy --dry-run`
+**Files:** `svelte.config.js`, `package.json`, `.gitignore`
+**Verify:** `npm run build` deja `build/index.html` con `/Pedro-IA-Coach/_app/...` (igual que hoy); `npm run build:cf` deja `build-cf/index.html` con `/_app/...`.
 
-#### T15: Deploy con GitHub Actions
-**What:** Reemplazar `.github/workflows/deploy.yml`: checkout, Node 22, `npm install`, `npm run build` y `cloudflare/wrangler-action@v3` (`apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}`, `accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}`, `command: deploy`). Quitar los permisos y pasos de Pages.
+#### T14: Guardia del build de Cloudflare
+**What:** `scripts/check-cf-build.mjs`, con funciones pequeñas: recorre `build-cf/` y falla (exit 1, con la lista de archivos) si encuentra algún `.map`, o las cadenas `Pedro-IA-Coach` o `PedroTerriquez` (sin distinguir mayúsculas).
+**Files:** `scripts/check-cf-build.mjs`
+**Verify:** `npm run build:cf` pasa; copiar el `build/` de GitHub sobre `build-cf/` y correr el script → falla nombrando los archivos.
+
+#### T15: Config del Worker de hosting
+**What:** `wrangler.jsonc` en la raíz con `name: "fitfriends"`, un `compatibility_date` reciente y `assets: { directory: "./build-cf", not_found_handling: "single-page-application" }`, sin `main`.
+**Files:** `wrangler.jsonc`
+**Verify:** `npm run build:cf && npx wrangler deploy --dry-run`
+
+#### T16: Deploy a las dos casas con GitHub Actions
+**What:** En `.github/workflows/deploy.yml`, conservar los jobs `build` y `deploy` de Pages tal como están y agregar un job independiente `cloudflare`: checkout, Node 22, `npm install`, `npm run build:cf` y `cloudflare/wrangler-action@v3` (`apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}`, `accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}`, `command: deploy`). Un fallo en uno no bloquea al otro. Renombrar el workflow a «Deploy (GitHub Pages + Cloudflare)».
 **Files:** `.github/workflows/deploy.yml`
 **Verify:** YAML válido; la ejecución real se revisa a mano.
 
-#### T16: Worker acepta la nueva dirección
-**What:** Agregar `'https://fitfriends.pollothe.workers.dev'` a `ALLOWED_ORIGINS`, conservando `github.io`, y actualizar el comentario. Desplegar el Worker.
+#### T17: Worker acepta las dos direcciones
+**What:** Agregar `'https://fitfriends.pollothe.workers.dev'` a `ALLOWED_ORIGINS`, conservando `github.io`, y actualizar el comentario (las dos son permanentes). Desplegar el Worker.
 **Files:** `push-worker/src/index.js`
-**Verify:** `curl -si -X OPTIONS -H 'Origin: https://fitfriends.pollothe.workers.dev' https://coach-pedro-ai.pollothe.workers.dev/api/ping` devuelve ese origen en `Access-Control-Allow-Origin`.
+**Verify:** `curl -si -X OPTIONS -H 'Origin: https://fitfriends.pollothe.workers.dev' https://coach-pedro-ai.pollothe.workers.dev/api/ping` devuelve ese origen en `Access-Control-Allow-Origin`; con `Origin: https://pedroterriquez.github.io`, también.
 
-#### T17: Scripts del design system en la raíz
-**What:** `BASE` → `http://localhost:8080/` y `PUBLIC` → `https://fitfriends.pollothe.workers.dev/`. Las regex de `capture.mjs:198-199` reescriben `url(/...)` hacia `PUBLIC`.
-**Files:** `scripts/ds/build.mjs`, `scripts/ds/capture.mjs`
-**Verify:** generar una card; sus imágenes apuntan al nuevo dominio.
-
-#### T18: Tests a la raíz
-**What:**
-- `playwright.config.cjs`: `baseURL: 'http://localhost:8080/'` y `webServer.url: 'http://localhost:8080'`, con los comentarios actualizados.
-- `tests/big.spec.cjs:4152`: quitar el recorte del prefijo. `:4174`: `base = http://localhost:<port>/`.
-- `tests/big.spec.cjs:4565`: `expect(copied).toContain(new URL(page.url()).origin + '/')` con el comentario `// Antes: '/Pedro-IA-Coach/'. Promesa: el texto compartido lleva el enlace a la app.` (aprobado por Pedro el 2026-10-14).
-- Agregar el escenario 7.
-
-**Files:** `playwright.config.cjs`, `tests/big.spec.cjs`
+#### T18: Test de la versión de Cloudflare
+**What:** Agregar el escenario 7. Playwright, los tests existentes y los scripts del design system **no cambian**: siguen probando la versión de GitHub, que es el build por defecto.
+**Files:** `tests/big.spec.cjs`
 **Verify:** `npx playwright test`
 
 #### T19: Documentación (Fase B)
 **What:**
 - AGENTS.md: solo líneas existentes:
-  - Stack: base path y Deploy («Cloudflare Workers static assets vía `.github/workflows/deploy.yml`»).
-  - Build/Deploy: base path.
-  - Project Structure: la línea de `playwright.config.cjs` y `wrangler.jsonc`.
-  - Tests: la línea de Build.
-- README raíz y `push-worker/README.md`: URL y hosting nuevos.
+  - Stack, línea Deploy: «GitHub Pages (`/Pedro-IA-Coach`) + Cloudflare Workers static assets (raíz, `build:cf`) vía `.github/workflows/deploy.yml`».
+  - Build/Deploy: mencionar `npm run build:cf`.
+- README raíz y `push-worker/README.md`: las dos direcciones y cómo se publica cada una.
 
 **Files:** `AGENTS.md`, `README.md`, `push-worker/README.md`
-**Verify:** `grep -n "Pedro-IA-Coach\|GitHub Pages" AGENTS.md README.md` solo deja menciones al repo o a la convivencia temporal.
+**Verify:** lectura.
 
 ## Validation
 
@@ -302,21 +311,26 @@ Regenerar, revisar y subir según `docs/design-system.md`. No tocar «· Nuevo»
 - `npx playwright test`
 - `npm run build`
 - Fase A: `cd push-worker && npx wrangler d1 migrations apply coach-pedro-db --remote && npx wrangler deploy`, más los `curl` de T2 y `wrangler tail` sin errores de CPU.
-- Fase B: `npx wrangler deploy --dry-run` (raíz). Desplegar el Worker con T16 **antes** del primer push de la Fase B.
+- Fase B: `npm run build:cf` (incluye la guardia de T14) y `npx wrangler deploy --dry-run` (raíz). Desplegar el Worker con T17 **antes** del primer push de la Fase B.
 - Revisión manual de la Fase A, en el iPhone con la app de GitHub:
   1. Tú → «Crear cuenta» → «Guardado hoy …».
   2. Entrenar y marcar el último ejercicio **sin estirar** → la hora de «Guardado» cambia, y en Amigos tus minutos suben.
   3. Pedro borra la cuenta de prueba con el comando del README → en el siguiente entreno la subida da 401 y Tú vuelve a mostrar la tarjeta «Guarda tus datos en la nube».
 - Revisión manual de la Fase B:
-  1. La Action «Deploy» termina en verde.
+  1. La Action termina en verde en sus dos ramas (Pages y Cloudflare).
   2. `https://fitfriends.pollothe.workers.dev/` abre, y recargar en `/history` no da 404.
-  3. Al instalar en el iPhone, el icono dice **FitFriends**.
-  4. Tú → «Hola.» → «Ya tengo cuenta» → aparecen tus entrenos, programas y racha.
-  5. Activar notificaciones → «Iniciar» un descanso → «Descanso terminado» llega al Watch.
+  3. Tú muestra **la misma versión** en GitHub y en Cloudflare.
+  4. La app de GitHub ya instalada sigue funcionando y recibe la actualización.
+  5. Al instalar en el iPhone, el icono dice **FitFriends**.
+  6. Tú → «Hola.» → «Ya tengo cuenta» → aparecen tus entrenos, programas y racha.
+  7. Activar notificaciones → «Iniciar» un descanso → «Descanso terminado» llega al Watch.
+  8. Amigos: un usuario de GitHub y otro de Cloudflare se ven en la misma liga.
 
 ### Riesgos y notas
 - **10 ms de CPU por petición (plan Free):** PBKDF2 y las tandas grandes son lo más caro. Hay que medirlo con `wrangler tail` (T2) y ajustar las iteraciones o el tamaño de tanda si hace falta.
 - **Cuenta borrada por Pedro:** el teléfono conserva un token que ya no sirve. La subida da 401. En ese caso el cliente borra `cloud-account` y vuelve a mostrar la tarjeta «Guarda tus datos en la nube» (incluirlo en T3 y T7).
+- **Misma persona en las dos versiones:** cada una tiene sus datos locales y sube a la misma cuenta; gana la última subida (ya está fuera de alcance sincronizar dos teléfonos a la vez). Lo normal es usar solo una.
+- **Qué tan oculto queda el código:** el JS que corre en el navegador siempre se puede descargar; minificado y sin sourcemaps es difícil de leer, pero no imposible. Lo que se evita es el camino directo al repo. El repo sigue siendo público.
 
 ### Antes del despliegue (pendiente, lo hace Pedro)
 **Fase A**
@@ -324,14 +338,13 @@ Regenerar, revisar y subir según `docs/design-system.md`. No tocar «· Nuevo»
 2. Avisar a tu gente: «Actualiza la app y crea tu cuenta en Tú».
 
 **Fase B**
-1. Confirmar el nombre `fitfriends`, que define la URL. Si cambia, se ajustan T14, T16 y T17.
+1. Confirmar el nombre `fitfriends`, que define la URL. Si cambia, se ajustan T15, T17 y el escenario 7.
 2. Crear un API token en Cloudflare (plantilla «Edit Cloudflare Workers») y copiar el Account ID.
 3. GitHub → Settings → Secrets and variables → Actions: `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
-4. Avisar a tu gente: «Instala desde la nueva dirección e inicia sesión».
+4. A la gente nueva se le comparte solo la dirección de Cloudflare. La gente de GitHub no tiene que hacer nada.
 
-### Después del despliegue (manual)
-1. Regenerar y subir las cards del design system (T17), para que sus imágenes no dependan de `github.io`.
-2. Cuando todos hayan hecho la mudanza: apagar GitHub Pages (Settings → Pages) y quitar `github.io` de `ALLOWED_ORIGINS`, con su propio deploy del Worker.
+### Después del despliegue
+Nada obligatorio. Las dos versiones conviven sin fecha de fin. Si algún día Pedro quiere apagar GitHub Pages, será un spec aparte (aviso, quitar `github.io` de `ALLOWED_ORIGINS`, mover tests y scripts del design system a la raíz).
 
 ## Test Scenarios
 
@@ -421,7 +434,8 @@ Todos siguen el mismo patrón: un `test.describe()` con un `test()`, `seedIndexe
   - La fila Cuenta ya no está y vuelve la tarjeta «Guarda tus datos en la nube».
   - `localStorage` ya no tiene `cloud-account`.
 
-### 7. «Cloudflare: la app vive en la raíz» (Fase B)
+### 7. «Cloudflare: la app vive en la raíz y no lleva al repo» (Fase B)
+- **Preparación:** `beforeAll` corre `npm run build:cf` (timeout 180 s) y sirve `build-cf/` con un servidor estático propio con respaldo SPA (todo lo desconocido → `index.html`), como el test Offline (`:2746`). El Worker va simulado con `mockWorker`.
 - **Seed:** `seedIndexedDB()` con `onboarded: true`, usuario y programa activo.
 - **Pasos:**
   1. `goto('/')`.
@@ -429,23 +443,25 @@ Todos siguen el mismo patrón: un `test.describe()` con un `test()`, `seedIndexe
   3. Recargar en `/history` y en `/friends`.
   4. `GET /manifest.json`.
   5. Leer `registration.scope`.
+  6. Amigos → «Compartir mi usuario».
 - **Aserciones:**
   - `/` termina en `/today`.
   - Ningún `href` de la TabBar contiene `/Pedro-IA-Coach`.
   - Las vistas cargan después de recargar.
   - `manifest.json` → 200 con `start_url === "."` y `name === "FitFriends"`.
   - El scope es `<origen>/`.
+  - El texto compartido lleva `<origen>/` y no `/Pedro-IA-Coach`.
+  - Ninguna respuesta del servidor durante el test es un `.map`.
 
-### Tests existentes que cambian (con el sí de Pedro, 2026-10-14)
-- `tests/big.spec.cjs:4565` («Compartir mi usuario», Amigos v2), en la Fase B: `'/Pedro-IA-Coach/'` → `origin + '/'`. La promesa se mantiene: el texto compartido lleva el enlace a la app.
-- Solo infraestructura: el servidor de prueba (`:4152`, `:4174`) y `playwright.config.cjs`.
-- Ninguna otra promesa cambia. Los mocks actuales responden `{status:'ok'}` a lo desconocido, y `user/check` sin `protected` se lee como no protegido.
+### Tests existentes que cambian
+- Ninguno. La versión de GitHub sigue siendo el build por defecto, así que `tests/big.spec.cjs:2232` («Compartir mi usuario») y `playwright.config.cjs` se quedan igual. (El cambio a `origin + '/'` aprobado el 2026-10-14 ya no hace falta.)
+- Los mocks actuales responden `{status:'ok'}` a lo desconocido, y `user/check` sin `protected` se lee como no protegido.
 
 ### Fuera del alcance del suite (revisión manual en Validation)
 - El Worker real con D1, PBKDF2 y el límite de CPU.
 - El comando de Pedro para borrar una cuenta.
 - La mudanza completa: crear la cuenta en la app de GitHub e iniciar sesión en la de Cloudflare.
-- La GitHub Action y el respaldo de SPA en producción.
+- La GitHub Action (las dos ramas) y el respaldo de SPA en producción.
 - El nombre «FitFriends» bajo el icono en el iPhone.
 - El push real y su espejo en el Apple Watch desde la nueva instalación.
 
