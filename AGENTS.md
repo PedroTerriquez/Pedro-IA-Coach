@@ -6,7 +6,7 @@
 - SvelteKit 2 + Svelte 5 (runes) + TypeScript, Vite 8
 - `@sveltejs/adapter-static`, base path `/Pedro-IA-Coach`, SPA fallback (`index.html`)
 - **Mobile-only (iPhone PWA), dark mode only** — no desktop view; `npm run dev` works in mobile emulation only
-- IndexedDB for all persistence (4 object stores) + localStorage mirror (`coach-pedro-ai-backup`)
+- IndexedDB for all persistence (5 object stores) + localStorage mirror (`idb_backup_<store>` keys)
 - No runtime backend — Cloudflare Worker (`push-worker/`) for Web Push, AI (Workers AI), users/friends
 - Deploy: GitHub Pages via `.github/workflows/deploy.yml` (push to `main`)
 - Entry: `src/routes/` (SPA). No SSR — all routes static, client-rendered
@@ -23,12 +23,13 @@ push-worker/          → Cloudflare Worker (push, AI, queue)
 tests/                → Single E2E file: big.spec.cjs
 ```
 
-## Schema (4 IndexedDB Stores)
+## Schema (5 IndexedDB Stores)
 | Store | Key Fields |
 |-------|------------|
 | `exercises` | id, name, muscle, imgUrl, gifUrl, dictId, tips, alternatives[] |
 | `exerciseLogs` | id, exerciseId, date, weight, units (kg/lb) — indexes: exerciseId, date |
 | `programs` | id, name, weeks[] (Week: name, subtitle, tag, days[] with exercises: exerciseId, sets, reps, rest) |
+| `gymSessions` | id (= date), date, seconds, weekStart — time trained per day, for the league |
 | `settings` (singleton) | activeProgramId, currentWeekIdx, units, accentColor, language, fontScale, userName, profile{}, onboarded, pushSubscribed, friendCode, notificationsEnabled, restDuration, weekStart |
 
 > Full schema: [`docs/schema.md`](docs/schema.md)

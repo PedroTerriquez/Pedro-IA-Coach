@@ -72,7 +72,8 @@ const EXPECTED_STEPS = [
   'Step 11a: Copia — Copia de seguridad',
   'Step 11b: Copia — Teléfono nuevo',
   'Step 11c: Eliminar un ejercicio con registros',
-  'Step 12: No Uncaught JS Errors',
+  'Step 12: Hoy — Reiniciar día',
+  'Step 13: No Uncaught JS Errors',
 ]
 
 // Guardrail at import: the list above must not count as "present" — only real
@@ -92,70 +93,12 @@ const {
   SEL, todayDock, sheetHead, logDock, segTab, planDay, openFromPlan, lineCount,
   nav, blockExternalImages, unblockExternalImages,
 } = require('./support/screens.cjs')
-
-function getDayIdx() {
-  return (new Date().getDay() + 6) % 7
-}
-
-function buildDayArray(workoutDay) {
-  const idx = getDayIdx()
-  const days = []
-  for (let i = 0; i < idx; i++) {
-    days.push({ name: 'Rest', subtitle: '', duration: 0, exercises: [] })
-  }
-  days.push(workoutDay)
-  return days
-}
-
-async function seedIndexedDB(page, data, retries = 3) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      await page.evaluate((d) => {
-        return new Promise((resolve, reject) => {
-          const req = indexedDB.open('coach-pedro-ai', 2)
-          req.onupgradeneeded = () => {
-            const db = req.result
-            const stores = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
-            stores.forEach((s) => {
-              if (db.objectStoreNames.contains(s)) return
-              const store = db.createObjectStore(s, { keyPath: 'id' })
-              if (s === 'exerciseLogs') {
-                store.createIndex('exerciseId', 'exerciseId', { unique: false })
-                store.createIndex('date', 'date', { unique: false })
-              }
-            })
-          }
-          req.onsuccess = () => {
-            try {
-              const db = req.result
-              const tx = db.transaction(['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions'], 'readwrite')
-              tx.objectStore('exercises').clear()
-              tx.objectStore('exerciseLogs').clear()
-              tx.objectStore('programs').clear()
-              tx.objectStore('settings').clear()
-              tx.objectStore('gymSessions').clear()
-              d.exercises.forEach(ex => tx.objectStore('exercises').put(ex))
-              ;(d.exerciseLogs || []).forEach(log => tx.objectStore('exerciseLogs').put(log))
-              if (d.program) tx.objectStore('programs').put(d.program)
-              ;(d.gymSessions || []).forEach(g => tx.objectStore('gymSessions').put(g))
-              tx.objectStore('settings').put(d.settings)
-              tx.oncomplete = () => { db.close(); resolve() }
-              tx.onerror = () => reject(tx.error)
-            } catch (e) {
-              reject(e)
-            }
-          }
-          req.onerror = () => reject(req.error)
-        })
-      }, data)
-      return // success
-    } catch (e) {
-      if (attempt === retries) throw e
-      // The page was still navigating: let it settle, then try again
-      await page.waitForLoadState('load')
-    }
-  }
-}
+const {
+  getDayIdx, localDate, buildDayArray,
+  seedIndexedDB, storedSettings, storedProgram, readLogs, readExercises,
+} = require('./support/db.cjs')
+const { mockWorker, pushProbe, tapRestNotification, cached, waitRestCleared, goOffline } = require('./support/worker.cjs')
+const { dragDay, dragDown, swipeDetail } = require('./support/gestures.cjs')
 
 // The app has mounted once its tab bar is on screen: by then the page's
 // onMount ran, so Hoy's focus/visibilitychange listeners are in place.
@@ -171,41 +114,6 @@ async function gotoFriendsLoaded(page) {
   await expect(page.locator('[data-component="WeekCard"], #username-prompt').first()).toBeVisible()
 }
 
-// Every record of one IndexedDB store, read in the page. It rejects on any
-// error or after 5 s: page.evaluate has no timeout of its own, so a stuck
-// open would otherwise hang until the flow's 10-minute budget.
-function readStore(page, store) {
-  return page.evaluate((store) => new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`readStore(${store}) timed out`)), 5000)
-    const fail = (e) => { clearTimeout(timer); reject(e) }
-    const req = indexedDB.open('coach-pedro-ai', 2)
-    req.onerror = () => fail(req.error)
-    req.onblocked = () => fail(new Error(`readStore(${store}) blocked`))
-    req.onsuccess = () => {
-      const db = req.result
-      try {
-        const all = db.transaction(store, 'readonly').objectStore(store).getAll()
-        all.onsuccess = () => { clearTimeout(timer); db.close(); resolve(all.result) }
-        all.onerror = () => { db.close(); fail(all.error) }
-      } catch (e) {
-        db.close()
-        fail(e)
-      }
-    }
-  }), store)
-}
-
-// Settings as persisted in IndexedDB. A goto/reload right after a tap can beat
-// settings.update()'s write; polling this is the real "it's saved" signal.
-async function storedSettings(page) {
-  return (await readStore(page, 'settings')).find(s => s.id === 'settings') || null
-}
-
-// A program as persisted in IndexedDB, by name
-async function storedProgram(page, name) {
-  return (await readStore(page, 'programs')).find(p => p.name === name) || null
-}
-
 // Warmup/stretch sheet (Hoy v2): walks the → arrow until the last move, where
 // it turns off. The arrow is the first «Siguiente» in the sheet (the dock's
 // comes after it).
@@ -213,16 +121,6 @@ async function goToLastMove(page) {
   const next = page.getByRole('button', { name: 'Siguiente', exact: true }).first()
   for (let i = 0; i < 20 && await next.isEnabled(); i++) await next.click()
   await expect(next).toBeDisabled()
-}
-
-// Saltar hides the timer first and clears its caches after. A rest staged
-// before that finishes would be wiped, or ignored as "already running".
-async function waitRestCleared(page) {
-  await expect.poll(() => page.evaluate(async () => {
-    const timer = await (await caches.open('rest-timer')).match('/pending')
-    const pending = await (await caches.open('rest-pending')).match('/pending')
-    return !timer && !pending
-  })).toBe(true)
 }
 
 // ═══════════════════════════ FULL USER FLOW ═══════════════════════════
@@ -234,72 +132,27 @@ async function waitRestCleared(page) {
 
 // Each phase runs through step(): `ran` proves at the end that every step in
 // EXPECTED_STEPS actually executed, in order — not just that its name exists.
+//
+// To debug a late step faster, run the flow only up to it:
+//   FLOW_UNTIL=8c npx playwright test -g "full user flow"
+// The steps after it are skipped and the end checks only the ones that ran
+// (and that no JS error was thrown on the way). Never set in the commit gate.
+const FLOW_UNTIL = (process.env.FLOW_UNTIL || '').replace(/^Step\s*/i, '').trim()
+if (FLOW_UNTIL && !EXPECTED_STEPS.some(n => n.startsWith(`Step ${FLOW_UNTIL}:`))) {
+  throw new Error(`FLOW_UNTIL=${FLOW_UNTIL}: no step «Step ${FLOW_UNTIL}: …» in EXPECTED_STEPS.`)
+}
 const ran = []
+let stopped = false
 async function step(name, fn) {
+  if (stopped) return
   ran.push(name)
   await test.step(name, fn)
+  if (FLOW_UNTIL && name.startsWith(`Step ${FLOW_UNTIL}:`)) stopped = true
 }
 
 const WEEKDAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const WEEKDAY_NAMES_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-
-// The local calendar date `daysAgo` days back (YYYY-MM-DD). Walks calendar
-// days at noon, so a DST change in between can't land on the wrong date.
-function localDate(daysAgo = 0) {
-  const d = new Date()
-  d.setHours(12, 0, 0, 0)
-  d.setDate(d.getDate() - daysAgo)
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
-}
-
-// The simulated Worker, for the flow and the tests apart. `api` is mutated by
-// the test to steer it: friends (the league on the server), users (what search
-// finds), exists, registerStatus, renameStatus. Every POST lands in
-// `api.calls` and every list request's username in `api.listUsers`. AI chat
-// routes are registered on top where a step cares about their bodies.
-async function mockWorker(page, api) {
-  api.calls = []
-  api.listUsers = []
-  api.restStarts = []
-  api.restCancels = []
-  api.startPushes = 0
-  await page.route(/\/api\/|rest-timer\/|push\/start/, async (route) => {
-    const req = route.request()
-    const url = new URL(req.url())
-    const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(body) })
-    let body = null
-    try { body = req.method() === 'POST' ? req.postDataJSON() : null } catch { body = req.postData() }
-    if (body) api.calls.push({ path: url.pathname, body })
-    const p = url.pathname
-    if (p.endsWith('/api/ping')) return route.fulfill({ status: 405, headers: { 'Access-Control-Allow-Origin': '*' } })
-    if (p.includes('rest-timer/start')) { api.restStarts.push(body); return json({ status: 'scheduled' }) }
-    if (p.includes('rest-timer/cancel')) { api.restCancels.push(body); return json({ status: 'ok' }) }
-    if (p.includes('push/start')) { api.startPushes++; return json({ status: 'sent' }) }
-    if (p.endsWith('/api/friends/list')) {
-      api.listUsers.push(url.searchParams.get('username'))
-      return json({ friends: api.friends || [] })
-    }
-    if (p.endsWith('/api/friends/search')) {
-      const q = (url.searchParams.get('q') || '').toLowerCase()
-      return json({ results: (api.users || []).filter((u) => u.username.toLowerCase().includes(q)) })
-    }
-    if (p.endsWith('/api/friends/add')) {
-      api.friends = [...(api.friends || []), (api.users || []).find((u) => u.username === body.friendUsername)]
-      return json({ status: 'ok' })
-    }
-    if (p.endsWith('/api/friends/remove')) {
-      api.friends = (api.friends || []).filter((f) => f.username !== body.friendUsername)
-      return json({ status: 'ok' })
-    }
-    if (p.endsWith('/api/user/check')) return json({ exists: api.exists !== false })
-    if (p.endsWith('/api/user/register')) return api.registerStatus === 500 ? json({ error: 'boom' }, 500) : json({ status: 'ok' })
-    if (p.endsWith('/api/user/sync')) return json({ status: 'ok' })
-    if (p.endsWith('/api/user/rename')) return api.renameStatus === 409 ? json({ error: 'Ese usuario ya está tomado' }, 409) : json({ status: 'ok' })
-    // Default: the post-workout coach analysis
-    return json(api.analysis || { analysis: 'Buen trabajo.', verdict: 'positive', _provider: 'test' })
-  })
-}
 
 async function backToYou(page) {
   await page.getByRole('button', { name: 'Tú', exact: true }).click()
@@ -343,112 +196,6 @@ async function addProgramDay(page, week, name, weekdayIdx) {
   await sheet.getByRole('button', { name: WEEKDAY_LETTERS[weekdayIdx], exact: true }).click()
   await sheet.getByRole('button', { name: 'Guardar' }).click()
   await expect(sheet).toHaveCount(0)
-}
-
-// Delivers payload-less pushes (like the Worker's) to the real Service Worker.
-// Headless Chromium refuses notification permission, so the last step —
-// handing the card to the OS — is recorded instead; everything before it (the
-// push event, reading the staged spec, choosing the card) is the real SW.
-async function pushProbe(page, context) {
-  await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 })
-  const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope)
-  const cdp = await context.newCDPSession(page)
-  let registrationId = null
-  cdp.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
-    const mine = registrations.find(r => r.scopeURL === scope)
-    if (mine) registrationId = mine.registrationId
-  })
-  await cdp.send('ServiceWorker.enable')
-  await expect.poll(() => registrationId, { timeout: 5000 }).not.toBeNull()
-  const sw = context.serviceWorkers()[0]
-  const record = () => sw.evaluate(() => {
-    self.__cards = []
-    self.registration.showNotification = async (_title, opts) => { self.__cards.push(`${opts.tag}: ${opts.body}`) }
-    self.registration.getNotifications = async () => []
-  })
-  await record()
-  return {
-    deliver: () => cdp.send('ServiceWorker.deliverPushMessage', { origin: new URL(scope).origin, registrationId, data: '' }),
-    cards: () => sw.evaluate(() => self.__cards),
-    clear: () => sw.evaluate(() => { self.__cards = [] }),
-  }
-}
-
-// What the Service Worker caches when the OS start notification is tapped —
-// Playwright can't tap a system notification, so the test stands in for it:
-// the exercise payload + the flag, then the app comes back to the foreground.
-async function tapRestNotification(page, payload, { burst = false } = {}) {
-  await page.evaluate(async ([p, burst]) => {
-    const cache = await caches.open('rest-pending')
-    if (p) await cache.put('/pending', new Response(JSON.stringify(p)))
-    await cache.put('/from-notification', new Response('1'))
-    // iOS fires the foreground events back-to-back on a notification tap
-    window.dispatchEvent(new Event('focus'))
-    if (burst) {
-      document.dispatchEvent(new Event('visibilitychange'))
-      window.dispatchEvent(new Event('focus'))
-    }
-    await new Promise(r => setTimeout(r, 400))
-  }, [payload, burst])
-}
-
-function cached(page, cacheName) {
-  return page.evaluate(async (name) => {
-    const res = await (await caches.open(name)).match('/pending')
-    return res ? res.json() : null
-  }, cacheName)
-}
-
-// Plan › Reprogramar › Mover: drags the handle of slot `from` onto slot `to`.
-// With `cancel`, it lets go outside the list instead (which must undo it).
-async function dragDay(page, from, to, { cancel = false } = {}) {
-  const slots = page.locator(SEL.dragSlot)
-  // Later slots sit partly under the fixed dock and tab bar — bring the lower
-  // one into the clear, or elementFromPoint hits them and the drag never starts.
-  await slots.evaluateAll((els, [a, b]) => {
-    const low = els[Math.max(a, b)].getBoundingClientRect()
-    const dock = document.querySelector('[data-component="NextStepDock"]')
-    const safe = (dock ? dock.getBoundingClientRect().top : window.innerHeight - 110) - 10
-    if (low.bottom > safe) window.scrollBy(0, low.bottom - safe)
-  }, [from, to])
-  const box0 = await slots.nth(0).boundingBox()
-  const box1 = await slots.nth(1).boundingBox()
-  const stepY = box1.y - box0.y
-  const fromBox = await slots.nth(from).boundingBox()
-  const hb = await slots.nth(from).locator(SEL.dragHandle).boundingBox()
-  const cx = hb.x + hb.width / 2
-  const cy = hb.y + hb.height / 2
-  await page.mouse.move(cx, cy)
-  await page.mouse.down()
-  if (cancel) {
-    await page.mouse.move(cx, cy + stepY, { steps: 5 })
-    await page.mouse.move(5, 5)
-  } else {
-    await page.mouse.move(cx, box0.y + to * stepY + (hb.y - fromBox.y) + hb.height / 2, { steps: 12 })
-  }
-  await page.mouse.up()
-}
-
-// A finger dragging an element straight down by dy px. `lift: false` leaves it
-// mid-drag (touchstart + touchmove, no touchend).
-async function dragDown(locator, dy, { lift = true } = {}) {
-  await locator.evaluate((el, { dy, lift }) => {
-    const touch = (y) => new Touch({ identifier: 1, target: el, clientX: 200, clientY: y })
-    const fire = (type, init) => el.dispatchEvent(new TouchEvent(type, { ...init, bubbles: true, cancelable: true }))
-    fire('touchstart', { touches: [touch(100)] })
-    for (const y of [100 + dy / 2, 100 + dy]) fire('touchmove', { touches: [touch(y)] })
-    if (lift) fire('touchend', { changedTouches: [touch(100 + dy)] })
-  }, { dy, lift })
-}
-
-// Fires synthetic touch events at the detail's scroller, the way a finger
-// swipe would, to exercise ExerciseDetail's swipe-to-navigate.
-async function swipeDetail(page, dx) {
-  await page.locator(SEL.detailScroll).evaluate((el, dx) => {
-    const touch = (x) => new Touch({ identifier: 1, target: el, clientX: x, clientY: 400 })
-    el.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(200)], bubbles: true, cancelable: true }))
-    el.dispatchEvent(new TouchEvent('touchend', { changedTouches: [touch(200 + dx)], bubbles: true, cancelable: true }))
-  }, dx)
 }
 
 const EX = {
@@ -619,6 +366,34 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('.app-shell')).toHaveCSS('zoom', '1')
     await page.locator('#units-kg').click()
     await expect.poll(async () => (await storedSettings(page))?.units).toBe('kg')
+
+    // Color de la app: applies on tap, to the preview, the row's dot and the
+    // TabBar's tab; it survives a reload. Then back to Lima, the flow's color.
+    const LIMA = 'rgb(212, 255, 58)'
+    const CIAN = 'rgb(73, 234, 242)'
+    const accentSheet = page.locator('#accent-sheet')
+    const dot = page.locator('#accent-row .swc')
+    const activeTab = page.locator('[data-component="TabBar"] a.active')
+    await expect(dot).toHaveCSS('background-color', LIMA)
+    await expect(activeTab).toHaveCSS('color', LIMA)
+    await page.locator('#accent-row').click()
+    await expect(accentSheet.getByRole('radio', { name: 'Lima' })).toHaveAttribute('aria-checked', 'true')
+    await accentSheet.getByRole('radio', { name: 'Cian' }).click()
+    await expect(accentSheet.getByRole('radio', { name: 'Cian' })).toHaveAttribute('aria-checked', 'true')
+    await expect(accentSheet.locator('.btn-prev')).toHaveCSS('background-color', CIAN)
+    await accentSheet.getByRole('button', { name: 'Cerrar' }).click()
+    await expect(dot).toHaveCSS('background-color', CIAN)
+    await expect(activeTab).toHaveCSS('color', CIAN)
+    await expect.poll(async () => (await storedSettings(page))?.accentColor).toBe('#49eaf2')
+    await page.reload()
+    await page.locator('#you-row-ajustes').click()
+    await expect(dot).toHaveCSS('background-color', CIAN)
+    await expect(activeTab).toHaveCSS('color', CIAN)
+    await page.locator('#accent-row').click()
+    await accentSheet.getByRole('radio', { name: 'Lima' }).click()
+    await accentSheet.getByRole('button', { name: 'Cerrar' }).click()
+    await expect(dot).toHaveCSS('background-color', LIMA)
+    await expect.poll(async () => (await storedSettings(page))?.accentColor).toBe('#d4ff3a')
     await backToYou(page)
   })
 
@@ -798,6 +573,90 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await torso.getByRole('button', { name: 'Activar' }).click()
     await expect(activeCard).toContainText('Torso Pierna')
     await expect.poll(async () => (await storedSettings(page))?.activeProgramId).toBe(await activeCard.getAttribute('data-program-id'))
+
+    // ── Editing it: the week's tag, an exercise picked «De tus ejercicios» and
+    // then changed, a day renamed. Saved, then everything put back the way
+    // the rest of the journey expects it ──
+    const weekSheet = page.locator('#program-week-sheet')
+    const daySheet = page.locator('#program-day-sheet')
+    const exSheet = page.locator('#program-exercise-sheet')
+    const dayOf = (name) => editor.locator('[data-component="ProgramEditorDay"]', { has: page.getByRole('button', { name: new RegExp(`^${name}`) }) })
+    const openEdit = async () => {
+      await activeCard.getByRole('button', { name: 'Editar días y ejercicios' }).click()
+      await expect(editor).toContainText('Editar programa')
+      await expect(editor.getByLabel('Nombre del programa')).toHaveValue('Torso Pierna')
+    }
+    const saveEdit = async () => {
+      await editor.getByRole('button', { name: 'Guardar' }).click()
+      await expect(editor).toHaveCount(0)
+      await expect(page.locator('#backup-toast')).toContainText('Programa guardado')
+    }
+    await openEdit()
+    await editor.locator('section[data-week="0"] .wkh').click()
+    await expect(weekSheet.getByLabel('Nombre')).toHaveValue('Semana 1')
+    await weekSheet.getByRole('button', { name: 'Carga', exact: true }).click()
+    await expect(weekSheet.getByLabel('Etiqueta · opcional')).toHaveValue('Carga')
+    await weekSheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(editor.locator('section[data-week="0"] .wkh')).toContainText('Carga')
+
+    await dayOf('Empuje').getByRole('button', { name: 'Añadir ejercicio' }).click()
+    await exSheet.getByLabel('Nombre', { exact: true }).fill('Sentad')
+    const suggestion = exSheet.locator('[data-component="OptionList"]').getByRole('button', { name: /Sentadilla/ })
+    await expect(suggestion).toHaveCount(1)
+    await suggestion.click()
+    // The name as it is in Tú › Ejercicios
+    const squatName = await exSheet.getByLabel('Nombre', { exact: true }).inputValue()
+    expect(squatName).toMatch(/^Sentadilla/)
+    await exSheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(dayOf('Empuje')).toContainText(`${squatName} 3 × 10 · 60 s`)
+    await expect(dayOf('Empuje')).toContainText('5 ejercicios')
+    // Tapping it edits it in place
+    await dayOf('Empuje').getByRole('button', { name: new RegExp(`^${squatName}`) }).click()
+    await exSheet.getByRole('button', { name: 'Más series' }).click()
+    await exSheet.getByRole('button', { name: 'Más series' }).click()
+    await exSheet.getByLabel('Repeticiones').fill('6')
+    await exSheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(dayOf('Empuje')).toContainText(`${squatName} 5 × 6 · 60 s`)
+
+    await dayOf('Tirón').getByRole('button', { name: /^Tirón/ }).click()
+    await expect(daySheet.getByLabel('Nombre del día')).toHaveValue('Tirón')
+    await expect(daySheet.getByRole('button', { name: WEEKDAY_LETTERS[(t + 2) % 7], exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(daySheet).toContainText(/Duración.*≈ \d+ min/)
+    await daySheet.getByLabel('Nombre del día').fill('Espalda')
+    await daySheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(editor).toContainText('Espalda')
+    await saveEdit()
+
+    // Saved as edited
+    let saved = await storedProgram(page, 'Torso Pierna')
+    expect(saved.weeks[0].tag).toBe('Carga')
+    expect(saved.weeks[0].days.map(d => d.name)).toEqual(['Empuje', 'Espalda'])
+    const squat = saved.weeks[0].days[0].exercises.at(-1)
+    expect(squat).toMatchObject({ sets: 5, reps: '6', rest: 60 })
+    // The one picked, not a new exercise made from the name
+    expect(squat.exerciseId).toBe((await readExercises(page)).find(e => e.name === squatName).id)
+
+    // Reopened it shows the edits; «Quitar» asks first, and it all goes back
+    await openEdit()
+    await expect(editor).toContainText('Espalda')
+    await expect(dayOf('Empuje')).toContainText(`${squatName} 5 × 6 · 60 s`)
+    await dayOf('Empuje').getByRole('button', { name: `Quitar ${squatName}` }).click()
+    await expect(dayOf('Empuje')).toContainText(`¿Quitar ${squatName} de Empuje?`)
+    await dayOf('Empuje').getByRole('button', { name: 'Quitar', exact: true }).click()
+    await expect(dayOf('Empuje')).toContainText('4 ejercicios')
+    await expect(dayOf('Empuje')).not.toContainText('Sentadilla')
+    await dayOf('Espalda').getByRole('button', { name: /^Espalda/ }).click()
+    await daySheet.getByLabel('Nombre del día').fill('Tirón')
+    await daySheet.getByRole('button', { name: 'Guardar' }).click()
+    await editor.locator('section[data-week="0"] .wkh').click()
+    await weekSheet.getByRole('button', { name: 'Carga', exact: true }).click()
+    await expect(weekSheet.getByLabel('Etiqueta · opcional')).toHaveValue('')
+    await weekSheet.getByRole('button', { name: 'Guardar' }).click()
+    await saveEdit()
+    saved = await storedProgram(page, 'Torso Pierna')
+    expect(saved.weeks[0].tag).toBe('')
+    expect(saved.weeks[0].days.map(d => d.name)).toEqual(['Empuje', 'Tirón'])
+    expect(saved.weeks[0].days[0].exercises).toHaveLength(4)
   })
 
   await step('Step 2a: Hoy — Before The First Workout', async () => {
@@ -928,6 +787,20 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     const logsFile = path.join(os.tmpdir(), `pw-logs-${Date.now()}.json`)
     fs.writeFileSync(logsFile, JSON.stringify({ exerciseLogs: history }))
     try {
+      // «Guardar copia primero»: the sheet steps aside for a copy of what's
+      // here now (the exercises, no workouts yet), then the restore goes on
+      await page.locator('#restore-row').click()
+      const [before] = await Promise.all([
+        page.waitForEvent('download'),
+        page.locator('#restore-sheet').getByRole('button', { name: 'Guardar copia primero' }).click(),
+      ])
+      await expect(page.locator('#restore-sheet')).toHaveCount(0)
+      await expect(resultSheet).toContainText('Copia guardada')
+      await page.getByRole('button', { name: 'Listo' }).click()
+      const saved = JSON.parse(fs.readFileSync(await before.path(), 'utf8'))
+      expect(saved.exercises.map(e => e.id).sort()).toEqual(stored.map(e => e.id).sort())
+      expect(saved.exerciseLogs).toEqual([])
+      expect(saved.programs.map(p => p.name).sort()).toEqual(['Programa Nuevo', 'Torso Pierna'])
       await page.locator('#restore-row').click()
       const [chooser] = await Promise.all([
         page.waitForEvent('filechooser'),
@@ -1192,7 +1065,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect(Object.keys((await storedSettings(page))?.rescheduleWeekOrder || {})).toHaveLength(0)
 
     // «Me salté un día»: each pending workout from today on moves one day; the
-    // notice offers Restablecer. On Sunday nothing is left to move.
+    // notice offers Restablecer. On Sunday nothing is left to move. (Both
+    // sides on every run, whatever today is: «Fechas fijas».)
     await page.locator('#plan-reprogram-btn').click()
     await page.locator('#plan-shift-btn').click()
     if (t < 6) {
@@ -1228,9 +1102,16 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('#plan-reset-btn')).toBeEnabled()
     await sheet.getByRole('button', { name: 'Cerrar' }).click()
 
-    // Hoy follows the plan: today is a rest day now
+    // Hoy follows the plan: today is a rest day now, with the recovery list
     await nav(page, 'today')
     await expect(page.locator(SEL.pageTitle, { hasText: 'Descanso' })).toBeVisible()
+    const restDay = page.locator('[data-component="RestDayView"]')
+    await expect(restDay).toContainText('La recuperación es donde creces.')
+    await expect(restDay).toContainText('Lista de recuperación')
+    for (const tip of ['Hidrátate', 'Duerme 7-9 horas', 'Caminata suave', 'Movilidad', 'Come suficiente']) {
+      await expect(restDay.locator('[data-component="InfoCard"]', { hasText: tip })).toBeVisible()
+    }
+    await expect(page.locator('[data-phase="training"]')).toHaveCount(0)
 
     // Back to the routine: Restablecer in the sheet leaves no override behind
     await nav(page, 'plan')
@@ -1882,13 +1763,21 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await timer.getByRole('button', { name: 'Minimizar descanso' }).click()
     await expect(timer).toHaveCount(0)
 
-    // Registered under the alternative, it still counts as today's Fondos
+    // Registered under the alternative, it still counts as today's Fondos.
+    // With its rest still up (at zero, minimized), Registrar has the last word:
+    // the rest ends, so coming back to the app it can't write its 1 serie over
+    // the log and leave the exercise half done (bug seen 2026-11-03)
     await weightInput.fill('60')
     await logDock(page).getByRole('button', { name: 'Registrar 60 kg' }).click()
     await expect(savedPanel).toBeVisible()
-    await closeDetail()
+    await expect.poll(async () => await cached(page, 'rest-timer')).toBeNull()
+    await page.reload()
+    await waitForApp(page)
     const altRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Sentadilla Hack' })
+    if (await altRow.count() === 0) await training.locator(SEL.phaseToggle).click()
+    await expect(timer).toHaveCount(0)
     await expect(altRow).toHaveAttribute('data-done', 'true')
+    expect((await readLogs(page)).find(l => l.id === altLog.id).sets).toBeUndefined()
     await expect(altRow.locator(SEL.exerciseDoneMark)).toBeVisible()
     const longRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Flexiones dinámicas' })
     await expect(longRow).toHaveAttribute('data-done', 'false')
@@ -2146,6 +2035,11 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(todayDock(page).getByRole('button', { name: /^Entrenar/ })).toHaveCount(0)
     await expect(todayDock(page).getByRole('button', { name: /Reprogramar semana/ })).toBeVisible()
     await expect(todayDock(page)).toContainText(t <= 4 ? /: Tirón · \d+ min/ : /No quedan entrenos esta semana/)
+    // Today's alternative was for today only: the program still has Fondos.
+    // That it's gone the next time the day comes: «Alternativa solo por hoy»
+    const empuje = (await storedProgram(page, 'Torso Pierna')).weeks[0].days.find(d => d.name === 'Empuje')
+    expect(empuje.exercises.map(e => e.exerciseId)).toContain(ids.dips)
+    expect((await storedSettings(page)).todaySwaps.date).toBe(localDate(0))
   })
 
   await step('Step 7a: Historial — Constancia', async () => {
@@ -2203,16 +2097,20 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.getByRole('button', { name: /Marcar como hecho/ })).toHaveCount(0)
     if (wentBack) await nextMonth.click()
 
-    // A workout still ahead this month: what it has, dimmed, nothing to mark
-    const future = hCal.locator('[data-state="future"]')
-    const ahead = Math.min(await future.count(), 7)
-    for (let i = 0; i < ahead; i++) {
-      await future.nth(i).click()
-      if (await hPanel.getByText('Lo que toca', { exact: true }).count()) {
-        await expect(hPanel.locator(SEL.exerciseRow).first()).toBeVisible()
-        await expect(page.getByRole('button', { name: /Marcar como hecho/ })).toHaveCount(0)
-        break
-      }
+    // The next workout ahead (Tirón in two days, or next week's Pierna): what
+    // it has, dimmed, nothing to mark. It used to walk the future cells and
+    // pass without checking anything when none was a workout; now it's that
+    // date. Past the month's end it can't be reached here (no months ahead):
+    // «Fechas fijas» checks it on a fixed date.
+    const [aheadIn, aheadName] = t <= 4 ? [2, 'Tirón'] : [7, 'Pierna']
+    const aheadDate = localDate(-aheadIn)
+    if (sameMonth(aheadDate, localDate(0))) {
+      await dayCell(aheadDate).click()
+      await expect(dayCell(aheadDate)).toHaveAttribute('data-state', 'future')
+      await expect(hPanel).toContainText(aheadName)
+      await expect(hPanel.getByText('Lo que toca', { exact: true })).toBeVisible()
+      await expect(hPanel.locator(SEL.exerciseRow).first()).toBeVisible()
+      await expect(page.getByRole('button', { name: /Marcar como hecho/ })).toHaveCount(0)
     }
 
     // Months: nothing after this one; back to the oldest log's, where ‹ turns off
@@ -2261,26 +2159,14 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(detail).toBeVisible()
     await closeDetail()
 
-    // Editar: a pencil per row, and the row no longer opens the detail
+    // Editar: a pencil per row, and the row no longer opens the detail. The
+    // editor behind the pencil is the one in Tú; renaming through it here was
+    // dropped (Pedro, 2026-11-03): «Tú — Editor de ejercicio» already proves it.
     await page.getByRole('button', { name: 'Editar', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Listo', exact: true })).toBeVisible()
     await expect(rows.getByRole('button', { name: /^Editar / })).toHaveCount(all)
     await rows.first().locator('.n').click()
     await expect(detail).toHaveCount(0)
-    // The same editor as Tú, with Eliminar; renaming shows and is saved
-    const editSheet = page.locator('#edit-exercise-sheet')
-    const rename = async (from, to) => {
-      await rows.filter({ hasText: from }).getByRole('button', { name: /^Editar / }).click()
-      await expect(editSheet.getByRole('button', { name: 'Eliminar ejercicio' })).toBeVisible()
-      await editSheet.getByLabel('Nombre').fill(to)
-      await editSheet.getByRole('button', { name: 'Guardar' }).click()
-      await expect(editSheet).toHaveCount(0)
-      await expect(rows.filter({ hasText: to })).toHaveCount(1)
-      await expect.poll(async () => (await readExercises(page)).find(e => e.id === ids.long)?.name).toBe(to)
-    }
-    // (a name the dictionary doesn't know, so the row shows it as typed)
-    await rename('Flexiones dinámicas', 'Movimiento Inventado Q4')
-    await rename('Movimiento Inventado Q4', EX.long.name)
     await page.getByRole('button', { name: 'Listo', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Editar', exact: true })).toBeVisible()
     await expect(rows.getByRole('button', { name: /^Editar / })).toHaveCount(0)
@@ -2747,12 +2633,45 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect((await readLogs(page)).filter(l => l.exerciseId === ids.deadlift)).toHaveLength(0)
   })
 
-  await step('Step 12: No Uncaught JS Errors', async () => {
+  // At the end on purpose (Pedro, 2026-11-02): it wipes today's session
+  await step('Step 12: Hoy — Reiniciar día', async () => {
+    await nav(page, 'today')
+    const summary = page.locator('[data-component="SessionSummary"]')
+    await expect(summary).toBeVisible()
+    const logsBefore = (await readLogs(page)).filter(l => l.date === localDate(0)).length
+    await summary.getByRole('button', { name: /Reiniciar día/ }).click()
+
+    // The session starts over: no summary, warmup and stretch back to «Después».
+    // Today's weights stay, so training reads done and the dock offers to end it again
+    const check = async () => {
+      await expect(summary).toHaveCount(0)
+      await expect(page.locator(SEL.pageEyebrow)).not.toContainText('terminado')
+      await expect(page.locator('[data-phase="warmup"]')).toContainText('Después')
+      await expect(page.locator('[data-phase="stretch"]')).toContainText('Después')
+      await expect(training).toContainText('4 de 4 hechos')
+      await expect(todayDock(page).getByRole('button', { name: 'Terminar entrenamiento' })).toBeVisible()
+    }
+    await check()
+    await expect.poll(async () => (await storedSettings(page))?.sessionState ?? null).toBeNull()
+    expect((await storedSettings(page)).lastCoachAnalysis ?? null).toBeNull()
+    // The weights stay: only the session goes
+    expect((await readLogs(page)).filter(l => l.date === localDate(0))).toHaveLength(logsBefore)
+    await page.reload()
+    await check()
+  })
+
+  await step('Step 13: No Uncaught JS Errors', async () => {
     expect(jsErrors).toEqual([])
   })
 
-  // Every step ran, in order — not just "its name is somewhere in the file"
-  expect(ran).toEqual(EXPECTED_STEPS)
+  // Every step ran, in order — not just "its name is somewhere in the file".
+  // With FLOW_UNTIL, the ones up to it, and no JS error on the way.
+  if (stopped) {
+    expect(ran).toEqual(EXPECTED_STEPS.slice(0, ran.length))
+    expect(jsErrors).toEqual([])
+  } else {
+    expect(ran).toEqual(EXPECTED_STEPS)
+  }
 })
 
 // Apart from the flow: the flow's day trains muscles that all have their own
@@ -2973,10 +2892,12 @@ test.describe('Amigos v2 — racha nueva', () => {
 })
 
 
+// Apart from the flow: it needs a registered user with friends from the start.
 // Changed 2026-10-14 (approved by Pedro): the «Editar usuario» pencil in Mi perfil is
-// hidden for now, so «Cambiar usuario» can't be opened from the UI. This whole journey
-// (rename on the Worker, taken name, survives reload) is commented until the pencil returns.
-/*
+// hidden for now. It was commented out until then; back 2026-11-02 (Pedro): the
+// pencil is still in the page, only hidden, so the test checks it stays hidden,
+// shows it, and the whole rename (on the Worker, taken name, survives reload)
+// keeps being tested. When the pencil returns, drop the unhide.
 test.describe('Amigos v2 — mi perfil y renombrar', () => {
   test('renames on the Worker, rejects a taken name, and keeps the new name after reload', async ({ page }) => {
     const api = { friends: [LEAGUE.friend('Ana', 60), LEAGUE.friend('Luis', 30)], renameStatus: 409 }
@@ -2997,6 +2918,12 @@ test.describe('Amigos v2 — mi perfil y renombrar', () => {
     await expect(profile.locator('.duo > div').nth(0)).toContainText('semanas seguidas')
     await expect(profile.locator('.duo > div').nth(1)).toContainText('2')
     await expect(profile.locator('.duo > div').nth(1)).toContainText('amigos en tu liga')
+
+    // Hidden for now (Pedro): not on screen, but still in the page
+    const pencil = profile.locator('button.edit')
+    await expect(pencil).toHaveAttribute('aria-label', 'Editar usuario')
+    await expect(pencil).toBeHidden()
+    await pencil.evaluate((el) => { el.hidden = false })
 
     // Nothing to save until the name changes.
     await page.getByRole('button', { name: 'Editar usuario' }).click()
@@ -3027,7 +2954,6 @@ test.describe('Amigos v2 — mi perfil y renombrar', () => {
     expect(api.listUsers.at(-1)).toBe('Pedro')
   })
 })
-*/
 
 // ═══════════════════ Hoy v2 / Detalle v2 (spec 2026-10-15) ═══════════════════
 // Base data of the spec: day «Empuje» (Press Banca Chest 4 × 8-10 / 120 s,
@@ -3081,19 +3007,6 @@ async function seedV2(page, data = {}, route = 'today') {
   await waitForApp(page)
 }
 
-function readLogs(page) {
-  return readStore(page, 'exerciseLogs')
-}
-
-function readExercises(page) {
-  return readStore(page, 'exercises')
-}
-
-async function goOffline(page, context) {
-  await context.setOffline(true)
-  await page.evaluate(() => window.dispatchEvent(new Event('offline')))
-}
-
 // Apart from the flow: comparing the two sheets needs one-line names on both
 // (a short exercise, the generic «Oruga» warmup); the flow's names are long.
 test.describe('Hoy v2 — comparativa Detalle / Calentamiento', () => {
@@ -3137,6 +3050,143 @@ test.describe('Hoy v2 — comparativa Detalle / Calentamiento', () => {
   })
 })
 
+// Apart from the flow: part of what Plan and Historial show depends on the
+// weekday, and the flow runs on whatever day it's run (on a Sunday it never
+// saw «Me salté un día» move anything). Here the page clock is fixed on a
+// Wednesday and on a Sunday, so both sides are checked on every run.
+test.describe('Fechas fijas — Plan e Historial según el día', () => {
+  test('miércoles: la semana se corre y queda el viernes; domingo: nada que correr ni entrenos por delante', async ({ browser }) => {
+    const { baseURL, viewport, reducedMotion } = test.info().project.use
+    const workout = (name) => ({
+      name, subtitle: '', duration: 60,
+      exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }, { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 }],
+    })
+    const week = (days) => Array.from({ length: 7 }, (_, i) => days[i] || { name: 'Descanso', subtitle: '', duration: 0, exercises: [] })
+    const CASES = [
+      // Empuje today, Tirón on Friday; the next workout after Friday is next Wednesday
+      { label: 'miércoles', date: '2026-11-11', t: 2, days: { 2: workout('Empuje'), 4: workout('Tirón') }, ahead: ['2026-11-13', 'Tirón'] },
+      // Tirón on Wednesday (missed), Empuje today: nothing left after today, and
+      // the week isn't complete; the next one is next Wednesday
+      { label: 'domingo', date: '2026-11-15', t: 6, days: { 2: workout('Tirón'), 6: workout('Empuje') }, ahead: ['2026-11-18', 'Tirón'] },
+    ]
+    for (const c of CASES) {
+      await test.step(c.label, async () => {
+        const context = await browser.newContext({ baseURL, viewport, reducedMotion })
+        await blockExternalImages(context)
+        const page = await context.newPage()
+        try {
+          const [y, m, d] = c.date.split('-').map(Number)
+          await page.clock.install({ time: new Date(y, m - 1, d, 12) })
+          await mockWorker(page, {})
+          const program = { id: 'prog-fijo', name: 'Programa fijo', weeks: [{ name: 'Semana 1', subtitle: '', tag: '', days: week(c.days) }] }
+          const seed = (logs) => seedIndexedDB(page, {
+            exercises: [V2.bench, V2.military], program, exerciseLogs: logs,
+            settings: V2.settings({ activeProgramId: 'prog-fijo', onboarded: true }),
+          })
+          await page.goto('plan')
+          await seed([])
+          await page.reload()
+          await expect(planDay(page, c.t).locator(SEL.dayTitle)).toHaveText('Empuje')
+
+          // «Me salté un día»
+          const grid = page.locator('#plan-days-grid')
+          await page.locator('#plan-reprogram-btn').click()
+          if (c.t === 2) {
+            await expect(page.locator('#plan-shift-btn')).toContainText('Hoy Empuje pasa al jueves')
+            await page.locator('#plan-shift-btn').click()
+            await expect(grid.locator('[data-state="moved"]', { hasText: 'Empuje' })).toContainText('Se movió del miércoles')
+            await expect(grid.locator('[data-state="moved"]', { hasText: 'Tirón' })).toContainText('Se movió del viernes')
+            const shiftToast = page.locator('#plan-shift-toast')
+            await expect(shiftToast).toContainText('Listo. Tu semana se corrió un día.')
+            await shiftToast.getByRole('button', { name: 'Restablecer' }).click()
+            await expect(grid.locator('[data-state="moved"]')).toHaveCount(0)
+          } else {
+            await expect(page.locator('#plan-shift-btn')).not.toContainText('pasa al')
+            await page.locator('#plan-shift-btn').click()
+            await expect(page.locator('#backup-toast')).toContainText('No quedan días por correr esta semana')
+            await expect(grid.locator('[data-state="moved"]')).toHaveCount(0)
+          }
+
+          // Today trained: the dock says what comes next this week, or that nothing does
+          await seed([{ id: 'log-hoy', exerciseId: 'ex-bench', date: c.date, weight: 80, units: 'kg' }])
+          await page.reload()
+          await expect(planDay(page, c.t)).toHaveAttribute('data-state', 'done')
+          await expect(todayDock(page)).toContainText(c.t === 2 ? /Viernes: Tirón · \d+ min/ : 'No quedan entrenos esta semana')
+
+          // Historial: the next workout ahead, dimmed, with what it has
+          await nav(page, 'history')
+          const cal = page.locator('[data-component="MonthCalendar"]')
+          const panel = page.locator('[data-component="HistoryDayPanel"]')
+          const [aheadDate, aheadName] = c.ahead
+          const cell = cal.getByRole('button', { name: String(Number(aheadDate.slice(8))), exact: true })
+          await expect(cell).toHaveAttribute('data-state', 'future')
+          await cell.click()
+          await expect(panel).toContainText(aheadName)
+          await expect(panel.getByText('Lo que toca', { exact: true })).toBeVisible()
+          await expect(panel.locator(SEL.exerciseRow)).toHaveCount(2)
+          await expect(page.getByRole('button', { name: /Marcar como hecho/ })).toHaveCount(0)
+        } finally {
+          await context.close()
+        }
+      })
+    }
+  })
+})
+
+// Apart from the flow: the flow trains Fondos through an alternative and sees
+// the day done, but it can't reach the next time that day comes. Here the
+// page clock is fixed on a Wednesday, then moved to the next one.
+test.describe('Alternativa solo por hoy', () => {
+  test('la alternativa cuenta el día como hecho, y la semana siguiente vuelve el ejercicio del programa', async ({ page }) => {
+    await page.clock.install({ time: new Date(2026, 10, 11, 12) })
+    await mockWorker(page, {})
+    const empuje = { name: 'Empuje', subtitle: '', duration: 60, exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }] }
+    const days = Array.from({ length: 7 }, (_, i) => i === 2 ? empuje : { name: 'Descanso', subtitle: '', duration: 0, exercises: [] })
+    await page.goto('today')
+    await seedIndexedDB(page, {
+      // An alternative of its own, or the detail has no Alternativas tab
+      exercises: [{ ...V2.bench, alternatives: [{ name: 'Press Inclinado' }] }],
+      program: { ...V2.program(), weeks: [{ name: 'Semana 1', subtitle: '', tag: '', days }] },
+      settings: V2.settings({ onboarded: true, sessionState: { date: '2026-11-11', phase: 2, todayExDone: 0 } }),
+    })
+    await page.reload()
+    await waitForApp(page)
+    const training = page.locator('[data-phase="training"]')
+    const rows = training.locator(SEL.exerciseRow)
+    const detail = page.locator('[data-component="ExerciseDetail"]')
+
+    // Press Banca swapped for one found in the dictionary, and registered
+    await rows.first().click()
+    await segTab(detail, 'Alternativas').click()
+    await logDock(page).locator('input').fill('sentadilla hack')
+    await page.locator('[data-component="AlternativesTab"]').locator(SEL.exerciseRow).first().click()
+    await expect(page.locator(SEL.detailName)).toContainText('Sentadilla Hack')
+    await page.locator('input[inputmode="decimal"]').first().fill('60')
+    await logDock(page).getByRole('button', { name: 'Registrar 60 kg' }).click()
+    await expect(page.getByText('Registrado hoy')).toBeVisible()
+    await page.getByRole('button', { name: 'Cerrar' }).first().click()
+    await expect(detail).toHaveCount(0)
+
+    // Today the slot is the alternative, done, and so is the whole training
+    await expect(training).toContainText('1 de 1 hechos')
+    if (await rows.count() === 0) await training.locator(SEL.phaseToggle).click()
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first()).toContainText('Sentadilla Hack')
+    await expect(rows.first()).toHaveAttribute('data-done', 'true')
+
+    // Next Wednesday: Press Banca again, nothing done
+    await page.clock.setSystemTime(new Date(2026, 10, 18, 12))
+    await page.reload()
+    await waitForApp(page)
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Empuje.')
+    if (await rows.count() === 0) await training.locator(SEL.phaseToggle).click()
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first()).toContainText('Press de Banca con Barra')
+    await expect(rows.first()).not.toContainText('Sentadilla Hack')
+    await expect(rows.first()).toHaveAttribute('data-done', 'false')
+  })
+})
+
 // ═══════════════════════════════ IA ═══════════════════════════════
 // Apart from the flow (Pedro, 2026-10-30): the flow builds its program by hand
 // with its own exercises; everything that talks to the AI lives here, each
@@ -3154,9 +3204,13 @@ test.describe('IA — programas con el coach', () => {
 
     // ── Platícalo con el coach: the coach proposes first (kickoff hidden), it's
     // discussed, and «Crear este programa» sends the whole conversation ──
+    // One matcher per endpoint: each part below unroutes the one before it
+    // first, so only its own answers are in place (they used to pile up)
+    const isChat = (url) => url.href.includes('/api/ai/program-chat')
+    const isGenerate = (url) => url.href.includes('/api/ai/generate-program')
     const chatBodies = []
     let createBody = null
-    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+    await page.route(isChat, async (route) => {
       chatBodies.push(route.request().postDataJSON())
       const reply = chatBodies.length === 1
         ? 'Propuesta: por tu trabajo de oficina deberíamos priorizar espalda alta.'
@@ -3165,7 +3219,7 @@ test.describe('IA — programas con el coach', () => {
     })
     // Two passes: the coach writes a draft, then reviews it (redundant same-muscle work) and that one is saved
     let reviewBody = null
-    await page.route((url) => url.href.includes('/api/ai/generate-program'), async (route) => {
+    await page.route(isGenerate, async (route) => {
       const body = route.request().postDataJSON()
       if (createBody) reviewBody = body
       else createBody = body
@@ -3229,11 +3283,13 @@ test.describe('IA — programas con el coach', () => {
 
     // ── Pega tu rutina: a chat reads it back, «Crear este programa» creates it ──
     const pasteBodies = []
-    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+    await page.unroute(isChat)
+    await page.unroute(isGenerate)
+    await page.route(isChat, async (route) => {
       pasteBodies.push(route.request().postDataJSON())
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: 'Entendí 1 día: Lunes · Press Banca 4 × 8.', _provider: 'test' }) })
     })
-    await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => route.fulfill({
+    await page.route(isGenerate, (route) => route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({
         program_name: 'Programa IA',
@@ -3259,7 +3315,9 @@ test.describe('IA — programas con el coach', () => {
     // program; «Crear versión nueva» makes «Programa IA · v2» the active one ──
     const improveBodies = []
     let applyBody = null
-    await page.route((url) => url.href.includes('/api/ai/program-chat'), async (route) => {
+    await page.unroute(isChat)
+    await page.unroute(isGenerate)
+    await page.route(isChat, async (route) => {
       improveBodies.push(route.request().postDataJSON())
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reply: `Respuesta del coach ${improveBodies.length}`, _provider: 'test' }) })
     })
@@ -3275,7 +3333,7 @@ test.describe('IA — programas con el coach', () => {
     })
     // The review pass fails here: the version is still created from the draft
     let improveReviews = 0
-    await page.route((url) => url.href.includes('/api/ai/generate-program'), (route) => {
+    await page.route(isGenerate, (route) => {
       improveReviews++
       return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'La IA no generó JSON válido.' }) })
     })

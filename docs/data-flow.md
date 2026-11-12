@@ -12,6 +12,6 @@
    - → gif fallback
 
 ## localStorage Mirror
-- Key: `coach-pedro-ai-backup`
+- Keys: `idb_backup_<store>` (one per store: exercises, exerciseLogs, programs, gymSessions, settings)
 - Updated via `Storage.backupAll()` after every write
 - Used by `restoreFromBackup()` on data loss

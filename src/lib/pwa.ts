@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.96'
-const _VER_DESC = 'Bigtest reordenado: Tú primero, IA aparte, copia de seguridad al final'
-const _VER_TIME = '2026-11-02 23:07'
+const _VER_BASE = 'v2.97'
+const _VER_DESC = 'Registrar cancela su descanso, test Reiniciar día, helpers de test separados'
+const _VER_TIME = '2026-11-11 22:03'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

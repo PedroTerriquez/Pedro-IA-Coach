@@ -1,4 +1,4 @@
-# Schema (4 IndexedDB Object Stores)
+# Schema (5 IndexedDB Object Stores)
 
 ## `exercises`
 | Field | Type | Notes |
@@ -44,6 +44,14 @@
 - Sets, reps, rest LIVE on the program exercise instance, NOT on the exercise definition
 - Day duration is never stored: `dayDurationMin()` (`src/lib/program-utils.ts`) computes Σ sets × (30 s + rest)
 - Duplicate exercise IDs allowed in same program (different days)
+
+## `gymSessions`
+| Field | Type | Notes |
+|---|---|---|
+| `id` | string | Same as `date` |
+| `date` | string | "YYYY-MM-DD" |
+| `seconds` | number | Time trained that day (the league's minutes) |
+| `weekStart` | string | Monday of that week, "YYYY-MM-DD" |
 
 ## `settings` (singleton, id: "settings")
 ```js

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { logWeight, getSettings, findOrCreateExerciseByName, swapExerciseForToday, revertExerciseSwapForToday } from '$lib/storage'
   import { toast, restMinimized, seriesConfirmed } from '$lib/stores/ui'
-  import { restBannerState } from '$lib/rest-timer'
+  import { restBannerState, cancelRestTimer } from '$lib/rest-timer'
   import { settings } from '$lib/stores/settings'
   import { online } from '$lib/stores/network'
   import { parseRepsDefault, muscleLabel } from '$lib/exercise-utils'
@@ -228,8 +228,16 @@
     savedToast(`${formatWeight(pendingWeight)} ${units}`)
   }
 
+  // Registrar is the last word on today's log: this exercise's rest (running or
+  // at zero, minimized) ends first, or coming back to the app it would write
+  // its own series over what was just registered.
+  async function endOwnRest() {
+    if (ownRest) await cancelRestTimer($restBannerState.tag)
+  }
+
   async function handleSave() {
     if (!canRegister) return
+    await endOwnRest()
     if (advanced) await saveBlocks()
     else await saveSingle()
     savedKey = currentKey
