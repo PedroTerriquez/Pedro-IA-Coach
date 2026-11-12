@@ -18,7 +18,7 @@ if (!only.length) for (const d of ['vistas', 'shell', 'compartidos']) await rm(O
 const browser = await chromium.launch()
 
 /** Fresh browser context per group: each group seeds its own world once. */
-async function open(data, { friends = S.friends, registered = true, protectedUsers = [], account = null, upload = null } = {}) {
+async function open(data, { friends = S.friends, registered = true, protectedUsers = [], account = null, upload = null, checkHangs = false } = {}) {
   // Search finds league members too, so a result can show "En tu liga".
   const users = [...friends, { username: 'Sofía', streak: 7, exercisedToday: true }, { username: 'Sofi_fit', streak: 1, exercisedToday: false }]
   const search = (url) => {
@@ -32,7 +32,9 @@ async function open(data, { friends = S.friends, registered = true, protectedUse
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
     if (url.includes('/api/friends/list')) return json({ friends })
     if (url.includes('/api/friends/search')) return json({ results: search(url) })
-    if (url.includes('/api/user/check')) return json({ exists: registered, protected: protectedUsers.includes(new URL(url).searchParams.get('username')) })
+    // checkHangs: the answer never comes, so Tú's card stays in «Comprobando tu usuario».
+    if (url.includes('/api/user/check')) return checkHangs ? undefined : json({ exists: registered, protected: protectedUsers.includes(new URL(url).searchParams.get('username')) })
+    if (url.includes('/api/account/create')) return json({ token: 'tok-ds' })
     // The account cards show the wrong-password state; nothing signs in for real.
     if (url.includes('/api/account/login')) return json({ error: 'Usuario o contraseña incorrectos' }, 401)
     // A pending upload stays pending (no signal), so its card can show it.

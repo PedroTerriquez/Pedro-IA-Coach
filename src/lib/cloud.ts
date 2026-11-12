@@ -159,6 +159,27 @@ export async function login(username: string, password: string): Promise<AuthRes
   return { ok: true }
 }
 
+/** none = no name or not registered · no-password = registered, unprotected ·
+ *  has-password = protected (sign in) · unknown = no answer from the Worker */
+export type AccountStatus = 'none' | 'no-password' | 'has-password' | 'unknown'
+
+function statusFromCheck(data: { exists?: boolean; protected?: boolean }): AccountStatus {
+  if (data.protected) return 'has-password'
+  return data.exists ? 'no-password' : 'none'
+}
+
+/** What Tú's cloud card says about this phone's username, before any account. */
+export async function fetchAccountStatus(username: string): Promise<AccountStatus> {
+  if (!username) return 'none'
+  const res = await callWorker(`/api/user/check?username=${encodeURIComponent(username)}`, { method: 'GET' })
+  if (!res || !res.ok) return 'unknown'
+  try {
+    return statusFromCheck(await res.json())
+  } catch {
+    return 'unknown'
+  }
+}
+
 // ── Snapshot & diff ──
 
 function recordKey(store: string, id: string): string {

@@ -288,11 +288,16 @@ function dedupeIcons(snaps) {
 const CLOUD_ACCOUNT = { username: 'pedro_t', email: 'pedro@correo.com', token: 'tok-ds' }
 
 async function cloudCards({ open, S, G, at, shot }) {
-  // Hub without an account: the card invites to protect the user
+  // Hub without an account: the card says what the username needs (Cuenta v2)
+  const checking = await open(world(S), { checkHangs: true })
+  await checking.go('you')
+  const cardChecking = await grab(checking, [{ label: 'Comprobando tu usuario', selector: '#cloud-card', width: 358 }])
+  await checking.context().close()
+
   const page = await open(world(S))
   await page.go('you')
-  await page.card({ path: at('inicio-sin-cuenta'), group: G, name: 'Tú · Inicio sin cuenta', subtitle: 'tarjeta «Guarda tus datos en la nube» arriba; la copia vive solo en el teléfono', source: C + 'YouHub.svelte', screen: true })
-  await page.card({ path: at('cloud-card'), group: G, name: 'CloudCard', subtitle: 'invita a crear la cuenta: título, texto y Crear cuenta', source: C + 'CloudCard.svelte', specimens: [{ label: 'CloudCard', selector: '#cloud-card', width: 358 }], viewport: '430x280' })
+  await page.card({ path: at('inicio-sin-cuenta'), group: G, name: 'Tú · Inicio sin cuenta', subtitle: 'mi usuario existe sin contraseña: «Ponerle contraseña»; la copia vive solo en el teléfono', source: C + 'YouHub.svelte', screen: true })
+  const cardNoPassword = await grab(page, [{ label: 'Usuario sin contraseña', selector: '#cloud-card', width: 358 }])
 
   await page.locator('#cloud-card-create').click()
   await page.locator('#account-sheet').waitFor({ timeout: 5000 })
@@ -302,10 +307,25 @@ async function cloudCards({ open, S, G, at, shot }) {
   await page.locator('#account-submit').click()
   await page.waitForTimeout(300)
   await shot(page, 'cuenta-crear-error', 'Tú · Crear cuenta con errores', '«Correo no válido» y «Mínimo 8 caracteres» en línea', 'AccountSheet.svelte')
+  // Created: «Tu cuenta está lista» until «Listo»
+  await page.locator('#account-email').fill('pedro@correo.com')
+  await page.locator('#account-password').fill('secreta123')
+  await page.locator('#account-submit').click()
+  await page.locator('#cloud-verified').waitFor({ timeout: 5000 })
+  await page.waitForTimeout(400)
+  await page.card({ path: at('cuenta-verificada'), group: G, name: 'Tú · Cuenta verificada', subtitle: '«✓ Verificado», «Tu cuenta está lista» y «Guardado hoy»; «Listo» la cierra', source: C + 'VerifiedCard.svelte', screen: true })
   await page.context().close()
+
+  const owned = await open(world(S), { protectedUsers: [S.settings().username] })
+  await owned.go('you')
+  await owned.card({ path: at('inicio-usuario-con-contrasena'), group: G, name: 'Tú · Inicio, usuario con contraseña', subtitle: 'teléfono nuevo o app reinstalada: «Ya tienes cuenta» e «Iniciar sesión»', source: C + 'CloudCard.svelte', screen: true })
+  const cardHasPassword = await grab(owned, [{ label: 'Usuario con contraseña', selector: '#cloud-card', width: 358 }])
+  await owned.context().close()
 
   const anon = await open(world(S, { settings: S.settings({ username: '', userName: '' }) }))
   await anon.go('you')
+  const cardNoUser = await grab(anon, [{ label: 'Sin usuario', selector: '#cloud-card', width: 358 }])
+  await card(null, { path: at('cloud-card'), group: G, name: 'CloudCard', subtitle: 'comprobando, sin usuario, sin contraseña y con contraseña', source: C + 'CloudCard.svelte', snaps: [cardChecking, cardNoUser, cardNoPassword, cardHasPassword], viewport: '430x900' })
   await anon.locator('#cloud-card-create').click()
   await anon.locator('#account-sheet').waitFor({ timeout: 5000 })
   await shot(anon, 'cuenta-crear-sin-usuario', 'Tú · Crear cuenta sin usuario', 'sin usuario todavía: también pide «Usuario»', 'AccountSheet.svelte')
@@ -321,7 +341,7 @@ async function cloudCards({ open, S, G, at, shot }) {
   await pending.go('you')
   const rowPending = await grab(pending, [{ label: 'Cuenta · pendiente', selector: '#you-row-cuenta', width: 358 }])
   await pending.context().close()
-  await card(null, { path: at('fila-cuenta'), group: G, name: 'Fila Cuenta', subtitle: '«Guardado hoy 18:42» o «Pendiente de subir»', source: C + 'YouHub.svelte', snaps: [rowSaved, rowPending], viewport: '430x300' })
+  await card(null, { path: at('fila-cuenta'), group: G, name: 'Fila Cuenta', subtitle: '«✓ Verificado» sobre «Guardado hoy 18:42» o «Pendiente de subir»', source: C + 'YouHub.svelte', snaps: [rowSaved, rowPending], viewport: '430x300' })
 
   // A new phone: «Hola.» offers signing in
   const fresh = await open(world(S, { programs: [], exerciseLogs: [], gymSessions: [], settings: S.settings({ activeProgramId: null }) }))
@@ -819,6 +839,8 @@ async function timerScreens({ open, S }) {
   await btn(page, 'Abrir descanso a pantalla completa').click()
   await phase('registering')
   await timer.getByRole('button', { name: 'Registrar', exact: true }).click()
+  // The rest keeps running after Registrar; «Confirma tus series» comes at zero
+  await shorten()
   await phase('confirm')
   await page.waitForTimeout(400)
   await timerScreen(page, 'pantalla-confirma', 'Temporizador · Confirma tus series', 'las 4 series contra el objetivo, volumen y Guardar', C + 'SeriesConfirmSheet.svelte')

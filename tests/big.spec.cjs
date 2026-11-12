@@ -3114,7 +3114,9 @@ test.describe('Nube — proteger mi usuario', () => {
     })
     const creates = () => api.calls.filter((c) => c.path.endsWith('/api/account/create'))
 
-    await expect(page.locator('#cloud-card')).toContainText('Guarda tus datos en la nube')
+    // Registered in the league, no password yet (Cuenta v2)
+    await expect(page.locator('#cloud-card')).toContainText('Tu usuario no tiene contraseña')
+    await expect(page.locator('#cloud-card')).toContainText('TestUser')
     await page.locator('#cloud-card-create').click()
     // The user already has a name: only email and password
     await expect(page.locator('#account-email')).toBeVisible()
@@ -3136,7 +3138,11 @@ test.describe('Nube — proteger mi usuario', () => {
 
     // Free now: created, and everything goes up
     await page.locator('#account-submit').click()
-    await expect(page.getByText('Tus datos están en la nube', { exact: true })).toBeVisible()
+    await expect(page.locator('#cloud-verified')).toContainText('Tu cuenta está lista')
+    await expect(page.locator('#cloud-verified')).toContainText('Guardado hoy')
+    await expect(page.locator('#you-row-cuenta')).toContainText('Verificado')
+    await page.locator('#cloud-verified-done').click()
+    await expect(page.locator('#cloud-verified')).toHaveCount(0)
     expect(creates().at(-1).body).toEqual({ username: 'TestUser', email: 'test@mail.com', password: 'secreta123' })
     const keys = CLOUD.uploadKeys(api)
     for (const k of ['exerciseLogs:log-c1', 'exerciseLogs:log-c2', 'programs:prog-liga', 'exercises:ex-bench', 'exercises:ex-military', `gymSessions:${localDate(3)}`, 'settings:settings']) {
@@ -3163,13 +3169,14 @@ test.describe('Nube — sin usuario todavía', () => {
     await mockWorker(page, api)
     await seedCloud(page, 'you', { exercises: LEAGUE.exercises, program: LEAGUE.program(), settings: LEAGUE.settings({ username: '' }) })
 
+    await expect(page.locator('#cloud-card')).toContainText('Crea tu usuario y contraseña')
     await page.locator('#cloud-card-create').click()
     await expect(page.locator('#account-username')).toBeVisible()
     await page.locator('#account-username').fill('Nuevo')
     await page.locator('#account-email').fill('nuevo@mail.com')
     await page.locator('#account-password').fill('secreta123')
     await page.locator('#account-submit').click()
-    await expect(page.getByText('Tus datos están en la nube', { exact: true })).toBeVisible()
+    await expect(page.locator('#cloud-verified')).toContainText('Tu cuenta está lista')
     expect(api.calls.find((c) => c.path.endsWith('/api/account/create')).body.username).toBe('Nuevo')
 
     await page.reload()
@@ -3177,6 +3184,27 @@ test.describe('Nube — sin usuario todavía', () => {
     await expect(page.locator('#username-prompt')).toHaveCount(0)
     await expect(page.locator('[data-component="WeekCard"]')).toBeVisible()
     expect(api.listUsers.at(-1)).toBe('Nuevo')
+  })
+})
+
+test.describe('Nube — mi usuario ya tiene contraseña', () => {
+  test('la tarjeta dice «Ya tienes cuenta», inicia sesión con mi usuario y la fila queda verificada', async ({ page }) => {
+    const api = { protectedUsers: ['TestUser'] }
+    await mockWorker(page, api)
+    await seedCloud(page, 'you', { exercises: LEAGUE.exercises, program: LEAGUE.program(), settings: LEAGUE.settings() })
+
+    await expect(page.locator('#cloud-card')).toContainText('Ya tienes cuenta')
+    await expect(page.locator('#cloud-card-create')).toHaveCount(0)
+    await page.locator('#cloud-card-login').click()
+    await expect(page.locator('#account-sheet')).toBeVisible()
+    await expect(page.locator('#account-username')).toHaveValue('TestUser')
+    await page.locator('#account-password').fill('secreta123')
+    await page.locator('#account-submit').click()
+    await expect(page).toHaveURL(/\/today$/)
+
+    await nav(page, 'you')
+    await expect(page.locator('#cloud-card')).toHaveCount(0)
+    await expect(page.locator('#you-row-cuenta')).toContainText('Verificado')
   })
 })
 

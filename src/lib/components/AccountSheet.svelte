@@ -5,22 +5,22 @@
   import TextInput from './TextInput.svelte'
   import Button from './Button.svelte'
   import Lead from './Lead.svelte'
-  import ResultSheet from './ResultSheet.svelte'
   import { settings } from '$lib/stores/settings'
   import { getSettings, saveSettings } from '$lib/storage'
   import { createAccount, login, uploadSnapshot, downloadAll, isValidEmail, MIN_PASSWORD, type AuthResult } from '$lib/cloud'
   import { ROUTES } from '$lib/routes'
-  import type { ResultInfo } from '$lib/you-data'
 
   type AccountMode = 'crear' | 'entrar'
 
   // «Guarda tus datos en la nube» (crear) and «Ya tengo cuenta» (entrar).
-  let { open = $bindable(false), mode = $bindable<AccountMode>('crear'), presetUsername = '', onclose = () => {} }: {
+  let { open = $bindable(false), mode = $bindable<AccountMode>('crear'), presetUsername = '', onclose = () => {}, oncreated = () => {} }: {
     open: boolean
     mode?: AccountMode
     /** Prefills «Usuario» in entrar (Amigos → usuario protegido) */
     presetUsername?: string
     onclose?: () => void
+    /** The account exists and this phone is verified (Tú shows «Tu cuenta está lista») */
+    oncreated?: () => void
   } = $props()
 
   const NETWORK_ERROR = 'Sin conexión. Intenta otra vez.'
@@ -35,8 +35,6 @@
   let formError = $state('')
   let protectedTaken = $state(false)
   let forgotShown = $state(false)
-  let resultOpen = $state(false)
-  let result = $state<ResultInfo | null>(null)
 
   let needsUsername = $derived(mode === 'entrar' || !savedUsername)
   let title = $derived(mode === 'crear' ? 'Guarda tus datos en la nube' : 'Iniciar sesión')
@@ -102,12 +100,9 @@
     const res = await createAccount(name, email, password)
     if (!res.ok) return showFailure(res)
     await saveUsername(name)
-    const upload = await uploadSnapshot()
+    await uploadSnapshot()
     open = false
-    result = upload === 'saved'
-      ? { ok: true, heading: 'Tus datos están en la nube', text: 'Se guardan solos cada vez que terminas tus ejercicios.' }
-      : { ok: true, heading: 'Tu usuario está protegido', text: 'Tus datos se subirán en cuanto haya conexión.' }
-    resultOpen = true
+    oncreated()
   }
 
   async function submitLogin() {
@@ -172,8 +167,6 @@
     {/if}
   </div>
 </Sheet>
-
-<ResultSheet bind:open={resultOpen} title="Cuenta" {result} />
 
 <style>
   .form { display: flex; flex-direction: column; gap: 16px; }

@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.100'
-const _VER_DESC = 'Segunda casa en Cloudflare: build en la raíz sin rastro del repo'
-const _VER_TIME = '2026-11-12 02:27'
+const _VER_BASE = 'v2.101'
+const _VER_DESC = 'Cuenta v2: Tú dice si tu usuario tiene contraseña y queda Verificado'
+const _VER_TIME = '2026-11-12 13:12'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
