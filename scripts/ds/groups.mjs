@@ -722,7 +722,7 @@ async function detailScreens({ open, S }) {
   await page.waitForTimeout(700)
   await detScreen(page, 'pantalla-principal', 'Detalle · Principal', 'media 112, TitleNav, objetivo, coach IA, peso de hoy y dock')
   pieces.push(await grab(page, [
-    { label: 'ExerciseMedia · foto + Ver animación', selector: comp('ExerciseMedia'), width: 350 },
+    { label: 'ExerciseMedia · GIF + Foto | GIF', selector: comp('ExerciseMedia'), width: 350 },
     { label: 'TargetPanel · dos celdas', selector: comp('TargetPanel'), width: 350 },
     { label: 'DetailRow · coach IA', selector: `${comp('ExerciseDetail')} .row.ai`, width: 350 },
     { label: 'SegmentedControl · tabs', selector: `${comp('ExerciseDetail')} ${comp('SegmentedControl')}`, width: 350 },

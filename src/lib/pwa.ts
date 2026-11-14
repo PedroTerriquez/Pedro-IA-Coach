@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.101'
-const _VER_DESC = 'Cuenta v2: Tú dice si tu usuario tiene contraseña y queda Verificado'
-const _VER_TIME = '2026-11-12 13:12'
+const _VER_BASE = 'v2.102'
+const _VER_DESC = 'Detalle abre en GIF con selector Foto o GIF'
+const _VER_TIME = '2026-11-14 17:21'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

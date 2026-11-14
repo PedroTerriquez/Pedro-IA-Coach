@@ -4,8 +4,8 @@
   import { settings } from '$lib/stores/settings'
   import Icon from './Icon.svelte'
 
-  // The 112 px media strip of Detalle v2. Exercises show their photo with
-  // «Ver animación»; warmup / stretch moves show the whole GIF with «Ver en grande».
+  // The media strip of Detalle v2. Exercises open on their GIF with a «Foto | GIF»
+  // switch; warmup / stretch moves show the whole GIF with «Ver en grande».
   let { kind = 'exercise', imgUrl = '', gifUrl = '', searchName }: {
     kind?: 'exercise' | 'move'
     imgUrl?: string
@@ -14,7 +14,7 @@
     searchName: string
   } = $props()
 
-  let showGif = $state(false)
+  let showGif = $state(true)
   let big = $state(false)
 
   let canAnimate = $derived(kind === 'exercise' && !!gifUrl && !!imgUrl && gifUrl !== imgUrl)
@@ -22,10 +22,10 @@
   let exerciseSrc = $derived(showGif && canAnimate ? gifUrl : imgUrl || gifUrl || DEFAULT_EXERCISE_IMG)
   let query = $derived(encodeURIComponent(`${searchName} ${$settings.language === 'en' ? 'form' : 'técnica'}`))
 
-  // Moving to another exercise starts again on its photo
+  // Moving to another exercise starts again on its GIF
   $effect(() => {
     void imgUrl
-    showGif = false
+    showGif = true
   })
 
   // udm=7 is Google's Videos tab
@@ -63,7 +63,10 @@
   <div class="media" data-component="ExerciseMedia">
     <img src={exerciseSrc} alt="" />
     {#if canAnimate}
-      <button type="button" class="corner" aria-label="Ver animación" aria-pressed={showGif} onclick={() => (showGif = !showGif)}><Icon name="play" size={16} /></button>
+      <div class="mode" role="group" aria-label="Foto o GIF">
+        <button type="button" aria-pressed={!showGif} onclick={() => (showGif = false)}>Foto</button>
+        <button type="button" aria-pressed={showGif} onclick={() => (showGif = true)}>GIF</button>
+      </div>
     {/if}
     {@render pills()}
   </div>
@@ -105,6 +108,29 @@
     place-items: center;
     cursor: pointer;
   }
+  .mode {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    padding: 3px;
+    border-radius: var(--radius-full);
+    background: rgba(10, 10, 10, 0.6);
+  }
+  .mode button {
+    min-width: 52px;
+    height: 38px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--text-secondary, var(--text));
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mode button[aria-pressed='true'] { background: var(--accent); color: #0a0a0a; }
   .pills { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 6px; }
   .img-p {
     height: 44px;

@@ -60,7 +60,7 @@ Componentes de `src/lib/components/` usados por más de una vista (contando el u
 | ChatMessage | actualizado | Tú | Coach sin burbuja con «Coach» + spark, usuario en burbuja, rutina pegada, escribiendo | Tú, Detalle |
 | DetailSheet | actualizado | Hoy · Detalle v2 | Marco de la hoja de Detalle: alto completo desde 54, cabecera, cuerpo con scroll y dock fijo (se oculta bajo el banner del descanso) | Hoy, Plan, Historial, Detalle |
 | DetailSheetHead | actualizado | Hoy · Detalle v2 | Agarradera, cerrar ↓ de 44 y posición («Empuje · **1 de 3**»); sin conexión, OfflineBanner `inline` | Hoy, Detalle |
-| ExerciseMedia | actualizado | Hoy · Detalle v2 | 112: foto `cover` + «Ver animación» (ejercicios), GIF `contain` + «Ver en grande» (movimientos), Google / TikTok de 44, sin imagen y sin conexión | Hoy, Detalle |
+| ExerciseMedia | actualizado | Hoy · Detalle v2 | 112: GIF `cover` por defecto + selector «Foto | GIF» (ejercicios), GIF `contain` + «Ver en grande» (movimientos), Google / TikTok de 44, sin imagen y sin conexión | Hoy, Detalle |
 | TitleNav | actualizado | Hoy · Detalle v2 | Nombre 28 a 2 renglones, músculo (+ snippet `badge`), flechas ← → de 56 («Anterior» / «Siguiente») | Hoy, Detalle |
 | TargetPanel | actualizado | Hoy · Detalle v2 | Dos celdas (series × reps, descanso) o `one` con la frase de la dosis | Hoy, Detalle |
 | DetailRow | actualizado | Hoy · Detalle v2 | Fila 52: `ai` (coach, único tratamiento de IA, apagada sin conexión) o `plain` desplegable («Cómo se hace · N pasos») | Hoy, Detalle |
