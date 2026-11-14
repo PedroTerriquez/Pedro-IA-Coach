@@ -53,12 +53,18 @@ export const groups = {
     const closeSheet = (p) => p.locator(`${comp('Sheet')} [aria-label="Cerrar"]`).click()
 
     const page = await open(world(S))
+    // Yesterday's photo of the league, so the cards show the «▲1 desde ayer» arrows.
+    await page.evaluate(() => {
+      const d = new Date(Date.now() - 86400000)
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      localStorage.setItem('league-snapshot', JSON.stringify({ today: { date, positions: { Luis: 1, Ana: 2, Mariana: 3, Diego: 4, Pedro: 5 } }, before: null }))
+    })
     await page.go('friends')
-    await page.card({ path: at('pantalla'), group: G, name: 'Amigos · Liga', subtitle: 'tarjeta Tu racha, podio (top 3), lista y Agregar amigo', source: src, screen: true })
-    await page.card({ path: at('leaderboard'), group: G, name: 'Leaderboard', subtitle: 'leyenda Entrenó hoy, podio 2-1-3 y filas', source: C + 'Leaderboard.svelte', specimens: [{ label: 'Leaderboard · 5 participantes', selector: comp('Leaderboard') }], viewport: '420x620' })
-    await page.card({ path: at('league-row'), group: G, name: 'LeagueRow', subtitle: 'posición, avatar, racha y minutos; la mía con superficie y Tú', source: C + 'LeagueRow.svelte', specimens: [{ label: 'LeagueRow', selector: comp('LeagueRow'), distinct: true }], viewport: '420x260' })
+    await page.card({ path: at('pantalla'), group: G, name: 'Amigos · Liga', subtitle: 'Mi semana, la carrera con barras y Agregar amigo', source: src, screen: true })
+    await page.card({ path: at('leaderboard'), group: G, name: 'Leaderboard', subtitle: 'tu semana día a día, a cuánto estás del siguiente y la carrera con barras', source: C + 'Leaderboard.svelte', specimens: [{ label: 'Leaderboard · 5 participantes', selector: comp('Leaderboard') }], viewport: '420x860' })
+    await page.card({ path: at('league-row'), group: G, name: 'LeagueRow', subtitle: 'posición, avatar, flecha desde ayer, barra contra el líder y minutos; la mía con superficie, Tú y barra de acento', source: C + 'LeagueRow.svelte', specimens: [{ label: 'LeagueRow', selector: comp('LeagueRow'), distinct: true }], viewport: '420x260' })
     await page.card({ path: at('avatar'), group: G, name: 'Avatar', subtitle: 'inicial sobre tono derivado del usuario; punto si entrenó hoy', source: C + 'Avatar.svelte', specimens: [{ label: 'Avatar', selector: comp('Avatar'), distinct: 'html', row: true }], viewport: '420x200' })
-    const weekAlive = await grab(page, [{ label: 'WeekCard · Tu racha', selector: comp('WeekCard') }])
+    const weekLeague = await grab(page, [{ label: 'MyWeek · con liga', selector: comp('MyWeek') }])
 
     await page.locator('#friends-list [data-user="Ana"]').click()
     await sheet(page, 'pantalla-detalle', 'Amigos · Detalle de amigo', 'racha, minutos, comparación contra mí y Quitar de mi liga', 'FriendDetail.svelte')
@@ -96,7 +102,7 @@ export const groups = {
 
     const one = await open(world(S), { friends: S.friends.slice(1, 2) })
     await one.go('friends')
-    await one.card({ path: at('pantalla-un-amigo'), group: G, name: 'Amigos · Con 1 amigo', subtitle: 'sin podio; Agregar amigo primario', source: src, screen: true })
+    await one.card({ path: at('pantalla-un-amigo'), group: G, name: 'Amigos · Con 1 amigo', subtitle: 'carrera de dos; Agregar amigo primario', source: src, screen: true })
     await one.context().close()
 
     const alone = await open(world(S), { friends: [] })
@@ -106,8 +112,8 @@ export const groups = {
 
     const fresh = await open(world(S, { exerciseLogs: [], gymSessions: [] }), { registered: false })
     await fresh.go('friends')
-    const weekNew = await grab(fresh, [{ label: 'WeekCard · Racha nueva', selector: comp('WeekCard') }])
-    await fresh.card({ path: at('week-card'), group: G, name: 'WeekCard', subtitle: 'racha o progreso de la semana, minutos, siete días y frase', source: C + 'WeekCard.svelte', snaps: [weekAlive, weekNew], viewport: '800x420' })
+    const weekNew = await grab(fresh, [{ label: 'MyWeek · racha nueva', selector: comp('MyWeek') }])
+    await fresh.card({ path: at('my-week'), group: G, name: 'MyWeek', subtitle: 'minutos, posición y flecha, barras por día, racha o progreso, y a cuánto estás del siguiente', source: C + 'MyWeek.svelte', snaps: [weekLeague, weekNew], viewport: '800x480' })
     await btn(fresh, 'Mi perfil').click()
     await sheet(fresh, 'pantalla-sin-registrar', 'Amigos · Sin registrar', 'aún no pueden encontrarte: Registrar mi usuario', 'ProfileSheet.svelte')
     await fresh.context().close()

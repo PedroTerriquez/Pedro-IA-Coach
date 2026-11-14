@@ -122,58 +122,99 @@ export function weekProgress(logs: Log[], daysPerWeek: number, today: string): W
   return { done, needed, left: Math.max(0, needed - done) }
 }
 
-function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`
+// ── Leaderboard v2 («Mi semana» + la carrera) ──
+
+// "Cierra en 2d 14h": time left until next Monday 00:00, local.
+export function closesIn(now: Date): string {
+  const end = parseDate(mondayOf(toLocalDateStr(now)))
+  end.setDate(end.getDate() + 7)
+  const mins = Math.max(0, Math.floor((end.getTime() - now.getTime()) / 60000))
+  const d = Math.floor(mins / 1440)
+  const h = Math.floor((mins % 1440) / 60)
+  if (d > 0) return `Cierra en ${d}d ${h}h`
+  if (h > 0) return `Cierra en ${h}h`
+  return `Cierra en ${mins % 60} min`
 }
 
-const weeks = (n: number) => plural(n, 'semana', 'semanas')
-const workouts = (n: number) => plural(n, 'entreno', 'entrenos')
-const missing = (n: number, capital = false) => `${capital ? 'T' : 't'}e ${n === 1 ? 'falta' : 'faltan'} `
-
-function daysLeftPart(today: string): PhrasePart[] {
-  const left = 7 - weekDayIndex(today)
-  return [{ text: left === 1 ? 'Te queda ' : 'Te quedan ' }, { text: plural(left, 'día', 'días'), bold: true }]
+// Minutes trained each day of this week, Monday → Sunday.
+export function dayMinutes(sessions: { date: string; seconds: number }[], today: string): number[] {
+  const monday = mondayOf(today)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+  return days.map((day) => Math.floor(sessions.filter((s) => s.date === day).reduce((sum, s) => sum + (s.seconds || 0), 0) / 60))
 }
 
-function soloPhrase(streak: number, p: WeekProgress): PhrasePart[] {
-  const head: PhrasePart[] = [{ text: 'Llevas ' }, { text: workouts(p.done), bold: true }, { text: ' esta semana. ' }]
-  if (p.left === 0) return [...head, { text: `Ya sumaste tu semana ${streak}.` }]
-  return [...head, { text: missing(p.left, true) }, { text: String(p.left), bold: true }, { text: ` para sumar tu semana ${streak + 1}.` }]
+const MIN_BAR = 8
+const BAR_SCALE_MIN = 60
+
+// Bar height (%) per day: relative to the week's longest day, never less than an
+// hour, so a short session doesn't fill the bar. A day trained without timed
+// minutes still shows a sliver.
+export function dayBars(minutes: number[], days: DayState[]): number[] {
+  const scale = Math.max(BAR_SCALE_MIN, ...minutes)
+  return minutes.map((m, i) => (m > 0 ? Math.max(MIN_BAR, Math.round((m / scale) * 100)) : days[i] === 'done' ? MIN_BAR : 0))
 }
 
-function chasePhrase(league: LeagueEntry[], me: LeagueEntry, today: string): PhrasePart[] {
-  const above = league[me.position - 2]
-  const gap = { text: `${Math.max(1, above.minutes - me.minutes)} min`, bold: true }
-  if (league.length === 2) {
-    return [{ text: `${above.username} va adelante por ` }, gap, { text: '. ' }, ...daysLeftPart(today), { text: ' para alcanzarlo.' }]
-  }
-  return [{ text: 'Vas ' }, { text: `#${me.position} de ${league.length}`, bold: true }, { text: '. Con ' }, gap, { text: ` más pasas a ${above.username}.` }]
-}
+export interface Goal { kind: 'chase' | 'lead'; username: string; minutes: number; pct: number }
 
-// The one line under the week card. First matching rule wins (table in
-// docs/superpowers/specs/2026-10-07-amigos-v2-liga-semanal-design.md). Returned
-// as parts because usernames are someone else's text: never rendered as HTML.
-export function weekPhrase(input: {
-  streak: number
-  best: number
-  progress: WeekProgress
-  league: LeagueEntry[]
-  today: string
-}): PhrasePart[] {
-  const { streak, best, progress: p, league, today } = input
-  if (streak === 0 && best > 0) {
-    return [{ text: 'Volviste. Tu mejor racha es de ' }, { text: weeks(best), bold: true }, { text: `; ${missing(p.left)}` }, { text: workouts(p.left), bold: true }, { text: ' para empezar otra.' }]
-  }
-  if (streak === 0) {
-    return [{ text: missing(p.left, true) }, { text: workouts(p.left), bold: true }, { text: ' esta semana para tu primera semana de racha.' }]
-  }
-  if (p.done === 0) {
-    return [{ text: 'Tu racha de ' }, { text: weeks(streak), bold: true }, { text: ` sigue viva. ${missing(p.left, true)}` }, { text: workouts(p.left), bold: true }, { text: ` esta semana para llegar a ${streak + 1}.` }]
-  }
+// What sits under «Mi semana»: minutes to pass the one above, or my lead.
+export function leagueGoal(league: LeagueEntry[]): Goal | null {
   const me = league.find((e) => e.isMe)
-  if (!me || league.length < 2) return soloPhrase(streak, p)
-  if (me.position === 1) return [{ text: 'Vas ' }, { text: 'primero', bold: true }, { text: ' esta semana. Bien hecho.' }]
-  return chasePhrase(league, me, today)
+  if (!me || league.length < 2) return null
+  if (me.position === 1) return { kind: 'lead', username: league[1].username, minutes: me.minutes - league[1].minutes, pct: 100 }
+  const above = league[me.position - 2]
+  const pct = above.minutes > 0 ? Math.round((me.minutes / above.minutes) * 100) : 0
+  return { kind: 'chase', username: above.username, minutes: above.minutes - me.minutes + 1, pct }
+}
+
+// Bar width (%) of a row in the race: relative to the leader.
+export function raceBar(entry: LeagueEntry, league: LeagueEntry[]): number {
+  const top = league[0]?.minutes || 0
+  return top > 0 ? Math.round((entry.minutes / top) * 100) : 0
+}
+
+// ── Flechas «▲1 desde ayer» ──
+// The phone keeps a photo of the positions of the day it last opened Amigos
+// (`today`) and of the previous day it did (`before`). Arrows compare with
+// `before` only inside the same league week.
+
+export interface PositionsPhoto { date: string; positions: Record<string, number> }
+export interface LeagueSnapshot { today: PositionsPhoto; before: PositionsPhoto | null }
+
+function positionsOf(league: LeagueEntry[]): Record<string, number> {
+  return Object.fromEntries(league.map((e) => [e.username, e.position]))
+}
+
+export function nextSnapshot(prev: LeagueSnapshot | null, league: LeagueEntry[], today: string): LeagueSnapshot {
+  const photo = { date: today, positions: positionsOf(league) }
+  if (!prev || prev.today.date > today) return { today: photo, before: null }
+  if (prev.today.date === today) return { today: photo, before: prev.before }
+  return { today: photo, before: prev.today }
+}
+
+// Places gained since the photo (positive = up); users new to the league get none.
+export function positionMoves(snapshot: LeagueSnapshot | null, league: LeagueEntry[], today: string): Record<string, number> {
+  const before = snapshot?.before
+  if (!before || before.date < mondayOf(today) || before.date >= today) return {}
+  const moves: Record<string, number> = {}
+  for (const e of league) {
+    const was = before.positions[e.username]
+    if (was && was !== e.position) moves[e.username] = was - e.position
+  }
+  return moves
+}
+
+const WEEKDAY_LOWER = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+
+// "desde ayer" / "desde el martes": the day the arrows compare with.
+export function movesSince(snapshot: LeagueSnapshot | null, today: string): string {
+  const date = snapshot?.before?.date
+  if (!date) return ''
+  return date === addDays(today, -1) ? 'desde ayer' : `desde el ${WEEKDAY_LOWER[weekDayIndex(date)]}`
+}
+
+export function moveLabel(move: number | undefined): string {
+  if (!move) return ''
+  return `${move > 0 ? '▲' : '▼'}${Math.abs(move)}`
 }
 
 function dayMonth(dateStr: string, withMonth: boolean): string {

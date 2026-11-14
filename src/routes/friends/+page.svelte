@@ -3,7 +3,6 @@
   import EmptyState from '$lib/components/EmptyState.svelte'
   import Button from '$lib/components/Button.svelte'
   import Avatar from '$lib/components/Avatar.svelte'
-  import WeekCard from '$lib/components/WeekCard.svelte'
   import Leaderboard from '$lib/components/Leaderboard.svelte'
   import Stack from '$lib/components/Stack.svelte'
   import FriendDetail from '$lib/components/FriendDetail.svelte'
@@ -18,13 +17,18 @@
   import { online } from '$lib/stores/network'
   import { registerUser, renameUser, syncUserToWorker, checkUserExists, checkUser } from '$lib/push'
   import AccountSheet from '$lib/components/AccountSheet.svelte'
-  import { getAllLogs, getSettings, getPrograms, saveSettings, getWeeklyGymSeconds } from '$lib/storage'
+  import { getAllLogs, getSettings, getPrograms, saveSettings, getAllGymSessions } from '$lib/storage'
   import { computeStreakWeeks, computeBestStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { toLocalDateStr, mondayOf } from '$lib/calendar-utils'
   import { shareUsername } from '$lib/share'
-  import { buildLeague, weekDays, weekProgress, weekPhrase, weekEyebrow, formatSavedAt, type FriendData } from '$lib/league'
-  import { readFriendsCache, writeFriendsCache } from '$lib/friends-cache'
-  import type { ExerciseLog } from '$lib/types'
+  import {
+    buildLeague, weekDays, weekProgress, weekEyebrow, formatSavedAt, closesIn, dayMinutes, dayBars,
+    leagueGoal, nextSnapshot, positionMoves, movesSince, type FriendData, type LeagueSnapshot,
+  } from '$lib/league'
+  import { readFriendsCache, writeFriendsCache, readLeagueSnapshot, writeLeagueSnapshot } from '$lib/friends-cache'
+  import { resolveWeekOrder } from '$lib/week-order'
+  import { slotDay, isRestDay } from '$lib/plan-week'
+  import type { ExerciseLog, GymSession, Program, Settings } from '$lib/types'
 
   let username = $state('')
   let inputUsername = $state('')
@@ -43,6 +47,10 @@
   let myStreak = $state(0)
   let bestStreak = $state(0)
   let myGymSeconds = $state(0)
+  let lastWeekSeconds = $state(0)
+  let sessions = $state<GymSession[]>([])
+  let restDays = $state<boolean[]>([])
+  let snapshot = $state<LeagueSnapshot | null>(null)
   let exercisedToday = $state(false)
 
   let searchQuery = $state('')
@@ -65,7 +73,27 @@
   const inLeague = $derived(league.filter((e) => !e.isMe).map((e) => e.username))
   const selected = $derived(league.find((e) => e.username === selectedUser && !e.isMe) ?? null)
   const progress = $derived(weekProgress(logs, daysPerWeek, today))
-  const phrase = $derived(weekPhrase({ streak: myStreak, best: bestStreak, progress, league, today }))
+  const moves = $derived(positionMoves(snapshot, league, today))
+  const days = $derived(weekDays(logs, today))
+  const myWeek = $derived.by(() => {
+    const me = league.find((e) => e.isMe)
+    const lastWeekMin = Math.floor(lastWeekSeconds / 60)
+    return {
+      minutes: myMinutes,
+      delta: myMinutes || lastWeekMin ? myMinutes - lastWeekMin : null,
+      position: friendCount > 0 ? me?.position ?? null : null,
+      move: me ? moves[me.username] ?? 0 : 0,
+      since: movesSince(snapshot, today),
+      bars: dayBars(dayMinutes(sessions, today), days),
+      days,
+      rest: restDays,
+      streak: myStreak,
+      best: bestStreak,
+      done: progress.done,
+      needed: progress.needed,
+      goal: leagueGoal(league),
+    }
+  })
 
   onMount(async () => {
     const s = await getSettings()
@@ -97,15 +125,39 @@
 
   // Everything the week card needs comes from this phone, never from the Worker.
   async function loadMyWeek() {
-    const [allLogs, s, progs] = await Promise.all([getAllLogs(), getSettings(), getPrograms()])
+    const [allLogs, s, progs, allSessions] = await Promise.all([getAllLogs(), getSettings(), getPrograms(), getAllGymSessions()])
     const activeProg = progs.find(p => p.id === s.activeProgramId)
+    const weekAgo = new Date()
+    weekAgo.setDate(weekAgo.getDate() - 7)
     today = toLocalDateStr(new Date())
     logs = allLogs
+    sessions = allSessions
     daysPerWeek = trainingDaysPerWeek(activeProg, s.currentWeekIdx || 0)
     myStreak = computeStreakWeeks(allLogs, daysPerWeek, today)
     bestStreak = computeBestStreakWeeks(allLogs, daysPerWeek, today)
     exercisedToday = allLogs.some(l => l.date === today && l.weight > 0)
-    myGymSeconds = await getWeeklyGymSeconds(mondayOf(today))
+    myGymSeconds = weekSeconds(allSessions, mondayOf(today))
+    lastWeekSeconds = weekSeconds(allSessions, mondayOf(toLocalDateStr(weekAgo)))
+    restDays = planRestDays(activeProg, s)
+  }
+
+  function weekSeconds(all: GymSession[], monday: string): number {
+    return all.filter((g) => g.weekStart === monday).reduce((sum, g) => sum + (g.seconds || 0), 0)
+  }
+
+  // Rest days of this week as Plan lays them out (moves included); none without a program.
+  function planRestDays(program: Program | undefined, s: Settings): boolean[] {
+    if (!program) return []
+    const weekIdx = s.currentWeekIdx || 0
+    const week = program.weeks[weekIdx] || program.weeks[0]
+    const override = (s.rescheduleWeekOrder || {})[`${program.id}-week-${weekIdx}`]
+    const order = resolveWeekOrder(week, Array.isArray(override) ? override : null)
+    return order.map((_, i) => isRestDay(slotDay(week, order, i)))
+  }
+
+  function photographLeague() {
+    snapshot = nextSnapshot(readLeagueSnapshot(), league, today)
+    writeLeagueSnapshot(snapshot)
   }
 
   function showCachedFriends() {
@@ -136,6 +188,7 @@
     // Push our own streak/today/weekly gym time so friends see real data.
     if (PUSH_SERVER_URL) syncUserToWorker(username, myStreak, exercisedToday, myGymSeconds).catch(() => {})
     await loadFriends()
+    photographLeague()
     loading = false
   }
 
@@ -345,16 +398,8 @@
       {#if loading}
         <EmptyState id="friends-list" class="friends-empty" message="Cargando…" />
       {:else}
-        <WeekCard
-          streak={myStreak}
-          done={progress.done}
-          needed={progress.needed}
-          minutes={myMinutes}
-          days={weekDays(logs, today)}
-          {phrase}
-        />
-
         {#if friendCount === 0}
+          <Leaderboard {league} week={myWeek} closes={closesIn(new Date())} />
           <section class="empty" id="friends-list">
             <div class="slots">
               <Avatar {username} />
@@ -376,6 +421,9 @@
           <Stack gap={24} id="friends-list">
             <Leaderboard
               {league}
+              week={myWeek}
+              closes={closesIn(new Date())}
+              {moves}
               updated={cachedAt ? `Datos del ${formatSavedAt(cachedAt)}. Se actualizan al volver la conexión.` : ''}
               onselect={selectEntry}
             />

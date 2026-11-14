@@ -1,9 +1,11 @@
 <script lang="ts">
   import Avatar from './Avatar.svelte'
-  import { streakLabel, type LeagueEntry } from '$lib/league'
+  import { moveLabel, type LeagueEntry } from '$lib/league'
 
-  let { entry, onselect = () => {} }: {
+  let { entry, bar = 0, move = 0, onselect = () => {} }: {
     entry: LeagueEntry
+    bar?: number
+    move?: number
     onselect?: (username: string) => void
   } = $props()
 </script>
@@ -12,16 +14,22 @@
   type="button"
   class="league-row"
   class:me={entry.isMe}
+  class:lead={entry.position === 1}
   class:quiet={entry.minutes === 0}
   data-component="LeagueRow"
   data-user={entry.username}
+  data-pos={entry.position}
   onclick={() => onselect(entry.username)}
 >
   <span class="pos">{entry.position}</span>
-  <Avatar username={entry.username} today={entry.today} />
+  <Avatar username={entry.username} size={36} today={entry.today} />
   <span class="who">
-    <span class="name"><span>{entry.username}</span>{#if entry.isMe}<small>Tú</small>{/if}</span>
-    <span class="sub">{streakLabel(entry.streak)}</span>
+    <span class="name">
+      <span>{entry.username}</span>
+      {#if entry.isMe}<small>Tú</small>{/if}
+      {#if move}<span class="mv" class:up={move > 0} data-move={move}>{moveLabel(move)}</span>{/if}
+    </span>
+    <span class="rb"><i style="width:{bar}%"></i></span>
   </span>
   <span class="min">{entry.minutes} <small>min</small></span>
 </button>
@@ -29,12 +37,11 @@
 <style>
   .league-row {
     display: grid;
-    grid-template-columns: 20px 40px minmax(0, 1fr) auto;
+    grid-template-columns: 20px 36px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     width: 100%;
-    min-height: 68px;
-    padding: 0 14px 0 10px;
+    padding: 12px 14px 12px 10px;
     border: 0;
     border-radius: var(--radius-md);
     background: none;
@@ -45,7 +52,7 @@
     touch-action: manipulation;
   }
   .league-row + :global(.league-row) { box-shadow: 0 -0.5px 0 var(--border); }
-  /* My row is told apart by surface and "Tú", never by accent. */
+  /* My row is told apart by surface, "Tú" and its accent bar. */
   .league-row.me {
     background: var(--surface);
     --ring: var(--surface);
@@ -65,38 +72,55 @@
     align-items: baseline;
     gap: 8px;
     min-width: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: -0.2px;
   }
-  .name span {
+  .name > span:first-child {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .name small {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--text-tertiary);
   }
-  .sub {
-    display: block;
-    margin-top: 3px;
-    font-size: 13px;
-    color: var(--text-tertiary);
+  .mv {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
   }
+  .mv.up { color: var(--accent); }
+  .rb {
+    display: block;
+    overflow: hidden;
+    height: 4px;
+    margin-top: 8px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+  }
+  .rb i {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.14);
+  }
+  .lead .rb i { background: var(--text-secondary); }
+  .me .rb i { background: var(--accent); }
   .min {
     text-align: right;
     font-family: var(--font-mono);
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: -0.04em;
   }
   .min small {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
     letter-spacing: 0;
   }
-  .quiet .name,
+  .quiet .name > span:first-child,
   .quiet .min { color: var(--text-secondary); }
 </style>

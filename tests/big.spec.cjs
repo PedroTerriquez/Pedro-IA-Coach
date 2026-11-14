@@ -65,7 +65,7 @@ const EXPECTED_STEPS = [
   'Step 7b: Historial — Ejercicios',
   'Step 8a: Amigos — Liga después de entrenar',
   'Step 8b: Amigos — Liga chica y agregar',
-  'Step 8c: Amigos — Podio, detalle y datos viejos',
+  'Step 8c: Amigos — Carrera, detalle y datos viejos',
   'Step 9a: Red — Sin conexión y ping',
   'Step 9b: Offline — Las vistas y lo que pide internet',
   'Step 10: Idioma, TabBar y nombres largos',
@@ -111,7 +111,7 @@ async function waitForApp(page) {
 // prompt only render once it's done.
 async function gotoFriendsLoaded(page) {
   await nav(page, 'friends')
-  await expect(page.locator('[data-component="WeekCard"], #username-prompt').first()).toBeVisible()
+  await expect(page.locator('[data-component="MyWeek"], #username-prompt').first()).toBeVisible()
 }
 
 // Warmup/stretch sheet (Hoy v2): walks the → arrow until the last move, where
@@ -850,7 +850,10 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   })
 
   const registers = () => api.calls.filter((c) => c.path.endsWith('/api/user/register'))
-  const card = page.locator('[data-component="WeekCard"]')
+  // Changed 2026-11-12 with Leaderboard v2 (approved by Pedro): «Mi semana»
+  // replaces the WeekCard and its phrase; the goal line («N min para pasar a…»)
+  // and the race with bars replace the phrase and the podium.
+  const card = page.locator('[data-component="MyWeek"]')
   const list = page.locator('#friends-list')
   const addBtn = page.getByRole('button', { name: 'Agregar amigo' })
   const sheetClose = () => page.locator('[data-component="Sheet"]').getByRole('button', { name: 'Cerrar' }).click()
@@ -870,12 +873,14 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
 
     // Registering failed (500) and the league opens anyway. The restored
     // weeks are a live streak, even with this week still untrained.
-    await expect(card).toContainText('Tu racha')
-    await expect(card.locator('.num')).toHaveText(/^[1-9]\d*$/)
-    streakBefore = parseInt(await card.locator('.num').textContent(), 10)
-    await expect(card).toContainText('semanas seguidas')
-    await expect(card.locator('.line')).toHaveText(new RegExp(`^Tu racha de ${streakBefore} semanas? sigue viva\\.`))
-    await expect(card.locator('.day').nth(t)).toHaveAttribute('data-day', 'today')
+    await expect(card.locator('.me-streak b')).toHaveText(/^[1-9]\d* semanas?$/)
+    streakBefore = parseInt(await card.locator('.me-streak b').textContent(), 10)
+    await expect(card.locator('.me-streak')).toContainText(/seguidas?/)
+    // Alone: no position and nobody to pass
+    await expect(card.locator('.me-pos')).toHaveCount(0)
+    await expect(card.locator('.goal')).toHaveCount(0)
+    await expect(page.locator('[data-component="Leaderboard"] .closes')).toHaveText(/^Cierra en \d/)
+    await expect(card.locator('.d').nth(t)).toHaveAttribute('data-day', 'today')
     await expect(page.locator('body')).not.toContainText('0 semanas')
     expect(registers().length).toBeGreaterThanOrEqual(1)
     expect(registers()[0].body).toEqual({ username: 'Pedro' })
@@ -1562,7 +1567,7 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     // Edit serie 4 and take it back: «Restablecer» returns what was registered
     await timer.getByRole('button', { name: 'Serie 4', exact: true }).click()
     await expect(timer.locator('.scs-ed-title')).toContainText('Serie 4 de 4')
-    await expect(timer.locator('.scs-ed-prev')).toContainText('Registrado: 85 kg × 7')
+    await expect(timer.locator('.scs-ed-prev')).toContainText('antes 85 kg × 7')
     await expect(timer.getByRole('button', { name: 'Copiar a las siguientes' })).toBeDisabled()
     await timer.getByRole('button', { name: 'Más reps' }).click()
     await expect(rows.nth(3)).toContainText('85kg×8reps')
@@ -1582,8 +1587,11 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await timer.getByLabel('Reps', { exact: true }).fill('9')
     await timer.getByLabel('Reps', { exact: true }).press('Enter')
     await expect(rows.nth(0)).toContainText('85kg×9reps')
-    await timer.getByRole('button', { name: 'Siguiente serie' }).click()
+    // The ↓ arrow moves to the next set; ↑ is off on the first
+    await expect(timer.getByRole('button', { name: 'Serie anterior' })).toBeDisabled()
+    await timer.getByRole('button', { name: 'Serie siguiente' }).click()
     await expect(timer.locator('.scs-ed-title')).toContainText('Serie 2 de 4')
+    await expect(timer.locator('.scs-ed-n')).toHaveText('2')
     await timer.getByRole('button', { name: 'Serie 1', exact: true }).click()
     await timer.getByRole('button', { name: 'Copiar a las siguientes' }).click()
     for (const i of [1, 2, 3]) await expect(rows.nth(i)).toContainText('85kg×9reps')
@@ -2186,9 +2194,10 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   await step('Step 8a: Amigos — Liga después de entrenar', async () => {
     await nav(page, 'friends')
     // Today counts now: the week is done and the streak grew by one
-    await expect(card.locator('.day').nth(t)).toHaveAttribute('data-day', 'done')
-    await expect(card.locator('.num')).toHaveText(String(streakBefore + 1))
-    await expect(card).toContainText('semanas seguidas')
+    await expect(card.locator('.d').nth(t)).toHaveAttribute('data-day', 'done')
+    await expect(card.locator('.d').nth(t).locator('.bar i')).toHaveCount(1)
+    await expect(card.locator('.me-streak b')).toHaveText(`${streakBefore + 1} semanas`)
+    await expect(card.locator('.me-streak')).toContainText('semanas seguidas')
     await expect(page.locator('body')).not.toContainText('0 semanas')
   })
 
@@ -2218,10 +2227,10 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(sheet).toBeVisible()
     await sheetClose()
 
-    // One friend: a plain list, no podium, and the nudge to add more
+    // One friend: the race of two, how much to pass her, and the nudge to add more
     await expect(page.locator('[data-component="LeagueRow"]')).toHaveCount(2)
-    await expect(page.locator('.podium')).toHaveCount(0)
-    await expect(card.locator('.line')).toHaveText(/^Ana va adelante por \d+ min\. Te (queda 1 día|quedan \d+ días) para alcanzarlo\.$/)
+    await expect(card.locator('.me-pos b')).toHaveText('#2')
+    await expect(card.locator('.goal-t')).toHaveText(/^\d+ min para pasar a Ana$/)
     await expect(list).toContainText('Con más amigos, la semana se pone más reñida.')
 
     // The one already in the league says so; the other one can be added
@@ -2243,13 +2252,13 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect(copied).toContain('/Pedro-IA-Coach/')
     await sheetClose()
 
-    // Two friends: the podium appears and adding becomes secondary
-    await expect(page.locator('.podium .col')).toHaveCount(3)
+    // Two friends: three in the race and adding becomes secondary
+    await expect(page.locator('[data-component="LeagueRow"]')).toHaveCount(3)
     await expect(list).not.toContainText('Con más amigos')
     await expect(addBtn).toHaveClass(/btn-secondary/)
   })
 
-  await step('Step 8c: Amigos — Podio, detalle y datos viejos', async () => {
+  await step('Step 8c: Amigos — Carrera, detalle y datos viejos', async () => {
     const hoursAgo = (h) => new Date(Date.now() - h * 3600000).toISOString()
     api.friends = [
       ...api.friends,
@@ -2258,16 +2267,18 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
       LEAGUE.friend('Ayer', 45, { exercisedToday: true, lastUpdate: hoursAgo(24) }),
     ]
     await page.reload()
-    // Podium by minutes, shown 2-1-3, no medals anywhere
-    const cols = page.locator('.podium .col')
-    await expect(cols).toHaveCount(3)
-    await expect(cols.nth(1)).toHaveAttribute('data-pos', '1')
-    await expect(cols.nth(1)).toContainText('Luis')
-    await expect(cols.nth(1)).toContainText('195 min')
-    await expect(cols.nth(0)).toContainText('Ana')
+    // The race by minutes, the leader's bar full, no medals anywhere
+    const rows = page.locator('[data-component="LeagueRow"]')
+    await expect(rows).toHaveCount(6)
+    await expect(rows.first()).toHaveAttribute('data-pos', '1')
+    await expect(rows.first()).toContainText('Luis')
+    await expect(rows.first()).toContainText('195 min')
+    await expect(rows.first().locator('.rb i')).toHaveAttribute('style', /width:\s*100%/)
+    await expect(rows.nth(1)).toContainText('Ana')
     for (const medal of ['🏆', '🥈', '🥉']) await expect(page.locator('body')).not.toContainText(medal)
     // Behind: where I am and how much is missing to pass the next one
-    await expect(card.locator('.line')).toHaveText(/^Vas #\d+ de 6\. Con \d+ min más pasas a \S+\.$/)
+    await expect(card.locator('.me-pos b')).toHaveText(/^#[2-6]$/)
+    await expect(card.locator('.goal-t')).toHaveText(/^\d+ min para pasar a \S+$/)
 
     // Old data: last week's minutes count 0 and the stale «trained today» goes;
     // yesterday's sync keeps its minutes (unless yesterday was last week) but not the dot
@@ -2277,9 +2288,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(entry('Viejo').locator('[data-today]')).toHaveCount(0)
     await expect(entry('Ayer')).toContainText(`${t === 0 ? 0 : 45} min`)
     await expect(entry('Ayer').locator('[data-today]')).toHaveCount(0)
-    // Synced today and trained: the dot, and the legend that explains it
+    // Synced today and trained: the dot
     await expect(entry('Ana').locator('[data-today]')).toHaveCount(1)
-    await expect(page.locator('[data-component="Leaderboard"] .legend')).toHaveText('Entrenó hoy')
 
     // A friend's detail: two figures and bars relative to whoever has more
     await entry('Anabel').click()
@@ -2303,12 +2313,13 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     expect(api.calls.find((c) => c.path.endsWith('/api/friends/remove')).body).toEqual({ username: 'Pedro', friendUsername: 'Anabel' })
     await expect(entry('Anabel')).toHaveCount(0)
 
-    // With everyone behind me this week: «Vas primero», and I stand in the middle
+    // With everyone behind me this week: «Vas primero» and my lead, on top of the race
     api.friends = [LEAGUE.friend('Mariana', 0, { streak: 4 }), LEAGUE.friend('Diego', 0, { streak: 1 })]
     await page.reload()
-    await expect(card.locator('.line')).toHaveText('Vas primero esta semana. Bien hecho.')
-    await expect(cols.nth(1)).toHaveAttribute('data-pos', '1')
-    await expect(cols.nth(1)).toContainText('Tú')
+    await expect(card.locator('.me-pos b')).toHaveText('#1')
+    await expect(card.locator('.goal-t')).toHaveText(/^Vas primero, (\d+ min por delante de|empatado con) (Mariana|Diego)$/)
+    await expect(rows.first()).toHaveAttribute('data-pos', '1')
+    await expect(rows.first()).toContainText('Tú')
   })
 
   const banner = page.locator('#offline-banner')
@@ -2983,19 +2994,20 @@ test.describe('Amigos v2 — racha nueva', () => {
       program: LEAGUE.program(),
       settings: LEAGUE.settings(),
     })
-    const card = page.locator('[data-component="WeekCard"]')
+    // Changed 2026-11-12 with Leaderboard v2 (Pedro): the WeekCard and its
+    // «Volviste…» phrase gave way to «Mi semana»; the best streak shows as «récord».
+    const card = page.locator('[data-component="MyWeek"]')
 
-    await expect(card).toContainText('Racha nueva')
-    await expect(card.locator('.num')).toHaveText('0 de 3')
-    await expect(card).toContainText('entrenos esta semana')
-    await expect(card.locator('.line')).toHaveText('Volviste. Tu mejor racha es de 3 semanas; te faltan 3 entrenos para empezar otra.')
-    await expect(card.locator('.day').nth(getDayIdx())).toHaveAttribute('data-day', 'today')
+    await expect(card.locator('.me-streak b')).toHaveText('0 de 3')
+    await expect(card.locator('.me-streak')).toContainText('entrenos esta semana')
+    await expect(card.locator('.record')).toHaveText('récord 3')
+    await expect(card.locator('.d').nth(getDayIdx())).toHaveAttribute('data-day', 'today')
     await expect(page.locator('body')).not.toContainText('0 semanas')
 
     await logWeightToday(page)
     await nav(page, 'friends')
-    await expect(card.locator('.num')).toHaveText('1 de 3')
-    await expect(card.locator('.day').nth(getDayIdx())).toHaveAttribute('data-day', 'done')
+    await expect(card.locator('.me-streak b')).toHaveText('1 de 3')
+    await expect(card.locator('.d').nth(getDayIdx())).toHaveAttribute('data-day', 'done')
     await expect(page.locator('body')).not.toContainText('0 semanas')
   })
 })
@@ -3007,6 +3019,61 @@ test.describe('Amigos v2 — racha nueva', () => {
 // pencil is still in the page, only hidden, so the test checks it stays hidden,
 // shows it, and the whole rename (on the Worker, taken name, survives reload)
 // keeps being tested. When the pencil returns, drop the unhide.
+// Apart from the flow: it needs yesterday's photo of the league on the phone.
+// Leaderboard v2 (Pedro, 2026-11-12). On a Monday there is no earlier day in the
+// league week, so the page clock moves to Wednesday of the same week.
+test.describe('Leaderboard v2 — mi semana y flechas', () => {
+  test('shows minutes per day, rest days, the gap to the next one and the arrows since yesterday', async ({ page }) => {
+    const shift = getDayIdx() === 0 ? 2 : 0
+    await page.clock.setFixedTime(new Date(Date.now() + shift * 86400000))
+    const today = localDate(-shift)
+    const yesterday = localDate(1 - shift)
+    const monday = LEAGUE.fromMonday(0)
+    const lastMonday = LEAGUE.fromMonday(-7)
+    const api = { friends: [LEAGUE.friend('Luis', 200), LEAGUE.friend('Ana', 30)] }
+    await mockWorker(page, api)
+    await openFriends(page, {
+      program: LEAGUE.program(),
+      settings: LEAGUE.settings(),
+      gymSessions: [
+        { id: today, date: today, seconds: 50 * 60, weekStart: monday },
+        { id: lastMonday, date: lastMonday, seconds: 20 * 60, weekStart: lastMonday },
+      ],
+    })
+    // Yesterday Ana led and I was last
+    await page.evaluate((date) => localStorage.setItem('league-snapshot', JSON.stringify({
+      today: { date, positions: { Ana: 1, Luis: 2, TestUser: 3 } }, before: null,
+    })), yesterday)
+    await page.reload()
+
+    const board = page.locator('[data-component="Leaderboard"]')
+    const card = board.locator('[data-component="MyWeek"]')
+    const row = (name) => board.locator(`[data-component="LeagueRow"][data-user="${name}"]`)
+    await expect(board.locator('.closes')).toHaveText(/^Cierra en \d/)
+    await expect(card.locator('.me-big')).toHaveText(/^50\s*min$/)
+    await expect(card.locator('.me-delta')).toHaveText('+30 vs semana pasada')
+    // Today's bar; the plan's three rest days drawn apart
+    const todayIdx = getDayIdx() + shift
+    await expect(card.locator('.d').nth(todayIdx).locator('.bar i')).toHaveCount(1)
+    await expect(card.locator('.d.now')).toHaveCount(1)
+    await expect(card.locator('.d.rest')).toHaveCount(3)
+    // Second now, one place up since yesterday, and 151 min to pass Luis
+    await expect(card.locator('.me-pos b')).toHaveText('#2')
+    await expect(card.locator('.me-pos span')).toHaveText('▲1 desde ayer')
+    await expect(card.locator('.goal-t')).toHaveText('151 min para pasar a Luis')
+    await expect(row('Luis').locator('.mv')).toHaveText('▲1')
+    await expect(row('Ana').locator('.mv')).toHaveText('▼2')
+    await expect(row('TestUser').locator('.mv')).toHaveText('▲1')
+    await expect(row('Luis').locator('.rb i')).toHaveAttribute('style', /width:\s*100%/)
+    await expect(row('Ana').locator('.rb i')).toHaveAttribute('style', /width:\s*15%/)
+
+    // Opening again the same day keeps comparing with yesterday
+    await page.reload()
+    await expect(card.locator('.me-pos span')).toHaveText('▲1 desde ayer')
+    await expect(row('Ana').locator('.mv')).toHaveText('▼2')
+  })
+})
+
 test.describe('Amigos v2 — mi perfil y renombrar', () => {
   test('renames on the Worker, rejects a taken name, and keeps the new name after reload', async ({ page }) => {
     const api = { friends: [LEAGUE.friend('Ana', 60), LEAGUE.friend('Luis', 30)], renameStatus: 409 }
@@ -3193,7 +3260,7 @@ test.describe('Nube — sin usuario todavía', () => {
     await page.reload()
     await gotoFriendsLoaded(page)
     await expect(page.locator('#username-prompt')).toHaveCount(0)
-    await expect(page.locator('[data-component="WeekCard"]')).toBeVisible()
+    await expect(page.locator('[data-component="MyWeek"]')).toBeVisible()
     expect(api.listUsers.at(-1)).toBe('Nuevo')
   })
 })
@@ -3289,7 +3356,7 @@ test.describe('Nube — sin cuenta, los minutos se guardan igual sin estirar', (
     expect(api.downloads).toHaveLength(0)
 
     await gotoFriendsLoaded(page)
-    await expect(page.locator('[data-component="WeekCard"] .minutes b')).not.toHaveText('0')
+    await expect(page.locator('[data-component="MyWeek"] .me-big')).not.toHaveText(/^0\s*min$/)
   })
 })
 

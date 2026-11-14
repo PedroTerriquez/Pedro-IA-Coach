@@ -5,8 +5,8 @@
   import type { StripSocial } from '$lib/plan-week'
   import { WEEKDAY_LETTERS } from '$lib/program-utils'
 
-  // «Esta semana» in Plan: your own progress (same day marks as the Amigos
-  // WeekCard) and one line that opens Amigos with who trained today.
+  // «Esta semana» in Plan: your own progress (same trained days as Amigos'
+  // «Mi semana») and one line that opens Amigos with who trained today.
   let { done = 0, total = 0, days = [], firstWeek = false, social, onopen }: {
     done: number
     total: number

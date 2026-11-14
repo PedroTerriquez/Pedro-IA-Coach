@@ -26,6 +26,7 @@ vite.config.ts.timestamp-*
 
 # Project
 *.bak
+.playwright-lock
 .opencode/
 push-config.js
 test-results/

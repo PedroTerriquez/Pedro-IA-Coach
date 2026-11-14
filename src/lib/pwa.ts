@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.102'
-const _VER_DESC = 'Detalle abre en GIF con selector Foto o GIF'
-const _VER_TIME = '2026-11-14 17:21'
+const _VER_BASE = 'v2.103'
+const _VER_DESC = 'Leaderboard v2: Mi semana, carrera con barras y flechas desde ayer'
+const _VER_TIME = '2026-11-14 17:36'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
