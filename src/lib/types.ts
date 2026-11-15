@@ -77,6 +77,11 @@ export interface SessionState {
   warmupMarks?: number[]
   /** Indexes of the stretch moves marked with Hecho */
   stretchMarks?: number[]
+  /** Last set logged, move marked or rest started; the session goes idle 45 min after it */
+  lastActivityAt?: number | null
+  /** The day's exercises, to save a session left open on an earlier day */
+  planned?: { exerciseId: string; sets: number; reps: string }[]
+  dayName?: string
 }
 
 export interface Settings {

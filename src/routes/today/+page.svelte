@@ -37,7 +37,12 @@
   import IconButton from '$lib/components/IconButton.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import CenterToast from '$lib/components/CenterToast.svelte'
-  import type { Exercise, ExerciseLog, Program, ProgramDay, Settings } from '$lib/types'
+  import OpenSessionSheet from '$lib/components/OpenSessionSheet.svelte'
+  import {
+    isIdle, isStale, idleEnd, idleSeconds, idleMinutes, clockTime, staleEyebrow, lastActivity,
+    lastWeightBefore as lastWeightOn, type PendingExercise,
+  } from '$lib/session-idle'
+  import type { Exercise, ExerciseLog, Program, ProgramDay, SessionState, Settings } from '$lib/types'
 
   // Port literal del TOAST_SVG_WATCH del legacy (components/ui.js pre-migración)
   const WATCH_SVG = `<svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect x="14" y="6" width="44" height="60" rx="13" stroke="currentColor" stroke-width="2.5" fill="none"/><rect x="20" y="16" width="32" height="30" rx="6" fill="currentColor" fill-opacity="0.06"/><circle cx="36" cy="30" r="5" fill="currentColor" fill-opacity="0.2"/><path d="M30 28h12v2H30z" fill="currentColor"/><path d="M30 32h8v2H30z" fill="currentColor" fill-opacity="0.5"/><circle cx="36" cy="54" r="3" fill="currentColor" fill-opacity="0.15"/><rect x="28" y="3" width="16" height="4" rx="2" fill="currentColor" fill-opacity="0.12"/></svg>`
@@ -76,6 +81,10 @@
   let stretchMarks = $state<number[]>([])
   let startedAt = $state<number | null>(null)
   let endedAt = $state<number | null>(null)
+  let lastActivityAt = $state<number | null>(null)
+  // A session left open on an earlier day: its time is already saved, the
+  // sheet only confirms what was left unregistered
+  let staleSession = $state<SessionState | null>(null)
   let completionToastShown = $state(false)
   let centerToast = $state<CenterToastData | null>(null)
   let nowMs = $state(Date.now())
@@ -127,8 +136,12 @@
   }))
   // The banner only shows a running rest; one at zero, minimized, leaves the dock
   let restShown = $derived($restBannerState.visible && $restMinimized && $restBannerState.phase !== 'done')
+  let liveSession = $derived<SessionState>({ date: todayDate, phase: 0, todayExDone: 0, startedAt, endedAt, lastActivityAt })
+  // 45 min without activity: the clock freezes at the last activity + 3 min
+  let idle = $derived(!complete && isIdle(liveSession, nowMs))
+  let showIdleSheet = $derived(loaded && idle && !staleSession && !showDetail && !moveSheet)
   let clockRunning = $derived(!!startedAt && !endedAt)
-  let clock = $derived(startedAt ? formatClock(nowMs - startedAt) : '')
+  let clock = $derived(startedAt ? formatClock((idle ? idleEnd(liveSession) : nowMs) - startedAt) : '')
   let sessionMinutes = $derived(durationMinutes())
   let eyebrow = $derived(complete
     ? `Hoy · terminado${sessionMinutes !== null ? ` en ${sessionMinutes} min` : ''}`
@@ -260,6 +273,7 @@
     weekObj = program?.weeks?.[weekIdx]
     todayDate = toLocal(new Date())
     todaySwapsMap = (s.todaySwaps && s.todaySwaps.date === todayDate) ? s.todaySwaps.swaps : {}
+    await closeStaleSession(s.sessionState)
 
     checkPendingRest()
     _checkRestTimer()
@@ -300,6 +314,8 @@
       const p = ss.phase || 1
       startedAt = ss.startedAt || null
       endedAt = ss.endedAt || null
+      // Saved before the last activity existed: count from now, never idle at once
+      lastActivityAt = ss.lastActivityAt || (startedAt ? Date.now() : null)
       warmupMarks = ss.warmupMarks || []
       stretchMarks = ss.stretchMarks || []
       warmupDone = p >= 2
@@ -346,7 +362,13 @@
   function startSessionTimer() {
     if (startedAt) return
     startedAt = Date.now()
+    lastActivityAt = startedAt
     persistPhase()
+  }
+
+  // A set logged, a move marked or a rest started: the session is alive
+  function markActivity() {
+    if (startedAt && !endedAt) lastActivityAt = Date.now()
   }
 
   function formatElapsed(startMs: number, endMs: number): string {
@@ -370,8 +392,10 @@
     const todayExDone = statuses.filter(st => st.state === 'done').length
     // Plain arrays: IndexedDB can't clone the $state proxies
     const sessionState = {
-      date: todayDate, phase: currentPhaseNumber(), todayExDone, startedAt, endedAt,
+      date: todayDate, phase: currentPhaseNumber(), todayExDone, startedAt, endedAt, lastActivityAt,
       warmupMarks: [...warmupMarks], stretchMarks: [...stretchMarks],
+      planned: todayExercises.map(ex => ({ exerciseId: ex.exerciseId, sets: ex.sets, reps: String(ex.reps ?? '') })),
+      dayName: day?.name || '',
     }
     // Merge onto what's stored, never onto the in-memory store: it can be stale
     // (e.g. missing todaySwaps) and would wipe today's alternative.
@@ -388,6 +412,7 @@
   function markMove(mode: MoveMode, idx: number) {
     if (mode === 'warmup' && !warmupMarks.includes(idx)) warmupMarks = [...warmupMarks, idx]
     if (mode === 'stretch' && !stretchMarks.includes(idx)) stretchMarks = [...stretchMarks, idx]
+    markActivity()
     persistPhase()
   }
 
@@ -443,8 +468,15 @@
   }
 
   function onDetailLog() {
+    markActivity()
     loadTodayLogs()
     refreshExerciseLogs()
+  }
+
+  function startRest(data: Parameters<typeof startRestFromExercise>[0]) {
+    markActivity()
+    persistPhase()
+    return startRestFromExercise(data)
   }
 
   // «Terminar entrenamiento» from the last exercise: straight to the first stretch move
@@ -528,6 +560,89 @@
     syncUserToWorker(s.username, streak, exercisedToday, gymTime).catch(() => {})
   }
 
+  // ── Session left open ──
+
+  function pendingToday(): PendingExercise[] {
+    return sessionExercises
+      .map((ex, i) => ({ ex, i }))
+      .filter(({ ex }) => ex.status.state !== 'done')
+      .map(({ ex, i }) => ({
+        exerciseId: todayExercises[i].exerciseId, name: ex.name, imgUrl: ex.imgUrl || '',
+        sets: ex.sets, reps: String(ex.reps ?? ''), weight: ex.todayWeight || ex.lastWeight, lastWeight: ex.lastWeight,
+      }))
+  }
+
+  function doneToday(): string[] {
+    return sessionExercises.filter(ex => ex.status.state === 'done').map(ex => ex.name)
+  }
+
+  async function logConfirmed(confirmed: { item: PendingExercise; weight: number }[], date?: string) {
+    for (const { item, weight } of confirmed) {
+      await Storage.logWeight(item.exerciseId, weight, units, item.sets, item.reps, date)
+    }
+  }
+
+  // «Guardar así»: the session ends at the last activity + 3 min, then the
+  // usual end (racha → esfuerzo → resumen) without stretching
+  async function saveIdleSession(confirmed: { item: PendingExercise; weight: number }[]) {
+    completionToastShown = true
+    endedAt = idleEnd(liveSession)
+    trainingCompleted = true
+    await logConfirmed(confirmed)
+    await loadTodayLogs()
+    refreshExerciseLogs()
+    onExercisesDone()
+    finishSession()
+  }
+
+  // «Sigo entrenando»: the clock goes on from where it froze, the pause doesn't count
+  function continueIdleSession() {
+    const now = Date.now()
+    if (startedAt) startedAt += now - idleEnd(liveSession)
+    lastActivityAt = now
+    persistPhase()
+  }
+
+  // Opened on a later day: yesterday's time counts at once, up to its last activity
+  async function closeStaleSession(ss: SessionState | null | undefined) {
+    if (!isStale(ss, todayDate)) return
+    staleSession = ss
+    await recordGymSession(ss.date, idleSeconds(ss))
+  }
+
+  function stalePending(ss: SessionState): PendingExercise[] {
+    const dayLogs = allLogs.filter(l => l.date === ss.date)
+    return (ss.planned || [])
+      .filter(p => exerciseStatus(p, todayLogFor(p.exerciseId, dayLogs)).state !== 'done')
+      .map(p => {
+        const ex = exercises.find(e => e.id === p.exerciseId)
+        const lastWeight = lastWeightOn(allLogs, p.exerciseId, ss.date)
+        return {
+          exerciseId: p.exerciseId, name: ex ? getExerciseDisplayName(ex, $settings.language) : p.exerciseId,
+          imgUrl: ex ? (ex.imgUrl || resolveExerciseMedia(ex).imgUrl || '') : '',
+          sets: p.sets, reps: p.reps, weight: todayLogFor(p.exerciseId, dayLogs)?.weight || lastWeight, lastWeight,
+        }
+      })
+  }
+
+  function staleDone(ss: SessionState): string[] {
+    const ids = [...new Set(allLogs.filter(l => l.date === ss.date && l.weight > 0).map(l => l.exerciseId))]
+    return ids.map(id => exercises.find(e => e.id === id)).filter((e): e is Exercise => !!e)
+      .map(e => getExerciseDisplayName(e, $settings.language))
+  }
+
+  async function saveStaleSession(confirmed: { item: PendingExercise; weight: number }[]) {
+    const ss = staleSession
+    if (!ss) return
+    staleSession = null
+    await logConfirmed(confirmed, ss.date)
+    const stored = await Storage.getSettings()
+    if (stored.sessionState?.date === ss.date) await settings.update({ sessionState: null } as any)
+    await refreshExerciseLogs()
+    try { await syncLeague() } catch {}
+    uploadSnapshot().catch(() => {})
+  }
+
   function onStreakDone() {
     streakModalShow = false
     // Merged onto what's stored: saving the in-memory store whole could put
@@ -606,7 +721,9 @@
   {:else if day}
     <PageHeader {eyebrow} title="{day.name}." sub={dayMuscles(todayExercises)}>
       {#snippet action()}
-        {#if clockRunning}
+        {#if clockRunning && idle}
+          <div class="clock idle" data-component="SessionClock"><b><span class="pz" aria-hidden="true"><i></i><i></i></span>{clock}</b><span>Sin actividad desde {clockTime(idleEnd(liveSession))}</span></div>
+        {:else if clockRunning}
           <div class="clock" data-component="SessionClock"><b>{clock}</b><span>en sesión</span></div>
         {/if}
       {/snippet}
@@ -669,10 +786,36 @@
     onNavigate={onDetailNavigate}
     onClose={onDetailClose}
     onLog={onDetailLog}
-    onStartRest={startRestFromExercise}
+    onStartRest={startRest}
     onSwap={refreshAfterSwap}
     onRevert={refreshAfterSwap}
     onFinish={trainingDone ? finishFromDetail : null}
+  />
+{/if}
+
+{#if staleSession}
+  <OpenSessionSheet
+    eyebrow={staleEyebrow(staleSession, todayDate)}
+    endTime={clockTime(idleEnd(staleSession))}
+    lastTime={clockTime(lastActivity(staleSession))}
+    minutes={idleMinutes(staleSession)}
+    pending={stalePending(staleSession)}
+    doneNames={staleDone(staleSession)}
+    {units}
+    {accent}
+    onsave={saveStaleSession}
+  />
+{:else if showIdleSheet}
+  <OpenSessionSheet
+    endTime={clockTime(idleEnd(liveSession))}
+    lastTime={clockTime(lastActivity(liveSession))}
+    minutes={idleMinutes(liveSession)}
+    pending={pendingToday()}
+    doneNames={doneToday()}
+    {units}
+    {accent}
+    onsave={saveIdleSession}
+    oncontinue={continueIdleSession}
   />
 {/if}
 
@@ -702,7 +845,12 @@
   #today :global(.page-header-eyebrow) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .clock { text-align: right; padding-bottom: 26px; flex-shrink: 0; }
   .clock b { display: block; font-family: var(--font-mono); font-size: 22px; font-weight: 500; letter-spacing: -0.04em; }
-  .clock span { font-size: 12px; color: var(--text-tertiary); }
+  .clock > span { font-size: 12px; color: var(--text-tertiary); }
+  .clock.idle { padding-bottom: 2px; }
+  .clock.idle b { color: var(--text-secondary); display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+  .clock.idle > span { display: block; width: 96px; margin-left: auto; line-height: 1.3; text-wrap: balance; }
+  .pz { display: flex; gap: 3px; }
+  .pz i { width: 3px; height: 12px; border-radius: 1px; background: currentColor; }
   .footer-bar { display: flex; justify-content: flex-end; }
   :global(.one-line) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

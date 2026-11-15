@@ -11,6 +11,8 @@
     reps,
     units = 'kg',
     entries,
+    status = 'Completado',
+    origLabel = 'antes',
     onsave = undefined,
     onclose = undefined
   }: {
@@ -18,6 +20,10 @@
     reps: string
     units?: string
     entries: (SetEntry & { _auto?: boolean })[]
+    /** The line at the top: «Completado» after the timer, «Registrar» from the detail */
+    status?: string
+    /** What the set's starting values are: «antes» (logged) or «sugerido» (from the plan) */
+    origLabel?: string
     onsave?: (sets: SetEntry[]) => void | Promise<void>
     onclose?: () => void
   } = $props()
@@ -37,6 +43,8 @@
   let editedCount = $derived(sets.filter((_, i) => isEdited(i)).length)
   let isLast = $derived(sel === sets.length - 1)
   let current = $derived(sets[sel])
+  // Nothing to keep until some set has a weight and reps
+  let canSave = $derived(sets.some(s => s.weight > 0 && s.reps > 0))
   let saveLabel = $derived(
     `Guardar ${sets.length} serie${sets.length === 1 ? '' : 's'}` +
     (editedCount ? ` · ${editedCount} editada${editedCount > 1 ? 's' : ''}` : '')
@@ -77,11 +85,6 @@
     buzz()
   }
 
-  function nextSet() {
-    if (isLast) (document.activeElement as HTMLElement | null)?.blur()
-    else select(sel + 1)
-  }
-
   function copyDown() {
     for (let i = sel + 1; i < sets.length; i++) sets[i] = { ...sets[sel] }
     buzz()
@@ -106,7 +109,7 @@
 <div class="scs" data-component="SeriesConfirmSheet">
   <header class="scs-top">
   <SheetCloseButton onclick={() => onclose?.()} />
-  <span class="scs-status">Completado</span>
+  <span class="scs-status">{status}</span>
   <span class="scs-top-gap"></span>
 </header>
 
@@ -140,9 +143,10 @@
 {#if current}
   <section class="scs-ed" aria-live="polite">
     <div class="scs-ed-top">
-      <div>
+      <span class="scs-ed-n">{sel + 1}</span>
+      <div class="scs-ed-head">
         <div class="scs-ed-title">Serie {sel + 1} de {sets.length}</div>
-        <div class="scs-ed-prev">Registrado: {fmt(orig[sel].weight)} {units} × {orig[sel].reps}</div>
+        <div class="scs-ed-prev">{origLabel} <b>{fmt(orig[sel].weight)} {units} × {orig[sel].reps}</b></div>
       </div>
       {#if isEdited(sel)}
         <Button variant="text" size="pill" onclick={reset}>Restablecer</Button>
@@ -164,15 +168,14 @@
 
     <div class="scs-foot">
       <Button variant="secondary" size="pill" class="scs-pill" disabled={isLast} onclick={copyDown}>Copiar a las siguientes</Button>
-      <Button variant="secondary" size="pill" class="scs-pill" onclick={nextSet}>
-        {isLast ? 'Listo' : 'Siguiente serie'}<Icon name="arrow" size={14} />
-      </Button>
+      <Button variant="secondary" size="pill" class="scs-pill" ariaLabel="Serie anterior" disabled={sel === 0} onclick={() => select(sel - 1)}><Icon name="up" size={22} /></Button>
+      <Button variant="secondary" size="pill" class="scs-pill" ariaLabel="Serie siguiente" disabled={isLast} onclick={() => select(sel + 1)}><Icon name="down" size={22} /></Button>
     </div>
   </section>
 {/if}
 
 <footer class="scs-actions">
-  <Button variant="primary" size="lg" accent="var(--rt)" class="scs-save" testId={TID.confirmSave} disabled={saving} onclick={save}>
+  <Button variant="primary" size="lg" accent="var(--rt)" class="scs-save" testId={TID.confirmSave} disabled={saving || !canSave} onclick={save}>
     {saveLabel}<Icon name="arrow" size={18} />
   </Button>
 </footer>
@@ -237,19 +240,26 @@
     flex-shrink: 0; margin-top: 12px; border-radius: var(--radius-2xl); border: 0.5px solid var(--border-medium);
     background: linear-gradient(180deg, #1c1c1c, #151515); padding: 12px; display: flex; flex-direction: column; gap: 8px;
   }
-  .scs-ed-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding-left: 4px; }
+  /* The set being edited: its number in an accent circle, as in the list */
+  .scs-ed-top { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 44px; padding-left: 4px; }
+  .scs-ed-n {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    background: var(--rt); color: #0a0a0a;
+  }
+  .scs-ed-head { min-width: 0; }
   .scs-ed-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; color: var(--text); }
-  .scs-ed-prev { white-space: nowrap; margin-top: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
-  .scs-foot { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 8px; }
+  .scs-ed-prev { white-space: nowrap; margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
+  .scs-ed-prev b { font-family: var(--font-mono); font-weight: 500; color: var(--text-secondary); letter-spacing: -0.03em; }
+  .scs-foot { display: grid; grid-template-columns: minmax(0, 1fr) 56px 56px; gap: 8px; }
   /* Two Button pills share the row: they fill their half and keep the text whole */
   .scs .scs-foot :global(.scs-pill) { width: 100%; min-width: 0; padding: 0; gap: 6px; font-size: 14px; font-weight: 500; }
 
   .scs-actions { flex-shrink: 0; margin-top: 14px; display: flex; flex-direction: column; }
 
   @media (max-width: 360px) {
-    .scs-foot { grid-template-columns: 1.3fr 1fr; }
-    .scs .scs-foot :global(.scs-pill) { font-size: 11.5px; letter-spacing: -0.2px; }
-    .scs-foot :global(.scs-pill svg) { display: none; }
+    .scs-foot { grid-template-columns: minmax(0, 1fr) 48px 48px; gap: 6px; }
+    .scs .scs-foot :global(.scs-pill) { font-size: 12.5px; letter-spacing: -0.2px; }
   }
 
   @media (max-height: 720px) {

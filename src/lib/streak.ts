@@ -78,7 +78,8 @@ export function computeStreakWeeks(
     const effectiveEnd = weekEnd > today ? today : weekEnd
     if (countTrainedInWeek(trained, weekStart, effectiveEnd) >= threshold) {
       weeks++
-    } else if (weekEnd <= today) {
+    } else if (weekEnd < today) {
+      // A week is over only after its Sunday; on Sunday it can still be completed
       break
     }
   }
@@ -113,7 +114,7 @@ export function computeBestStreakWeeks(
     if (countTrainedInWeek(trained, weekStart, effectiveEnd) >= threshold) {
       cur++
       best = Math.max(best, cur)
-    } else if (weekEnd <= today) {
+    } else if (weekEnd < today) {
       cur = 0
     }
   }

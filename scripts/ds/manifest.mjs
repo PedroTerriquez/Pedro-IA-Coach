@@ -21,10 +21,18 @@ const assets = [...htmlFiles(dir)].flatMap((file) => {
   const [width, height] = attr('viewport').split('x').map(Number)
   return [{ path: relative(dir, file), group: attr('group'), name: attr('name'), subtitle: attr('subtitle'), viewport: { width, height } }]
 })
-const ORDER = ['Hoy', 'Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
+const ORDER = ['Hoy', 'Nuevo · Sesión abierta', 'Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
 // Cards made by hand in Claude Design have no local file: list them here as
-// { path, group, viewport, name, subtitle }. None since the 2026-10-22 cleanup.
-const handMade = []
+// { path, group, viewport, name, subtitle }.
+const sa = (p, name, subtitle, viewport = '800x930') => ({ path: `vistas/nuevo-sesion-abierta/${p}/index.html`, group: 'Nuevo · Sesión abierta', viewport, name, subtitle })
+const handMade = [
+  sa('aviso-pendiente', 'Nuevo · Aviso · 1 pendiente', 'Tu sesión quedó abierta; «Lo hice» confirma con el peso de la última vez; Guardar así / Sigo entrenando'),
+  sa('aviso-cambiar-peso', 'Nuevo · Aviso · cambiar peso', 'pendiente confirmado, peso abierto para editar antes de guardar'),
+  sa('aviso-todo-registrado', 'Nuevo · Aviso · nada pendiente', 'todo registrado pero la sesión nunca se cerró'),
+  sa('aviso-dia-siguiente', 'Nuevo · Aviso · al día siguiente', 'guarda la sesión de ayer; después Hoy muestra el día de hoy'),
+  sa('reloj-sin-actividad', 'Nuevo · PageHeader · reloj sin actividad', 'en sesión, en pausa tras 45 min sin actividad, y al volver con «Sigo entrenando»', '460x900'),
+  sa('resumen-duracion-real', 'Nuevo · Hoy · Resumen con duración real', 'después de Guardar así → racha → esfuerzo; duración = hasta la última actividad + 3 min'),
+]
 const cards = [
   ...assets.map((a) => ({ path: a.path, group: a.group, viewport: `${a.viewport.width}x${a.viewport.height}`, subtitle: a.subtitle, name: a.name })),
   ...handMade,

@@ -95,7 +95,7 @@ const {
 } = require('./support/screens.cjs')
 const {
   getDayIdx, localDate, buildDayArray,
-  seedIndexedDB, storedSettings, storedProgram, readLogs, readExercises,
+  seedIndexedDB, readStore, storedSettings, storedProgram, readLogs, readExercises,
 } = require('./support/db.cjs')
 const { mockWorker, pushProbe, tapRestNotification, cached, waitRestCleared, goOffline } = require('./support/worker.cjs')
 const { dragDay, dragDown, swipeDetail } = require('./support/gestures.cjs')
@@ -3357,6 +3357,88 @@ test.describe('Nube — sin cuenta, los minutos se guardan igual sin estirar', (
 
     await gotoFriendsLoaded(page)
     await expect(page.locator('[data-component="MyWeek"] .me-big')).not.toHaveText(/^0\s*min$/)
+  })
+})
+
+// A session left open: 4 of 5 done, the last never logged, the app reopened
+// hours later. It ends at the last activity + 3 min, never at the reopening.
+test.describe('Sesión abierta — termina en la última actividad', () => {
+  const MIN = 60 * 1000
+  const planned = [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10' }, { exerciseId: 'ex-military', sets: 3, reps: '10-12' }]
+  const openSession = (over = {}) => V2.session({
+    phase: 2, startedAt: Date.now() - 120 * MIN, lastActivityAt: Date.now() - 70 * MIN, planned, dayName: 'Empuje', ...over,
+  })
+  const sheet = (page) => page.locator('[data-component="OpenSessionSheet"]')
+  const gymSeconds = async (page, date) => (await readStore(page, 'gymSessions')).find(g => g.date === date)?.seconds
+
+  test('el reloj se congela, el aviso confirma lo pendiente y la duración es hasta la última actividad', async ({ page }) => {
+    await seedV2(page, {
+      exerciseLogs: [V2.log('ex-bench', 0, 80, { sets: 4 }), V2.log('ex-military', 7, 30)],
+      settings: V2.settings({ onboarded: true, sessionState: openSession() }),
+    })
+
+    await expect(page.locator('[data-component="SessionClock"]')).toContainText('Sin actividad desde')
+    await expect(sheet(page)).toContainText('Tu sesión quedó abierta')
+    await expect(sheet(page)).toContainText('53 min')
+    await expect(sheet(page)).toContainText(/Press Militar.* queda sin registrar\./)
+    await expect(sheet(page)).toContainText('3 × 10-12 · Última 30 kg')
+
+    const card = sheet(page).locator('[data-component="PendingExerciseCard"]')
+    await card.getByRole('button', { name: /Lo hice/ }).click()
+    await expect(sheet(page)).toContainText('Se guardan los 2 ejercicios.')
+    await card.getByRole('button', { name: 'Cambiar peso' }).click()
+    await card.getByRole('button', { name: 'Más peso' }).click()
+    await card.getByRole('button', { name: 'Listo' }).click()
+    await expect(card).toContainText('editado')
+
+    await sheet(page).getByRole('button', { name: 'Guardar así' }).click()
+    await expect(sheet(page)).toHaveCount(0)
+    await page.getByRole('button', { name: 'Seguir' }).click()
+    await page.getByRole('button', { name: 'Ahora no' }).click()
+    await expect(page.locator('[data-component="SessionSummary"]')).toContainText('53')
+
+    const military = (await readLogs(page)).find(l => l.exerciseId === 'ex-military' && l.date === localDate(0))
+    expect(military).toMatchObject({ weight: 32.5, sets: 3 })
+    const secs = await gymSeconds(page, localDate(0))
+    expect(Math.abs(secs - 53 * 60)).toBeLessThan(30)
+  })
+
+  test('«Sigo entrenando» sigue el reloj sin sumar la pausa', async ({ page }) => {
+    await seedV2(page, {
+      exerciseLogs: [V2.log('ex-bench', 0, 80, { sets: 4 })],
+      settings: V2.settings({ onboarded: true, sessionState: openSession() }),
+    })
+    await sheet(page).getByRole('button', { name: 'Sigo entrenando' }).click()
+    await expect(sheet(page)).toHaveCount(0)
+    const clock = page.locator('[data-component="SessionClock"]')
+    await expect(clock).toContainText('en sesión')
+    await expect(clock.locator('b')).toHaveText(/^5[34]:\d\d$/)
+    const ss = (await storedSettings(page)).sessionState
+    expect(Date.now() - ss.lastActivityAt).toBeLessThan(60 * 1000)
+    expect(ss.endedAt ?? null).toBeNull()
+  })
+
+  test('al día siguiente guarda la sesión de ayer y luego muestra hoy', async ({ page }) => {
+    const yesterday = localDate(1)
+    await seedV2(page, {
+      exerciseLogs: [V2.log('ex-bench', 1, 80, { sets: 4 }), V2.log('ex-military', 8, 30)],
+      settings: V2.settings({ onboarded: true, sessionState: openSession({
+        date: yesterday, startedAt: Date.now() - 26 * 60 * MIN, lastActivityAt: Date.now() - 25 * 60 * MIN,
+      }) }),
+    })
+
+    await expect(sheet(page)).toContainText('Ayer')
+    await expect(sheet(page)).toContainText('63 min')
+    await expect(sheet(page).getByRole('button', { name: 'Sigo entrenando' })).toHaveCount(0)
+    // The time counts already, before any tap
+    await expect.poll(() => gymSeconds(page, yesterday)).toBe(63 * 60)
+
+    await sheet(page).getByRole('button', { name: /Lo hice/ }).click()
+    await sheet(page).getByRole('button', { name: 'Guardar así' }).click()
+    await expect(sheet(page)).toHaveCount(0)
+    await expect.poll(async () => (await readLogs(page)).find(l => l.exerciseId === 'ex-military' && l.date === yesterday)?.weight).toBe(30)
+    expect((await readLogs(page)).filter(l => l.date === localDate(0))).toHaveLength(0)
+    await expect(page.locator('[data-component="SessionClock"]')).toHaveCount(0)
   })
 })
 
