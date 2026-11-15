@@ -8,6 +8,12 @@ import { shortDate } from '$lib/exercise-history'
 
 export const IDLE_MS = 45 * 60 * 1000
 export const TAIL_MS = 3 * 60 * 1000
+/** No session counts more than this in the league, whatever slipped through */
+export const MAX_LEAGUE_SEC = 3 * 60 * 60
+
+export function leagueSeconds(seconds: number): number {
+  return Math.min(Math.max(0, seconds), MAX_LEAGUE_SEC)
+}
 
 /** One exercise of an open session still to register */
 export interface PendingExercise {

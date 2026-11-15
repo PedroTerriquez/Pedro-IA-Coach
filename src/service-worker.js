@@ -174,8 +174,42 @@ function pushKind(spec, now) {
   return now >= spec.doneAt - DONE_PUSH_EARLY_MS ? 'done' : 'start'
 }
 
+// «¿Terminaste?»: Hoy stages when a session goes idle (`/session-idle`). A push
+// at or after that moment is this reminder, never a rest: every rest started
+// re-arms it later. Shown once, then unstaged.
+const IDLE_TAG = 'session-idle'
+
+async function idleReminderDue(now) {
+  try {
+    const cache = await caches.open('push-pending')
+    const res = await cache.match('/session-idle')
+    if (!res) return false
+    const { at } = await res.json()
+    if (now < at - DONE_PUSH_EARLY_MS) return false
+    await cache.delete('/session-idle')
+    return true
+  } catch {
+    return false
+  }
+}
+
+function showIdleNotification() {
+  return self.registration.showNotification('¿Terminaste?', {
+    body: 'Tu sesión sigue abierta · Toca para guardarla ▸',
+    icon: 'icons/icon-192.png',
+    tag: IDLE_TAG,
+    renotify: true,
+    requireInteraction: true,
+    data: { kind: 'idle', url: './' },
+  })
+}
+
 self.addEventListener('push', (e) => {
   e.waitUntil((async () => {
+    if (await idleReminderDue(Date.now())) {
+      await showIdleNotification()
+      return
+    }
     let data = {}
     try {
       if (e.data) data = e.data.json()

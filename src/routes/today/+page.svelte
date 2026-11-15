@@ -2,7 +2,7 @@
   import { resolvePanelItems } from '$lib/data/warmup-components'
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
   import { base } from '$app/paths'
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import * as Storage from '$lib/storage'
   import { settings } from '$lib/stores/settings'
   import { online } from '$lib/stores/network'
@@ -40,8 +40,9 @@
   import OpenSessionSheet from '$lib/components/OpenSessionSheet.svelte'
   import {
     isIdle, isStale, idleEnd, idleSeconds, idleMinutes, clockTime, staleEyebrow, lastActivity,
-    lastWeightBefore as lastWeightOn, type PendingExercise,
+    lastWeightBefore as lastWeightOn, leagueSeconds, type PendingExercise,
   } from '$lib/session-idle'
+  import { armIdleReminder, cancelIdleReminder } from '$lib/session-reminder'
   import type { Exercise, ExerciseLog, Program, ProgramDay, SessionState, Settings } from '$lib/types'
 
   // Port literal del TOAST_SVG_WATCH del legacy (components/ui.js pre-migración)
@@ -363,13 +364,21 @@
     if (startedAt) return
     startedAt = Date.now()
     lastActivityAt = startedAt
+    armIdleReminder(lastActivityAt)
     persistPhase()
   }
 
   // A set logged, a move marked or a rest started: the session is alive
   function markActivity() {
-    if (startedAt && !endedAt) lastActivityAt = Date.now()
+    if (!startedAt || endedAt) return
+    lastActivityAt = Date.now()
+    armIdleReminder(lastActivityAt)
   }
+
+  // Once the session ends, the «¿Terminaste?» push has nothing to ask
+  $effect(() => {
+    if (endedAt) cancelIdleReminder(untrack(() => lastActivityAt))
+  })
 
   function formatElapsed(startMs: number, endMs: number): string {
     const sec = Math.max(0, Math.floor((endMs - startMs) / 1000))
@@ -547,7 +556,7 @@
 
   async function saveTodayGymTime() {
     if (!startedAt || !endedAt) return
-    await recordGymSession(todayDate, Math.max(0, Math.round((endedAt - startedAt) / 1000)))
+    await recordGymSession(todayDate, leagueSeconds(Math.round((endedAt - startedAt) / 1000)))
   }
 
   async function syncLeague() {
@@ -600,6 +609,7 @@
     const now = Date.now()
     if (startedAt) startedAt += now - idleEnd(liveSession)
     lastActivityAt = now
+    armIdleReminder(now)
     persistPhase()
   }
 
@@ -607,7 +617,8 @@
   async function closeStaleSession(ss: SessionState | null | undefined) {
     if (!isStale(ss, todayDate)) return
     staleSession = ss
-    await recordGymSession(ss.date, idleSeconds(ss))
+    cancelIdleReminder(ss.lastActivityAt)
+    await recordGymSession(ss.date, leagueSeconds(idleSeconds(ss)))
   }
 
   function stalePending(ss: SessionState): PendingExercise[] {

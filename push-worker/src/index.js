@@ -778,6 +778,22 @@ export default {
       }
     }
 
+    // «¿Terminaste?»: one empty push when the session goes idle. Its own
+    // "active" key, so it never supersedes the rest pushes (nor they it); every
+    // activity re-arms it under a newer tag and only the newest fires.
+    if (url.pathname === '/api/session/idle') {
+      try {
+        const { endTime, deviceId, tag } = await req.json()
+        if (!endTime || !deviceId || !tag) return respond({ error: 'endTime, deviceId, tag required' }, 400)
+        const delaySec = Math.max(1, Math.ceil((endTime - Date.now()) / 1000))
+        await env.PUSH_KV.put(`idle_active_${deviceId}`, tag, { expirationTtl: 2 * 3600 })
+        await env.REST_TIMER_QUEUE.send({ deviceId, tag, kind: 'idle' }, { delaySeconds: delaySec })
+        return respond({ status: 'scheduled', delaySec })
+      } catch (err) {
+        return respond({ error: err.message }, 500)
+      }
+    }
+
     return respond('Not Found', 404)
   },
 
@@ -794,7 +810,8 @@ export default {
       // Already delivered once (Queues are at-least-once → guard redeliveries).
       if (await env.PUSH_KV.get(`sent_${tag}`)) { msg.ack(); continue }
       // Superseded by a newer schedule for this device (multi-tab / re-tap).
-      const active = await env.PUSH_KV.get(`active_${deviceId}`)
+      const activeKey = msg.body.kind === 'idle' ? `idle_active_${deviceId}` : `active_${deviceId}`
+      const active = await env.PUSH_KV.get(activeKey)
       if (active && active !== tag) { msg.ack(); continue }
       const raw = await env.PUSH_KV.get(`sub_${deviceId}`)
       if (!raw) { msg.ack(); continue }

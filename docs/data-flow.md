@@ -3,6 +3,7 @@
 1. **App start**: Svelte store `settings` loads from IndexedDB via `init()`; if data lost → `restoreFromBackup()` (localStorage mirror)
 2. **User actions**: Call `Storage.*` methods → IndexedDB → `backupAll()` (localStorage mirror) → stores update → Svelte re-renders
 3. **Reactive stores** (`settings`, `ui`) drive re-renders — no manual `refresh()` needed
+3b. **Session time**: Hoy starts the clock at the first set / move / opened exercise and saves `sessionState.lastActivityAt` on every set logged (detail or rest timer via `SET_LOG_EVENT`), move marked and rest started. Ending the exercises writes `gymSessions` (`endedAt − startedAt`), syncs the league and uploads the cloud copy. A session idle 45 min ends at `lastActivityAt + 3 min` (OpenSessionSheet); one left open on an earlier day is recorded in `gymSessions` for that date as soon as Hoy loads, then the sheet confirms the pending exercises with that date. `gymSessions.seconds` never exceeds 3 h. A push «¿Terminaste?» arrives when the session goes idle (see `push-notifications.md`)
 4. **Weight logging**: ExerciseDetail → `onLog()` → `Storage.logWeight()` → one log per exercise per day (Registrar overwrites it, without `sets`); Hoy counts it done when `sets` is empty or `≥` the planned sets, and keeps the warmup/stretch moves marked with Hecho in `settings.sessionState.warmupMarks` / `stretchMarks` (missing = `[]`)
 5. **Media resolution**: `resolveExerciseMedia()` for an exercise:
    - `exercise.imgUrl` (stored override)

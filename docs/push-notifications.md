@@ -44,3 +44,9 @@ today.js → sendPushNotification()
 - Single subscription (one device at a time)
 - `subscribePush()` always calls `unsubscribe()` before `subscribe()` to replace expired endpoints
 - Error recovery: 410 (expired) → Worker deletes sub, client refreshes subscription and retries; if all Web Push fails → `notifyWatch()` local notification
+
+## «¿Terminaste?» (session left open)
+- Every activity in Hoy (set logged, move marked, rest started, «Sigo entrenando») calls `armIdleReminder()` (`src/lib/session-reminder.ts`): stages `{ at }` = last activity + 45 min in cache `push-pending` → `/session-idle`, and POSTs `/api/session/idle` `{ deviceId, tag: 'idle-<lastActivityAt>', endTime: at }`
+- Worker: queues `{ kind: 'idle' }` on `REST_TIMER_QUEUE` and keeps `idle_active_<deviceId>` (its own key, so it never supersedes the rest pushes); only the newest tag fires; cancel = `/api/rest-timer/cancel` with that tag
+- SW `push`: if `/session-idle` is due (`now ≥ at − 5 s`) it shows «¿Terminaste?» · «Tu sesión sigue abierta · Toca para guardarla ▸» (tag `session-idle`), unstages it and skips the rest logic; tapping opens Hoy, where OpenSessionSheet is already up (same 45 min)
+- Ending the session (`endedAt` set) or saving one from an earlier day calls `cancelIdleReminder()`

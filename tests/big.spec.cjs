@@ -3418,6 +3418,46 @@ test.describe('Sesión abierta — termina en la última actividad', () => {
     expect(ss.endedAt ?? null).toBeNull()
   })
 
+  test('ninguna sesión suma más de 3 h a la liga', async ({ page }) => {
+    await seedV2(page, {
+      exerciseLogs: [V2.log('ex-bench', 0, 80, { sets: 4 })],
+      settings: V2.settings({ onboarded: true, sessionState: openSession({ startedAt: Date.now() - 5 * 60 * MIN }) }),
+    })
+    await sheet(page).getByRole('button', { name: 'Guardar así' }).click()
+    await expect.poll(() => gymSeconds(page, localDate(0))).toBe(3 * 60 * 60)
+  })
+
+  test('cada serie agenda el «¿Terminaste?» a los 45 min y el service worker lo muestra', async ({ page, context }) => {
+    const api = {}
+    await mockWorker(page, api)
+    await seedV2(page, {
+      settings: V2.settings({ onboarded: true, sessionState: openSession({ startedAt: Date.now() - 10 * MIN, lastActivityAt: Date.now() - 5 * MIN }) }),
+    })
+    const probe = await pushProbe(page, context)
+    const training = page.locator('[data-phase="training"]')
+    if (await training.locator(SEL.exerciseRow).count() === 0) await training.locator(SEL.phaseToggle).click()
+    await training.locator(SEL.exerciseRow).first().click()
+    await page.getByRole('button', { name: 'Más peso' }).first().click()
+    const loggedAt = Date.now()
+    await page.getByRole('button', { name: /^Registrar \d/ }).click()
+
+    const idleCalls = () => api.calls.filter((c) => c.path.endsWith('/api/session/idle'))
+    await expect.poll(() => idleCalls().length).toBeGreaterThan(0)
+    const last = idleCalls().at(-1).body
+    expect(Math.abs(last.endTime - (loggedAt + 45 * MIN))).toBeLessThan(10 * 1000)
+    expect(last.tag).toMatch(/^idle-\d+$/)
+
+    // An empty push at or after that moment is the reminder (pushed here into the past)
+    await page.evaluate(async () => {
+      const cache = await caches.open('push-pending')
+      await cache.put('/session-idle', new Response(JSON.stringify({ at: Date.now() - 1000 })))
+    })
+    await probe.deliver()
+    await expect.poll(probe.cards, { timeout: 5000 }).toEqual(['session-idle: Tu sesión sigue abierta · Toca para guardarla ▸'])
+    // Shown once: it is unstaged
+    expect(await page.evaluate(async () => !!(await (await caches.open('push-pending')).match('/session-idle')))).toBe(false)
+  })
+
   test('al día siguiente guarda la sesión de ayer y luego muestra hoy', async ({ page }) => {
     const yesterday = localDate(1)
     await seedV2(page, {
