@@ -17,9 +17,9 @@
     dayEntries, plannedRows, panelKind, dayLabel, rowsSummary, primaryMuscle,
     monthStart, addMonths, monthTitle, monthBounds, initialDay, calendarCells, monthCountLabel,
     whenLabel, deltaLabel, progressRows, listLabel, historyDock,
-    type DayRec, type PanelRow, type PanelKind
+    type DayRec, type PanelRow, type PanelKind, type CellState
   } from '$lib/history-view'
-  import type { Exercise, ExerciseLog, Program } from '$lib/types'
+  import type { Activity, Exercise, ExerciseLog, GymSession, Program } from '$lib/types'
   import PageHeader from '$lib/components/PageHeader.svelte'
   import IconButton from '$lib/components/IconButton.svelte'
   import MonthCalendar from '$lib/components/MonthCalendar.svelte'
@@ -41,6 +41,8 @@
   let exercises = $state<Exercise[]>([])
   let logs = $state<ExerciseLog[]>([])
   let programs = $state<Program[]>([])
+  let activities = $state<Activity[]>([])
+  let sessions = $state<GymSession[]>([])
   let tab = $state('days')
   let selected = $state(today)
   let viewMonth = $state(monthStart(today))
@@ -67,12 +69,16 @@
   let statusFn = $derived(program
     ? makeDayStatusFn(today, logsByDate, program, program.weeks.length, $settings.currentWeekIdx || 0, exercisesMap, language, ($settings.rescheduleWeekOrder || {}) as Record<string, number[]>)
     : null)
+  // A day with another activity counts as trained in the calendar too
+  let activityDates = $derived(new Set(activities.map(a => a.date)))
   let grid = $derived.by(() => {
     const fn = statusFn
-    return calendarCells(viewMonth, fn ? (d) => fn(d).status : null, selected, today)
+    return calendarCells(viewMonth, fn ? (d) => cellState(fn(d).status, d) : null, selected, today)
   })
   let rec = $derived<DayRec | null>(statusFn ? statusFn(selected) : null)
-  let kind = $derived<PanelKind>(rec ? panelKind(rec, today, !hasLogs) : 'none')
+  let kind = $derived<PanelKind>(rec ? panelKind(rec, today, !hasLogs && !activities.length) : 'none')
+  let dayActivities = $derived(activities.filter(a => a.date === toLocalDateStr(selected)).sort((a, b) => a.createdAt - b.createdAt))
+  let dayGymMinutes = $derived(Math.round((sessions.find(g => g.date === toLocalDateStr(selected))?.seconds || 0) / 60))
   let panel = $derived(rec ? panelView(rec, kind) : null)
 
   // ── Ejercicios ──
@@ -92,10 +98,16 @@
   })
 
   async function load() {
-    const [exs, all, progs] = await Promise.all([Storage.getExercises(), Storage.getAllLogs(), Storage.getPrograms()])
+    const [exs, all, progs, acts, gym] = await Promise.all([Storage.getExercises(), Storage.getAllLogs(), Storage.getPrograms(), Storage.getAllActivities(), Storage.getAllGymSessions()])
     exercises = exs
     logs = all
     programs = progs
+    activities = acts
+    sessions = gym
+  }
+
+  function cellState(status: CellState, d: Date): CellState {
+    return (status === 'missed' || status === 'rest') && activityDates.has(toLocalDateStr(d)) ? 'done' : status
   }
 
   function groupByDate(all: ExerciseLog[]): Map<number, ExerciseLog[]> {
@@ -127,6 +139,8 @@
       case 'today':
         return { date: `Hoy · ${date}`, title: `Hoy toca ${dayName(r)}`, sub: rowsSummary(r.exercises), text: 'Cuando lo registres en Hoy, aparece aquí con tus pesos.', rows: [] }
       case 'missed':
+        // With another activity that day it was trained: the workout's name leads
+        if (dayActivities.length) return { date, title: dayName(r), listLabel: 'Lo que tocaba', rows: plannedRows(r, exercisesMap, language) }
         return { date, title: '¿Lo hiciste y no lo anotaste?', sub: dayName(r), listLabel: 'Lo que tocaba', rows: plannedRows(r, exercisesMap, language) }
       case 'rest':
         return { date, title: 'Descanso', sub: 'Día de recuperación', rows: [] }
@@ -255,6 +269,8 @@
         text={panel.text}
         listLabel={panel.listLabel}
         rows={panel.rows}
+        activities={dayActivities}
+        gymMinutes={dayGymMinutes}
         onrow={(i) => openDayDetail(panel!.rows, i)}
         onmark={markAsDone}
         ontoday={() => goto(ROUTES.today)}

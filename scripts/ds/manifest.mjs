@@ -21,11 +21,13 @@ const assets = [...htmlFiles(dir)].flatMap((file) => {
   const [width, height] = attr('viewport').split('x').map(Number)
   return [{ path: relative(dir, file), group: attr('group'), name: attr('name'), subtitle: attr('subtitle'), viewport: { width, height } }]
 })
-const ORDER = ['Hoy', 'Nuevo · Sesión abierta', 'Temporizador', 'Nuevo · Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
+const ORDER = ['Hoy', 'Nuevo · Hoy actividades', 'Nuevo · Aviso de entreno', 'Nuevo · Sesión abierta', 'Temporizador', 'Nuevo · Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
 // Cards made by hand in Claude Design have no local file: list them here as
 // { path, group, viewport, name, subtitle }.
 const NT = 'Nuevo · Temporizador'
 const nt = (p, name, subtitle, viewport = '390x844') => ({ path: `vistas/nuevo-temporizador/${p}/index.html`, group: NT, viewport, name, subtitle })
+const HA = 'Nuevo · Hoy actividades'
+const ha = (p, name, subtitle, viewport = '800x930') => ({ path: `vistas/nuevo-hoy-actividades/${p}/index.html`, group: HA, viewport, name, subtitle })
 const sa = (p, name, subtitle, viewport = '800x930') => ({ path: `vistas/nuevo-sesion-abierta/${p}/index.html`, group: 'Nuevo · Sesión abierta', viewport, name, subtitle })
 const handMade = [
   nt('alternativa', 'Nuevo · Alternativa «Un toque»', 'la pantalla se vacía con el tiempo; registrar igual que la última vez es un solo toque'),
@@ -48,6 +50,19 @@ const handMade = [
   sa('aviso-dia-siguiente', 'Nuevo · Aviso · al día siguiente', 'guarda la sesión de ayer; después Hoy muestra el día de hoy'),
   sa('reloj-sin-actividad', 'Nuevo · PageHeader · reloj sin actividad', 'en sesión, en pausa tras 45 min sin actividad, y al volver con «Sigo entrenando»', '460x900'),
   sa('resumen-duracion-real', 'Nuevo · Hoy · Resumen con duración real', 'después de Guardar así → racha → esfuerzo; duración = hasta la última actividad + 3 min'),
+  ha('01-gym-chip', 'Nuevo · Hoy · Día de gym con «Otra actividad»', 'chip junto al título; el dock sigue siendo «Empezar calentamiento»'),
+  ha('02-elegir-deporte', 'Nuevo · Hoy · Elegir deporte', 'hoja con deportes como botones grandes'),
+  ha('03-form-correr', 'Nuevo · Hoy · Registrar Correr', 'tiempo + km; el ritmo sale como resultado'),
+  ha('04-form-padel', 'Nuevo · Hoy · Registrar Pádel', 'tiempo + calorías opcionales'),
+  ha('05-pregunta-gym', 'Nuevo · Hoy · ¿Y Pecho y tríceps?', 'una sola vez tras guardar en día de gym'),
+  ha('06-gym-mas-carrera', 'Nuevo · Hoy · Carrera registrada, gym pendiente', 'fila de solo lectura; tocar para editar o eliminar'),
+  ha('07-editar-actividad', 'Nuevo · Hoy · Editar actividad', 'única vía para editar o eliminar'),
+  ha('08-descanso-vacio', 'Nuevo · Hoy · Descanso', '«Registrar actividad» es la acción principal'),
+  ha('09-descanso-actividad', 'Nuevo · Hoy · Descanso con actividad', 'el día cuenta como entrenado'),
+  ha('10-completado-chip', 'Nuevo · Hoy · Resumen + chip', 'resumen del coach cuenta la carrera; el chip añade otra actividad'),
+  ha('11-history-day-panel', 'Nuevo · HistoryDayPanel · gym + actividad', 'gym y carrera juntos; «Marcar como hecho» sigue aparte', '800x1500'),
+  ha('12-my-week', 'Nuevo · MyWeek · minutos mixtos', 'gym (reloj) + actividades (tecleadas) suman a la liga', '800x460'),
+  ha('13-calorias-gym', 'Nuevo · Hoy · Calorías del gym', 'esfuerzo → calorías (opcional) → resumen del coach', '800x2780'),
   { path: 'vistas/nuevo-aviso-entreno/aviso/index.html', group: 'Nuevo · Aviso de entreno', viewport: '800x930', name: 'Nuevo · Aviso de entreno · Sobre «Calentamiento · Listo»', subtitle: 'Tras «Terminar calentamiento»: invitación opcional a iniciar reloj o app; sin botones, se cierra sola a los 2 s' },
   { path: 'vistas/nuevo-aviso-entreno/textos/index.html', group: 'Nuevo · Aviso de entreno', viewport: '800x930', name: 'Nuevo · Aviso de entreno · Textos', subtitle: '3 alternativas de copy (línea + subtexto) con la elegida marcada; reglas del aviso' },
 ]

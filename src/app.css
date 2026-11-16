@@ -35,6 +35,8 @@
   --cv-ring-focus: rgba(255,255,255,0.22);
   --cv-ring-current: rgba(255,255,255,0.35);
   --cv-danger-text: #ff7a6e;
+  /* Activities outside the gym (Nuevo · Hoy actividades): a dim accent */
+  --act: color-mix(in srgb, var(--accent) 42%, #1a1a1a);
   --cv-danger-bg: rgba(255,91,77,0.14);
   --cv-scrim: rgba(0,0,0,0.6);
   --cv-radius-field: 16px;

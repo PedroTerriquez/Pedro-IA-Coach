@@ -10,7 +10,7 @@ const UPLOAD_BATCH = 500
 const ACCOUNT_KEY = 'cloud-account'
 const HASHES_KEY = 'cloud-hashes'
 const UPLOAD_KEY = 'cloud-upload'
-const LIST_STORES = ['exercises', 'exerciseLogs', 'programs', 'gymSessions'] as const
+const LIST_STORES = ['exercises', 'exerciseLogs', 'programs', 'gymSessions', 'activities'] as const
 // Belong to this phone, not to the person: never uploaded, never overwritten.
 const DEVICE_FIELDS = ['pushSubscribed', 'pushServerUrl', 'sessionState'] as const
 

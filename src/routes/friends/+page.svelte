@@ -17,7 +17,8 @@
   import { online } from '$lib/stores/network'
   import { registerUser, renameUser, syncUserToWorker, checkUserExists, checkUser } from '$lib/push'
   import AccountSheet from '$lib/components/AccountSheet.svelte'
-  import { getAllLogs, getSettings, getPrograms, saveSettings, getAllGymSessions } from '$lib/storage'
+  import { getAllLogs, getSettings, getPrograms, saveSettings, getAllGymSessions, getAllActivities } from '$lib/storage'
+  import { activityDayMarks, activityDayMinutes, leagueWeekSeconds } from '$lib/activities'
   import { computeStreakWeeks, computeBestStreakWeeks, trainingDaysPerWeek } from '$lib/streak'
   import { toLocalDateStr, mondayOf } from '$lib/calendar-utils'
   import { shareUsername } from '$lib/share'
@@ -28,7 +29,7 @@
   import { readFriendsCache, writeFriendsCache, readLeagueSnapshot, writeLeagueSnapshot } from '$lib/friends-cache'
   import { resolveWeekOrder } from '$lib/week-order'
   import { slotDay, isRestDay } from '$lib/plan-week'
-  import type { ExerciseLog, GymSession, Program, Settings } from '$lib/types'
+  import type { Activity, ExerciseLog, GymSession, Program, Settings } from '$lib/types'
 
   let username = $state('')
   let inputUsername = $state('')
@@ -49,6 +50,7 @@
   let myGymSeconds = $state(0)
   let lastWeekSeconds = $state(0)
   let sessions = $state<GymSession[]>([])
+  let activities = $state<Activity[]>([])
   let restDays = $state<boolean[]>([])
   let snapshot = $state<LeagueSnapshot | null>(null)
   let exercisedToday = $state(false)
@@ -78,13 +80,20 @@
   const myWeek = $derived.by(() => {
     const me = league.find((e) => e.isMe)
     const lastWeekMin = Math.floor(lastWeekSeconds / 60)
+    const gymMin = dayMinutes(sessions, today)
+    const actMin = activityDayMinutes(activities, today)
+    const total = gymMin.map((m, i) => m + actMin[i])
     return {
       minutes: myMinutes,
       delta: myMinutes || lastWeekMin ? myMinutes - lastWeekMin : null,
       position: friendCount > 0 ? me?.position ?? null : null,
       move: me ? moves[me.username] ?? 0 : 0,
       since: movesSince(snapshot, today),
-      bars: dayBars(dayMinutes(sessions, today), days),
+      bars: dayBars(total, days),
+      // Share of each bar that is activities (Nuevo · MyWeek · minutos mixtos)
+      split: total.map((m, i) => (m > 0 ? actMin[i] / m : 0)),
+      gymMinutes: gymMin.reduce((a, b) => a + b, 0),
+      activityMinutes: actMin.reduce((a, b) => a + b, 0),
       days,
       rest: restDays,
       streak: myStreak,
@@ -125,24 +134,23 @@
 
   // Everything the week card needs comes from this phone, never from the Worker.
   async function loadMyWeek() {
-    const [allLogs, s, progs, allSessions] = await Promise.all([getAllLogs(), getSettings(), getPrograms(), getAllGymSessions()])
+    const [gymLogs, s, progs, allSessions, allActivities] = await Promise.all([getAllLogs(), getSettings(), getPrograms(), getAllGymSessions(), getAllActivities()])
+    // An activity day counts as trained, like a gym day
+    const allLogs = [...gymLogs, ...activityDayMarks(allActivities)] as ExerciseLog[]
     const activeProg = progs.find(p => p.id === s.activeProgramId)
     const weekAgo = new Date()
     weekAgo.setDate(weekAgo.getDate() - 7)
     today = toLocalDateStr(new Date())
     logs = allLogs
     sessions = allSessions
+    activities = allActivities
     daysPerWeek = trainingDaysPerWeek(activeProg, s.currentWeekIdx || 0)
     myStreak = computeStreakWeeks(allLogs, daysPerWeek, today)
     bestStreak = computeBestStreakWeeks(allLogs, daysPerWeek, today)
-    exercisedToday = allLogs.some(l => l.date === today && l.weight > 0)
-    myGymSeconds = weekSeconds(allSessions, mondayOf(today))
-    lastWeekSeconds = weekSeconds(allSessions, mondayOf(toLocalDateStr(weekAgo)))
+    exercisedToday = gymLogs.some(l => l.date === today && l.weight > 0) || allActivities.some(a => a.date === today)
+    myGymSeconds = leagueWeekSeconds(allSessions, allActivities, mondayOf(today))
+    lastWeekSeconds = leagueWeekSeconds(allSessions, allActivities, mondayOf(toLocalDateStr(weekAgo)))
     restDays = planRestDays(activeProg, s)
-  }
-
-  function weekSeconds(all: GymSession[], monday: string): number {
-    return all.filter((g) => g.weekStart === monday).reduce((sum, g) => sum + (g.seconds || 0), 0)
   }
 
   // Rest days of this week as Plan lays them out (moves included); none without a program.

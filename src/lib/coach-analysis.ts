@@ -1,4 +1,5 @@
-import { getLogsForDate, getAllLogs, getSettings } from '$lib/storage'
+import { getLogsForDate, getAllLogs, getSettings, getAllActivities } from '$lib/storage'
+import { activityDayMarks } from '$lib/activities'
 import { PUSH_SERVER_URL } from '$lib/config'
 import { buildCoachPrompt } from '$lib/brain/prompts'
 import { buildUserProfile, recordIfDebug } from '$lib/ai'
@@ -217,7 +218,9 @@ export async function runCoachAnalysis(
   todayDate: string,
   weekIdx: number,
   daysPerWeek: number,
-  program: Program | null = null
+  program: Program | null = null,
+  /** The day beyond the gym: other activities and the gym's calories (Nuevo · Hoy actividades) */
+  day_extras: { other_activities_today?: { sport: string; minutes: number; km?: number; kcal?: number }[]; kcal?: number } = {}
 ): Promise<CoachAnalysisResult | null> {
   const exercisesById = Object.fromEntries(exercises.map(e => [e.id, e]))
   const todayLogs = (await getLogsForDate(todayDate)).filter(isTrained)
@@ -237,7 +240,7 @@ export async function runCoachAnalysis(
   const rotationHint = ROTATION_TOPICS[trainedDates.size % ROTATION_TOPICS.length]
   // Summed in kg-equivalent regardless of each log's stored unit; shown in the user's unit.
   const roundedVolume = Math.round(fromKg(sumVolume(todayLogs, planned), displayUnits))
-  const streakWeeks = computeStreakWeeks(allLogs, daysPerWeek, todayDate)
+  const streakWeeks = computeStreakWeeks([...allLogs, ...activityDayMarks(await getAllActivities())] as ExerciseLog[], daysPerWeek, todayDate)
 
   try {
     if (!PUSH_SERVER_URL) throw new Error('PUSH_SERVER_URL not configured')
@@ -253,6 +256,8 @@ export async function runCoachAnalysis(
       pr_count: prCount,
       exercises: exerciseSummaries,
       rotation_hint: rotationHint,
+      ...(day_extras.kcal ? { kcal: day_extras.kcal } : {}),
+      ...(day_extras.other_activities_today?.length ? { other_activities_today: day_extras.other_activities_today } : {}),
       user_profile: userProfile,
       history: {
         streak_weeks: streakWeeks,

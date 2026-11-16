@@ -8,7 +8,7 @@ export const PBKDF2_ITERATIONS = 100000
 export const MIN_PASSWORD = 8
 export const MAX_BATCH = 500
 export const PAGE_SIZE = 1000
-export const CLOUD_STORES = ['exercises', 'exerciseLogs', 'programs', 'gymSessions', 'settings']
+export const CLOUD_STORES = ['exercises', 'exerciseLogs', 'programs', 'gymSessions', 'activities', 'settings']
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

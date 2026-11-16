@@ -64,6 +64,26 @@ export interface GymSession {
   date: string
   seconds: number
   weekStart: string
+  /** Calories of the gym session, typed from a watch or app (optional) */
+  kcal?: number
+}
+
+export type SportKey = 'correr' | 'nadar' | 'bici' | 'padel' | 'crossfit' | 'otra'
+
+/** A sport done outside the program (Hoy · «Otra actividad»): minutes typed by hand */
+export interface Activity {
+  id: string
+  date: string
+  weekStart: string
+  sport: SportKey
+  minutes: number
+  /** Correr, Nadar, Bici */
+  km?: number
+  /** Pádel, CrossFit, Otra */
+  kcal?: number
+  /** Only for «Otra»: what it was («Yoga») */
+  name?: string
+  createdAt: number
 }
 
 /** Today's session. Missing marks (data saved before 2026-10-15) read as []. */
@@ -112,6 +132,10 @@ export interface Settings {
   onboarded?: boolean
   onboardingStep?: number
   debugAI?: boolean
+  /** Day «¿Y <workout>?» was already asked after logging an activity */
+  activityAskDate?: string
+  /** «Saltarlo esta semana»: today's workout left as not done */
+  skippedDay?: { date: string; dayName: string } | null
 }
 
 export interface BackupData {

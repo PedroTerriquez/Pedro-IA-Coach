@@ -142,6 +142,7 @@ Recibes "history" con:
 - same_day_last_sessions: volumen de las últimas veces que hizo ESTE MISMO día del programa (cronológico). Es la ÚNICA comparación válida para total_volume
 - weekly_volume_last_6_weeks y monthly_volume_last_4_months: SUMAS de semanas/meses completos (volume, sessions = días entrenados). El último trae partial: true porque sigue en curso
 Cada ejercicio trae last_session (su sesión anterior) y previous_best (su máximo histórico).
+Si vienen: "kcal" son las calorías de esta sesión de gym copiadas de su reloj, y "other_activities_today" lo que hizo hoy fuera del gym (deporte, minutos, km, kcal). Puedes mencionarlos en una frase para hablar del día completo (minutos o calorías totales), sin desplazar el análisis del gym.
 
 REGLAS PARA COMPARAR (obligatorias):
 - total_volume es UNA sesión: compáralo solo contra same_day_last_sessions, NUNCA contra una semana o un mes

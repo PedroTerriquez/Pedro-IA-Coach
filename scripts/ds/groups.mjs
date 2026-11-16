@@ -646,6 +646,10 @@ async function hoyScreens({ open, S }) {
   await page.locator('#effort-overlay').waitFor({ timeout: 6000 })
   await hoyScreen(page, 'esfuerzo', 'EffortSheet', '¿Cómo sentiste la sesión? con barras de intensidad', C + 'EffortSheet.svelte')
   await page.locator('#effort-overlay [data-effort="Justo"]').click()
+  await page.locator('#kcal-sheet').waitFor({ timeout: 6000 })
+  await page.locator('#kcal-sheet input').fill('420')
+  await hoyScreen(page, 'calorias', 'KcalSheet', 'tras el esfuerzo: calorías opcionales del reloj; «Saltar»', C + 'KcalSheet.svelte')
+  await btn(page, 'Guardar y ver resumen').click()
   await page.locator(comp('SessionSummary')).getByText('Para la próxima').waitFor({ timeout: 10000 })
   await page.card({ path: hoyAt('pantalla-resumen'), group: HOY, name: 'Hoy · Resumen', subtitle: 'Tu coach, para la próxima y tres cifras', source: C + 'SessionSummary.svelte', screen: true })
   await page.context().close()
@@ -653,6 +657,36 @@ async function hoyScreens({ open, S }) {
   // Ahora no: resumen sin análisis
   page = await openHoy(open, S, S.settings({ streakShownDate: isoToday(), sessionState: { date: isoToday(), phase: 5, todayExDone: 3, startedAt: started, endedAt: Date.now() } }), allDone)
   await hoyScreen(page, 'pantalla-resumen-sin-analisis', 'Hoy · Resumen sin análisis', 'tras «Ahora no»: duración y «Pedir análisis al coach»', C + 'SessionSummary.svelte')
+  await page.context().close()
+
+  // Otra actividad: elegir deporte → Correr → «¿Y <día>?» → registrada
+  page = await openHoy(open, S, session(S))
+  await btn(page, 'Otra actividad').click()
+  await page.waitForTimeout(300)
+  await hoyScreen(page, 'elegir-deporte', 'ActivitySheet · ¿Qué hiciste?', 'seis deportes como botones grandes', C + 'ActivitySheet.svelte')
+  await page.locator('#activity-sheet [data-sport="correr"]').click()
+  await page.getByLabel('Tiempo').fill('32')
+  await page.getByLabel('Distancia').fill('5.2')
+  await hoyScreen(page, 'registrar-correr', 'ActivitySheet · Correr', 'tiempo + km; el ritmo sale como resultado', C + 'ActivitySheet.svelte')
+  await page.locator('#activity-sheet').getByRole('button', { name: 'Guardar' }).click()
+  await page.locator('#gym-question-sheet').waitFor({ timeout: 4000 })
+  await hoyScreen(page, 'pregunta-gym', 'GymQuestionSheet', 'una vez al día tras guardar en día de gym', C + 'GymQuestionSheet.svelte')
+  await btn(page, /Lo hago hoy más tarde/).click()
+  await page.waitForTimeout(400)
+  await hoyScreen(page, 'pantalla-con-actividad', 'Hoy · Con otra actividad', 'chip junto al título, «Registrado hoy» y el dock suma los minutos', C + 'ActivityRow.svelte')
+  await page.context().close()
+
+  // Descanso: vacío y con una actividad
+  const restAll = { ...S.program(), weeks: S.program().weeks.map(w => ({ ...w, days: w.days.map(d => ({ ...d, name: 'Descanso', exercises: [] })) })) }
+  page = await openHoy(open, S, S.settings(), [], { programs: [restAll] })
+  await hoyScreen(page, 'pantalla-descanso', 'Hoy · Descanso', '«Registrar actividad» es la acción principal', C + 'RestDayView.svelte')
+  await btn(page, 'Registrar actividad').click()
+  await page.locator('#activity-sheet [data-sport="padel"]').click()
+  await page.getByLabel('Tiempo').fill('75')
+  await page.getByLabel('Calorías').fill('480')
+  await page.locator('#activity-sheet').getByRole('button', { name: 'Guardar' }).click()
+  await page.waitForTimeout(400)
+  await hoyScreen(page, 'pantalla-descanso-actividad', 'Hoy · Descanso con actividad', 'hoy cuenta como día entrenado', C + 'RestDayView.svelte')
   await page.context().close()
 
   // Primer entreno y sin programa

@@ -3,7 +3,8 @@
 // Playwright only collects *.spec.*.
 
 const DB_NAME = 'coach-pedro-ai'
-const STORES = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
+const DB_VERSION = 3
+const STORES = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions', 'activities']
 
 /** Today's weekday, Mon=0..Sun=6 (the app's) */
 function getDayIdx() {
@@ -33,9 +34,9 @@ function buildDayArray(workoutDay) {
 async function seedIndexedDB(page, data, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      await page.evaluate(([d, name, stores]) => {
+      await page.evaluate(([d, name, stores, version]) => {
         return new Promise((resolve, reject) => {
-          const req = indexedDB.open(name, 2)
+          const req = indexedDB.open(name, version)
           req.onupgradeneeded = () => {
             const db = req.result
             stores.forEach((s) => {
@@ -56,6 +57,7 @@ async function seedIndexedDB(page, data, retries = 3) {
               ;(d.exerciseLogs || []).forEach(log => tx.objectStore('exerciseLogs').put(log))
               if (d.program) tx.objectStore('programs').put(d.program)
               ;(d.gymSessions || []).forEach(g => tx.objectStore('gymSessions').put(g))
+              ;(d.activities || []).forEach(a => tx.objectStore('activities').put(a))
               tx.objectStore('settings').put(d.settings)
               tx.oncomplete = () => { db.close(); resolve() }
               tx.onerror = () => reject(tx.error)
@@ -65,7 +67,7 @@ async function seedIndexedDB(page, data, retries = 3) {
           }
           req.onerror = () => reject(req.error)
         })
-      }, [data, DB_NAME, STORES])
+      }, [data, DB_NAME, STORES, DB_VERSION])
       return // success
     } catch (e) {
       if (attempt === retries) throw e
@@ -79,10 +81,10 @@ async function seedIndexedDB(page, data, retries = 3) {
 // error or after 5 s: page.evaluate has no timeout of its own, so a stuck
 // open would otherwise hang until the flow's 10-minute budget.
 function readStore(page, store) {
-  return page.evaluate(([store, name]) => new Promise((resolve, reject) => {
+  return page.evaluate(([store, name, version]) => new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`readStore(${store}) timed out`)), 5000)
     const fail = (e) => { clearTimeout(timer); reject(e) }
-    const req = indexedDB.open(name, 2)
+    const req = indexedDB.open(name, version)
     req.onerror = () => fail(req.error)
     req.onblocked = () => fail(new Error(`readStore(${store}) blocked`))
     req.onsuccess = () => {
@@ -96,7 +98,7 @@ function readStore(page, store) {
         fail(e)
       }
     }
-  }), [store, DB_NAME])
+  }), [store, DB_NAME, DB_VERSION])
 }
 
 // Settings as persisted in IndexedDB. A goto/reload right after a tap can beat

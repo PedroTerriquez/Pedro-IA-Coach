@@ -1,7 +1,7 @@
 const DB_NAME = 'coach-pedro-ai'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
-const STORES = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
+const STORES = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions', 'activities']
 
 // An aborted transaction fires neither `complete` nor (without a failed
 // request) `error`: without this, the write's promise hangs forever and the

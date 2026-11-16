@@ -108,8 +108,8 @@ export const friends = [
 
 export async function seed(page, data) {
   await page.evaluate((d) => new Promise((resolve, reject) => {
-    const stores = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
-    const req = indexedDB.open('coach-pedro-ai', 2)
+    const stores = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions', 'activities']
+    const req = indexedDB.open('coach-pedro-ai', 3)
     req.onupgradeneeded = () => {
       for (const s of stores) {
         if (req.result.objectStoreNames.contains(s)) continue
@@ -128,6 +128,7 @@ export async function seed(page, data) {
       ;(d.exerciseLogs ?? []).forEach((x) => tx.objectStore('exerciseLogs').put(x))
       ;(d.programs ?? []).forEach((x) => tx.objectStore('programs').put(x))
       ;(d.gymSessions ?? []).forEach((x) => tx.objectStore('gymSessions').put(x))
+      ;(d.activities ?? []).forEach((x) => tx.objectStore('activities').put(x))
       if (d.settings) tx.objectStore('settings').put(d.settings)
       tx.oncomplete = () => { db.close(); resolve() }
       tx.onerror = () => reject(tx.error)

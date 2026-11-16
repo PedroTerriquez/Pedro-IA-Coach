@@ -1,5 +1,5 @@
 import { getAll, get, put, del, getByIndex, generateId } from './db'
-import type { Alternative, Exercise, ExerciseLog, ExerciseLogBlock, GymSession, Program, Settings } from './types'
+import type { Activity, Alternative, Exercise, ExerciseLog, ExerciseLogBlock, GymSession, Program, Settings } from './types'
 
 import { findExerciseEntry, findExerciseEntryFuzzy } from '$lib/data/exercise-dictionary'
 import { mondayOf } from '$lib/calendar-utils'
@@ -24,6 +24,7 @@ export async function backupAll(): Promise<void> {
       exerciseLogs: await getAll('exerciseLogs'),
       programs: await getAll('programs'),
       gymSessions: await getAll('gymSessions'),
+      activities: await getAll('activities'),
       settings: [(await get('settings', 'settings'))].filter(Boolean),
     }
     for (const key of Object.keys(data)) {
@@ -37,7 +38,7 @@ export async function backupAll(): Promise<void> {
 }
 
 export async function restoreFromBackup(): Promise<void> {
-  const stores = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions']
+  const stores = ['exercises', 'exerciseLogs', 'programs', 'settings', 'gymSessions', 'activities']
   for (const store of stores) {
     const raw = localStorage.getItem(BACKUP_PREFIX + store)
     if (!raw) continue
@@ -193,7 +194,50 @@ export async function getLogsForDate(dateStr: string): Promise<ExerciseLog[]> {
 // new week naturally resets to 0 without any cleanup job.
 export async function recordGymSession(date: string, seconds: number): Promise<void> {
   if (!date || seconds <= 0) return
-  await put('gymSessions', { id: date, date, seconds, weekStart: mondayOf(date) })
+  const kcal = (await get<GymSession>('gymSessions', date))?.kcal
+  await put('gymSessions', { id: date, date, seconds, weekStart: mondayOf(date), ...(kcal ? { kcal } : {}) })
+}
+
+/** Calories of the day's gym session; 0 takes them away */
+export async function setGymKcal(date: string, kcal: number): Promise<void> {
+  const g = await get<GymSession>('gymSessions', date)
+  const rest = { ...(g || { id: date, date, seconds: 0, weekStart: mondayOf(date) }) }
+  delete rest.kcal
+  await put('gymSessions', kcal > 0 ? { ...rest, kcal } : rest)
+  await backupAll()
+}
+
+export async function getGymSession(date: string): Promise<GymSession | undefined> {
+  return get<GymSession>('gymSessions', date)
+}
+
+// ── Activities (Hoy · «Otra actividad») ──
+
+export async function getAllActivities(): Promise<Activity[]> {
+  return getAll<Activity>('activities')
+}
+
+/** The day's activities in the order they were logged */
+export async function getActivitiesForDate(date: string): Promise<Activity[]> {
+  const all = await getAll<Activity>('activities')
+  return all.filter(a => a.date === date).sort((a, b) => a.createdAt - b.createdAt)
+}
+
+export async function saveActivity(a: Omit<Activity, 'id' | 'weekStart' | 'createdAt'> & Partial<Activity>): Promise<Activity> {
+  const activity: Activity = {
+    ...a,
+    id: a.id || await generateId(),
+    weekStart: mondayOf(a.date),
+    createdAt: a.createdAt || Date.now(),
+  } as Activity
+  await put('activities', activity)
+  await backupAll()
+  return activity
+}
+
+export async function deleteActivity(id: string): Promise<void> {
+  await del('activities', id)
+  await backupAll()
 }
 
 export async function getWeeklyGymSeconds(weekStart: string): Promise<number> {
@@ -469,6 +513,7 @@ export async function exportLogsAndSettings(): Promise<string> {
     programs: await getAll('programs'),
     exerciseLogs: await getAll('exerciseLogs'),
     gymSessions: await getAll('gymSessions'),
+    activities: await getAll('activities'),
     settings: await get('settings', 'settings') || null,
     exportedAt: new Date().toISOString(),
   }
@@ -517,6 +562,7 @@ export async function importLogsAndSettings(jsonStr: string) {
   if (data.programs) for (const item of data.programs) await put('programs', item)
   if (data.exerciseLogs) for (const item of data.exerciseLogs) await put('exerciseLogs', item)
   if (data.gymSessions) for (const item of data.gymSessions) await put('gymSessions', item)
+  if (data.activities) for (const item of data.activities) await put('activities', item)
   if (data.settings) await put('settings', data.settings)
   return {
     exercises: (data.exercises || []).length,

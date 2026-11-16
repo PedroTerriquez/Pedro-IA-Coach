@@ -1,14 +1,19 @@
 <script lang="ts">
   import Avatar from './Avatar.svelte'
   import { moveLabel, type DayState, type Goal } from '$lib/league'
+  import { hoursLabel } from '$lib/activities'
 
-  let { minutes = 0, delta = null, position = null, move = 0, since = '', bars = [], days = [], rest = [], streak = 0, best = 0, done = 0, needed = 0, goal = null }: {
+  let { minutes = 0, delta = null, position = null, move = 0, since = '', bars = [], split = [], gymMinutes = 0, activityMinutes = 0, days = [], rest = [], streak = 0, best = 0, done = 0, needed = 0, goal = null }: {
     minutes: number
     delta?: number | null
     position?: number | null
     move?: number
     since?: string
     bars: number[]
+    /** Share (0–1) of each day's bar that is activities outside the gym */
+    split?: number[]
+    gymMinutes?: number
+    activityMinutes?: number
     days: DayState[]
     rest?: boolean[]
     streak: number
@@ -39,7 +44,7 @@
     <div class="wk">
       {#each days as state, i}
         <span class="d" class:now={state === 'today'} class:rest={rest[i] && !bars[i]} data-day={state}>
-          <span class="bar">{#if bars[i]}<i style="height:{bars[i]}%"></i>{/if}</span>
+          <span class="bar">{#if bars[i]}<i class="stk" style="height:{bars[i]}%">{#if split[i]}<span class="a" style="flex:{split[i]}"></span>{/if}{#if (split[i] || 0) < 1}<span class="g" style="flex:{1 - (split[i] || 0)}"></span>{/if}</i>{/if}</span>
           <em>{DAY_LETTERS[i]}</em>
         </span>
       {/each}
@@ -53,6 +58,12 @@
       {/if}
       {#if best > streak}<span class="record">récord {best}</span>{/if}
     </div>
+    {#if activityMinutes > 0}
+      <div class="leg" data-component="MyWeekLegend">
+        <div><span class="lk"><i style="background:var(--accent)"></i>Gimnasio</span><b>{hoursLabel(gymMinutes)}</b></div>
+        <div><span class="lk"><i style="background:var(--act)"></i>Actividades</span><b>{hoursLabel(activityMinutes)}</b></div>
+      </div>
+    {/if}
   </div>
   {#if goal}
     <div class="goal" data-goal={goal.kind}>
@@ -153,10 +164,37 @@
     border-radius: 8px;
     background: rgba(255,255,255,0.04);
   }
-  .bar i {
-    display: block;
+  .bar .stk {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     border-radius: 8px;
-    background: var(--accent);
+  }
+  .stk span { display: block; min-height: 0; }
+  .stk .g { background: var(--accent); }
+  .stk .a { background: var(--act); }
+  .leg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .leg div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .lk {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .lk i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .leg b {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.04em;
   }
   .d.rest .bar {
     background: transparent;

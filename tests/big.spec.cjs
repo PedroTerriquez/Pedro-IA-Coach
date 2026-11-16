@@ -1140,15 +1140,19 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator('#plan-reset-btn')).toBeEnabled()
     await sheet.getByRole('button', { name: 'Cerrar' }).click()
 
-    // Hoy follows the plan: today is a rest day now, with the recovery list
+    // Hoy follows the plan: today is a rest day now, with the recovery list.
+    // Changed 2026-11-16 with Nuevo · Hoy actividades (Pedro's yes): the card
+    // «La recuperación es donde creces.» is gone; «Recuperación» keeps the five
+    // tips, the header says where Empuje went and the dock offers an activity.
     await nav(page, 'today')
     await expect(page.locator(SEL.pageTitle, { hasText: 'Descanso' })).toBeVisible()
     const restDay = page.locator('[data-component="RestDayView"]')
-    await expect(restDay).toContainText('La recuperación es donde creces.')
-    await expect(restDay).toContainText('Lista de recuperación')
+    await expect(restDay).toContainText('Recuperación')
     for (const tip of ['Hidrátate', 'Duerme 7-9 horas', 'Caminata suave', 'Movilidad', 'Come suficiente']) {
-      await expect(restDay.locator('[data-component="InfoCard"]', { hasText: tip })).toBeVisible()
+      await expect(restDay.locator('[data-tip]', { hasText: tip })).toBeVisible()
     }
+    if (t < 6) await expect(page.locator(SEL.pageSub)).toHaveText('Empuje pasó a mañana')
+    await expect(todayDock(page).getByRole('button', { name: 'Registrar actividad' })).toBeVisible()
     await expect(page.locator('[data-phase="training"]')).toHaveCount(0)
 
     // Back to the routine: Restablecer in the sheet leaves no override behind
@@ -4185,6 +4189,8 @@ test.describe('IA — coach del ejercicio y análisis', () => {
     await page.getByRole('button', { name: 'Pedir análisis al coach' }).click()
     await expect(effort).toBeVisible()
     await effort.locator('[data-effort="Justo"]').click()
+    // Since Nuevo · Hoy actividades the calories come next; optional
+    await page.locator('#kcal-sheet').getByRole('button', { name: 'Saltar' }).click()
 
     // The summary shows the REAL /api/ai/coach answer (mocked here), not a canned line
     const summary = page.locator('[data-component="SessionSummary"]')
@@ -4204,6 +4210,290 @@ test.describe('IA — coach del ejercicio y análisis', () => {
     // It survives closing and reopening the app
     await page.reload()
     await checkSummary()
+  })
+})
+
+// Nuevo · Hoy actividades (2026-11-16): sports outside the program, logged
+// from Hoy. Fixed dates: Tue 17 nov 2026 is Empuje, Wed 18 Tirón, the rest off.
+const ACT = {
+  TUE: '2026-11-17', MON: '2026-11-16', WED: '2026-11-18', THU: '2026-11-19',
+  workout(name) {
+    return { name, subtitle: '', duration: 60, exercises: [{ exerciseId: 'ex-bench', sets: 4, reps: '8-10', rest: 120 }, { exerciseId: 'ex-military', sets: 3, reps: '10-12', rest: 90 }] }
+  },
+  program(days = { 1: 'Empuje', 2: 'Tirón' }) {
+    const rest = { name: 'Descanso', subtitle: '', duration: 0, exercises: [] }
+    return { id: 'prog-act', name: 'Programa', weeks: [{ name: 'Semana 2', subtitle: 'Volumen', tag: '', days: Array.from({ length: 7 }, (_, i) => (days[i] ? ACT.workout(days[i]) : rest)) }] }
+  },
+  activity(date, sport, minutes, extra = {}) {
+    return { id: `act-${date}-${sport}`, date, weekStart: ACT.MON, sport, minutes, createdAt: Date.parse(`${date}T08:00:00`), ...extra }
+  },
+}
+
+async function openOn(page, date, data = {}, route = 'today') {
+  const [y, m, d] = date.split('-').map(Number)
+  await page.clock.install({ time: new Date(y, m - 1, d, 12) })
+  await page.goto(route)
+  await seedIndexedDB(page, {
+    exercises: [V2.bench, V2.military],
+    program: ACT.program(),
+    settings: V2.settings({ activeProgramId: 'prog-act', onboarded: true, username: 'TestUser' }),
+    ...data,
+  })
+  await page.reload()
+  await waitForApp(page)
+}
+
+test.describe('Hoy actividades — otra actividad, descanso y calorías', () => {
+  test('día de gym: el chip registra una carrera, pregunta una vez por el gym y se edita o borra con Deshacer', async ({ page }) => {
+    const api = {}
+    await mockWorker(page, api)
+    await openOn(page, ACT.TUE)
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Empuje.')
+    await expect(todayDock(page).getByRole('button', { name: /Empezar calentamiento/ })).toBeVisible()
+
+    // The chip opens the sports; Correr asks time and km, the pace comes out
+    await page.getByRole('button', { name: 'Otra actividad' }).click()
+    const sheet = page.locator('#activity-sheet')
+    await expect(sheet).toContainText('¿Qué hiciste?')
+    await expect(sheet.locator('[data-sport]')).toHaveCount(6)
+    await sheet.locator('[data-sport="correr"]').click()
+    await expect(sheet.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await expect(sheet).toContainText('Solo el tiempo es obligatorio')
+    await sheet.getByLabel('Tiempo').fill('32')
+    await sheet.getByLabel('Distancia').fill('5,2')
+    await expect(sheet.locator('[data-result]')).toContainText('6:09/km')
+    await expect(sheet).toContainText('Suma 32 min a tu semana')
+    await sheet.getByRole('button', { name: 'Guardar' }).click()
+
+    // Once a day: what happens to Empuje. «Lo hago hoy más tarde» keeps it
+    const ask = page.locator('#gym-question-sheet')
+    await expect(ask).toContainText('Correr · 32 min guardado')
+    await expect(ask).toContainText('¿Y Empuje?')
+    await ask.getByRole('button', { name: /Lo hago hoy más tarde/ }).click()
+    await expect(ask).toHaveCount(0)
+    const row = (sport) => page.locator(`[data-component="LoggedActivities"] [data-sport="${sport}"]`)
+    await expect(row('correr')).toContainText('Correr · 32 min')
+    await expect(row('correr')).toContainText('5.2 km · 6:09 /km')
+    await expect(todayDock(page)).toContainText('32 min de actividad ya suman a tu semana')
+    await expect(todayDock(page).getByRole('button', { name: /Empezar calentamiento/ })).toBeVisible()
+    expect((await readStore(page, 'activities')).map(a => [a.sport, a.minutes, a.km])).toEqual([['correr', 32, 5.2]])
+    // The league hears the minutes at once
+    await expect.poll(() => api.calls.filter(c => c.path.endsWith('/api/user/sync')).at(-1)?.body).toMatchObject({ exercisedToday: true, gymTime: 32 * 60 })
+
+    // A second one doesn't ask again; Pádel asks kcal instead of km
+    await page.getByRole('button', { name: 'Otra actividad' }).click()
+    await sheet.locator('[data-sport="padel"]').click()
+    await expect(sheet.getByLabel('Distancia')).toHaveCount(0)
+    await sheet.getByLabel('Tiempo').fill('75')
+    await sheet.getByLabel('Calorías').fill('480')
+    await sheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(ask).toHaveCount(0)
+    await expect(row('padel')).toContainText('Pádel · 75 min')
+    await expect(row('padel')).toContainText('480 kcal')
+
+    // Tapping the row is the only way to edit or delete
+    await row('padel').click()
+    await expect(sheet).toContainText('Editar actividad')
+    await expect(sheet.getByLabel('Tiempo')).toHaveValue('75')
+    await sheet.getByLabel('Tiempo').fill('60')
+    await sheet.getByRole('button', { name: 'Guardar cambios' }).click()
+    await expect(row('padel')).toContainText('Pádel · 60 min')
+    await row('padel').click()
+    await sheet.getByRole('button', { name: 'Eliminar actividad' }).click()
+    await expect(row('padel')).toHaveCount(0)
+    const toast = page.locator('#today-action-toast')
+    await expect(toast).toContainText('Actividad eliminada')
+    await toast.getByRole('button', { name: 'Deshacer' }).click()
+    await expect(row('padel')).toContainText('Pádel · 60 min')
+
+    // «Otra» takes an optional name
+    await page.getByRole('button', { name: 'Otra actividad' }).click()
+    await sheet.locator('[data-sport="otra"]').click()
+    await sheet.getByPlaceholder(/Yoga/).fill('Yoga')
+    await sheet.getByLabel('Tiempo').fill('20')
+    await sheet.getByRole('button', { name: 'Guardar' }).click()
+    await expect(row('otra')).toContainText('Yoga · 20 min')
+    await expect(row('otra')).toContainText('Solo tiempo')
+
+    // All of it survives a reload; the question isn't asked twice
+    await page.reload()
+    await expect(page.locator('[data-component="LoggedActivities"] [data-component="ActivityRow"]')).toHaveCount(3)
+    expect((await storedSettings(page)).activityAskDate).toBe(ACT.TUE)
+  })
+
+  test('«Pasarlo a mañana» corre la semana y «Saltarlo esta semana» deja Hoy en descanso; ambos con Deshacer', async ({ page }) => {
+    await mockWorker(page, {})
+    await openOn(page, ACT.TUE)
+    const ask = page.locator('#gym-question-sheet')
+    const toast = page.locator('#today-action-toast')
+    const logRun = async (minutes) => {
+      await page.getByRole('button', { name: 'Otra actividad' }).click()
+      await page.locator('#activity-sheet [data-sport="nadar"]').click()
+      await page.locator('#activity-sheet').getByLabel('Tiempo').fill(String(minutes))
+      await page.locator('#activity-sheet').getByRole('button', { name: 'Guardar' }).click()
+    }
+
+    await logRun(40)
+    await ask.getByRole('button', { name: /Pasarlo a mañana/ }).click()
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Descanso.')
+    await expect(page.locator(SEL.pageSub)).toHaveText('Empuje pasó a mañana')
+    await expect(page.locator('[data-component="RestDayView"] [data-sport="nadar"]')).toContainText('Nadar · 40 min')
+    await expect(todayDock(page)).toContainText('Hoy cuenta como día entrenado')
+    await expect(todayDock(page).getByRole('button', { name: 'Registrar otra actividad' })).toBeVisible()
+    await expect(toast).toContainText('Empuje pasa a mañana')
+    expect(Object.keys((await storedSettings(page)).rescheduleWeekOrder)).toHaveLength(1)
+    await nav(page, 'plan')
+    await expect(planDay(page, 2).locator(SEL.dayTitle)).toHaveText('Empuje')
+    await nav(page, 'today')
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Descanso.')
+
+    // Undo: back to the week as it was (a fresh day asks again)
+    await seedIndexedDB(page, {
+      exercises: [V2.bench, V2.military], program: ACT.program(),
+      settings: V2.settings({ activeProgramId: 'prog-act', onboarded: true }),
+    })
+    await page.reload()
+    await logRun(30)
+    await ask.getByRole('button', { name: /Pasarlo a mañana/ }).click()
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Descanso.')
+    await toast.getByRole('button', { name: 'Deshacer' }).click()
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Empuje.')
+    await expect.poll(async () => Object.keys((await storedSettings(page)).rescheduleWeekOrder || {}).length).toBe(0)
+
+    // «Saltarlo esta semana»: Hoy rests; Deshacer brings Empuje back
+    const freshDay = async () => {
+      await seedIndexedDB(page, {
+        exercises: [V2.bench, V2.military], program: ACT.program(),
+        settings: V2.settings({ activeProgramId: 'prog-act', onboarded: true }),
+      })
+      await page.reload()
+    }
+    await freshDay()
+    await logRun(25)
+    await ask.getByRole('button', { name: /Saltarlo esta semana/ }).click()
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Descanso.')
+    await expect(page.locator(SEL.pageSub)).toHaveText('Saltaste Empuje esta semana')
+    await expect(toast).toContainText('Empuje saltado esta semana')
+    await toast.getByRole('button', { name: 'Deshacer' }).click()
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Empuje.')
+    await expect.poll(async () => (await storedSettings(page)).skippedDay ?? null).toBe(null)
+
+    // Kept: it survives a reload, and Plan leaves Empuje on its day, not done
+    await freshDay()
+    await logRun(25)
+    await ask.getByRole('button', { name: /Saltarlo esta semana/ }).click()
+    await expect(page.locator(SEL.pageSub)).toHaveText('Saltaste Empuje esta semana')
+    await expect.poll(async () => (await storedSettings(page)).skippedDay?.date).toBe(ACT.TUE)
+    await page.reload()
+    await expect(page.locator(SEL.pageSub)).toHaveText('Saltaste Empuje esta semana')
+    await nav(page, 'plan')
+    await expect(planDay(page, 1).locator(SEL.dayTitle)).toHaveText('Empuje')
+    await expect(planDay(page, 1)).not.toHaveAttribute('data-state', 'done')
+  })
+
+  test('descanso: «Registrar actividad» es lo principal y la bici da la velocidad', async ({ page }) => {
+    await mockWorker(page, {})
+    await openOn(page, ACT.THU, { program: ACT.program({ 1: 'Empuje', 2: 'Tirón', 4: 'Pierna' }) })
+    await expect(page.locator(SEL.pageTitle)).toHaveText('Descanso.')
+    await expect(page.locator(SEL.pageEyebrow)).toContainText('Semana 2')
+    await expect(page.locator(SEL.pageSub)).toHaveText('Mañana: Pierna')
+    await expect(todayDock(page)).toContainText('Correr, nadar, bici, pádel… suma a tu semana')
+    await todayDock(page).getByRole('button', { name: 'Registrar actividad' }).click()
+    const sheet = page.locator('#activity-sheet')
+    await sheet.locator('[data-sport="bici"]').click()
+    await expect(sheet.locator('[data-result]')).toContainText('Velocidad')
+    await sheet.getByLabel('Tiempo').fill('45')
+    await sheet.getByLabel('Distancia').fill('20')
+    await expect(sheet.locator('[data-result]')).toContainText('26.7km/h')
+    await sheet.getByRole('button', { name: 'Guardar' }).click()
+    // No gym today: nothing to ask
+    await expect(page.locator('#gym-question-sheet')).toHaveCount(0)
+    await expect(page.locator('[data-component="RestDayView"] [data-sport="bici"]')).toContainText('20 km · 26.7 km/h')
+    await expect(todayDock(page)).toContainText('Hoy cuenta como día entrenado')
+    await expect(todayDock(page).getByRole('button', { name: 'Registrar otra actividad' })).toBeVisible()
+  })
+
+  test('calorías del gym: esfuerzo → calorías (opcional) → coach, y se editan o quitan desde el resumen', async ({ page }) => {
+    const api = { analysis: { analysis: 'Buen día completo.', verdict: 'positive', proximo_objetivo: 'Press Banca → 85 kg', recommendations: [], total_volume: 3000, pr_count: 0, _provider: 'test' } }
+    await mockWorker(page, api)
+    const now = new Date(2026, 10, 17, 12).getTime()
+    await openOn(page, ACT.TUE, {
+      exerciseLogs: [{ id: 'l1', exerciseId: 'ex-bench', date: ACT.TUE, weight: 80, units: 'kg' }, { id: 'l2', exerciseId: 'ex-military', date: ACT.TUE, weight: 40, units: 'kg' }],
+      activities: [ACT.activity(ACT.TUE, 'correr', 32, { km: 5.2 })],
+      gymSessions: [{ id: ACT.TUE, date: ACT.TUE, seconds: 58 * 60, weekStart: ACT.MON }],
+      settings: V2.settings({ activeProgramId: 'prog-act', onboarded: true, activityAskDate: ACT.TUE, sessionState: V2.session({ date: ACT.TUE, phase: 5, startedAt: now - 58 * 60000, endedAt: now }) }),
+    })
+    const summary = page.locator('[data-component="SessionSummary"]')
+    const kcalRow = summary.locator('[data-component="KcalRow"]')
+    await expect(kcalRow).toContainText('Agregar')
+    // The chip is back once the session is over; the day's activity under the summary
+    await expect(page.getByRole('button', { name: 'Otra actividad' })).toBeVisible()
+    await expect(summary.locator('[data-sport="correr"]')).toContainText('Correr · 32 min')
+
+    await summary.getByRole('button', { name: 'Pedir análisis al coach' }).click()
+    await page.locator('#effort-overlay [data-effort="Pesado"]').click()
+    const kcal = page.locator('#kcal-sheet')
+    await expect(kcal).toContainText('Esfuerzo · Pesado')
+    await expect(kcal.getByRole('button', { name: 'Guardar y ver resumen' })).toBeDisabled()
+    // ‹ goes back to the effort
+    await kcal.getByRole('button', { name: 'Atrás' }).click()
+    await page.locator('#effort-overlay [data-effort="Pesado"]').click()
+    await kcal.getByLabel('Calorías').fill('420')
+    await kcal.getByRole('button', { name: 'Guardar y ver resumen' }).click()
+    await expect(summary).toContainText('Buen día completo.')
+    const coach = api.calls.filter(c => c.path.includes('/api/ai/coach')).at(-1)
+    expect(coach.body.sessionData.kcal).toBe(420)
+    expect(coach.body.sessionData.other_activities_today).toEqual([{ sport: 'Correr', minutes: 32, km: 5.2 }])
+    await expect(kcalRow).toContainText('420')
+    expect((await readStore(page, 'gymSessions'))[0]).toMatchObject({ seconds: 58 * 60, kcal: 420 })
+
+    // From the row: edit, or take them away with Deshacer
+    await kcalRow.click()
+    await expect(kcal).toContainText('Editar calorías')
+    await kcal.getByRole('button', { name: 'Quitar calorías' }).click()
+    await expect(kcalRow).toContainText('Agregar')
+    await page.locator('#today-action-toast').getByRole('button', { name: 'Deshacer' }).click()
+    await expect(kcalRow).toContainText('420')
+    await page.reload()
+    await expect(kcalRow).toContainText('420')
+  })
+
+  test('Historial y Amigos: la actividad cuenta como día entrenado y suma minutos aparte del gym', async ({ page }) => {
+    await mockWorker(page, {})
+    // Mon 16: Empuje not logged, only a run. Tue 17: Tirón with its clock and a run.
+    await openOn(page, ACT.WED, {
+      program: ACT.program({ 0: 'Empuje', 1: 'Tirón', 3: 'Pierna' }),
+      exerciseLogs: [{ id: 'l1', exerciseId: 'ex-bench', date: ACT.TUE, weight: 80, units: 'kg' }],
+      gymSessions: [{ id: ACT.TUE, date: ACT.TUE, seconds: 58 * 60, weekStart: ACT.MON }],
+      activities: [ACT.activity(ACT.MON, 'correr', 45, { km: 7 }), ACT.activity(ACT.TUE, 'correr', 32, { km: 5.2 })],
+    }, 'history')
+    const panel = page.locator('[data-component="HistoryDayPanel"]')
+    const cal = page.locator('[data-component="MonthCalendar"]')
+    await cal.getByRole('button', { name: '17', exact: true }).click()
+    await expect(panel).toContainText('Entrenado')
+    await expect(panel).toContainText('+ 1 actividad')
+    const totals = panel.locator('[data-component="DayTotals"]')
+    await expect(totals).toContainText('Gym58 min')
+    await expect(totals).toContainText('Correr32 min')
+    await expect(totals).toContainText('Total90 min')
+    await expect(panel.locator('[data-component="DayActivities"] [data-sport="correr"]')).toContainText('5.2 km · 6:09 /km')
+
+    await cal.getByRole('button', { name: '16', exact: true }).click()
+    await expect(panel.locator('.title')).toHaveText('Empuje')
+    await expect(panel).toContainText('Gym sin registrar')
+    await expect(panel).toContainText('Tu actividad cuenta para la racha. El gym sigue sin registrar.')
+    await expect(panel.getByRole('button', { name: 'Marcar como hecho' })).toBeVisible()
+
+    // Amigos: the week's minutes = gym + activities, split in the legend
+    await nav(page, 'friends')
+    const card = page.locator('[data-component="MyWeek"]')
+    await expect(card.locator('.me-big')).toHaveText(/^135\s*min$/)
+    const legend = card.locator('[data-component="MyWeekLegend"]')
+    await expect(legend).toContainText('Gimnasio58 min')
+    await expect(legend).toContainText('Actividades1 h 17')
+    await expect(card.locator('.d').nth(0).locator('.stk .a')).toHaveCount(1)
+    await expect(card.locator('.d').nth(1).locator('.stk .g')).toHaveCount(1)
+    await expect(card.locator('.d').nth(1).locator('.stk .a')).toHaveCount(1)
   })
 })
 

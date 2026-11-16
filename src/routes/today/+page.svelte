@@ -6,7 +6,7 @@
   import * as Storage from '$lib/storage'
   import { settings } from '$lib/stores/settings'
   import { online } from '$lib/stores/network'
-  import { restMinimized } from '$lib/stores/ui'
+  import { restMinimized, toast } from '$lib/stores/ui'
   import { getLogsForDate, recordGymSession, getWeeklyGymSeconds } from '$lib/storage'
   import { mondayOf } from '$lib/calendar-utils'
   import { startRestFromExercise, checkPendingRest, _checkRestTimer, restBannerState } from '$lib/rest-timer'
@@ -38,12 +38,22 @@
   import Icon from '$lib/components/Icon.svelte'
   import CenterToast from '$lib/components/CenterToast.svelte'
   import OpenSessionSheet from '$lib/components/OpenSessionSheet.svelte'
+  import OtherActivityChip from '$lib/components/OtherActivityChip.svelte'
+  import ActivityRow from '$lib/components/ActivityRow.svelte'
+  import ActivitySheet from '$lib/components/ActivitySheet.svelte'
+  import GymQuestionSheet from '$lib/components/GymQuestionSheet.svelte'
+  import KcalSheet from '$lib/components/KcalSheet.svelte'
+  import ActionToast from '$lib/components/ActionToast.svelte'
+  import { activityName, activityDayMarks, activitiesForCoach, leagueWeekSeconds, num, totalMinutes, type ActivityDraft } from '$lib/activities'
+  import { weekDays } from '$lib/league'
+  import { fixedSlots, shiftPending, slotDay, isRestDay as isRestSlot, nextWorkout } from '$lib/plan-week'
+  import { WEEKDAY_NAMES } from '$lib/program-utils'
   import {
     isIdle, isStale, idleEnd, idleSeconds, idleMinutes, clockTime, staleEyebrow, lastActivity,
     lastWeightBefore as lastWeightOn, leagueSeconds, type PendingExercise,
   } from '$lib/session-idle'
   import { armIdleReminder, cancelIdleReminder } from '$lib/session-reminder'
-  import type { Exercise, ExerciseLog, Program, ProgramDay, SessionState, Settings } from '$lib/types'
+  import type { Activity, Exercise, ExerciseLog, Program, ProgramDay, SessionState, Settings } from '$lib/types'
 
   // Pulse line: fits a watch, a phone or any workout app
   const PULSE_SVG = `<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12h4l2.5-6 5 12 2.5-6h5"/></svg>`
@@ -104,6 +114,20 @@
   let coachError = $state(false)
   let coachResult = $state<any>(null)
 
+  // ── Other activities (Nuevo · Hoy actividades) ──
+  let activities = $state<Activity[]>([])
+  let gymKcal = $state(0)
+  let activitySheet = $state<{ editing: Activity | null } | null>(null)
+  let askAbout = $state<Activity | null>(null)
+  let kcalSheet = $state<{ effort: string } | null>(null)
+  let actionToast = $state<{ message: string; undo: () => void } | null>(null)
+  let actionToastTimer: ReturnType<typeof setTimeout> | null = null
+  // The week as Hoy reads it: today's slot, the program's own layout and today's
+  // workout skipped with «Saltarlo esta semana»
+  let weekOrder = $state<number[]>([])
+  let naturalOrder = $state<number[]>([])
+  let skipped = $state(false)
+
   let accent = $derived($settings.accentColor || '#d4ff3a')
   let units = $derived($settings.units || 'kg')
   let isRestDay = $derived(isRestName((day as ProgramDay | null)?.name))
@@ -148,9 +172,35 @@
   let eyebrow = $derived(complete
     ? `Hoy · terminado${sessionMinutes !== null ? ` en ${sessionMinutes} min` : ''}`
     : sessionEyebrow(todayDate, weekObj))
+  let todayIdx = $derived(todayDate ? weekdayIdx(todayDate) : 0)
+  let restSub = $derived(restSubtitle())
+  let activityMinutes = $derived(totalMinutes(activities))
+  // Before the gym starts, the day's activities are the dock's news
+  let dockCaption = $derived(step && activities.length && !startedAt && $online
+    ? `${activityMinutes} min de actividad ya suman a tu semana`
+    : step?.caption ?? '')
 
   function isRestName(name?: string): boolean {
     return !name || name === 'Rest' || name === 'Descanso'
+  }
+
+  function weekdayIdx(date: string): number {
+    const [y, m, d] = date.split('-').map(Number)
+    return (new Date(y, m - 1, d).getDay() + 6) % 7
+  }
+
+  // «Saltaste Empuje esta semana», «Empuje pasó a mañana» or «Mañana: Tirón»
+  function restSubtitle(): string {
+    if (skipped && day) return `Saltaste ${day.name} esta semana`
+    const week = weekObj
+    if (!week || !weekOrder.length) return ''
+    const natural = slotDay(week, naturalOrder, todayIdx)
+    if (!isRestSlot(natural)) {
+      const to = weekOrder.indexOf(naturalOrder[todayIdx])
+      if (to > todayIdx) return `${natural!.name} pasó ${to === todayIdx + 1 ? 'a mañana' : `al ${WEEKDAY_NAMES[to].toLowerCase()}`}`
+    }
+    const next = nextWorkout(week, weekOrder, todayIdx)
+    return next?.calIdx === todayIdx + 1 ? `Mañana: ${next.day.name}` : ''
   }
 
   function todayLogFor(exerciseId: string, logs: ExerciseLog[]): ExerciseLog | null {
@@ -275,6 +325,8 @@
     weekObj = program?.weeks?.[weekIdx]
     todayDate = toLocal(new Date())
     todaySwapsMap = (s.todaySwaps && s.todaySwaps.date === todayDate) ? s.todaySwaps.swaps : {}
+    await loadActivities()
+    skipped = s.skippedDay?.date === todayDate
     await closeStaleSession(s.sessionState)
 
     checkPendingRest()
@@ -294,9 +346,11 @@
       weekObj,
       (s.rescheduleWeekOrder as Record<string, number[]> | undefined)?.[`${program.id}-week-${weekIdx}`]
     )
+    weekOrder = order
+    naturalOrder = resolveWeekOrder(weekObj, null)
     const todayDay: ProgramDay | null = weekObj.days?.[order[(new Date().getDay() + 6) % 7]] || null
     day = todayDay
-    if (!todayDay || isRestName(todayDay.name)) {
+    if (!todayDay || isRestName(todayDay.name) || skipped) {
       loaded = true
       return
     }
@@ -563,8 +617,9 @@
     if (!PUSH_SERVER_URL || !s.username) return
     const all = allLogs.length > 0 ? allLogs : await Storage.getAllLogs()
     const streak = await computeStreak(todayDate)
-    const exercisedToday = all.some(l => l.date === todayDate && l.weight > 0)
-    const gymTime = await getWeeklyGymSeconds(mondayOf(todayDate))
+    const [sessions, acts] = await Promise.all([Storage.getAllGymSessions(), Storage.getAllActivities()])
+    const exercisedToday = all.some(l => l.date === todayDate && l.weight > 0) || acts.some(a => a.date === todayDate)
+    const gymTime = leagueWeekSeconds(sessions, acts, mondayOf(todayDate))
     syncUserToWorker(s.username, streak, exercisedToday, gymTime).catch(() => {})
   }
 
@@ -661,15 +716,23 @@
     effortModalShow = true
   }
 
-  async function onEffort(effort: string) {
+  // The effort, then the calories (optional), then the coach
+  function onEffort(effort: string) {
     effortModalShow = false
     effortValue = effort
+    kcalSheet = { effort }
+  }
+
+  async function runAnalysis(effort: string) {
     coachLoading = true
     coachCardMode = true
     coachError = false
     coachResult = null
     try {
-      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx, trainingDaysPerWeek(program, weekIdx), program)
+      const result = await runCoachAnalysis(day!, effort, exercises, todayDate, weekIdx, trainingDaysPerWeek(program, weekIdx), program, {
+        kcal: gymKcal || undefined,
+        other_activities_today: activitiesForCoach(activities),
+      })
       coachLoading = false
       if (!result) {
         coachError = true
@@ -717,7 +780,162 @@
 
   async function computeStreak(todayDateStr: string) {
     const all = allLogs.length > 0 ? allLogs : await Storage.getAllLogs()
-    return computeStreakWeeks(all, trainingDaysPerWeek(program, weekIdx), todayDateStr)
+    const marks = activityDayMarks(await Storage.getAllActivities())
+    return computeStreakWeeks([...all, ...marks], trainingDaysPerWeek(program, weekIdx), todayDateStr)
+  }
+
+  // ── Other activities ──
+
+  async function loadActivities() {
+    activities = await Storage.getActivitiesForDate(todayDate)
+    gymKcal = (await Storage.getGymSession(todayDate))?.kcal || 0
+  }
+
+  // «Mar 17 nov» for the sheets
+  function sheetEyebrow(): string {
+    return sessionEyebrow(todayDate, null)
+  }
+
+  function openActivity(editing: Activity | null = null) {
+    actionToast = null
+    activitySheet = { editing }
+  }
+
+  // The gym's question comes once a day, before the session starts
+  function shouldAsk(): boolean {
+    return !!day && !isRestDay && !skipped && !complete && !startedAt && $settings.activityAskDate !== todayDate
+  }
+
+  async function saveActivity(draft: ActivityDraft) {
+    const editing = activitySheet?.editing
+    activitySheet = null
+    const saved = await Storage.saveActivity(editing
+      ? { ...draft, id: editing.id, date: editing.date, createdAt: editing.createdAt }
+      : { ...draft, date: todayDate })
+    await loadActivities()
+    if (!editing && shouldAsk()) {
+      askAbout = saved
+      settings.update({ activityAskDate: todayDate } as any)
+    }
+    afterActivityChange()
+  }
+
+  async function removeActivity() {
+    const editing = activitySheet?.editing
+    activitySheet = null
+    if (!editing) return
+    await Storage.deleteActivity(editing.id)
+    await loadActivities()
+    afterActivityChange()
+    showActionToast('Actividad eliminada', async () => {
+      await Storage.saveActivity(editing)
+      await loadActivities()
+      afterActivityChange()
+    })
+  }
+
+  // The league, friends and the cloud copy hear about it at once
+  function afterActivityChange() {
+    syncLeague().catch(() => {})
+    uploadSnapshot().catch(() => {})
+  }
+
+  function showActionToast(message: string, undo: () => void) {
+    if (actionToastTimer) clearTimeout(actionToastTimer)
+    actionToast = { message, undo }
+    actionToastTimer = setTimeout(() => (actionToast = null), 5000)
+  }
+
+  function undoAction() {
+    const undo = actionToast?.undo
+    actionToast = null
+    undo?.()
+  }
+
+  // ── «¿Y <workout>?» ──
+
+  function rescheduleKey(): string {
+    return program ? `${program.id}-week-${weekIdx}` : ''
+  }
+
+  async function saveWeekOrder(order: number[] | null) {
+    const stored = await Storage.getSettings()
+    const rs = { ...((stored.rescheduleWeekOrder || {}) as Record<string, number[]>) }
+    const key = rescheduleKey()
+    if (order && order.some((v, i) => v !== naturalOrder[i])) rs[key] = [...order]
+    else delete rs[key]
+    await settings.update({ rescheduleWeekOrder: rs as any })
+  }
+
+  // «Pasarlo a mañana»: what Plan's «Me salté un día» does, from today on
+  async function moveWorkout() {
+    askAbout = null
+    const name = day?.name || ''
+    const before = [...weekOrder]
+    const gymDone = weekDays(allLogs, todayDate)
+    const shifted = shiftPending(before, todayIdx, fixedSlots(weekObj, before, gymDone))
+    if (shifted.every((v, i) => v === before[i])) {
+      toast.show('No quedan días por correr esta semana')
+      return
+    }
+    const stored = await Storage.getSettings()
+    const previous = ((stored.rescheduleWeekOrder || {}) as Record<string, number[]>)[rescheduleKey()] || null
+    await saveWeekOrder(shifted)
+    await loadSession()
+    showActionToast(`${name} pasa a mañana`, async () => {
+      await saveWeekOrder(previous)
+      await loadSession()
+    })
+  }
+
+  // «Saltarlo esta semana»: the workout stays where it is, not done
+  async function skipWorkout() {
+    askAbout = null
+    const name = day?.name || ''
+    await settings.update({ skippedDay: { date: todayDate, dayName: name } } as any)
+    skipped = true
+    showActionToast(`${name} saltado esta semana`, async () => {
+      await settings.update({ skippedDay: null } as any)
+      skipped = false
+      await loadSession()
+    })
+  }
+
+  // ── Calories of the gym ──
+
+  function openKcalEdit() {
+    kcalSheet = { effort: '' }
+  }
+
+  async function saveKcal(kcal: number) {
+    const effort = kcalSheet?.effort || ''
+    kcalSheet = null
+    await Storage.setGymKcal(todayDate, kcal)
+    gymKcal = kcal
+    uploadSnapshot().catch(() => {})
+    if (effort) runAnalysis(effort)
+  }
+
+  async function removeKcal() {
+    kcalSheet = null
+    const previous = gymKcal
+    await Storage.setGymKcal(todayDate, 0)
+    gymKcal = 0
+    showActionToast('Calorías quitadas', async () => {
+      await Storage.setGymKcal(todayDate, previous)
+      gymKcal = previous
+    })
+  }
+
+  function skipKcal() {
+    const effort = kcalSheet?.effort || ''
+    kcalSheet = null
+    if (effort) runAnalysis(effort)
+  }
+
+  function kcalBack() {
+    kcalSheet = null
+    effortModalShow = true
   }
 </script>
 
@@ -726,8 +944,15 @@
     <EmptyState message="Cargando..." />
   {:else if noProgram}
     <FirstRunView />
-  {:else if isRestDay}
-    <RestDayView {weekObj} {weekIdx} />
+  {:else if isRestDay || skipped}
+    <RestDayView
+      eyebrow={sessionEyebrow(todayDate, weekObj) || 'Hoy'}
+      sub={restSub}
+      {activities}
+      {accent}
+      onadd={() => openActivity()}
+      onedit={(a) => openActivity(a)}
+    />
   {:else if day}
     <PageHeader {eyebrow} title="{day.name}." sub={dayMuscles(todayExercises)}>
       {#snippet action()}
@@ -735,9 +960,20 @@
           <div class="clock idle" data-component="SessionClock"><b><span class="pz" aria-hidden="true"><i></i><i></i></span>{clock}</b><span>Sin actividad desde {clockTime(idleEnd(liveSession))}</span></div>
         {:else if clockRunning}
           <div class="clock" data-component="SessionClock"><b>{clock}</b><span>en sesión</span></div>
+        {:else}
+          <OtherActivityChip onclick={() => openActivity()} />
         {/if}
       {/snippet}
     </PageHeader>
+
+    {#snippet logged()}
+      {#if activities.length}
+        <section class="logged" data-component="LoggedActivities">
+          <span class="k">Registrado hoy</span>
+          {#each activities as a (a.id)}<ActivityRow activity={a} onedit={() => openActivity(a)} />{/each}
+        </section>
+      {/if}
+    {/snippet}
 
     {#if complete}
       <SessionSummary
@@ -746,15 +982,19 @@
         error={coachError}
         minutes={sessionMinutes}
         {units}
+        kcal={gymKcal}
+        onkcal={coachLoading ? null : openKcalEdit}
         onask={() => (effortModalShow = true)}
         onreset={resetDay}
+        extra={logged}
       />
     {:else}
+      {@render logged()}
       <SessionSteps {phases} onrow={onRow} />
     {/if}
 
     {#if step && !restShown}
-      <NextStepDock caption={step.caption}>
+      <NextStepDock caption={dockCaption}>
         <Button variant="primary" size="lg" {accent} onclick={() => goToStep(step.target)}>
           <span class="one-line">{step.label}</span><Icon name="arrow" size={18} />
         </Button>
@@ -831,6 +1071,43 @@
 
 <EffortSheet bind:open={effortModalShow} onselect={onEffort} onskip={() => (effortModalShow = false)} />
 
+{#if activitySheet}
+  <ActivitySheet
+    eyebrow={sheetEyebrow()}
+    editing={activitySheet.editing}
+    {accent}
+    onsave={saveActivity}
+    ondelete={removeActivity}
+    onclose={() => (activitySheet = null)}
+  />
+{/if}
+
+{#if askAbout && day}
+  <GymQuestionSheet
+    saved={activityName(askAbout)}
+    minutes={num(askAbout.minutes)}
+    dayName={day.name}
+    onlater={() => (askAbout = null)}
+    onmove={moveWorkout}
+    onskip={skipWorkout}
+  />
+{/if}
+
+{#if kcalSheet}
+  <KcalSheet
+    effort={kcalSheet.effort}
+    current={gymKcal}
+    {accent}
+    onsave={saveKcal}
+    onskip={skipKcal}
+    onback={kcalBack}
+    onremove={removeKcal}
+    onclose={() => (kcalSheet = null)}
+  />
+{/if}
+
+<ActionToast visible={!!actionToast} message={actionToast?.message ?? ''} action="Deshacer" id="today-action-toast" onaction={undoAction} />
+
 {#if streakModalShow}
   <StreakScreen count={streakCount} oncontinue={onStreakDone} />
 {/if}
@@ -862,5 +1139,7 @@
   .pz { display: flex; gap: 3px; }
   .pz i { width: 3px; height: 12px; border-radius: 1px; background: currentColor; }
   .footer-bar { display: flex; justify-content: flex-end; }
+  .logged { display: flex; flex-direction: column; gap: 10px; }
+  .k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-tertiary); }
   :global(.one-line) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
   import Avatar from './Avatar.svelte'
   import StatBlock from './StatBlock.svelte'
   import Button from './Button.svelte'
@@ -7,19 +8,34 @@
 
   // The end of Hoy: what the coach said, what to aim for next time and three
   // plain figures. Without an analysis it offers to ask for one.
-  let { analysis = null, loading = false, error = false, minutes = null, units = 'kg', onask, onreset }: {
+  let { analysis = null, loading = false, error = false, minutes = null, units = 'kg', kcal = 0, onkcal = null, onask, onreset, extra }: {
     analysis?: any
     loading?: boolean
     error?: boolean
     minutes?: number | null
     units?: string
+    /** The gym session's calories (Nuevo · Hoy actividades 13); 0 = none yet */
+    kcal?: number
+    /** Opens the calories sheet; without it the row isn't shown */
+    onkcal?: (() => void) | null
     onask: () => void
     onreset: () => void
+    /** Above «Reiniciar día»: the day's activities */
+    extra?: Snippet
   } = $props()
 
   let hasAnalysis = $derived(!!analysis?.analysis)
   let recs = $derived<string[]>((analysis?.recommendations || []).slice(0, 5))
 </script>
+
+{#snippet kcalRow()}
+  {#if onkcal}
+    <button type="button" class="kc" data-component="KcalRow" onclick={onkcal}>
+      <span class="kc-m"><span class="lbl">Calorías</span><span class="kc-n">{#if kcal}<b>{kcal}</b> kcal{:else}<b class="none">—</b>{/if}</span></span>
+      <span class="kc-c">{kcal ? 'Editar' : 'Agregar'} <Icon name="chev" size={16} /></span>
+    </button>
+  {/if}
+{/snippet}
 
 <div class="sum" data-component="SessionSummary">
   {#if loading}
@@ -46,11 +62,14 @@
       <StatBlock variant="tile" value={analysis.pr_count ?? ''} label="récords" />
       <StatBlock variant="tile" value={minutes ?? ''} unit="min" label="duración" />
     </div>
+    {@render kcalRow()}
   {:else}
     {#if error}<p class="err">No pude conectar con el coach. Revisa tu conexión e intenta de nuevo.</p>{/if}
     <div class="trio one"><StatBlock variant="tile" value={minutes ?? ''} unit="min" label="duración" /></div>
+    {@render kcalRow()}
     <Button variant="secondary" size="lg" onclick={onask}>Pedir análisis al coach</Button>
   {/if}
+  {@render extra?.()}
   <DebugAIToggle label="Today Workout IA" />
   <Button variant="text" size="lg" fullWidth onclick={onreset}><Icon name="restart" size={16} />Reiniciar día</Button>
 </div>
@@ -69,4 +88,10 @@
   .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .trio.one { grid-template-columns: minmax(0, 1fr); }
   .err { font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
+  .kc { width: 100%; min-height: 64px; padding: 10px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border: 0; border-radius: 16px; background: var(--surface); color: var(--text); font-family: inherit; text-align: left; cursor: pointer; }
+  .kc-m { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .kc-n { font-size: 15px; color: var(--text-secondary); }
+  .kc-n b { margin-right: 2px; font-family: var(--font-mono); font-size: 26px; font-weight: 500; letter-spacing: -0.04em; color: var(--text); }
+  .kc-n b.none { color: var(--text-muted); }
+  .kc-c { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; white-space: nowrap; }
 </style>

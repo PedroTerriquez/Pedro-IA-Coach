@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.110'
-const _VER_DESC = 'Skill design_prompt y brief base para pedir diseños a Claude Design'
-const _VER_TIME = '2026-11-15 19:22'
+const _VER_BASE = 'v2.111'
+const _VER_DESC = 'Hoy: otras actividades, calorías del gym y descanso nuevo'
+const _VER_TIME = '2026-11-16 07:52'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
