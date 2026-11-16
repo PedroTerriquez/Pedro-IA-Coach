@@ -328,11 +328,10 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await fontSheet.getByRole('button', { name: 'Cerrar' }).click()
     await expect(fontBtn).toContainText('Extra grande')
 
-    // Units in lb; the Watch on (for the moment after the warmup)
+    // Units in lb; no Smart Watch switch (the workout-app toast shows to everyone)
     await page.locator('#units-lb').click()
-    await page.locator('#watch-switch').click()
     await expect.poll(async () => (await storedSettings(page))?.units).toBe('lb')
-    await expect.poll(async () => (await storedSettings(page))?.hasWatch).toBe(true)
+    await expect(page.locator('#watch-switch')).toHaveCount(0)
 
     // Persisted to Settings — survives a reload, not just component state
     await page.reload()
@@ -702,12 +701,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
 
   await step('Step 2b: Plan — Primera semana', async () => {
     await nav(page, 'plan')
-    // No workout yet: no count to fall behind on, and no friends to show
-    const strip = page.locator('#plan-week-strip')
-    await expect(strip).toContainText('Tu primera semana')
-    await expect(strip.locator('[data-day="today"]')).toHaveCount(1)
-    await expect(strip.locator('[data-day="done"]')).toHaveCount(0)
-    await expect(strip).toContainText('Invita a un amigo y suman juntos cada semana')
+    // Plan is the program, not a history: no week summary on top (removed 2026-11-14)
+    await expect(page.locator('#plan-week-strip')).toHaveCount(0)
     await expect(page.locator('#plan-days-grid')).not.toContainText('Hecho')
     // The dock greets the first workout and takes you to Hoy
     await expect(todayDock(page)).toContainText('Toca cualquier día para ver sus ejercicios')
@@ -921,11 +916,38 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     const bench = grid.locator(SEL.exerciseRow, { hasText: 'Banca' })
     await expect(bench).toContainText('Pecho')
     await expect(bench).toContainText('4 × 8–10')
-    // Any other day opens on tap and closes from its head
-    await planDay(page, tiron).click()
+    // Every workout day stays open with its exercises: Plan is where you see them all
     await expect(planDay(page, tiron)).toHaveAttribute('data-component', 'DayPanel')
-    await planDay(page, tiron).locator('.head').click()
-    await expect(planDay(page, tiron)).toHaveAttribute('data-component', 'DayRow')
+    await expect(planDay(page, tiron).locator(SEL.exerciseRow).first()).toBeVisible()
+    await expect(planDay(page, tiron).locator('button.head')).toHaveCount(0)
+    // Plan opens on today: its card in the top half of the screen (the last
+    // days can't scroll all the way up)
+    expect((await planDay(page, t).boundingBox()).y).toBeLessThan(page.viewportSize().height / 2)
+    // The week strip: a button per workout day, today in it; tapping one jumps to its card
+    const shape = page.locator('[data-component="WeekShape"]')
+    await expect(shape.locator('button')).toHaveCount(2)
+    await shape.getByRole('button', { name: /Tirón/ }).click()
+    await expect.poll(async () => (await planDay(page, tiron).boundingBox()).y).toBeLessThan(page.viewportSize().height / 2)
+    // Deep inside a day, a bar on top names it; tapping it goes back to the day's
+    // head. On Empuje (4 exercises), on a short screen so even a Sunday can scroll
+    // that far — once the strip's smooth jump has settled (no scroll for 150 ms)
+    const dayBar = page.locator('[data-component="PlanDayBar"]')
+    const fullSize = page.viewportSize()
+    await page.setViewportSize({ width: fullSize.width, height: 420 })
+    await page.evaluate(() => new Promise((done) => {
+      let quiet
+      const wait = () => { clearTimeout(quiet); quiet = setTimeout(() => { removeEventListener('scroll', wait); done() }, 150) }
+      addEventListener('scroll', wait)
+      wait()
+    }))
+    const empujeHead = await planDay(page, t).locator('.dp-h').boundingBox()
+    await page.evaluate((y) => window.scrollBy(0, y), empujeHead.y + empujeHead.height - 30)
+    await expect(dayBar).toContainText('Empuje')
+    await expect(dayBar).toContainText('4 ej')
+    await dayBar.click()
+    await expect.poll(async () => (await planDay(page, t).boundingBox()).y).toBeGreaterThan(-5)
+    await page.setViewportSize(fullSize)
+    await page.evaluate(() => window.scrollTo(0, 0))
 
     // The week selector says which one is this week
     await expect(page.locator('[data-component="WeekSwitch"]').getByRole('tab', { selected: true })).toContainText('esta semana')
@@ -1196,8 +1218,9 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(sheetHead(page)).toContainText('Calentamiento · listo')
     await expect(sheet).toContainText(`2 de ${n} hechos`)
 
-    // The Watch is on: the moment to start it, then it goes away
-    const watchToast = page.locator('[data-component="CenterToast"]', { hasText: 'Inicia tu Smart Watch' })
+    // No watch setting at all: the workout-app invitation shows anyway, then goes away
+    const watchToast = page.locator('[data-component="CenterToast"]', { hasText: 'Si quieres, inicia tu reloj o app' })
+    await expect(watchToast).toContainText('Así este entreno también queda guardado ahí.')
     await expect(watchToast).toBeVisible()
     await elapse(2000)
     await expect(watchToast).not.toBeVisible()
@@ -1217,6 +1240,8 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
   const weightInput = page.locator('input[inputmode="decimal"]').first()
   const weightPanel = page.locator('[data-component="WeightPanel"]')
   const savedPanel = page.getByText('Registrado hoy')
+  const loggedPanel = page.locator('[data-component="LoggedPanel"]')
+  const loggedRows = loggedPanel.locator(SEL.loggedSet)
   const todayLogOf = async (id) => (await readLogs(page)).filter(l => l.exerciseId === id && l.date === localDate(0))
   const openRow = async (name) => {
     if (await training.locator(SEL.phaseToggle).count()) await training.locator(SEL.phaseToggle).click()
@@ -1229,44 +1254,56 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(page.locator(SEL.detailName)).toContainText('Banca')
     await expect(weightInput).toHaveValue('75')
 
-    // Above the best one: a new record, saved, with the toast up top
-    await weightInput.fill('80')
-    await logDock(page).getByRole('button', { name: 'Registrar 80 kg' }).click()
-    await expect(weightPanel).toContainText('Registrado hoy')
-    await expect(weightPanel).toContainText('tu nuevo récord')
-    const toastEl = page.locator('#backup-toast')
-    await expect(toastEl).toContainText('Guardado · 80 kg')
-    expect((await toastEl.boundingBox()).y).toBeLessThan(200)
-    await expect(logDock(page).getByRole('button', { name: 'Siguiente' })).toBeVisible()
-    await expect(logDock(page).getByRole('button', { name: /Descansar 0:05/ })).toBeVisible()
-    await expect(page.locator('[data-component="ExerciseDetail"]')).not.toContainText(/Borrar registro|Eliminar registro/)
+    // «Cómo se hace»: the exercise's own steps, folded until tapped
+    const howTo = page.getByRole('button', { name: /Cómo se hace/ })
+    const howList = page.locator('[data-component="ExerciseDetail"] ol.how')
+    await expect(howTo).toContainText('2 pasos')
+    await howTo.click()
+    await expect(howList.locator('li')).toHaveCount(2)
+    await expect(howList).toContainText('Retrae fuertemente las escápulas')
+    await howTo.click()
+    await expect(howList).toHaveCount(0)
 
-    // Typing over it: no "8077", no snapping back; matching it again reads as saved
+    // Typing over the weight: no "8077", the button follows the field
     await weightInput.click()
     await page.keyboard.press('ControlOrMeta+a')
     await page.keyboard.type('77.5')
     await expect(weightInput).toHaveValue('77.5')
     await expect(logDock(page).getByRole('button', { name: 'Registrar 77.5 kg' })).toBeVisible()
     await expect(savedPanel).toHaveCount(0)
-    await page.keyboard.press('ControlOrMeta+a')
-    await page.keyboard.type('80')
-    await expect(savedPanel).toBeVisible()
-    await expect(logDock(page).getByRole('button', { name: /^Registrar \d/ })).toHaveCount(0)
 
-    // Saving another weight overwrites today's log: one log, survives a reload
-    await weightInput.fill('77.5')
-    await logDock(page).getByRole('button', { name: 'Registrar 77.5 kg' }).click()
-    await expect(savedPanel).toBeVisible()
-    await page.reload()
-    await openRow('Banca')
-    await expect(weightInput).toHaveValue('77.5')
-    let todays = await todayLogOf(ids.bench)
-    expect(todays).toHaveLength(1)
-    expect(todays[0].weight).toBe(77.5)
+    // Above the best one: a new record, saved, with the toast up top. The
+    // read-only «Registrado hoy» takes the weight's place: one row per set
     await weightInput.fill('80')
     await logDock(page).getByRole('button', { name: 'Registrar 80 kg' }).click()
-    await expect(savedPanel).toBeVisible()
-    todays = await todayLogOf(ids.bench)
+    await expect(loggedPanel).toContainText('Registrado hoy')
+    await expect(loggedPanel).toContainText('4 series')
+    await expect(loggedPanel).toContainText('Tu nuevo récord')
+    await expect(loggedRows).toHaveCount(4)
+    for (const i of [0, 1, 2, 3]) await expect(loggedRows.nth(i)).toContainText('80kg×10')
+    await expect(loggedRows.nth(0)).toContainText('Récord')
+    await expect(weightPanel).toHaveCount(0)
+    await expect(loggedPanel.getByRole('button', { name: /Menos|Más/ })).toHaveCount(0)
+    // Revealed above the dock, whole
+    const dockTop = (await logDock(page).boundingBox()).y
+    await expect.poll(async () => {
+      const box = await loggedPanel.boundingBox()
+      return box.y + box.height
+    }).toBeLessThanOrEqual(dockTop + 30)
+    const toastEl = page.locator('#backup-toast')
+    await expect(toastEl).toContainText('Guardado · 80 kg')
+    expect((await toastEl.boundingBox()).y).toBeLessThan(200)
+    await expect(logDock(page).getByRole('button', { name: 'Siguiente' })).toBeVisible()
+    await expect(logDock(page).getByRole('button', { name: /Descansar 0:05/ })).toBeVisible()
+    await expect(logDock(page).getByRole('button', { name: /^Registrar \d/ })).toHaveCount(0)
+    await expect(page.locator('[data-component="ExerciseDetail"]')).not.toContainText(/Borrar registro|Eliminar registro/)
+
+    // A plain «80 kg» log, one per day, survives a reload
+    await page.reload()
+    await openRow('Banca')
+    await expect(loggedRows).toHaveCount(4)
+    await expect(loggedRows.nth(0)).toContainText('80kg×10')
+    const todays = await todayLogOf(ids.bench)
     expect(todays).toHaveLength(1)
     expect(todays[0].weight).toBe(80)
 
@@ -1288,16 +1325,28 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await weightInput.fill('30')
     await logDock(page).getByRole('button', { name: 'Registrar 30 kg' }).click()
     await expect(savedPanel).toBeVisible()
+    // «Editar series» writes another weight over today's log: still one log,
+    // and it survives a reload
+    const sheet = page.locator('[data-component="SeriesConfirmSheet"]')
+    await loggedPanel.getByRole('button', { name: /Editar series/ }).click()
+    await expect(sheet.locator('.scs-ed-prev')).toContainText('antes 30 kg × 10')
+    await sheet.getByRole('button', { name: 'Bajar 2.5 kg' }).click()
+    await sheet.getByRole('button', { name: 'Copiar a las siguientes' }).click()
+    await sheet.locator(SEL.confirmSave).click()
+    await expect(sheet).toHaveCount(0)
+    for (const i of [0, 1, 2, 3]) await expect(loggedRows.nth(i)).toContainText('27.5kg×10')
     await page.reload()
     await openRow('Mancuernas')
     await expect(page.locator(SEL.detailName)).toContainText('Mancuernas')
-    await expect(weightInput).toHaveValue('30')
+    await expect(loggedRows.nth(0)).toContainText('27.5kg')
+    const dumbbellToday = (await readLogs(page)).filter(l => l.date === localDate(0) && [27.5, 30].includes(l.weight))
+    expect(dumbbellToday.map(l => l.weight)).toEqual([27.5])
     await altTab.click()
     await alts.getByRole('button', { name: /Volver a Press de Banca/ }).click()
     await expect(page.locator(SEL.detailName)).toContainText('Banca')
     await expect(page.locator(SEL.detailName)).not.toContainText('Mancuernas')
     await registrarTab.click()
-    await expect(weightInput).toHaveValue('80')
+    await expect(loggedRows.nth(0)).toContainText('80kg')
   })
 
   const timer = page.locator('[data-component="SeriesModeScreen"]')
@@ -1783,12 +1832,24 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(timer).toHaveCount(0)
 
     // Registered under the alternative, it still counts as today's Fondos.
-    // With its rest still up (at zero, minimized), Registrar has the last word:
-    // the rest ends, so coming back to the app it can't write its 1 serie over
-    // the log and leave the exercise half done (bug seen 2026-11-03)
-    await weightInput.fill('60')
-    await logDock(page).getByRole('button', { name: 'Registrar 60 kg' }).click()
+    // The skipped set already shows as «Registrado hoy»; corrected through
+    // «Editar series» with its rest still up (at zero, minimized), the saved
+    // sets have the last word: the rest ends, so coming back to the app it
+    // can't write its 1 serie over the log (bug seen 2026-11-03)
+    await expect(loggedRows.nth(0)).toContainText('5kg')
+    const fixSheet = page.locator('[data-component="SeriesConfirmSheet"]')
+    await loggedPanel.getByRole('button', { name: /Editar series/ }).click()
+    await fixSheet.locator('[data-component="NumberStepper"]').nth(0).locator('b').click()
+    await fixSheet.getByLabel('Peso', { exact: true }).fill('60')
+    await fixSheet.getByLabel('Peso', { exact: true }).press('Enter')
+    const fixRows = fixSheet.locator(SEL.confirmRow)
+    if (await fixRows.count() > 1) await fixSheet.getByRole('button', { name: 'Copiar a las siguientes' }).click()
+    const plannedSets = await fixRows.count()
+    await fixSheet.locator(SEL.confirmSave).click()
+    await expect(fixSheet).toHaveCount(0)
     await expect(savedPanel).toBeVisible()
+    await expect(loggedRows).toHaveCount(plannedSets)
+    await expect(loggedRows.nth(0)).toContainText('60kg')
     await expect.poll(async () => await cached(page, 'rest-timer')).toBeNull()
     await page.reload()
     await waitForApp(page)
@@ -1796,7 +1857,9 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     if (await altRow.count() === 0) await training.locator(SEL.phaseToggle).click()
     await expect(timer).toHaveCount(0)
     await expect(altRow).toHaveAttribute('data-done', 'true')
-    expect((await readLogs(page)).find(l => l.id === altLog.id).sets).toBeUndefined()
+    const fixedLog = (await readLogs(page)).find(l => l.id === altLog.id)
+    expect(fixedLog.weight).toBe(60)
+    expect(fixedLog.sets).toBe(plannedSets)
     await expect(altRow.locator(SEL.exerciseDoneMark)).toBeVisible()
     const longRow = page.locator('[data-component="ExerciseRow"]', { hasText: 'Flexiones dinámicas' })
     await expect(longRow).toHaveAttribute('data-done', 'false')
@@ -1838,47 +1901,60 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     // The name takes at most two lines in the detail
     expect(await lineCount(tnName)).toBeLessThanOrEqual(2.05)
 
-    // Three blocks, edited tile by tile, registered as ONE log with their real volume
+    // «Series con pesos distintos» opens the timer's «Confirma tus series»: one
+    // row per planned set at the weight on screen, edited set by set
+    await weightInput.fill('10')
     await page.getByRole('button', { name: /Series con pesos distintos/ }).click()
-    const blockRows = page.locator('[data-component="BlockRow"]')
-    await expect(blockRows).toHaveCount(1)
-    const field = (b, i) => blockRows.nth(b).locator(SEL.blockField).nth(i)
-    await field(0, 2).fill('10')
-    await field(0, 2).click()
-    const plus = blockRows.nth(0).getByRole('button', { name: 'Más', exact: true })
-    await expect(blockRows.nth(0).getByRole('button', { name: 'Menos', exact: true })).toBeVisible()
-    await plus.click()
-    await expect(field(0, 2)).toHaveValue('12.5')
-    await blockRows.nth(0).getByRole('button', { name: 'Menos', exact: true }).click()
-    await expect(field(0, 2)).toHaveValue('10')
-    // «Agregar bloque» copies the last one
-    await page.getByRole('button', { name: 'Agregar bloque' }).click()
-    await expect(blockRows).toHaveCount(2)
-    await field(1, 1).fill('12')
-    await field(1, 2).fill('8')
-    await page.getByRole('button', { name: 'Agregar bloque' }).click()
-    await expect(blockRows).toHaveCount(3)
-    await field(2, 1).fill('8')
-    await field(2, 2).fill('12')
-    await expect(logDock(page)).toContainText('9 series · 10, 8 y 12 kg')
-    await logDock(page).getByRole('button', { name: 'Registrar 9 series' }).click()
-    const blocksPanel = page.locator('[data-component="BlocksPanel"]')
-    await expect(blocksPanel).toContainText('Registrado hoy')
-    await expect(blocksPanel).toContainText('9 series en 3 bloques')
-    // Real volume: 3×10×10 + 3×12×8 + 3×8×12 = 876 kg
+    const sheet = page.locator('[data-component="SeriesConfirmSheet"]')
+    const rows = sheet.locator(SEL.confirmRow)
+    await expect(sheet).toContainText('Registrar')
+    await expect(rows).toHaveCount(3)
+    for (const i of [0, 1, 2]) await expect(rows.nth(i)).toContainText('10kg×10reps')
+    await expect(sheet.locator('.scs-ed-prev')).toContainText('sugerido 10 kg × 10')
+    // Set 2: + 2.5 kg and 8 reps typed; set 3: − 2.5 kg and two more reps
+    await sheet.getByRole('button', { name: 'Serie siguiente' }).click()
+    await expect(sheet.locator('.scs-ed-n')).toHaveText('2')
+    await sheet.getByRole('button', { name: 'Subir 2.5 kg' }).click()
+    await sheet.locator('[data-component="NumberStepper"]').nth(1).locator('b').click()
+    await sheet.getByLabel('Reps', { exact: true }).fill('8')
+    await sheet.getByLabel('Reps', { exact: true }).press('Enter')
+    await expect(rows.nth(1)).toContainText('12.5kg×8reps')
+    await rows.nth(2).click()
+    await sheet.getByRole('button', { name: 'Bajar 2.5 kg' }).click()
+    await sheet.getByRole('button', { name: 'Más reps' }).click()
+    await sheet.getByRole('button', { name: 'Más reps' }).click()
+    await expect(rows.nth(2)).toContainText('7.5kg×12reps')
+    await expect(sheet.locator(SEL.confirmSave)).toContainText('Guardar 3 series · 2 editadas')
+    await sheet.locator(SEL.confirmSave).click()
+    await expect(sheet).toHaveCount(0)
+
+    // Registered as ONE log with their real volume; the detail shows one row
+    // per set, the short and long ones marked against the 10-rep target
+    await expect(loggedPanel).toContainText('Registrado hoy')
+    await expect(loggedPanel).toContainText('3 series · 290 kg')
+    await expect(loggedRows).toHaveCount(3)
+    await expect(loggedRows.nth(0)).toContainText('10kg×10')
+    await expect(loggedRows.nth(1)).toContainText('12.5kg×8')
+    await expect(loggedRows.nth(1)).toContainText('−2 rep')
+    await expect(loggedRows.nth(2)).toContainText('7.5kg×12')
+    await expect(loggedRows.nth(2)).toContainText('+2 rep')
+    // Real volume: 10×10 + 12.5×8 + 7.5×12 = 290 kg
     const stored = await todayLogOf(ids.long)
     expect(stored).toHaveLength(1)
-    expect(stored[0].blocks.reduce((v, b) => v + b.sets * b.reps * b.weight, 0)).toBe(876)
-    expect(stored[0].weight).toBe(12)
+    expect(stored[0].blocks.reduce((v, b) => v + b.sets * b.reps * b.weight, 0)).toBe(290)
+    expect(stored[0].weight).toBe(12.5)
     // Historial reads the same blocks back
     await historialTab.click()
-    await expect(page.locator('[data-component="HistoryList"]')).toContainText('3 × 10 · 3 × 12 · 3 × 8')
-    await expect(page.locator('[data-component="ProgressHero"]')).toContainText('12')
+    await expect(page.locator('[data-component="HistoryList"]')).toContainText('1 × 10 · 1 × 8 · 1 × 12')
+    await expect(page.locator('[data-component="ProgressHero"]')).toContainText('12.5')
     await registrarTab.click()
-    // «Editar bloques» › «Un solo peso» folds it back to one weight
-    await blocksPanel.getByRole('button', { name: /Editar bloques/ }).click()
-    await blocksPanel.getByRole('button', { name: 'Un solo peso' }).click()
-    await expect(weightPanel).toBeVisible()
+    // «Editar series» reopens it with what was logged; closing it changes nothing
+    await loggedPanel.getByRole('button', { name: /Editar series/ }).click()
+    await expect(rows.nth(1)).toContainText('12.5kg×8reps')
+    await expect(sheet.locator('.scs-ed-prev')).toContainText('antes 10 kg × 10')
+    await sheet.getByRole('button', { name: 'Cerrar' }).click()
+    await expect(sheet).toHaveCount(0)
+    await expect(loggedRows).toHaveCount(3)
 
     // Nothing is written for a rest that just starts
     const longBefore = JSON.stringify(await todayLogOf(ids.long))
@@ -1969,15 +2045,22 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(sheetHead(page)).toContainText(/Estiramiento · 1 de \d+/)
     const sheet = page.locator('[data-component="MovementSheet"]')
     // Walk every move with the arrow: a chest one needs the stall bar, a
-    // triceps one has no image but keeps its searches
+    // triceps one has no image but keeps its searches.
+    // Changed 2026-11-15 (approved by Pedro): one move per zone, the others
+    // behind «Otra opción» — so each zone's options are cycled here.
     let stallbar = false
     let noMedia = false
+    const swap = sheet.getByRole('button', { name: /Otra opción/ })
     for (let i = 0; i < 20; i++) {
-      if (await sheet.getByText('STALLBAR').count()) stallbar = true
-      if (await sheet.getByText('Sin imagen para este movimiento').count()) {
-        noMedia = true
-        await expect(sheet.getByRole('link', { name: 'Buscar en Google' })).toBeVisible()
-        await expect(sheet.getByRole('link', { name: 'Buscar en TikTok' })).toBeVisible()
+      const n = (await swap.count()) ? Number((await swap.innerText()).match(/de (\d+)/)[1]) : 1
+      for (let o = 0; o < n; o++) {
+        if (await sheet.getByText('STALLBAR').count()) stallbar = true
+        if (await sheet.getByText('Sin imagen para este movimiento').count()) {
+          noMedia = true
+          await expect(sheet.getByRole('link', { name: 'Buscar en Google' })).toBeVisible()
+          await expect(sheet.getByRole('link', { name: 'Buscar en TikTok' })).toBeVisible()
+        }
+        if (n > 1) await swap.click()
       }
       if (!(await navNext.isEnabled())) break
       await navNext.click()
@@ -1997,6 +2080,26 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await context.setOffline(false)
     await page.evaluate(() => window.dispatchEvent(new Event('online')))
     await expect(sheetHead(page)).toContainText(/Estiramiento · 2 de \d+/)
+
+    // Guided: «Empezar» holds the move on a clock; Pausar stops it, Saltar
+    // marks it and goes on to a 5 s «Prepárate», then the next hold starts alone
+    const clock = sheet.getByTestId('stretch-clock')
+    await logDock(page).getByRole('button', { name: /Empezar/ }).click()
+    await expect(clock).toContainText('Sostén')
+    await logDock(page).getByRole('button', { name: 'Pausar' }).click()
+    const paused = await clock.locator('b').innerText()
+    await elapse(3_000)
+    await expect(clock.locator('b')).toHaveText(paused)
+    await logDock(page).getByRole('button', { name: 'Seguir' }).click()
+    await logDock(page).getByRole('button', { name: 'Saltar' }).click()
+    await expect(sheetHead(page)).toContainText(/Estiramiento · 3 de \d+/)
+    await expect(clock).toContainText('Prepárate')
+    await expect.poll(async () => (await storedSettings(page))?.sessionState?.stretchMarks).toEqual([0, 1])
+    await elapse(5_500)
+    await expect(clock).toContainText('Sostén')
+    // The arrows leave the clock: back to the move's dose
+    await navPrev.click()
+    await expect(clock).toHaveCount(0)
 
     // The last move ends it; the training's end time doesn't move
     await goToLastMove(page)
@@ -2046,10 +2149,6 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     const today = planDay(page, t)
     await expect(today).toHaveAttribute('data-state', 'done')
     await expect(today).toContainText(/Hecho( en \d+ min)?/)
-    const strip = page.locator('#plan-week-strip')
-    await expect(strip.locator('.n')).toHaveText('1')
-    await expect(strip.locator('.u')).toHaveText('de 2 entrenos')
-    await expect(strip.locator('[data-day="done"]')).toHaveCount(1)
     // Nothing left to push today: no Entrenar, only Reprogramar and what comes next
     await expect(todayDock(page).getByRole('button', { name: /^Entrenar/ })).toHaveCount(0)
     await expect(todayDock(page).getByRole('button', { name: /Reprogramar semana/ })).toBeVisible()
@@ -2378,8 +2477,6 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await page.goto('plan')
     await expect(page.locator(`#plan-days-grid ${SEL.exerciseRow}`, { hasText: 'Banca' })).toBeVisible({ timeout: 5000 })
     await expect(banner).toContainText('Sin conexión')
-    // The league line says how old it is
-    await expect(page.locator('#plan-week-strip')).toContainText(/Liga actualizada a las \d{2}:\d{2}\. Se refresca al volver la señal/)
     // Historial opens (was: its «Constancia» tab visible — now «Días», with Pedro's yes 2026-10-22)
     await page.goto('history')
     await expect(hDock.getByRole('button', { name: 'Días', exact: true })).toBeVisible({ timeout: 5000 })
@@ -2444,10 +2541,15 @@ test('full user flow: empty app → Tú → Plan → Hoy → rest timer → Hist
     await expect(coachRow).toBeDisabled()
     await expect(coachRow).toContainText('El coach necesita internet')
     await expect(logDock(page)).toContainText('Sin internet también se guarda en tu teléfono')
-    await expect(weightInput).toHaveValue('40')
-    await page.getByRole('button', { name: 'Más peso' }).click()
-    await logDock(page).getByRole('button', { name: 'Registrar 45 kg' }).click()
-    await expect(page.locator('#backup-toast')).toContainText('Guardado en tu teléfono · 45 kg')
+    await expect(loggedRows.nth(0)).toContainText('40kg')
+    const offSheet = page.locator('[data-component="SeriesConfirmSheet"]')
+    await loggedPanel.getByRole('button', { name: /Editar series/ }).click()
+    await offSheet.getByRole('button', { name: 'Subir 2.5 kg' }).click()
+    await offSheet.getByRole('button', { name: 'Subir 2.5 kg' }).click()
+    await offSheet.getByRole('button', { name: 'Copiar a las siguientes' }).click()
+    await offSheet.locator(SEL.confirmSave).click()
+    await expect(page.locator('#backup-toast')).toContainText(/Guardado en tu teléfono · \d+ series/)
+    await expect(loggedRows.nth(0)).toContainText('45kg')
     await expect.poll(async () => (await todayLogOf(ids.military))[0]?.weight).toBe(45)
 
     // Back online: the coach comes back
@@ -2718,7 +2820,7 @@ test.describe('Calentamiento genérico — sin secciones', () => {
       program,
       settings: {
         id: 'settings', activeProgramId: 'prog-test', currentWeekIdx: 0, units: 'kg', accentColor: '#d4ff3a',
-        hasWatch: false, sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, onboarded: true,
+        sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, onboarded: true,
       },
     })
     await page.reload()
@@ -2951,7 +3053,7 @@ const LEAGUE = {
   settings(over = {}) {
     return {
       id: 'settings', activeProgramId: 'prog-liga', currentWeekIdx: 0, units: 'kg',
-      accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+      accentColor: '#d4ff3a', pushSubscribed: false, pushServerUrl: '',
       sessionState: { date: localDate(0), phase: 2, todayExDone: 0 }, lastCoachAnalysis: null,
       rescheduleWeekOrder: {}, language: 'es', onboarded: true, username: 'TestUser',
       ...over,
@@ -3646,7 +3748,7 @@ const V2 = {
   settings(over = {}) {
     return {
       id: 'settings', activeProgramId: 'prog-v2', currentWeekIdx: 0, units: 'kg',
-      accentColor: '#d4ff3a', hasWatch: false, pushSubscribed: false, pushServerUrl: '',
+      accentColor: '#d4ff3a', pushSubscribed: false, pushServerUrl: '',
       sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es',
       ...over,
     }

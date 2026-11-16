@@ -1,5 +1,5 @@
 import type { ProgramDay, ProgramWeek } from '$lib/types'
-import { trainedToday, formatHour, type DayState, type FriendData, type PhrasePart } from '$lib/league'
+import type { DayState } from '$lib/league'
 import { WEEKDAY_NAMES, dayDurationMin } from '$lib/program-utils'
 import { mondayOf } from '$lib/calendar-utils'
 
@@ -9,7 +9,6 @@ import { mondayOf } from '$lib/calendar-utils'
 
 export interface NextWorkout { calIdx: number; day: ProgramDay }
 export interface PlanDock { train: string | null; caption: string }
-export interface StripSocial { avatars: string[]; parts: PhrasePart[]; invite: boolean }
 export type DayRowState = 'pending' | 'done' | 'rest' | 'moved'
 export interface DayRowView { weekday: string; date: number; title: string; sub: string; meta: string; state: DayRowState }
 
@@ -109,40 +108,6 @@ export function dayRowView(i: {
   return { weekday, date: i.date, title: day.name, sub: daySub(i), meta: dayMeta(day), state: rowState(i.state, i.from) }
 }
 
-/** «Ana», «Ana y Luis», «Ana, Luis y Mariana», «Ana, Luis y 2 más» */
-export function namesPhrase(names: string[]): string {
-  if (names.length <= 1) return names[0] || ''
-  if (names.length <= 3) return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`
-  return `${names.slice(0, 2).join(', ')} y ${names.length - 2} más`
-}
-
-function trainedLine(names: string[], me: boolean, weekComplete: boolean): PhrasePart[] {
-  const who = { text: namesPhrase(names), bold: true }
-  if (me) return [{ text: 'Entrenaste hoy con ' }, who, { text: '. Ver la liga' }]
-  const verb = names.length === 1 ? ' entrenó hoy' : ' ya entrenaron hoy'
-  return [who, { text: verb + (weekComplete ? '. Tú ya cumpliste la semana' : '') }]
-}
-
-/** Footer of the week strip: a door to Amigos with what the app already knows */
-export function stripSocial(i: {
-  friends: FriendData[]
-  today: string
-  trainedMe: boolean
-  weekComplete: boolean
-  offline: boolean
-  savedAt: number | null
-}): StripSocial {
-  if (i.friends.length === 0) {
-    return { avatars: [], parts: [{ text: 'Invita a un amigo y suman juntos cada semana' }], invite: true }
-  }
-  const trained = i.friends.filter((f) => trainedToday(f, i.today)).map((f) => f.username)
-  const avatars = (trained.length ? trained : i.friends.map((f) => f.username)).slice(0, 3)
-  if (i.offline && i.savedAt) {
-    return { avatars, parts: [{ text: `Liga actualizada a las ${formatHour(i.savedAt)}. Se refresca al volver la señal` }], invite: false }
-  }
-  if (trained.length) return { avatars, parts: trainedLine(trained, i.trainedMe, i.weekComplete), invite: false }
-  return { avatars, parts: [{ text: 'Nadie de tu liga ha entrenado hoy. Ver la liga' }], invite: false }
-}
 
 function nextCaption(next: NextWorkout | null, todayIdx: number, minutes: number): string {
   if (!next) return 'No quedan entrenos esta semana'

@@ -1,8 +1,7 @@
 <script lang="ts">
   import PageHeader from '$lib/components/PageHeader.svelte'
   import WeekSwitch from '$lib/components/WeekSwitch.svelte'
-  import PlanWeekStrip from '$lib/components/PlanWeekStrip.svelte'
-  import DayRow from '$lib/components/DayRow.svelte'
+  import WeekShape from '$lib/components/WeekShape.svelte'
   import DayPanel from '$lib/components/DayPanel.svelte'
   import ExerciseRow from '$lib/components/ExerciseRow.svelte'
   import PlanReorder from '$lib/components/PlanReorder.svelte'
@@ -15,7 +14,7 @@
   import Icon from '$lib/components/Icon.svelte'
   import ExerciseDetail from '$lib/components/ExerciseDetail.svelte'
   import { getExerciseDisplayName, resolveExerciseMedia } from '$lib/data/exercise-dictionary'
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
   import { goto } from '$app/navigation'
   import { ROUTES } from '$lib/routes'
   import { settings } from '$lib/stores/settings'
@@ -31,10 +30,9 @@
   import { isTrained, trainingDaysPerWeek } from '$lib/streak'
   import { toLocalDateStr } from '$lib/calendar-utils'
   import { weekDays, weekRange, type DayState } from '$lib/league'
-  import { readFriendsCache, type FriendsCache } from '$lib/friends-cache'
   import {
     weekDates, slotDay, isRestDay, fixedSlots, shiftPending, movedFrom,
-    nextWorkout, dayRowView, planDock, stripSocial, shiftEffectLabel
+    nextWorkout, dayRowView, planDock, shiftEffectLabel
   } from '$lib/plan-week'
 
   const SHIFT_TOAST_MS = 6000
@@ -44,9 +42,7 @@
   let exercises = $state<Exercise[]>([])
   let logs = $state<ExerciseLog[]>([])
   let todaySeconds = $state(0)
-  let friendsCache = $state<FriendsCache | null>(null)
   let planWeekIdx = $state(0)
-  let openIdx = $state<number | null>(null)
   let moving = $state(false)
   let editingOrder = $state<number[] | null>(null)
   let sheetOpen = $state(false)
@@ -103,14 +99,6 @@
     nextMinutes: next ? dayDurationMin(next.day.exercises) : 0,
     nextWeekNumber: planWeekIdx + 1 < weeks.length ? planWeekIdx + 2 : null,
   }))
-  let social = $derived(stripSocial({
-    friends: friendsCache?.friends || [],
-    today,
-    trainedMe: todayDone,
-    weekComplete: total > 0 && done >= total,
-    offline: !$online,
-    savedAt: friendsCache?.savedAt ?? null,
-  }))
   let shiftEffect = $derived(shiftEffectLabel(week, committedOrder, shiftPending(committedOrder, shiftFrom, fixed), isCurrentWeek ? todayIdx : -1))
 
   onMount(async () => {
@@ -125,7 +113,6 @@
     exercises = exs
     logs = allLogs
     todaySeconds = sessions.find(g => g.date === today)?.seconds || 0
-    friendsCache = readFriendsCache()
     const weekCount = progs.find(p => p.id === s.activeProgramId)?.weeks?.length || 0
     planWeekIdx = typeof s.currentWeekIdx === 'number' && s.currentWeekIdx < weekCount ? s.currentWeekIdx : 0
     loaded = true
@@ -173,19 +160,63 @@
     return `${ex.sets} × ${String(ex.reps || '').replace('-', '–')}`
   }
 
-  function panelSub(day: ProgramDay, isToday: boolean): string {
-    if (isToday && todayDone) return todaySeconds > 0 ? `Hecho en ${Math.round(todaySeconds / 60)} min` : 'Hecho'
-    return [musclesOf(day), `${dayDurationMin(day.exercises)} min`].filter(Boolean).join(' · ')
+  // Today done: how long it took, then its size
+  function doneMeta(day: ProgramDay): string {
+    const took = todaySeconds > 0 ? `Hecho en ${Math.round(todaySeconds / 60)} min` : 'Hecho'
+    return `${took} · ${day.exercises.length} ej`
   }
+
+  // The note under a day: where it moved from, or the first week's «Ya pasó»
+  function dayTag(row: { state: string; sub: string }, day: ProgramDay | null): string {
+    if (row.state === 'moved') return row.sub
+    return row.state !== 'done' && row.sub !== musclesOf(day) ? row.sub : ''
+  }
+
+  // ── Week strip, jumps and the sticky day bar ──
+  let daysEl = $state<HTMLElement | null>(null)
+  let stickyIdx = $state<number | null>(null)
+  let shapeDays = $derived(rows.map((row, calIdx) => ({
+    weekday: row.weekday,
+    date: row.date,
+    title: row.title,
+    rest: isRestDay(slotDay(week, order, calIdx)),
+    today: isCurrentWeek && calIdx === todayIdx,
+    done: row.state === 'done',
+  })))
+
+  function dayEl(calIdx: number): HTMLElement | null {
+    return daysEl?.querySelector(`[data-weekday="${rows[calIdx]?.weekday}"]`) ?? null
+  }
+
+  function jumpToDay(calIdx: number) {
+    dayEl(calIdx)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
+  // The day whose head has scrolled above the top while its exercises still show
+  function updateSticky() {
+    const panels = daysEl ? [...daysEl.querySelectorAll<HTMLElement>('section[data-component="DayPanel"]')] : []
+    const top = 60
+    const hit = panels.find(p => {
+      const box = p.getBoundingClientRect()
+      const head = p.firstElementChild?.getBoundingClientRect()
+      // Any of the day still below the bar counts (a one-exercise day is short)
+      return !!head && head.bottom < top && box.bottom > top
+    })
+    const idx = hit ? rows.findIndex(r => r.weekday === hit.dataset.weekday) : -1
+    stickyIdx = idx >= 0 ? idx : null
+  }
+
+  // Opening Plan on this week lands on today
+  let landed = false
+  $effect(() => {
+    if (landed || !loaded || !daysEl || !isCurrentWeek || moving) return
+    landed = true
+    tick().then(() => dayEl(todayIdx)?.scrollIntoView({ block: 'start' }))
+  })
 
   async function handleWeekClick(idx: number) {
     planWeekIdx = idx
-    openIdx = null
     await settings.update({ currentWeekIdx: idx })
-  }
-
-  function toggleDay(calIdx: number) {
-    openIdx = openIdx === calIdx ? null : calIdx
   }
 
   async function saveOrder(newOrder: number[]) {
@@ -276,6 +307,8 @@
   }
 </script>
 
+<svelte:window onscroll={updateSticky} />
+
 <div class="screen" id="plan">
   {#if !loaded}
     <!-- IndexedDB answers in a few ms: nothing to draw meanwhile -->
@@ -300,23 +333,25 @@
     {#if weeks.length > 1}
       <WeekSwitch {weeks} selected={planWeekIdx} current={currentWeekIdx} onselect={handleWeekClick} />
     {/if}
-    {#if isCurrentWeek}
-      <PlanWeekStrip {done} {total} days={dayStates} {firstWeek} {social} onopen={() => goto(ROUTES.friends)} />
-    {/if}
 
-    <div id="plan-days-grid" class="days">
+    <WeekShape days={shapeDays} onjump={jumpToDay} />
+
+    <div id="plan-days-grid" class="days" bind:this={daysEl}>
       {#each rows as row, calIdx (calIdx)}
         {@const day = slotDay(week, order, calIdx)}
         {@const isToday = isCurrentWeek && calIdx === todayIdx}
-        {#if (isToday || openIdx === calIdx) && !isRestDay(day)}
+        {#if !isRestDay(day)}
+          <!-- Every workout day open, as its own card: Plan is where you see all the exercises -->
           <DayPanel
             weekday={row.weekday}
             date={row.date}
             title={row.title}
-            sub={panelSub(day as ProgramDay, isToday)}
+            muscles={musclesOf(day)}
+            meta={isToday && todayDone ? doneMeta(day as ProgramDay) : row.meta}
+            tag={dayTag(row, day)}
             today={isToday}
             done={row.state === 'done'}
-            ontoggle={isToday ? undefined : () => toggleDay(calIdx)}
+            moved={row.state === 'moved'}
           >
             {#each (day?.exercises || []) as ex, exIdx (exIdx)}
               <ExerciseRow
@@ -330,13 +365,22 @@
               />
             {/each}
           </DayPanel>
-        {:else if isToday}
-          <DayPanel weekday={row.weekday} date={row.date} title="Descanso" sub="Recuperar también cuenta" today />
         {:else}
-          <DayRow {...row} onclick={row.state === 'rest' ? undefined : () => toggleDay(calIdx)} />
+          <DayPanel weekday={row.weekday} date={row.date} title="Descanso" muscles={isToday ? 'Recuperar también cuenta' : ''} today={isToday} rest />
         {/if}
       {/each}
     </div>
+
+    <!-- Deep inside a day, a bar on top says which one; tapping it goes back to its head -->
+    {#if stickyIdx !== null}
+      {@const r = rows[stickyIdx]}
+      {@const isTodaySticky = isCurrentWeek && stickyIdx === todayIdx}
+      <button type="button" class="stk" class:today={isTodaySticky} data-component="PlanDayBar" onclick={() => jumpToDay(stickyIdx ?? 0)}>
+        <span class="stk-d">{isTodaySticky ? 'Hoy · ' : ''}{r.weekday} {r.date}</span>
+        <span class="stk-n">{r.title}</span>
+        <span class="stk-x">{slotDay(week, order, stickyIdx)?.exercises.length ?? 0} ej{#if r.state === 'done'}<i><Icon name="check" size={11} /></i>{/if}</span>
+      </button>
+    {/if}
 
     <!-- The shift notice takes the dock's place while it shows -->
     {#if !shiftToast}
@@ -390,7 +434,26 @@
 <style>
   #plan { padding: calc(var(--safe-top) + 56px) 20px 104px; display: flex; flex-direction: column; gap: 20px; }
   .hint { margin: -8px 4px 0; font-size: 13px; color: var(--text-tertiary); }
-  .days { display: flex; flex-direction: column; gap: 8px; }
+  /* Air between days so each card reads as its own unit; rest rows sit closer */
+  .days { display: flex; flex-direction: column; gap: 24px; margin-top: 8px; }
+  .days > :global([data-state="rest"] + [data-state="rest"]) { margin-top: -16px; }
+  .stk {
+    position: fixed; left: 0; right: 0; top: var(--safe-top); z-index: 30; height: 56px;
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+    padding: 0 20px; border: 0; border-bottom: 0.5px solid var(--border-medium);
+    background: #0a0a0af0; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    color: var(--text); font-family: var(--font-sans); text-align: left; cursor: pointer;
+  }
+  .stk-d { padding: 6px 9px; border-radius: 10px; background: var(--cv-fill-2); font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; white-space: nowrap; }
+  .stk.today .stk-d { background: var(--accent); color: var(--bg); }
+  .stk-n { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stk-x { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); white-space: nowrap; }
+  .stk-x i { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; }
+  @media (max-width: 360px) {
+    .days { gap: 20px; }
+    .stk { height: 52px; padding: 0 16px; gap: 10px; }
+    .stk-n { font-size: 15px; }
+  }
   .row { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; }
   .pair { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 8px; }
   .one-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

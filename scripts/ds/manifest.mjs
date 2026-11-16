@@ -21,17 +21,35 @@ const assets = [...htmlFiles(dir)].flatMap((file) => {
   const [width, height] = attr('viewport').split('x').map(Number)
   return [{ path: relative(dir, file), group: attr('group'), name: attr('name'), subtitle: attr('subtitle'), viewport: { width, height } }]
 })
-const ORDER = ['Hoy', 'Nuevo · Sesión abierta', 'Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
+const ORDER = ['Hoy', 'Nuevo · Sesión abierta', 'Temporizador', 'Nuevo · Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
 // Cards made by hand in Claude Design have no local file: list them here as
 // { path, group, viewport, name, subtitle }.
+const NT = 'Nuevo · Temporizador'
+const nt = (p, name, subtitle, viewport = '390x844') => ({ path: `vistas/nuevo-temporizador/${p}/index.html`, group: NT, viewport, name, subtitle })
 const sa = (p, name, subtitle, viewport = '800x930') => ({ path: `vistas/nuevo-sesion-abierta/${p}/index.html`, group: 'Nuevo · Sesión abierta', viewport, name, subtitle })
 const handMade = [
+  nt('alternativa', 'Nuevo · Alternativa «Un toque»', 'la pantalla se vacía con el tiempo; registrar igual que la última vez es un solo toque'),
+  nt('cambios', 'Nuevo · Cambios y fase 2', 'por qué mejora cada cambio, componente nuevo e ideas que necesitan algo nuevo', '820x1460'),
+  nt('confirma', 'Nuevo · Confirma tus series', 'resumen de solo lectura; tocar una serie para corregirla; Guardar abajo'),
+  nt('descanso-terminado', 'Nuevo · Descanso terminado', '«Te toca la serie 2» y Empezar serie 2 al fondo'),
+  nt('descanso', 'Nuevo · Descanso', 'tiempo grande arriba; anotar la serie y ajustar el tiempo abajo, al pulgar'),
+  nt('diagnostico', 'Nuevo · Diagnóstico', '5 problemas de la vista actual y la card donde se ven', '820x1180'),
+  nt('editar-serie', 'Nuevo · Editar una serie', 'la serie se abre en su sitio; Copiar a las siguientes y Listo'),
+  nt('guardando', 'Nuevo · Guardando', 'cargando: el botón dice qué pasa y se bloquea'),
+  nt('minimizado', 'Nuevo · Minimizado', 'banner sobre la TabBar: tiempo, qué sigue y Saltar'),
+  nt('primer-descanso', 'Nuevo · Primer descanso', 'primera vez: una pista corta sobre qué hacer mientras descansas'),
+  nt('primera-vez-ejercicio', 'Nuevo · Sin registro previo', 'vacío: primera vez con el ejercicio, pide el peso y explica cómo'),
+  nt('serie-registrada', 'Nuevo · Serie registrada', 'la serie se pliega en una línea; el reloj vuelve a mandar'),
+  nt('sin-conexion', 'Nuevo · Sin conexión', 'todo sigue igual; una línea dice que se guarda en el teléfono'),
+  nt('ultimos-segundos', 'Nuevo · Últimos segundos', 'los 10 s finales pasan a acento, sin rojo ni parpadeo'),
   sa('aviso-pendiente', 'Nuevo · Aviso · 1 pendiente', 'Tu sesión quedó abierta; «Lo hice» confirma con el peso de la última vez; Guardar así / Sigo entrenando'),
   sa('aviso-cambiar-peso', 'Nuevo · Aviso · cambiar peso', 'pendiente confirmado, peso abierto para editar antes de guardar'),
   sa('aviso-todo-registrado', 'Nuevo · Aviso · nada pendiente', 'todo registrado pero la sesión nunca se cerró'),
   sa('aviso-dia-siguiente', 'Nuevo · Aviso · al día siguiente', 'guarda la sesión de ayer; después Hoy muestra el día de hoy'),
   sa('reloj-sin-actividad', 'Nuevo · PageHeader · reloj sin actividad', 'en sesión, en pausa tras 45 min sin actividad, y al volver con «Sigo entrenando»', '460x900'),
   sa('resumen-duracion-real', 'Nuevo · Hoy · Resumen con duración real', 'después de Guardar así → racha → esfuerzo; duración = hasta la última actividad + 3 min'),
+  { path: 'vistas/nuevo-aviso-entreno/aviso/index.html', group: 'Nuevo · Aviso de entreno', viewport: '800x930', name: 'Nuevo · Aviso de entreno · Sobre «Calentamiento · Listo»', subtitle: 'Tras «Terminar calentamiento»: invitación opcional a iniciar reloj o app; sin botones, se cierra sola a los 2 s' },
+  { path: 'vistas/nuevo-aviso-entreno/textos/index.html', group: 'Nuevo · Aviso de entreno', viewport: '800x930', name: 'Nuevo · Aviso de entreno · Textos', subtitle: '3 alternativas de copy (línea + subtexto) con la elegida marcada; reglas del aviso' },
 ]
 const cards = [
   ...assets.map((a) => ({ path: a.path, group: a.group, viewport: `${a.viewport.width}x${a.viewport.height}`, subtitle: a.subtitle, name: a.name })),

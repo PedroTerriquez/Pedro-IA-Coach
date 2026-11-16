@@ -379,7 +379,7 @@ const hoyAt = (p) => `vistas/hoy/${p}`
 const detAt = (p) => `vistas/detalle-ejercicio/${p}`
 const isoToday = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 const todayLog = (id, weight, extra = {}) => ({ id: `log-9999-${id}`, exerciseId: id, date: isoToday(), weight, units: 'kg', ...extra })
-const session = (S, over = {}) => S.settings({ hasWatch: false, sessionState: { date: isoToday(), phase: 1, todayExDone: 0, ...over } })
+const session = (S, over = {}) => S.settings({ sessionState: { date: isoToday(), phase: 1, todayExDone: 0, ...over } })
 const dock = (page) => page.locator(comp('NextStepDock'))
 const logDock = (page) => page.locator(comp('LogDock'))
 const hoyScreen = (page, path, name, subtitle, source = HOY_SRC) =>
@@ -408,14 +408,14 @@ async function planScreens({ open, S }) {
   const trainedToday = [todayLog('ex-bench', 80), todayLog('ex-military', 45), todayLog('ex-lateral', 12)]
   const todaySession = { id: 'gym-today', date: isoToday(), seconds: 52 * 60, weekStart: '' }
 
-  // Esta semana: hoy abierto, la franja y el dock
+  // Esta semana: todos los días de entreno abiertos y el dock
   let page = await openPlan(open, S)
-  await planScreen(page, 'pantalla', 'Plan · Esta semana', 'hoy abierto con sus ejercicios, la semana en una franja, entrenar abajo')
-  await planPart(page, 'week-strip', 'PlanWeekStrip', 'avance de la semana + quién entrenó hoy (lleva a Amigos)', C + 'PlanWeekStrip.svelte', [{ label: 'PlanWeekStrip', selector: comp('PlanWeekStrip'), width: 350 }], '420x320')
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await planScreen(page, 'pantalla', 'Plan · Esta semana', 'la semana de un vistazo arriba; cada día una tarjeta con sus ejercicios; hoy en lima', C + 'DayPanel.svelte')
+  await planPart(page, 'week-shape', 'WeekShape', 'un botón por día de entreno, un punto por descanso; hoy en lima, hechos con palomita; toca para saltar al día', C + 'WeekShape.svelte', [{ label: 'WeekShape', selector: comp('WeekShape'), width: 350 }], '420x140')
   await planPart(page, 'week-switch', 'WeekSwitch', 'selector de semanas del programa; la actual dice «esta semana»', C + 'WeekSwitch.svelte', [{ label: 'WeekSwitch', selector: comp('WeekSwitch'), width: 350 }], '420x160')
-  await planPart(page, 'day-panel', 'DayPanel', 'un día abierto con sus ejercicios; hoy con «Hoy» y aro blanco', C + 'DayPanel.svelte', [{ label: 'DayPanel · hoy', selector: comp('DayPanel'), width: 350 }], '420x420')
+  await planPart(page, 'day-panel', 'DayPanel', 'tarjeta del día: fecha grande, nombre, músculos, «4 ej · 48 min» y sus ejercicios; hoy en lima, hecho en gris, descanso compacto', C + 'DayPanel.svelte', [{ label: 'DayPanel · variantes', selector: `#plan-days-grid > ${comp('DayPanel')}`, distinct: true, max: 4, width: 350 }], '420x1200')
   await planPart(page, 'exercise-row', 'ExerciseRow · plan', 'nombre, músculo y peso en una línea; series × reps a la derecha', C + 'ExerciseRow.svelte', [{ label: 'ExerciseRow variant="plan"', selector: `${comp('DayPanel')} .exercise-row`, max: 3, width: 334 }], '420x320')
-  await planPart(page, 'day-row', 'DayRow', 'hecho / pendiente / descanso', C + 'DayRow.svelte', [{ label: 'DayRow · variantes', selector: comp('DayRow'), distinct: true, max: 4, width: 350 }], '420x420')
   const dockTrain = await grab(page, [{ label: 'NextStepDock · Reprogramar + Entrenar', selector: comp('NextStepDock'), width: 390, unfix: true }])
 
   // ¿Qué cambió? → Mover
@@ -427,6 +427,7 @@ async function planScreens({ open, S }) {
   await page.waitForTimeout(500)
   await planScreen(page, 'pantalla-mover', 'Plan · Mover', 'asa de 44 px a la derecha; lo hecho no se mueve; Restablecer y Listo abajo', C + 'PlanReorder.svelte')
   await planPart(page, 'plan-reorder', 'PlanReorder', 'días arrastrables con DayRow; los hechos llevan check', C + 'PlanReorder.svelte', [{ label: 'PlanReorder', selector: comp('PlanReorder'), width: 350 }], '420x700')
+  await planPart(page, 'day-row', 'DayRow', 'fila de un día en Mover: hecho / pendiente / descanso', C + 'DayRow.svelte', [{ label: 'DayRow · variantes', selector: comp('DayRow'), distinct: true, max: 4, width: 350 }], '420x420')
   await page.locator('#plan-done-btn').click()
   await page.waitForTimeout(400)
 
@@ -436,7 +437,8 @@ async function planScreens({ open, S }) {
   await page.locator('#plan-shift-btn').click()
   await page.waitForTimeout(600)
   await planScreen(page, 'pantalla-movido', 'Plan · Después de «Me salté un día»', 'cada día movido dice de dónde vino; el aviso ofrece Restablecer', C + 'ActionToast.svelte')
-  await planPart(page, 'action-toast', 'ActionToast', 'aviso en la zona del pulgar con una salida', C + 'ActionToast.svelte', [{ label: 'ActionToast', selector: comp('ActionToast'), width: 366, unfix: true }], '420x140')
+  // On Sunday nothing is left to move: no notice, keep the card from another day
+  if (await page.locator(comp('ActionToast')).count()) await planPart(page, 'action-toast', 'ActionToast', 'aviso en la zona del pulgar con una salida', C + 'ActionToast.svelte', [{ label: 'ActionToast', selector: comp('ActionToast'), width: 366, unfix: true }], '420x140')
   await page.context().close()
 
   // Hoy ya entrenaste
@@ -649,7 +651,7 @@ async function hoyScreens({ open, S }) {
   await page.context().close()
 
   // Ahora no: resumen sin análisis
-  page = await openHoy(open, S, S.settings({ hasWatch: false, streakShownDate: isoToday(), sessionState: { date: isoToday(), phase: 5, todayExDone: 3, startedAt: started, endedAt: Date.now() } }), allDone)
+  page = await openHoy(open, S, S.settings({ streakShownDate: isoToday(), sessionState: { date: isoToday(), phase: 5, todayExDone: 3, startedAt: started, endedAt: Date.now() } }), allDone)
   await hoyScreen(page, 'pantalla-resumen-sin-analisis', 'Hoy · Resumen sin análisis', 'tras «Ahora no»: duración y «Pedir análisis al coach»', C + 'SessionSummary.svelte')
   await page.context().close()
 
@@ -737,18 +739,28 @@ async function detailScreens({ open, S }) {
   ]))
   await btn(page, /^Registrar \d/).click()
   await page.locator(comp('Toast')).waitFor({ timeout: 3000 })
-  await detScreen(page, 'pantalla-registrado', 'Detalle · Registrado', 'borde de acento, Toast arriba, Siguiente + Descansar')
-  pieces.push(await grab(page, [{ label: 'WeightPanel · registrado', selector: comp('WeightPanel'), width: 350 }, { label: 'LogDock · Siguiente + Descansar', selector: comp('LogDock'), width: 390, unfix: true }]))
+  await page.waitForTimeout(600)
+  await detScreen(page, 'pantalla-registrado', 'Detalle · Registrado', 'un peso: una fila por serie, solo lectura, «Editar series»; Siguiente + Descansar', C + 'LoggedPanel.svelte')
+  pieces.push(await grab(page, [{ label: 'LoggedPanel · un peso', selector: comp('LoggedPanel'), width: 350 }, { label: 'LogDock · Siguiente + Descansar', selector: comp('LogDock'), width: 390, unfix: true }]))
   await clearToasts(page)
 
-  // A changed weight brings the editor back, with its link to the blocks
-  await btn(page, 'Más peso').click()
-  await btn(page, /Series con pesos distintos/).click()
-  await page.locator(`${comp('BlockRow')} .block-field-input`).nth(2).click()
-  await btn(page, 'Agregar bloque').click()
-  await detScreen(page, 'pantalla-bloques', 'Detalle · Series por bloque', 'tres valores por bloque, − / + del elegido', C + 'BlocksPanel.svelte')
-  pieces.push(await grab(page, [{ label: 'BlockRow · peso elegido', selector: comp('BlockRow'), width: 350 }]))
-  await btn(page, 'Un solo peso').click()
+  // «Editar series» opens «Confirma tus series»; a heavier set 2 and a short
+  // last set, saved, show the summary with the record and «−1 rep»
+  await btn(page, /Editar series/).click()
+  await page.locator(comp('SeriesConfirmSheet')).waitFor({ timeout: 3000 })
+  await btn(page, 'Serie siguiente').click()
+  await btn(page, /^Subir /).click()
+  await btn(page, /^Subir /).click()
+  await page.locator(`${comp('SeriesConfirmSheet')} [data-testid="confirm-row"]`).last().click()
+  await btn(page, 'Menos reps').click()
+  await btn(page, 'Menos reps').click()
+  await btn(page, 'Menos reps').click()
+  await btn(page, /^Guardar \d/).click()
+  await page.locator(comp('LoggedPanel')).waitFor({ timeout: 3000 })
+  await clearToasts(page)
+  await page.waitForTimeout(600)
+  await detScreen(page, 'pantalla-bloques', 'Detalle · Series por bloque', 'pesos por serie: récord, «−1 rep» en ámbar y «Editar series»', C + 'LoggedPanel.svelte')
+  pieces.push(await grab(page, [{ label: 'LoggedPanel · pesos por serie', selector: comp('LoggedPanel'), width: 350 }]))
 
   await page.locator('.seg-btn', { hasText: 'Historial' }).click()
   await detScreen(page, 'pantalla-historial', 'Detalle · Historial', 'récord, cuánto subiste, gráfica y sesiones por semana', C + 'ProgressHero.svelte')
@@ -779,7 +791,7 @@ async function detailScreens({ open, S }) {
   await detScreen(page, 'pantalla-primera-vez', 'Detalle · Primera vez', 'nota, peso en 0 y Registrar apagado')
   await page.context().close()
 
-  await card(null, { path: detAt('piezas'), group: DET, name: 'Piezas de Detalle v2 · ejercicio', subtitle: 'media, objetivo, coach, tabs, WeightPanel, BlockRow y LogDock', source: C + 'ExerciseDetail.svelte', snaps: pieces, viewport: '820x1600' })
+  await card(null, { path: detAt('piezas'), group: DET, name: 'Piezas de Detalle v2 · ejercicio', subtitle: 'media, objetivo, coach, tabs, WeightPanel, LoggedPanel y LogDock', source: C + 'ExerciseDetail.svelte', snaps: pieces, viewport: '820x2100' })
 }
 
 // ───────────────────────────── Temporizador ─────────────────────────────

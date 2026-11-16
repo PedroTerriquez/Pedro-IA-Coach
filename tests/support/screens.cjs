@@ -30,7 +30,7 @@ const SEL = {
   seriesDot: (state) => `${tid('seriesDot')}[data-state="${state}"]`,
   confirmRow: tid('confirmRow'),
   confirmSave: tid('confirmSave'),
-  blockField: tid('blockField'),
+  loggedSet: tid('loggedSet'),
   searchResult: tid('searchResult'),
   searchResultName: tid('searchResultName'),
 }

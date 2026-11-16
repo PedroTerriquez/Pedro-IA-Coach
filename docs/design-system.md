@@ -30,7 +30,7 @@ node scripts/ds/preview.mjs /tmp/ds vistas/hoy   # PNGs + /tmp/ds/_sheet.png
 
 ## Cómo se suben
 
-Con la herramienta DesignSync, desde `design-system/` como `localDir`: `list_files` → `finalize_plan` (las rutas que cambiaron + `_ds_manifest.json`) → `write_files`. Antes de subir, correr `node scripts/ds/manifest.mjs`: regenera `_ds_manifest.json`, el índice del que el panel saca su lista de cards. Sin subir ese archivo las cards quedan en el proyecto pero el panel no las muestra (no se recompila solo, y `register_assets` no lo cambia). Las cards hechas a mano en Claude Design se agregan a `handMade` en ese script (hoy no hay ninguna). Normalmente se suben solo las cards del grupo tocado; si una card desaparece, se borra con `delete_files`. Desde la limpieza del 2026-10-22 el proyecto tiene solo lo generado: cualquier ruta remota que no esté en `design-system/` sobra.
+Con la herramienta DesignSync, desde `design-system/` como `localDir`: `list_files` → `finalize_plan` (las rutas que cambiaron + `_ds_manifest.json`) → `write_files`. Antes de subir, correr `node scripts/ds/manifest.mjs`: regenera `_ds_manifest.json`, el índice del que el panel saca su lista de cards. Sin subir ese archivo las cards quedan en el proyecto pero el panel no las muestra (no se recompila solo, y `register_assets` no lo cambia). Las cards hechas a mano en Claude Design se agregan a `handMade` en ese script (hoy: la propuesta «Nuevo · Temporizador», `vistas/nuevo-temporizador/`, que no se borra sin preguntar). Normalmente se suben solo las cards del grupo tocado; si una card desaparece, se borra con `delete_files`. Desde la limpieza del 2026-10-22 el proyecto tiene solo lo generado: cualquier ruta remota que no esté en `design-system/` sobra.
 
 ## Formato de card
 
@@ -49,7 +49,7 @@ Todo lo genera el script y refleja la app actual; no hay sufijos ni archivo de v
 | Shell | `shell/` | TabBar, Toast, banners |
 | Compartidos | `compartidos/` | Chips, segmented, PageHeader, Card |
 
-Las propuestas de diseño se piden en Claude Design sobre estas cards; al implementarse, se regenera la vista y la propuesta se borra.
+Las propuestas de diseño se piden en Claude Design sobre estas cards, empezando siempre con el prompt base de [`design-brief.md`](design-brief.md); al implementarse, se regenera la vista y la propuesta se borra.
 
 ## Sin card todavía
 
@@ -58,5 +58,6 @@ Las propuestas de diseño se piden en Claude Design sobre estas cards; al implem
 ## Pendiente
 
 - **Tú v2**: el recorrido `tu` cubre la cuenta en la nube (`YouHub` con y sin cuenta, `CloudCard`, `AccountSheet`, «Hola.» con «Ya tengo cuenta») y Ejercicios (`vistas/tu/`). Falta el walk de `NavGroup`, `ProgramEditor`, `SettingsScreen`, `BackupScreen`, `ProgramsScreen`, `ProfileData`, `ProfileSheet`, `UnmatchedScreen`.
-- **Atomos de Compartidos** `button`, `inputs`, `section-label`, `empty`, `debug`: sus colectores se perdieron con Tú v2 → salen "sin muestras" y no tienen card (se borraron las viejas el 2026-10-22).
+- **Claude Design aparte (claude.ai/design) cierra a más tardar el 2026-12-14** y pasa a vivir en Claude (tipos de Artifact "Design System" y "Design"). Antes de esa fecha hay que decidir cómo migrar este proyecto.
+- **Atomos de Compartidos** `button`, `inputs`, `stats`, `section-label`, `empty`, `debug`: sus colectores se perdieron con Tú v2 → salen "sin muestras" y no tienen card (se borraron las viejas el 2026-10-22).
 - El recorrido de **Amigos** ya no captura la card de "Cambiar usuario": el lápiz "Editar usuario" (`ProfileSheet`) quedó oculto el 2026-10-14, así que ese flujo no es alcanzable (líneas comentadas en `groups.mjs`).
