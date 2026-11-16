@@ -4,11 +4,16 @@
   import { restBannerState, cancelRestTimer } from '$lib/rest-timer'
   import { settings } from '$lib/stores/settings'
   import { online } from '$lib/stores/network'
+  import { tick } from 'svelte'
   import { parseRepsDefault, muscleLabel } from '$lib/exercise-utils'
   import { getExerciseDisplayName } from '$lib/data/exercise-dictionary'
   import { formatWeight } from '$lib/exercise-history'
-  import { restClock, weightsList } from '$lib/session-steps'
+  import { restClock } from '$lib/session-steps'
+  import { persistSets, expandBlocks, type SetEntry } from '$lib/set-log'
+  import { getAutoFilledSets } from '$lib/series-mode'
+  import { plural } from '$lib/program-utils'
   import type { ExerciseLogBlock } from '$lib/types'
+  import SeriesConfirmSheet from './SeriesConfirmSheet.svelte'
   import DetailSheet from './DetailSheet.svelte'
   import ExerciseMedia from './ExerciseMedia.svelte'
   import TitleNav from './TitleNav.svelte'
@@ -17,7 +22,7 @@
   import LogDock from './LogDock.svelte'
   import SegmentedControl from './SegmentedControl.svelte'
   import WeightPanel from './WeightPanel.svelte'
-  import BlocksPanel from './BlocksPanel.svelte'
+  import LoggedPanel from './LoggedPanel.svelte'
   import ProgressHero from './ProgressHero.svelte'
   import AlternativesTab from './AlternativesTab.svelte'
   import ExerciseCoachChat from './ExerciseCoachChat.svelte'
@@ -115,7 +120,6 @@
   let pastLogs = $derived((exercise.logs || []).filter(l => l.date !== todayStr && l.weight > 0))
   let lastLog = $derived(exercise.logs?.length ? exercise.logs[exercise.logs.length - 1] : null)
   let lastPastWeight = $derived(pastLogs.length ? pastLogs[pastLogs.length - 1].weight : 0)
-  let prevMax = $derived(pastLogs.length ? Math.max(...pastLogs.map(l => l.weight)) : 0)
   let firstTime = $derived(!(exercise.logs || []).some(l => l.weight > 0))
 
   let tab = $state<'workout' | 'history' | 'alternatives'>('workout')
@@ -123,19 +127,16 @@
   let loggedToday = $state(false)
   let iniciarLoading = false
   let chatOpen = $state(false)
+  // «Cómo se hace»: the exercise's own steps (its tips), folded until tapped
+  let howOpen = $state(false)
+  let howSteps = $derived((exercise.tips || []).map(t => t.trim()).filter(Boolean))
   let query = $state('')
 
-  function seedBlocks(): ExerciseLogBlock[] {
-    if (todayLog?.blocks?.length) return todayLog.blocks.map(b => ({ ...b }))
-    if (todayLog?.sets !== undefined && todayLog?.reps !== undefined) {
-      return [{ sets: todayLog.sets, reps: parseRepsDefault(todayLog.reps), weight: todayLog.weight }]
-    }
-    return [{ sets: exercise.sets || 1, reps: parseRepsDefault(exercise.reps), weight: todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0) }]
-  }
-
-  let advanced = $state(false)
-  let blocks = $state<ExerciseLogBlock[]>([])
-  let savedKey = $state<string | null>(null)
+  // Today's sets as registered: the read-only «Registrado hoy», changed only
+  // through «Confirma tus series» (the timer's screen)
+  let loggedSets = $state<SetEntry[]>([])
+  let setsOpen = $state(false)
+  let setsSeed = $state<SetEntry[]>([])
 
   let currentExerciseKey = $derived(exercise.exerciseId || exercise.id)
   let displayName = $derived(getExerciseDisplayName(exercise, $settings.language))
@@ -146,29 +147,19 @@
 
   $effect(() => {
     void currentExerciseKey
-    const isBlockMode = !!todayLog?.blocks?.length
-    const seededBlocks = seedBlocks()
     loggedToday = !!todayLog
     pendingWeight = todayLog ? todayLog.weight : (lastLog ? lastLog.weight : 0)
-    advanced = isBlockMode
-    blocks = seededBlocks
-    // savedKey only reflects what is stored, never the live value: reading
-    // pendingWeight here would snap the field back on every keystroke.
-    savedKey = isBlockMode ? JSON.stringify(seededBlocks) : (loggedToday ? String(todayLog?.weight ?? pendingWeight) : null)
+    loggedSets = setsOfLog(todayLog)
     if (tab === 'alternatives' && !showAlternativesTab) tab = 'workout'
   })
 
-  let totalSets = $derived(blocks.reduce((a, b) => a + (b.sets || 0), 0))
-  let topWeight = $derived(blocks.length ? Math.max(...blocks.map(b => b.weight)) : 0)
-  let currentKey = $derived(advanced ? JSON.stringify(blocks) : String(pendingWeight))
-  let isDirty = $derived(loggedToday && currentKey !== savedKey)
-  let registered = $derived(loggedToday && !isDirty)
-  let savedWeight = $derived(advanced ? topWeight : pendingWeight)
-  let isRecord = $derived(registered && prevMax > 0 && savedWeight > prevMax)
-  let savedSets = $derived(todayLog?.sets ?? exercise.sets)
+  let registered = $derived(loggedToday)
+  let topWeight = $derived(loggedSets.reduce((m, s) => Math.max(m, s.weight), 0))
+  let prevBest = $derived(pastLogs.reduce<ExerciseLog | null>((b, l) => (!b || l.weight > b.weight ? l : b), null))
+  let recordIdx = $derived(prevBest && topWeight > prevBest.weight ? loggedSets.findIndex(s => s.weight === topWeight) : -1)
   let restText = $derived(restClock(exercise.rest))
-  let canRegister = $derived(advanced ? blocks.length > 0 && topWeight > 0 : pendingWeight > 0)
-  let registerLabel = $derived(advanced ? `Registrar ${totalSets} series` : `Registrar ${formatWeight(pendingWeight)} ${units}`)
+  let canRegister = $derived(pendingWeight > 0)
+  let registerLabel = $derived(`Registrar ${formatWeight(pendingWeight)} ${units}`)
   let posParts = $derived(splitPosition(positionLabel))
 
   function splitPosition(label: string): { lead: string; bold: string } {
@@ -185,8 +176,7 @@
   function dockCaption(): string {
     if (!$online) return 'Sin internet también se guarda en tu teléfono'
     if (registered) return nextCaption()
-    if (firstTime && !advanced) return 'Ajusta con − y +, luego registra'
-    if (advanced) return `${totalSets} series · ${weightsList(blocks.map(b => b.weight), units)}`
+    if (firstTime) return 'Ajusta con − y +, luego registra'
     return nextCaption()
   }
 
@@ -214,11 +204,28 @@
     toast.show($online ? `Guardado · ${what}` : `Guardado en tu teléfono · ${what}`)
   }
 
-  async function saveBlocks() {
-    if (!blocks.length) return
-    const top = blocks.reduce((best, b) => (b.weight > best.weight ? b : best), blocks[0])
-    await logWeight(currentExerciseKey, topWeight, units, totalSets, String(top.reps), undefined, blocks.map(b => ({ ...b })))
-    savedToast(`${totalSets} series`)
+  // A log's sets, one per row. A plain «75 kg» log (Registrar with one weight)
+  // stores no reps: its sets are the plan's, at the prescribed reps.
+  function setsOfLog(log: ExerciseLog | null): SetEntry[] {
+    if (!log) return []
+    if (log.blocks?.length) return expandBlocks(log.blocks)
+    const reps = parseInt(String(log.reps ?? '').match(/\d+/)?.[0] || '0', 10) || parseRepsDefault(exercise.reps)
+    const count = Math.max(1, Math.round(log.sets ?? (exercise.sets || 1)))
+    return Array.from({ length: count }, () => ({ weight: log.weight, reps }))
+  }
+
+  // The best before, as the record strip says it: «82.5 × 8», or «82.5 kg»
+  function beforeText(log: ExerciseLog | null): string {
+    if (!log) return ''
+    const top = log.blocks?.length ? log.blocks.reduce((b, x) => (x.weight > b.weight ? x : b)) : null
+    const reps = top ? top.reps : parseInt(String(log.reps ?? '').match(/\d+/)?.[0] || '0', 10)
+    return reps ? `${formatWeight(log.weight)} × ${reps}` : `${formatWeight(log.weight)} ${units}`
+  }
+
+  // Just saved: the sheet scrolls so the whole panel sits above the dock
+  async function revealLogged() {
+    await tick()
+    document.querySelector('[data-component="LoggedPanel"]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }
 
   // Registrar writes today's single log and overwrites what was there.
@@ -238,26 +245,41 @@
   async function handleSave() {
     if (!canRegister) return
     await endOwnRest()
-    if (advanced) await saveBlocks()
-    else await saveSingle()
-    savedKey = currentKey
+    await saveSingle()
+    loggedSets = setsOfLog({ weight: pendingWeight } as ExerciseLog)
     loggedToday = true
-    onLog?.()
+    revealLogged()
+    await afterRegister()
+  }
 
+  // What every registration does next: the list reloads, onboarding moves on
+  async function afterRegister() {
+    onLog?.()
     const currentSettings = await getSettings()
     if (!currentSettings.onboarded && (currentSettings.onboardingStep ?? 0) <= 2) {
       await settings.update({ onboardingStep: 3 })
     }
   }
 
-  function enterBlocks() {
-    blocks = [{ sets: exercise.sets || 1, reps: parseRepsDefault(exercise.reps), weight: pendingWeight || 0 }]
-    advanced = true
+  // «Series con pesos distintos» / «Editar series»: today's sets as logged,
+  // else the plan at the weight on screen, up to the planned number of sets
+  function openSets() {
+    const logged = loggedToday ? loggedSets : []
+    setsSeed = getAutoFilledSets(currentExerciseKey, exercise.sets || 1, exercise.reps, pendingWeight, logged).sets
+    setsOpen = true
   }
 
-  function exitBlocks() {
-    pendingWeight = topWeight || pendingWeight || 0
-    advanced = false
+  async function saveSets(sets: SetEntry[]) {
+    await endOwnRest()
+    await persistSets(currentExerciseKey, sets, units)
+    // Until the list reloads, the detail shows what was just written
+    loggedSets = sets.map(s => ({ ...s }))
+    pendingWeight = Math.max(...sets.map(s => s.weight))
+    loggedToday = true
+    setsOpen = false
+    savedToast(plural(sets.length, 'serie', 'series'))
+    revealLogged()
+    await afterRegister()
   }
 
   async function selectAlternative(alt: Alternative) {
@@ -276,6 +298,15 @@
     toast.show(`Volviste a ${exercise.originalExerciseName || ''}`)
     onRevert?.()
   }
+
+  // Another exercise starts with its steps folded
+  $effect(() => {
+    void currentExerciseKey
+    howOpen = false
+  })
+
+  // The minimized rest banner over the bottom of the screen
+  let restShown = $derived($restBannerState.visible && $restMinimized && $restBannerState.phase !== 'done')
 
   // A rest of this exercise already up (running or at zero, maybe minimized)
   let ownRest = $derived($restBannerState.visible && $restBannerState.exerciseId === currentExerciseKey)
@@ -360,6 +391,20 @@
   {#if chatOpen}
     <ExerciseCoachChat {exercise} {accent} onclose={() => (chatOpen = false)} />
   {/if}
+  {#if setsOpen}
+    <div class="sets" class:above-rest={restShown} style="--rt:{accent}" role="dialog" aria-label="Confirma tus series">
+      <SeriesConfirmSheet
+        name={displayName}
+        reps={exercise.reps}
+        {units}
+        entries={setsSeed}
+        status="Registrar"
+        origLabel={loggedToday ? 'antes' : 'sugerido'}
+        onsave={saveSets}
+        onclose={() => (setsOpen = false)}
+      />
+    </div>
+  {/if}
 {/snippet}
 
 {#if open}
@@ -368,6 +413,13 @@
     <TitleNav name={displayName} muscle={muscleLabel(exercise.muscle)} {hasPrev} {hasNext} onprev={() => onNavigate?.('prev')} onnext={() => onNavigate?.('next')} />
     {#if exercise.sets > 0}
       <TargetPanel sets={exercise.sets} reps={exercise.reps} rest={restText} />
+    {/if}
+    {#if howSteps.length}
+      <DetailRow label="Cómo se hace" count={plural(howSteps.length, 'paso', 'pasos')} bind:open={howOpen}>
+        <ol class="how">
+          {#each howSteps as s, i}<li><span>{i + 1}</span>{s}</li>{/each}
+        </ol>
+      </DetailRow>
     {/if}
     <DetailRow variant="ai" label={$online ? 'Pregúntale al coach' : 'El coach necesita internet'} disabled={!$online} onclick={() => (chatOpen = true)} />
     <DebugAIToggle label="Exercise Coach IA" {accent} />
@@ -388,10 +440,10 @@
           <p>Elige un peso con el que hagas {exercise.reps} repeticiones limpias. Lo puedes cambiar la próxima vez.</p>
         </div>
       {/if}
-      {#if advanced}
-        <BlocksPanel bind:blocks {units} saved={registered} onsingle={exitBlocks} />
+      {#if loggedToday}
+        <LoggedPanel sets={loggedSets} {units} target={exercise.reps} {recordIdx} before={beforeText(prevBest)} onedit={openSets} />
       {:else}
-        <WeightPanel bind:weight={pendingWeight} {units} lastWeight={lastPastWeight} sets={exercise.sets} saved={registered} {savedSets} {isRecord} onblocks={enterBlocks} />
+        <WeightPanel bind:weight={pendingWeight} {units} lastWeight={lastPastWeight} sets={exercise.sets} onblocks={openSets} />
       {/if}
     {:else if tab === 'history'}
       <ProgressHero logs={exercise.logs || []} {units} today={todayStr} exerciseName={displayName} />
@@ -412,6 +464,20 @@
 {/if}
 
 <style>
+  /* «Confirma tus series» over the whole detail, as the timer shows it */
+  .sets {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column;
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 20px calc(env(safe-area-inset-bottom, 0px) + 26px);
+    background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--rt) 9%, transparent), transparent 62%), var(--bg);
+    font-family: var(--font-sans);
+  }
+  /* A minimized rest banner sits at the bottom: «Guardar» goes above it */
+  .sets.above-rest { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 130px); }
+  /* Numbers under the row's icon, so the text takes the full width */
+  .how { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: -4px 0 -6px -40px; }
+  .how li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.4; color: var(--text-secondary); text-wrap: pretty; }
+  .how li span { width: 24px; height: 24px; border-radius: 50%; background: var(--cv-fill-3); display: grid; place-items: center; font-family: var(--font-mono); font-size: 12px; color: var(--text); }
   .first { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: var(--radius-xl); background: var(--cv-fill-1); }
   .first b { font-size: 17px; letter-spacing: -0.2px; }
   .first p { font-size: 14px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }

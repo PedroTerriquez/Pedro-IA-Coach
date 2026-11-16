@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.107'
-const _VER_DESC = 'Estiramiento guiado: Empezar sostiene cada movimiento con reloj, por lado'
+const _VER_BASE = 'v2.108'
+const _VER_DESC = 'Detalle: Registrado hoy serie por serie y Cómo se hace plegado'
 const _VER_TIME = '2026-11-15 19:22'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
