@@ -462,14 +462,16 @@
     persistPhase()
   }
 
+  // Back to 00:00; a paused clock stays paused until the next set
   function resetClock() {
     if (!startedAt || endedAt) return
+    const now = Date.now()
     cancelIdleReminder(lastActivityAt)
-    startedAt = Date.now()
-    pausedAt = null
-    lastActivityAt = startedAt
-    nowMs = startedAt
-    armIdleReminder(lastActivityAt)
+    startedAt = now
+    if (pausedAt) pausedAt = now
+    lastActivityAt = now
+    nowMs = now
+    if (!pausedAt) armIdleReminder(now)
     persistPhase()
   }
 
@@ -1003,8 +1005,11 @@
         {#if clockRunning && idle}
           <div class="clock idle" data-component="SessionClock"><b><span class="pz" aria-hidden="true"><i></i><i></i></span>{clock}</b><span>Sin actividad desde {clockTime(idleEnd(liveSession))}</span></div>
         {:else if clockRunning}
-          <button class="clock" class:paused={!!pausedAt} data-component="SessionClock" aria-label="Reloj de sesión" onclick={() => (clockSheetOpen = true)}>
-            <b>{#if pausedAt}<span class="pz" aria-hidden="true"><i></i><i></i></span>{/if}{clock}</b><span>{pausedAt ? 'en pausa' : 'en sesión'}</span>
+          <button class="clock tap" class:paused={!!pausedAt} data-component="SessionClock"
+            aria-label={pausedAt ? `Reloj en pausa, ${clock}. Abrir reloj de sesión` : `Reloj de sesión, ${clock}. Abrir`}
+            onclick={() => (clockSheetOpen = true)}>
+            <b>{#if pausedAt}<span class="pz" aria-hidden="true"><i></i><i></i></span>{:else}<i class="dot" style="background:{accent}"></i>{/if}{clock}</b>
+            <span class="lb">{pausedAt ? 'En pausa' : 'en sesión'}<Icon name="down" size={12} /></span>
           </button>
         {:else}
           <OtherActivityChip onclick={() => openActivity()} />
@@ -1119,6 +1124,9 @@
   bind:open={clockSheetOpen}
   paused={!!pausedAt}
   {clock}
+  since={startedAt ? clockTime(startedAt) : ''}
+  pausedSince={pausedAt ? clockTime(pausedAt) : ''}
+  {accent}
   onpause={pauseClock}
   onresume={resumeClock}
   onreset={resetClock}
@@ -1188,8 +1196,23 @@
   .clock { text-align: right; padding-bottom: 26px; flex-shrink: 0; }
   .clock b { display: block; font-family: var(--font-mono); font-size: 22px; font-weight: 500; letter-spacing: -0.04em; }
   .clock > span { font-size: 12px; color: var(--text-tertiary); }
-  button.clock { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .clock.paused b { color: var(--text-secondary); display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+  /* The whole block is the tap target (≥ 52 px), same footprint as before */
+  .clock.tap {
+    border: 0; background: none; color: inherit; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px;
+    min-height: 52px; min-width: 72px; margin: 0 -10px 16px 0; padding: 6px 10px 6px 14px; border-radius: 16px; transition: background 0.15s;
+  }
+  .clock.tap:active { background: var(--cv-fill-2); }
+  .clock.tap b { display: flex; align-items: center; gap: 8px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .clock.tap .lb { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .clock.paused b { background: var(--text); color: var(--bg); border-radius: 9999px; padding: 3px 12px 3px 10px; gap: 7px; }
+  .clock.paused .lb { color: var(--text); font-weight: 600; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  @media (max-width: 340px) {
+    .clock.tap b { font-size: 18px; }
+    .clock.paused b { padding: 3px 10px 3px 8px; gap: 6px; }
+    .clock.paused .pz i { height: 10px; }
+  }
   .clock.idle { padding-bottom: 2px; }
   .clock.idle b { color: var(--text-secondary); display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
   .clock.idle > span { display: block; width: 96px; margin-left: auto; line-height: 1.3; text-wrap: balance; }

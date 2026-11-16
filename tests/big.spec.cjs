@@ -3530,28 +3530,44 @@ test.describe('Sesión abierta — termina en la última actividad', () => {
       settings: V2.settings({ onboarded: true, sessionState: openSession({ startedAt: Date.now() - 20 * MIN, lastActivityAt: Date.now() - 2 * MIN }) }),
     })
     const clock = page.locator('[data-component="SessionClock"]')
-    const clockSheet = page.locator('[data-component="SessionClockSheet"]')
+    const clockSheet = page.locator('#session-clock-sheet')
+    const confirmBtn = (name) => clockSheet.locator('[role="group"]').getByRole('button', { name })
+    const armed = () => expect(clockSheet.locator('.duo:not(.arming)')).toBeVisible()
     await expect(clock).toContainText('en sesión')
 
     // Pausar asks; «Cancelar» leaves the clock running
     await clock.click()
+    await expect(clockSheet).toContainText('Cuenta desde las')
     await clockSheet.getByRole('button', { name: 'Pausar' }).click()
     await expect(clockSheet).toContainText('¿Pausar el reloj?')
     await clockSheet.getByRole('button', { name: 'Cancelar' }).click()
     await expect(clockSheet.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
-    await page.locator('#session-clock-sheet').getByRole('button', { name: 'Cerrar' }).click()
+    await clockSheet.getByRole('button', { name: 'Cerrar' }).click()
     await expect(clockSheet).toBeHidden()
     expect((await storedSettings(page)).sessionState.pausedAt ?? null).toBeNull()
 
-    // Confirmed: frozen and saved
+    // A double tap doesn't confirm: the button waits a moment before it answers
     await clock.click()
     await clockSheet.getByRole('button', { name: 'Pausar' }).click()
-    await clockSheet.getByRole('button', { name: 'Pausar' }).click()
-    await expect(clock).toContainText('en pausa')
+    await confirmBtn('Pausar').click()
+    await expect(clockSheet).toContainText('¿Pausar el reloj?')
+    await armed()
+    await confirmBtn('Pausar').click()
+    await expect(clock).toContainText('En pausa')
     await expect.poll(async () => (await storedSettings(page)).sessionState.pausedAt).toBeTruthy()
     const frozen = await clock.locator('b').textContent()
     await page.waitForTimeout(1500)
     await expect(clock.locator('b')).toHaveText(frozen)
+
+    // Reiniciar while paused asks, goes back to 00:00 and stays paused
+    await clock.click()
+    await expect(clockSheet).toContainText('En pausa')
+    await clockSheet.getByRole('button', { name: 'Reiniciar' }).click()
+    await expect(clockSheet).toContainText('Sigue en pausa hasta tu próxima serie')
+    await armed()
+    await confirmBtn('Reiniciar').click()
+    await expect(clock.locator('b')).toHaveText('00:00')
+    await expect(clock).toContainText('En pausa')
 
     // Reanudar needs no question: nothing is lost
     await clock.click()
@@ -3559,11 +3575,13 @@ test.describe('Sesión abierta — termina en la última actividad', () => {
     await expect(clock).toContainText('en sesión')
     await expect.poll(async () => (await storedSettings(page)).sessionState.pausedAt ?? null).toBeNull()
 
-    // Reiniciar asks, then the clock starts over and the sets stay
+    // Reiniciar while running: starts over and the sets stay
+    await page.waitForTimeout(1100)
     await clock.click()
     await clockSheet.getByRole('button', { name: 'Reiniciar' }).click()
     await expect(clockSheet).toContainText('¿Reiniciar el reloj?')
-    await clockSheet.getByRole('button', { name: 'Reiniciar' }).click()
+    await armed()
+    await confirmBtn('Reiniciar').click()
     await expect(clock.locator('b')).toHaveText(/^00:0\d$/)
     await expect.poll(async () => Date.now() - (await storedSettings(page)).sessionState.startedAt).toBeLessThan(60 * 1000)
     expect((await readLogs(page)).filter(l => l.date === localDate(0))).toHaveLength(1)

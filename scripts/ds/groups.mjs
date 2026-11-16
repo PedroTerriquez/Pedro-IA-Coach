@@ -618,6 +618,28 @@ async function hoyScreens({ open, S }) {
   await hoyScreen(page, 'pantalla-descansando', 'Hoy · Descansando', 'banner del descanso abajo, sobre la TabBar, en lugar del dock', C + 'RestTimerBanner.svelte')
   await page.context().close()
 
+  // Reloj de sesión: la hoja, sus confirmaciones y la pausa
+  page = await openHoy(open, S, session(S, { phase: 2, startedAt: started }), [bench, militaryOne])
+  const clockSheet = page.locator('#session-clock-sheet')
+  const confirmIn = (name) => clockSheet.locator('[role="group"]').getByRole('button', { name })
+  await page.locator(comp('SessionClock')).click()
+  await page.waitForTimeout(500)
+  await hoyScreen(page, 'reloj-hoja', 'Reloj de sesión', 'tiempo grande, Pausar y Reiniciar en texto rojo', C + 'SessionClockSheet.svelte')
+  await btn(clockSheet, 'Pausar').click()
+  await page.waitForTimeout(500)
+  await hoyScreen(page, 'reloj-confirma-pausar', 'Reloj de sesión · ¿Pausar?', 'confirma en la misma hoja; el botón espera 400 ms', C + 'SessionClockSheet.svelte')
+  await confirmIn('Pausar').click()
+  await page.waitForTimeout(500)
+  const clockPaused = await grab(page, [{ label: 'PageHeader · reloj en pausa', selector: comp('PageHeader'), width: 390 }])
+  await hoyScreen(page, 'pantalla-reloj-en-pausa', 'Hoy · Reloj en pausa', 'píldora blanca «En pausa»; registrar una serie lo reanuda')
+  await page.locator(comp('SessionClock')).click()
+  await page.waitForTimeout(500)
+  await hoyScreen(page, 'reloj-hoja-en-pausa', 'Reloj de sesión · en pausa', 'Reanudar sin preguntar; Reiniciar sigue', C + 'SessionClockSheet.svelte')
+  await btn(clockSheet, 'Reiniciar').click()
+  await page.waitForTimeout(500)
+  await hoyScreen(page, 'reloj-confirma-reiniciar', 'Reloj de sesión · ¿Reiniciar?', 'vuelve a 00:00, las series se quedan', C + 'SessionClockSheet.svelte')
+  await page.context().close()
+
   // Sin conexión
   page = await openHoy(open, S, session(S, { phase: 2, startedAt: started }), [bench, militaryOne])
   await page.context().setOffline(true)
@@ -700,7 +722,7 @@ async function hoyScreens({ open, S }) {
 
   await card(null, { path: hoyAt('session-steps'), group: HOY, name: 'SessionSteps', subtitle: 'fase abierta, hecha (68, acento) y después', source: C + 'SessionSteps.svelte', snaps: [stepsOpen, stepsTraining, stepsStretch], viewport: '820x1400' })
   await card(null, { path: hoyAt('exercise-row'), group: HOY, name: 'ExerciseRow · session', subtitle: '76: hecho, en curso con marcas, siguiente', source: C + 'ExerciseRow.svelte', snaps: [rows], viewport: '460x420' })
-  await card(null, { path: hoyAt('page-header-reloj'), group: HOY, name: 'PageHeader · reloj de sesión', subtitle: 'día en un renglón, músculos y reloj en texto', source: HOY_SRC, snaps: [clock], viewport: '460x220' })
+  await card(null, { path: hoyAt('page-header-reloj'), group: HOY, name: 'PageHeader · reloj de sesión', subtitle: 'reloj tocable: en sesión (punto) y en pausa (píldora blanca)', source: HOY_SRC, snaps: [clock, clockPaused], viewport: '460x480' })
   await card(null, { path: hoyAt('next-step-dock'), group: HOY, name: 'NextStepDock', subtitle: 'un botón principal con caption', source: C + 'NextStepDock.svelte', snaps: [dockStart], viewport: '460x220' })
 }
 

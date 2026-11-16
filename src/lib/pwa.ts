@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.112'
-const _VER_DESC = 'Reloj de sesión: pausar, reanudar y reiniciar preguntando antes'
-const _VER_TIME = '2026-11-16 08:04'
+const _VER_BASE = 'v2.113'
+const _VER_DESC = 'Reloj de sesión con el diseño nuevo: píldora en pausa, confirma con espera'
+const _VER_TIME = '2026-11-16 16:42'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

@@ -21,7 +21,7 @@ const assets = [...htmlFiles(dir)].flatMap((file) => {
   const [width, height] = attr('viewport').split('x').map(Number)
   return [{ path: relative(dir, file), group: attr('group'), name: attr('name'), subtitle: attr('subtitle'), viewport: { width, height } }]
 })
-const ORDER = ['Hoy', 'Nuevo · Hoy actividades', 'Nuevo · Aviso de entreno', 'Nuevo · Sesión abierta', 'Temporizador', 'Nuevo · Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
+const ORDER = ['Hoy', 'Nuevo · Hoy actividades', 'Nuevo · Aviso de entreno', 'Nuevo · Sesión abierta', 'Nuevo · Hoy reloj de sesión', 'Temporizador', 'Nuevo · Temporizador', 'Detalle de ejercicio', 'Plan', 'Historial', 'Amigos', 'Tú', 'Shell', 'Compartidos']
 // Cards made by hand in Claude Design have no local file: list them here as
 // { path, group, viewport, name, subtitle }.
 const NT = 'Nuevo · Temporizador'
@@ -29,7 +29,15 @@ const nt = (p, name, subtitle, viewport = '390x844') => ({ path: `vistas/nuevo-t
 const HA = 'Nuevo · Hoy actividades'
 const ha = (p, name, subtitle, viewport = '800x930') => ({ path: `vistas/nuevo-hoy-actividades/${p}/index.html`, group: HA, viewport, name, subtitle })
 const sa = (p, name, subtitle, viewport = '800x930') => ({ path: `vistas/nuevo-sesion-abierta/${p}/index.html`, group: 'Nuevo · Sesión abierta', viewport, name, subtitle })
+const rs = (p, name, subtitle, viewport = '800x930') => ({ path: `vistas/nuevo-hoy-reloj-sesion/${p}/index.html`, group: 'Nuevo · Hoy reloj de sesión', viewport, name, subtitle })
 const handMade = [
+  rs('01-reloj-header', 'Nuevo · PageHeader · reloj de sesión', 'en sesión, en pausa por ti y sin actividad (sin cambios), lado a lado', '800x760'),
+  rs('02-hoy-en-sesion', 'Nuevo · Hoy · reloj en sesión', 'el reloj se ve tocable sin ser botón; el dock sigue siendo la acción'),
+  rs('03-hoja-en-sesion', 'Nuevo · Reloj de sesión · en sesión', 'hoja corta: tiempo grande, Pausar y Reiniciar'),
+  rs('04-confirma-pausar', 'Nuevo · Reloj de sesión · ¿Pausar?', 'confirm en línea: Cancelar a la izquierda, Pausar a la derecha'),
+  rs('05-hoy-en-pausa', 'Nuevo · Hoy · reloj en pausa', 'píldora blanca «En pausa»; registrar una serie lo reanuda solo'),
+  rs('06-hoja-en-pausa', 'Nuevo · Reloj de sesión · en pausa', 'Reanudar sin confirmar; Reiniciar sigue disponible'),
+  rs('07-confirma-reiniciar', 'Nuevo · Reloj de sesión · ¿Reiniciar?', 'dice que vuelve a 00:00 y que las series se quedan'),
   nt('alternativa', 'Nuevo · Alternativa «Un toque»', 'la pantalla se vacía con el tiempo; registrar igual que la última vez es un solo toque'),
   nt('cambios', 'Nuevo · Cambios y fase 2', 'por qué mejora cada cambio, componente nuevo e ideas que necesitan algo nuevo', '820x1460'),
   nt('confirma', 'Nuevo · Confirma tus series', 'resumen de solo lectura; tocar una serie para corregirla; Guardar abajo'),
