@@ -99,6 +99,8 @@ export interface SessionState {
   stretchMarks?: number[]
   /** Last set logged, move marked or rest started; the session goes idle 45 min after it */
   lastActivityAt?: number | null
+  /** The clock was paused at this moment; resuming shifts startedAt by the pause */
+  pausedAt?: number | null
   /** The day's exercises, to save a session left open on an earlier day */
   planned?: { exerciseId: string; sets: number; reps: string }[]
   dayName?: string

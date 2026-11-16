@@ -37,7 +37,8 @@ export function isOpen(ss: SessionState | null | undefined): ss is SessionState 
 }
 
 export function isIdle(ss: SessionState | null | undefined, now: number): boolean {
-  return isOpen(ss) && now - lastActivity(ss) > IDLE_MS
+  // A paused clock is the user's own pause, never idle
+  return isOpen(ss) && !ss.pausedAt && now - lastActivity(ss) > IDLE_MS
 }
 
 /** Left open on an earlier day */

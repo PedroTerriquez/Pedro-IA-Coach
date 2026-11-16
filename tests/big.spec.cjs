@@ -3524,6 +3524,51 @@ test.describe('Sesión abierta — termina en la última actividad', () => {
     expect(ss.endedAt ?? null).toBeNull()
   })
 
+  test('el reloj se pausa, reanuda y reinicia, siempre preguntando antes', async ({ page }) => {
+    await seedV2(page, {
+      exerciseLogs: [V2.log('ex-bench', 0, 80, { sets: 4 })],
+      settings: V2.settings({ onboarded: true, sessionState: openSession({ startedAt: Date.now() - 20 * MIN, lastActivityAt: Date.now() - 2 * MIN }) }),
+    })
+    const clock = page.locator('[data-component="SessionClock"]')
+    const clockSheet = page.locator('[data-component="SessionClockSheet"]')
+    await expect(clock).toContainText('en sesión')
+
+    // Pausar asks; «Cancelar» leaves the clock running
+    await clock.click()
+    await clockSheet.getByRole('button', { name: 'Pausar' }).click()
+    await expect(clockSheet).toContainText('¿Pausar el reloj?')
+    await clockSheet.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(clockSheet.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
+    await page.locator('#session-clock-sheet').getByRole('button', { name: 'Cerrar' }).click()
+    await expect(clockSheet).toBeHidden()
+    expect((await storedSettings(page)).sessionState.pausedAt ?? null).toBeNull()
+
+    // Confirmed: frozen and saved
+    await clock.click()
+    await clockSheet.getByRole('button', { name: 'Pausar' }).click()
+    await clockSheet.getByRole('button', { name: 'Pausar' }).click()
+    await expect(clock).toContainText('en pausa')
+    await expect.poll(async () => (await storedSettings(page)).sessionState.pausedAt).toBeTruthy()
+    const frozen = await clock.locator('b').textContent()
+    await page.waitForTimeout(1500)
+    await expect(clock.locator('b')).toHaveText(frozen)
+
+    // Reanudar needs no question: nothing is lost
+    await clock.click()
+    await clockSheet.getByRole('button', { name: 'Reanudar' }).click()
+    await expect(clock).toContainText('en sesión')
+    await expect.poll(async () => (await storedSettings(page)).sessionState.pausedAt ?? null).toBeNull()
+
+    // Reiniciar asks, then the clock starts over and the sets stay
+    await clock.click()
+    await clockSheet.getByRole('button', { name: 'Reiniciar' }).click()
+    await expect(clockSheet).toContainText('¿Reiniciar el reloj?')
+    await clockSheet.getByRole('button', { name: 'Reiniciar' }).click()
+    await expect(clock.locator('b')).toHaveText(/^00:0\d$/)
+    await expect.poll(async () => Date.now() - (await storedSettings(page)).sessionState.startedAt).toBeLessThan(60 * 1000)
+    expect((await readLogs(page)).filter(l => l.date === localDate(0))).toHaveLength(1)
+  })
+
   test('ninguna sesión suma más de 3 h a la liga', async ({ page }) => {
     await seedV2(page, {
       exerciseLogs: [V2.log('ex-bench', 0, 80, { sets: 4 })],

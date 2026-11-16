@@ -38,6 +38,7 @@
   import Icon from '$lib/components/Icon.svelte'
   import CenterToast from '$lib/components/CenterToast.svelte'
   import OpenSessionSheet from '$lib/components/OpenSessionSheet.svelte'
+  import SessionClockSheet from '$lib/components/SessionClockSheet.svelte'
   import OtherActivityChip from '$lib/components/OtherActivityChip.svelte'
   import ActivityRow from '$lib/components/ActivityRow.svelte'
   import ActivitySheet from '$lib/components/ActivitySheet.svelte'
@@ -94,6 +95,8 @@
   let startedAt = $state<number | null>(null)
   let endedAt = $state<number | null>(null)
   let lastActivityAt = $state<number | null>(null)
+  let pausedAt = $state<number | null>(null)
+  let clockSheetOpen = $state(false)
   // A session left open on an earlier day: its time is already saved, the
   // sheet only confirms what was left unregistered
   let staleSession = $state<SessionState | null>(null)
@@ -162,12 +165,12 @@
   }))
   // The banner only shows a running rest; one at zero, minimized, leaves the dock
   let restShown = $derived($restBannerState.visible && $restMinimized && $restBannerState.phase !== 'done')
-  let liveSession = $derived<SessionState>({ date: todayDate, phase: 0, todayExDone: 0, startedAt, endedAt, lastActivityAt })
+  let liveSession = $derived<SessionState>({ date: todayDate, phase: 0, todayExDone: 0, startedAt, endedAt, lastActivityAt, pausedAt })
   // 45 min without activity: the clock freezes at the last activity + 3 min
   let idle = $derived(!complete && isIdle(liveSession, nowMs))
   let showIdleSheet = $derived(loaded && idle && !staleSession && !showDetail && !moveSheet)
   let clockRunning = $derived(!!startedAt && !endedAt)
-  let clock = $derived(startedAt ? formatClock((idle ? idleEnd(liveSession) : nowMs) - startedAt) : '')
+  let clock = $derived(startedAt ? formatClock((pausedAt ?? (idle ? idleEnd(liveSession) : nowMs)) - startedAt) : '')
   let sessionMinutes = $derived(durationMinutes())
   let eyebrow = $derived(complete
     ? `Hoy · terminado${sessionMinutes !== null ? ` en ${sessionMinutes} min` : ''}`
@@ -372,6 +375,7 @@
       endedAt = ss.endedAt || null
       // Saved before the last activity existed: count from now, never idle at once
       lastActivityAt = ss.lastActivityAt || (startedAt ? Date.now() : null)
+      pausedAt = ss.pausedAt || null
       warmupMarks = ss.warmupMarks || []
       stretchMarks = ss.stretchMarks || []
       warmupDone = p >= 2
@@ -399,7 +403,7 @@
     // Coming back to Hoy after the training shows the toast again, but the
     // end of the exercises (time, league, cloud) happens once.
     const firstEnd = !endedAt
-    if (!endedAt) endedAt = Date.now()
+    if (!endedAt) endedAt = clockNow()
     persistPhase()
     if (firstEnd) onExercisesDone()
     if (!hasStretch) {
@@ -426,8 +430,47 @@
   // A set logged, a move marked or a rest started: the session is alive
   function markActivity() {
     if (!startedAt || endedAt) return
+    if (pausedAt) unpause()
     lastActivityAt = Date.now()
     armIdleReminder(lastActivityAt)
+  }
+
+  // Now, as the clock sees it: frozen while paused
+  function clockNow(): number {
+    return pausedAt ?? Date.now()
+  }
+
+  // ── Session clock: pause / resume / reset (asked first in SessionClockSheet) ──
+
+  function pauseClock() {
+    if (!startedAt || endedAt || pausedAt) return
+    pausedAt = Date.now()
+    cancelIdleReminder(lastActivityAt)
+    persistPhase()
+  }
+
+  // The pause doesn't count: the start moves forward by it
+  function unpause() {
+    if (startedAt && pausedAt) startedAt += Date.now() - pausedAt
+    pausedAt = null
+  }
+
+  function resumeClock() {
+    unpause()
+    lastActivityAt = Date.now()
+    armIdleReminder(lastActivityAt)
+    persistPhase()
+  }
+
+  function resetClock() {
+    if (!startedAt || endedAt) return
+    cancelIdleReminder(lastActivityAt)
+    startedAt = Date.now()
+    pausedAt = null
+    lastActivityAt = startedAt
+    nowMs = startedAt
+    armIdleReminder(lastActivityAt)
+    persistPhase()
   }
 
   // Once the session ends, the «¿Terminaste?» push has nothing to ask
@@ -456,7 +499,7 @@
     const todayExDone = statuses.filter(st => st.state === 'done').length
     // Plain arrays: IndexedDB can't clone the $state proxies
     const sessionState = {
-      date: todayDate, phase: currentPhaseNumber(), todayExDone, startedAt, endedAt, lastActivityAt,
+      date: todayDate, phase: currentPhaseNumber(), todayExDone, startedAt, endedAt, lastActivityAt, pausedAt,
       warmupMarks: [...warmupMarks], stretchMarks: [...stretchMarks],
       planned: todayExercises.map(ex => ({ exerciseId: ex.exerciseId, sets: ex.sets, reps: String(ex.reps ?? '') })),
       dayName: day?.name || '',
@@ -493,7 +536,7 @@
 
   function onStretchComplete() {
     stretchDone = true
-    if (!endedAt) endedAt = Date.now()
+    if (!endedAt) endedAt = clockNow()
     persistPhase()
     uploadSnapshot().catch(() => {})
   }
@@ -546,7 +589,7 @@
     showDetail = false
     completionToastShown = true
     const firstEnd = !endedAt
-    if (!endedAt) endedAt = Date.now()
+    if (!endedAt) endedAt = clockNow()
     trainingCompleted = true
     persistPhase()
     if (firstEnd) onExercisesDone()
@@ -582,7 +625,7 @@
 
   function finishSession() {
     showCoach = true
-    if (!endedAt) endedAt = Date.now()
+    if (!endedAt) endedAt = clockNow()
     persistPhase()
     showEffortAfterStreak()
   }
@@ -769,6 +812,7 @@
     moveSheet = null
     startedAt = null
     endedAt = null
+    pausedAt = null
     completionToastShown = false
     centerToast = null
     const s = { ...$settings }
@@ -959,7 +1003,9 @@
         {#if clockRunning && idle}
           <div class="clock idle" data-component="SessionClock"><b><span class="pz" aria-hidden="true"><i></i><i></i></span>{clock}</b><span>Sin actividad desde {clockTime(idleEnd(liveSession))}</span></div>
         {:else if clockRunning}
-          <div class="clock" data-component="SessionClock"><b>{clock}</b><span>en sesión</span></div>
+          <button class="clock" class:paused={!!pausedAt} data-component="SessionClock" aria-label="Reloj de sesión" onclick={() => (clockSheetOpen = true)}>
+            <b>{#if pausedAt}<span class="pz" aria-hidden="true"><i></i><i></i></span>{/if}{clock}</b><span>{pausedAt ? 'en pausa' : 'en sesión'}</span>
+          </button>
         {:else}
           <OtherActivityChip onclick={() => openActivity()} />
         {/if}
@@ -1069,6 +1115,15 @@
   />
 {/if}
 
+<SessionClockSheet
+  bind:open={clockSheetOpen}
+  paused={!!pausedAt}
+  {clock}
+  onpause={pauseClock}
+  onresume={resumeClock}
+  onreset={resetClock}
+/>
+
 <EffortSheet bind:open={effortModalShow} onselect={onEffort} onskip={() => (effortModalShow = false)} />
 
 {#if activitySheet}
@@ -1133,6 +1188,8 @@
   .clock { text-align: right; padding-bottom: 26px; flex-shrink: 0; }
   .clock b { display: block; font-family: var(--font-mono); font-size: 22px; font-weight: 500; letter-spacing: -0.04em; }
   .clock > span { font-size: 12px; color: var(--text-tertiary); }
+  button.clock { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .clock.paused b { color: var(--text-secondary); display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
   .clock.idle { padding-bottom: 2px; }
   .clock.idle b { color: var(--text-secondary); display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
   .clock.idle > span { display: block; width: 96px; margin-left: auto; line-height: 1.3; text-wrap: balance; }

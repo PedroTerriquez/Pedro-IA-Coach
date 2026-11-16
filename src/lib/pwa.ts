@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.111'
-const _VER_DESC = 'Hoy: otras actividades, calorías del gym y descanso nuevo'
-const _VER_TIME = '2026-11-16 07:52'
+const _VER_BASE = 'v2.112'
+const _VER_DESC = 'Reloj de sesión: pausar, reanudar y reiniciar preguntando antes'
+const _VER_TIME = '2026-11-16 08:04'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null
