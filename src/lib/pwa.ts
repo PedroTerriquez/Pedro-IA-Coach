@@ -1,5 +1,5 @@
-const _VER_BASE = 'v2.109'
-const _VER_DESC = 'Plan: días abiertos, tira de la semana y barra del día; tests y cards'
+const _VER_BASE = 'v2.110'
+const _VER_DESC = 'Skill design_prompt y brief base para pedir diseños a Claude Design'
 const _VER_TIME = '2026-11-15 19:22'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
