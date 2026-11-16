@@ -59,7 +59,7 @@
   activeProgramId, currentWeekIdx, units, accentColor, language, fontScale,
   userName, profile: { weight, height, age, gender, experience },
   onboarded, onboardingStep,
-  hasWatch, pushSubscribed, friendCode, notificationsEnabled, restDuration, weekStart,
+  pushSubscribed, friendCode, notificationsEnabled, restDuration, weekStart,
   sessionState   // Hoy's session, below; never uploaded to the cloud
 }
 ```

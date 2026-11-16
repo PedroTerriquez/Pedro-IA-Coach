@@ -5,6 +5,11 @@ Usuario que agregaste a tu liga. Es de un solo lado: no necesita aceptar, y agre
 - **No es:** una amistad mutua; que tú lo veas no implica que él te vea.
 - **En inglés / en código:** friend
 
+### Aviso de app de entreno
+Aviso de 2 segundos al terminar el calentamiento que invita, si el usuario quiere, a iniciar el entreno en su reloj o app de entreno para registrarlo también ahí. Sale siempre; no depende de ningún ajuste.
+- **No es:** un botón que abra el entreno (Coach Pedro no puede iniciarlo por ti); tampoco una notificación.
+- **En inglés / en código:** workout app toast
+
 ### Copia de seguridad
 Archivo con todo lo de la app (ejercicios, registros, programas, sesiones y ajustes) que se guarda fuera del teléfono. Restaurarla agrega y actualiza lo del archivo; no borra lo que ya hay y no viene en él.
 - **No es:** exportar ejercicios (ese archivo solo trae ejercicios, sin registros).

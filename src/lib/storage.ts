@@ -266,7 +266,7 @@ export async function getSettings(): Promise<Settings> {
     id: 'settings', activeProgramId: null, currentWeekIdx: 0, units: 'kg',
     accentColor: '#d4ff3a', userName: 'Pedro', height: '', weight: '',
     sex: '', age: '', goal: '', experience: '', occupation: '',
-    pushServerUrl: '', pushSubscribed: false, hasWatch: false,
+    pushServerUrl: '', pushSubscribed: false,
     lastCoachAnalysis: null, lastUpdate: '', sessionState: null,
     rescheduleWeekOrder: {}, username: '', language: 'es', fontScale: 1,
     onboarded: false, onboardingStep: 0, debugAI: false

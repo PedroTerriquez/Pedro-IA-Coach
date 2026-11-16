@@ -90,7 +90,6 @@ export interface Settings {
   currentWeekIdx: number
   units: string
   accentColor: string
-  hasWatch: boolean
   userName?: string
   height?: string
   weight?: string

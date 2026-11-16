@@ -62,7 +62,7 @@ export const secondProgram = () => ({ id: 'prog-full', name: 'Full Body 3 días'
 
 export const settings = (over = {}) => ({
   id: 'settings', activeProgramId: 'prog-ppl', currentWeekIdx: 0, units: 'kg', accentColor: '#d4ff3a',
-  hasWatch: true, userName: 'Pedro', username: 'Pedro', height: '178', weight: '82', sex: 'Masculino', age: '31',
+  userName: 'Pedro', username: 'Pedro', height: '178', weight: '82', sex: 'Masculino', age: '31',
   goal: 'hipertrofia', experience: 'intermedio', occupation: 'Ingeniero', pushSubscribed: false, pushServerUrl: '',
   sessionState: null, lastCoachAnalysis: null, rescheduleWeekOrder: {}, language: 'es', onboarded: true, ...over,
 })

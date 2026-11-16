@@ -45,8 +45,9 @@
   import { armIdleReminder, cancelIdleReminder } from '$lib/session-reminder'
   import type { Exercise, ExerciseLog, Program, ProgramDay, SessionState, Settings } from '$lib/types'
 
-  // Port literal del TOAST_SVG_WATCH del legacy (components/ui.js pre-migración)
-  const WATCH_SVG = `<svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect x="14" y="6" width="44" height="60" rx="13" stroke="currentColor" stroke-width="2.5" fill="none"/><rect x="20" y="16" width="32" height="30" rx="6" fill="currentColor" fill-opacity="0.06"/><circle cx="36" cy="30" r="5" fill="currentColor" fill-opacity="0.2"/><path d="M30 28h12v2H30z" fill="currentColor"/><path d="M30 32h8v2H30z" fill="currentColor" fill-opacity="0.5"/><circle cx="36" cy="54" r="3" fill="currentColor" fill-opacity="0.15"/><rect x="28" y="3" width="16" height="4" rx="2" fill="currentColor" fill-opacity="0.12"/></svg>`
+  // Pulse line: fits a watch, a phone or any workout app
+  const PULSE_SVG = `<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12h4l2.5-6 5 12 2.5-6h5"/></svg>`
+  const WORKOUT_APP_TOAST = { iconSvg: PULSE_SVG, message: 'Si quieres, inicia tu reloj o app', subtext: 'Así este entreno también queda guardado ahí.', duration: 2000 }
 
   type CenterToastData = {
     imageSrc?: string
@@ -433,9 +434,7 @@
   function onWarmupComplete() {
     warmupDone = true
     persistPhase()
-    if ($settings.hasWatch) {
-      centerToast = { iconSvg: WATCH_SVG, message: 'Inicia tu Smart Watch', duration: 2000 }
-    }
+    centerToast = WORKOUT_APP_TOAST
   }
 
   function onStretchComplete() {

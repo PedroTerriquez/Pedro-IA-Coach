@@ -1,6 +1,6 @@
-const _VER_BASE = 'v2.105'
-const _VER_DESC = 'Push «¿Terminaste?» a los 45 min y tope de 3 h en la liga'
-const _VER_TIME = '2026-11-15 13:19'
+const _VER_BASE = 'v2.106'
+const _VER_DESC = 'Aviso de app de entreno para todos; sin interruptor Smart Watch'
+const _VER_TIME = '2026-11-15 19:22'
 export const APP_VERSION = `${_VER_BASE} · ${_VER_TIME} · ${_VER_DESC}`
 
 let deferredPrompt: any = null

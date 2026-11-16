@@ -7,7 +7,6 @@
   import NavGroup from './NavGroup.svelte'
   import NavRow from './NavRow.svelte'
   import SegmentedControl from './SegmentedControl.svelte'
-  import Switch from './Switch.svelte'
   import Sheet from './Sheet.svelte'
   import OptionList from './OptionList.svelte'
   import AccentSheet from './AccentSheet.svelte'
@@ -67,9 +66,6 @@
   </NavGroup>
 
   <NavGroup>
-    <NavRow label="Smart Watch">
-      {#snippet control()}<Switch id="watch-switch" label="Smart Watch" checked={!!settings.hasWatch} onchange={(v) => onupdate({ hasWatch: v })} />{/snippet}
-    </NavRow>
     <NavRow id="notif-row" label="Notificaciones" value={notif.value} sub={notif.sub} onclick={() => notifOpen = true} />
   </NavGroup>
 
